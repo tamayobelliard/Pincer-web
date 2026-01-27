@@ -6,6 +6,30 @@
 <body>
 
   <h1>Bienvenido a Pincer</h1>
+  <div id="menu">
+  <h2>Menu</h2>
+
+  <div class="item">
+    <span>Burger - $10</span>
+    <button onclick="addItem('Burger')">Add</button>
+  </div>
+
+  <div class="item">
+    <span>Pizza - $12</span>
+    <button onclick="addItem('Pizza')">Add</button>
+  </div>
+
+  <div class="item">
+    <span>Pasta - $11</span>
+    <button onclick="addItem('Pasta')">Add</button>
+  </div>
+</div>
+
+<h3>Order</h3>
+<ul id="orderList"></ul>
+
+<button onclick="placeOrder()">Place Order</button>
+
 
   <script>
     const SUPABASE_URL = https://wtkqpfswpkfgztozgwzl.supabase.co ;
