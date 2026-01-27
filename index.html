@@ -35,6 +35,29 @@
     const SUPABASE_URL = https://wtkqpfswpkfgztozgwzl.supabase.co ;
     const SUPABASE_KEY = sb_publishable_Fjhae54AVQbOGXlWZGxoJA_xM3lgux0 ;
   </script>
+  <script>
+  const order = [];
+
+  function addItem(item) {
+    order.push(item);
+    renderOrder();
+  }
+
+  function renderOrder() {
+    const list = document.getElementById("orderList");
+    list.innerHTML = "";
+    order.forEach(i => {
+      const li = document.createElement("li");
+      li.textContent = i;
+      list.appendChild(li);
+    });
+  }
+
+  function placeOrder() {
+    alert("Order placed: " + order.join(", "));
+  }
+</script>
+
 
 </body>
 </html>
