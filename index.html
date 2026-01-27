@@ -6,60 +6,85 @@
 <body>
 
   <h1>Bienvenido a Pincer</h1>
+
   <div id="menu">
-  <h2>Menu</h2>
+    <h2>Menu</h2>
 
-  <div class="item">
-    <span>Burger - $10</span>
-    <button onclick="addItem('Burger')">Add</button>
+    <div class="item">
+      <span>Burger - $10</span>
+      <button onclick="addItem('Burger')">Add</button>
+    </div>
+
+    <div class="item">
+      <span>Pizza - $12</span>
+      <button onclick="addItem('Pizza')">Add</button>
+    </div>
+
+    <div class="item">
+      <span>Pasta - $11</span>
+      <button onclick="addItem('Pasta')">Add</button>
+    </div>
   </div>
 
-  <div class="item">
-    <span>Pizza - $12</span>
-    <button onclick="addItem('Pizza')">Add</button>
-  </div>
+  <h3>Order</h3>
+  <ul id="orderList"></ul>
 
-  <div class="item">
-    <span>Pasta - $11</span>
-    <button onclick="addItem('Pasta')">Add</button>
-  </div>
-</div>
+  <button onclick="placeOrder()">Place Order</button>
 
-<h3>Order</h3>
-<ul id="orderList"></ul>
-
-<button onclick="placeOrder()">Place Order</button>
-
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <script>
-    const SUPABASE_URL = https://wtkqpfswpkfgztozgwzl.supabase.co ;
-    const SUPABASE_KEY = sb_publishable_Fjhae54AVQbOGXlWZGxoJA_xM3lgux0 ;
+    const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_Fjhae54AVQbOGXlWZGxoJA_xM3lgux0";
+
+    const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let order = [];
+
+    function addItem(item) {
+      order.push(item);
+      renderOrder();
+    }
+
+    function renderOrder() {
+      const list = document.getElementById("orderList");
+      list.innerHTML = "";
+      order.forEach(i => {
+        const li = document.createElement("li");
+        li.textContent = i;
+        list.appendChild(li);
+      });
+    }
+
+    async function placeOrder() {
+      if (order.length === 0) {
+        alert("Order is empty");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("orders")
+        .insert([
+          {
+            items: order.join(", "),
+            status: "new"
+          }
+        ]);
+
+      if (error) {
+        alert("Error sending order");
+        console.error(error);
+      } else {
+        alert("Order sent to restaurant");
+        order = [];
+        renderOrder();
+      }
+    }
   </script>
-  <script>
-  const order = [];
-
-  function addItem(item) {
-    order.push(item);
-    renderOrder();
-  }
-
-  function renderOrder() {
-    const list = document.getElementById("orderList");
-    list.innerHTML = "";
-    order.forEach(i => {
-      const li = document.createElement("li");
-      li.textContent = i;
-      list.appendChild(li);
-    });
-  }
-
-  function placeOrder() {
-    alert("Order placed: " + order.join(", "));
-  }
-</script>
-
 
 </body>
 </html>
+
 
 
