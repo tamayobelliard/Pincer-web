@@ -38,7 +38,7 @@
   const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
   const SUPABASE_KEY = "sb_publishable_Fjhae54AVQbOGXlWZGxoJA_xM3lgux0";
 
-  const supabase = window.supabase.createClient(
+  const db = window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
   );
@@ -66,7 +66,7 @@
       return;
     }
 
-    const { error } = await supabase
+    const { error } = await db
       .from("orders")
       .insert({
         items: order.join(", "),
@@ -86,6 +86,7 @@
 
 </body>
 </html>
+
 
 
 
