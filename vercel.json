@@ -1,3 +1,7 @@
 {
-  "cleanUrls": true
+  "routes": [
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/restaurant", "dest": "/restaurant.html" },
+    { "src": "/restaurant.html", "dest": "/restaurant.html" }
+  ]
 }
