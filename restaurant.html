@@ -2,113 +2,384 @@
 <html>
 <head>
   <title>Pincer – Restaurant Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       padding: 20px;
     }
     h1 {
       text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    #connection-status {
+      text-align: center;
+      color: white;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    #orders {
+      max-width: 1200px;
+      margin: 0 auto;
     }
     .order {
       background: white;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border-left: 10px solid green;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      border-left: 8px solid #22c55e;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
     .new {
-      border-left-color: green;
+      border-left-color: #22c55e;
+      background: #f0fdf4;
     }
     .warning {
-      border-left-color: orange;
+      border-left-color: #f97316;
+      background: #fff7ed;
     }
     .late {
-      border-left-color: red;
+      border-left-color: #ef4444;
+      background: #fef2f2;
+      animation: pulse 2s infinite;
     }
     .accepted {
-      opacity: 0.4;
+      opacity: 0.5;
+      border-left-color: #94a3b8;
+      background: #f8fafc;
+    }
+    @keyframes pulse {
+      0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      50% { 
+        opacity: 0.8;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      }
+    }
+    .order-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1e40af;
+      margin-bottom: 10px;
+      display: inline-block;
+      padding: 5px 15px;
+      background: #dbeafe;
+      border-radius: 8px;
+    }
+    .order-items {
+      font-size: 18px;
+      margin: 10px 0;
+      color: #334155;
+      line-height: 1.6;
+    }
+    .order-time {
+      display: inline-block;
+      padding: 5px 12px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #475569;
+      margin: 10px 0;
     }
     button {
-      margin-top: 10px;
-      padding: 8px 12px;
+      margin-top: 15px;
+      padding: 12px 24px;
       cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+    button:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+    }
+    button:active {
+      transform: translateY(0);
+    }
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      border-left: 4px solid #dc2626;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+      font-size: 18px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    .accepted-badge {
+      display: inline-block;
+      padding: 5px 12px;
+      background: #16a34a;
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .stats {
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .stat-item {
+      text-align: center;
+      min-width: 150px;
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1e40af;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
+<h1>📟 Pincer – Restaurant Dashboard</h1>
 
-<h1>📟 Pincer – Orders</h1>
+<div id="connection-status">🔄 Conectando...</div>
 
-<div id="orders"></div>
+<div class="stats" id="stats">
+  <div class="stat-item">
+    <div class="stat-number" id="total-orders">0</div>
+    <div class="stat-label">Total Órdenes</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number" id="pending-orders">0</div>
+    <div class="stat-label">Pendientes</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number" id="completed-orders">0</div>
+    <div class="stat-label">Completadas</div>
+  </div>
+</div>
+
+<div id="error-message"></div>
+
+<div id="orders">
+  <div class="loading">⏳ Cargando órdenes...</div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
+  // 🔑 CREDENCIALES DE SUPABASE
   const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_Fjhae54AVQbOGXlWZGxoJA_xM3lgux0";
-
-  const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
-
-  async function loadOrders() {
-    const { data, error } = await db
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    const container = document.getElementById("orders");
-    container.innerHTML = "";
-
-    data.forEach(order => {
-      const createdAt = new Date(order.created_at);
-      const minutes = (Date.now() - createdAt.getTime()) / 60000;
-
-      let statusClass = "new";
-      if (minutes > 3) statusClass = "late";
-      else if (minutes > 1) statusClass = "warning";
-
-      if (order.status === "accepted") {
-        statusClass = "accepted";
-      }
-
-      const div = document.createElement("div");
-      div.className = `order ${statusClass}`;
-
-      div.innerHTML = `
-        <strong>Order #${order.id}</strong><br/>
-        Items: ${order.items}<br/>
-        <small>${Math.floor(minutes)} min ago</small><br/>
-        ${order.status !== "accepted" ? 
-          `<button onclick="acceptOrder(${order.id})">Mark as digitada</button>` 
-          : "<em>Digitada</em>"
-        }
-      `;
-
-      container.appendChild(div);
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+  
+  // Crear cliente de Supabase
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // Variables globales
+  let lastOrderCount = 0;
+  let hasPlayedSound = false;
+  
+  // 🔊 Función para reproducir sonido de notificación
+  function playNotificationSound() {
+    // Sonido de notificación (beep)
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
+    audio.volume = 0.5;
+    audio.play().catch(e => {
+      console.log('No se pudo reproducir sonido automáticamente. El usuario debe interactuar primero.');
     });
   }
-
-  async function acceptOrder(id) {
-    await db
-      .from("orders")
-      .update({ status: "accepted" })
-      .eq("id", id);
-
-    loadOrders();
+  
+  // Función para mostrar errores
+  function showError(message) {
+    const errorDiv = document.getElementById("error-message");
+    errorDiv.innerHTML = `<div class="error">❌ ${message}</div>`;
   }
-
+  
+  // Función para actualizar estadísticas
+  function updateStats(orders) {
+    const total = orders.length;
+    const pending = orders.filter(o => o.status !== 'accepted').length;
+    const completed = orders.filter(o => o.status === 'accepted').length;
+    
+    document.getElementById('total-orders').textContent = total;
+    document.getElementById('pending-orders').textContent = pending;
+    document.getElementById('completed-orders').textContent = completed;
+  }
+  
+  // Función para cargar órdenes
+  async function loadOrders() {
+    try {
+      const { data, error } = await db
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false }); // Más recientes primero
+      
+      if (error) {
+        console.error("Error de Supabase:", error);
+        showError(`Error al cargar órdenes: ${error.message}`);
+        document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
+        return;
+      }
+      
+      // Actualizar estado de conexión
+      document.getElementById("connection-status").innerHTML = "🟢 Conectado";
+      
+      const container = document.getElementById("orders");
+      
+      // Si no hay órdenes
+      if (!data || data.length === 0) {
+        container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
+        updateStats([]);
+        return;
+      }
+      
+      // Actualizar estadísticas
+      updateStats(data);
+      
+      // 🔊 Detectar nueva orden y reproducir sonido
+      const currentOrderCount = data.filter(o => o.status !== 'accepted').length;
+      if (hasPlayedSound && lastOrderCount > 0 && currentOrderCount > lastOrderCount) {
+        playNotificationSound();
+        
+        // Vibración en tablet (si está disponible)
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 200]);
+        }
+        
+        // Notificación del navegador (si el usuario dio permiso)
+        if (Notification.permission === "granted") {
+          new Notification("¡Nueva orden en Pincer!", {
+            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
+            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>"
+          });
+        }
+      }
+      lastOrderCount = currentOrderCount;
+      hasPlayedSound = true;
+      
+      // Limpiar container
+      container.innerHTML = "";
+      
+      // Renderizar cada orden
+      data.forEach(order => {
+        const createdAt = new Date(order.created_at);
+        const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+        
+        // Determinar clase según tiempo
+        let statusClass = "new";
+        if (order.status !== "accepted") {
+          if (minutes > 5) statusClass = "late";
+          else if (minutes > 2) statusClass = "warning";
+        } else {
+          statusClass = "accepted";
+        }
+        
+        // Crear elemento de orden
+        const div = document.createElement("div");
+        div.className = `order ${statusClass}`;
+        div.innerHTML = `
+          <div class="order-number">#${order.id}</div>
+          <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
+          <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
+          ${order.status !== "accepted" ? 
+            `<br><button onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
+            : `<br><span class="accepted-badge">✓ YA DIGITADA</span>`
+          }
+        `;
+        container.appendChild(div);
+      });
+      
+      // Limpiar mensaje de error si todo salió bien
+      document.getElementById("error-message").innerHTML = "";
+      
+    } catch (err) {
+      console.error("Error inesperado:", err);
+      showError(`Error inesperado: ${err.message}`);
+      document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
+    }
+  }
+  
+  // Función para aceptar orden
+  async function acceptOrder(id) {
+    try {
+      const { error } = await db
+        .from("orders")
+        .update({ status: "accepted" })
+        .eq("id", id);
+      
+      if (error) {
+        console.error("Error al actualizar:", error);
+        showError(`Error al marcar orden: ${error.message}`);
+        return;
+      }
+      
+      // Reproducir sonido de confirmación
+      const confirmSound = new Audio('data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==');
+      confirmSound.play().catch(() => {});
+      
+      // Recargar órdenes inmediatamente
+      loadOrders();
+      
+    } catch (err) {
+      console.error("Error inesperado:", err);
+      showError(`Error inesperado: ${err.message}`);
+    }
+  }
+  
+  // Pedir permiso para notificaciones
+  if (Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+  
+  // Cargar órdenes al inicio
   loadOrders();
-  setInterval(loadOrders, 5000);
+  
+  // Recargar cada 3 segundos (más rápido para mejor UX)
+  setInterval(loadOrders, 3000);
+  
+  // Habilitar sonido al primer click (necesario para algunos navegadores)
+  document.addEventListener('click', () => {
+    hasPlayedSound = true;
+  }, { once: true });
+  
+  console.log("✅ Pincer Dashboard iniciado correctamente");
+  console.log("🔗 Conectado a:", SUPABASE_URL);
 </script>
-
 </body>
 </html>
