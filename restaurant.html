@@ -60,9 +60,13 @@
       animation: pulse 2s infinite;
     }
     .accepted {
-      opacity: 0.5;
-      border-left-color: #94a3b8;
-      background: #f8fafc;
+      border-left-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .ready {
+      border-left-color: #16a34a;
+      background: #f0fdf4;
+      opacity: 0.6;
     }
     @keyframes pulse {
       0%, 100% { 
@@ -99,26 +103,63 @@
       color: #475569;
       margin: 10px 0;
     }
+    .order-status {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status-accepted {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .status-ready {
+      background: #d1fae5;
+      color: #065f46;
+    }
     button {
       margin-top: 15px;
+      margin-right: 10px;
       padding: 12px 24px;
       cursor: pointer;
-      background: #3b82f6;
       color: white;
       border: none;
       border-radius: 8px;
       font-weight: 600;
       font-size: 16px;
       transition: all 0.2s;
+    }
+    .btn-accept {
+      background: #3b82f6;
       box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     }
-    button:hover {
+    .btn-accept:hover {
       background: #2563eb;
       transform: translateY(-1px);
       box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
     }
+    .btn-ready {
+      background: #16a34a;
+      box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
+    }
+    .btn-ready:hover {
+      background: #15803d;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+    }
     button:active {
       transform: translateY(0);
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
     }
     .error {
       background: #fee2e2;
@@ -138,7 +179,7 @@
       border-radius: 12px;
       backdrop-filter: blur(10px);
     }
-    .accepted-badge {
+    .completed-badge {
       display: inline-block;
       padding: 5px 12px;
       background: #16a34a;
@@ -191,8 +232,12 @@
     <div class="stat-label">Pendientes</div>
   </div>
   <div class="stat-item">
-    <div class="stat-number" id="completed-orders">0</div>
-    <div class="stat-label">Completadas</div>
+    <div class="stat-number" id="preparing-orders">0</div>
+    <div class="stat-label">En Preparación</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number" id="ready-orders">0</div>
+    <div class="stat-label">Listas</div>
   </div>
 </div>
 
@@ -219,9 +264,7 @@
   function playNotificationSound() {
     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
     audio.volume = 0.5;
-    audio.play().catch(e => {
-      console.log('No se pudo reproducir sonido automáticamente.');
-    });
+    audio.play().catch(e => {});
   }
   
   // Función para mostrar errores
@@ -233,12 +276,14 @@
   // Función para actualizar estadísticas
   function updateStats(orders) {
     const total = orders.length;
-    const pending = orders.filter(o => o.status !== 'accepted').length;
-    const completed = orders.filter(o => o.status === 'accepted').length;
+    const pending = orders.filter(o => o.status === 'pending' || !o.status).length;
+    const preparing = orders.filter(o => o.status === 'accepted').length;
+    const ready = orders.filter(o => o.status === 'ready').length;
     
     document.getElementById('total-orders').textContent = total;
     document.getElementById('pending-orders').textContent = pending;
-    document.getElementById('completed-orders').textContent = completed;
+    document.getElementById('preparing-orders').textContent = preparing;
+    document.getElementById('ready-orders').textContent = ready;
   }
   
   // Función para cargar órdenes
@@ -271,21 +316,18 @@
       // Actualizar estadísticas
       updateStats(data);
       
-      // 🔊 Detectar nueva orden y reproducir sonido
-      const currentOrderCount = data.filter(o => o.status !== 'accepted').length;
+      // 🔊 Detectar nueva orden
+      const currentOrderCount = data.filter(o => o.status === 'pending' || !o.status).length;
       if (hasPlayedSound && lastOrderCount > 0 && currentOrderCount > lastOrderCount) {
         playNotificationSound();
         
-        // Vibración en tablet
         if (navigator.vibrate) {
           navigator.vibrate([200, 100, 200, 100, 200]);
         }
         
-        // Notificación del navegador
         if (Notification.permission === "granted") {
           new Notification("¡Nueva orden en Pincer!", {
-            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
-            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>"
+            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`
           });
         }
       }
@@ -300,13 +342,32 @@
         const createdAt = new Date(order.created_at);
         const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
         
-        // Determinar clase según tiempo
+        // Determinar status
+        const status = order.status || 'pending';
+        
+        // Determinar clase según tiempo y status
         let statusClass = "new";
-        if (order.status !== "accepted") {
+        if (status === 'ready') {
+          statusClass = "ready";
+        } else if (status === 'accepted') {
+          statusClass = "accepted";
+        } else {
           if (minutes > 5) statusClass = "late";
           else if (minutes > 2) statusClass = "warning";
+        }
+        
+        // Determinar badge de status
+        let statusBadge = '';
+        let statusText = '';
+        if (status === 'ready') {
+          statusBadge = 'status-ready';
+          statusText = '✓ LISTA PARA RETIRAR';
+        } else if (status === 'accepted') {
+          statusBadge = 'status-accepted';
+          statusText = '👨‍🍳 EN PREPARACIÓN';
         } else {
-          statusClass = "accepted";
+          statusBadge = 'status-pending';
+          statusText = '⏳ PENDIENTE';
         }
         
         // Crear elemento de orden
@@ -314,17 +375,25 @@
         div.className = `order ${statusClass}`;
         div.innerHTML = `
           <div class="order-number">#${order.id}</div>
+          <span class="order-status ${statusBadge}">
+            ${statusText}
+          </span>
           <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
           <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
-          ${order.status !== "accepted" ? 
-            `<br><button onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
-            : `<br><span class="accepted-badge">✓ YA DIGITADA</span>`
-          }
+          <br>
+          ${status === 'pending' ? 
+            `<button class="btn-accept" onclick="window.acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
+            : ''}
+          ${status === 'accepted' ? 
+            `<button class="btn-ready" onclick="window.markReady(${order.id})">🎉 Marcar como LISTA</button>` 
+            : ''}
+          ${status === 'ready' ? 
+            `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` 
+            : ''}
         `;
         container.appendChild(div);
       });
       
-      // Limpiar mensaje de error
       document.getElementById("error-message").innerHTML = "";
       
     } catch (err) {
@@ -334,15 +403,16 @@
     }
   }
   
-  // ⚡ FUNCIÓN GLOBAL para aceptar orden (MUY IMPORTANTE)
+  // ⚡ FUNCIÓN GLOBAL para aceptar orden (digitada)
   window.acceptOrder = async function(id) {
-    console.log("Marcando orden como digitada:", id);
+    console.log(`🔄 Marcando orden #${id} como digitada`);
     
     try {
-      const { error } = await db
+      const { data, error } = await db
         .from("orders")
         .update({ status: "accepted" })
-        .eq("id", id);
+        .eq("id", id)
+        .select();
       
       if (error) {
         console.error("Error al actualizar:", error);
@@ -350,14 +420,45 @@
         return;
       }
       
-      console.log("✅ Orden marcada exitosamente");
+      console.log(`✅ Orden #${id} marcada como EN PREPARACIÓN`);
       
-      // Reproducir sonido de confirmación
+      // Sonido de confirmación
       const confirmSound = new Audio('data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==');
       confirmSound.play().catch(() => {});
       
-      // Recargar órdenes inmediatamente
-      loadOrders();
+      // Recargar
+      setTimeout(() => loadOrders(), 100);
+      
+    } catch (err) {
+      console.error("Error inesperado:", err);
+      showError(`Error inesperado: ${err.message}`);
+    }
+  };
+  
+  // ⚡ FUNCIÓN GLOBAL para marcar orden como LISTA
+  window.markReady = async function(id) {
+    console.log(`🎉 Marcando orden #${id} como LISTA`);
+    
+    try {
+      const { data, error } = await db
+        .from("orders")
+        .update({ status: "ready" })
+        .eq("id", id)
+        .select();
+      
+      if (error) {
+        console.error("Error al actualizar:", error);
+        showError(`Error al marcar orden: ${error.message}`);
+        return;
+      }
+      
+      console.log(`✅ Orden #${id} marcada como LISTA - Cliente será notificado`);
+      
+      // Sonido especial de "orden lista"
+      playNotificationSound();
+      
+      // Recargar
+      setTimeout(() => loadOrders(), 100);
       
     } catch (err) {
       console.error("Error inesperado:", err);
@@ -376,13 +477,12 @@
   // Recargar cada 3 segundos
   setInterval(loadOrders, 3000);
   
-  // Habilitar sonido al primer click
+  // Habilitar sonido
   document.addEventListener('click', () => {
     hasPlayedSound = true;
   }, { once: true });
   
   console.log("✅ Pincer Dashboard iniciado correctamente");
-  console.log("🔗 Conectado a:", SUPABASE_URL);
 </script>
 </body>
 </html>
