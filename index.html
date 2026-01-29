@@ -474,23 +474,27 @@
       const items = order.map(item => item.name).join(", ");
       const total = order.reduce((sum, item) => sum + item.price, 0);
       
-      // Enviar a Supabase
+      console.log("📤 Enviando pedido a Supabase:", { items, total, status: "pending" });
+      
+      // 🔥 AQUÍ ESTÁ EL CAMBIO IMPORTANTE - status: "pending"
       const { data, error } = await db
         .from("orders")
         .insert({
           items: items,
-          status: "pending",
+          status: "pending",  // ← CAMBIADO DE "accepted" A "pending"
           total: total
         })
         .select();
       
       if (error) {
-        console.error("Error:", error);
+        console.error("❌ Error de Supabase:", error);
         alert("❌ Error al enviar el pedido. Intenta de nuevo.");
         placeOrderBtn.disabled = false;
         placeOrderBtn.textContent = "Realizar Pedido";
         return;
       }
+      
+      console.log("✅ Pedido enviado exitosamente:", data);
       
       // Éxito - mostrar mensaje
       const orderNumber = data[0].id;
@@ -501,7 +505,7 @@
       renderOrder();
       
     } catch (err) {
-      console.error("Error inesperado:", err);
+      console.error("❌ Error inesperado:", err);
       alert("❌ Error de conexión. Verifica tu internet.");
       placeOrderBtn.disabled = false;
       placeOrderBtn.textContent = "Realizar Pedido";
@@ -532,6 +536,7 @@
   }
   
   console.log("✅ Pincer Menu cargado correctamente");
+  console.log("🔗 Conectado a Supabase:", SUPABASE_URL);
 </script>
 
 </body>
