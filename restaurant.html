@@ -29,6 +29,27 @@
       margin-bottom: 15px;
       font-size: 14px;
     }
+    #notification-banner {
+      background: rgba(251, 191, 36, 0.95);
+      color: #78350f;
+      padding: 15px;
+      text-align: center;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      font-weight: 600;
+      display: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    #notification-banner:hover {
+      background: rgba(251, 191, 36, 1);
+      transform: scale(1.02);
+    }
+    #notification-banner.show {
+      display: block;
+    }
     #orders {
       max-width: 1200px;
       margin: 0 auto;
@@ -222,6 +243,11 @@
 
 <div id="connection-status">🔄 Conectando...</div>
 
+<!-- Banner de notificaciones -->
+<div id="notification-banner" onclick="requestNotificationPermission()">
+  🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
+</div>
+
 <div class="stats" id="stats">
   <div class="stat-item">
     <div class="stat-number" id="total-orders">0</div>
@@ -260,11 +286,44 @@
   let lastOrderCount = 0;
   let hasPlayedSound = false;
   
+  // 🔔 Función para solicitar permisos de notificación
+  async function requestNotificationPermission() {
+    // Verificar si el navegador soporta notificaciones
+    if (!("Notification" in window)) {
+      alert("Tu navegador no soporta notificaciones de escritorio");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      
+      if (permission === "granted") {
+        console.log("✅ Permisos de notificación concedidos");
+        
+        // Ocultar banner
+        document.getElementById('notification-banner').classList.remove('show');
+        
+        // Mostrar notificación de prueba
+        new Notification("¡Notificaciones Habilitadas!", {
+          body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
+          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
+          tag: "pincer-notifications-enabled"
+        });
+      } else if (permission === "denied") {
+        alert("⚠️ Has bloqueado las notificaciones. Para habilitarlas:\n\n1. Click en el ícono del candado (🔒) en la barra de direcciones\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
+      }
+    } catch (error) {
+      console.error("Error al solicitar permisos:", error);
+    }
+  }
+  
   // 🔊 Función para reproducir sonido de notificación
   function playNotificationSound() {
     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
     audio.volume = 0.5;
-    audio.play().catch(e => {});
+    audio.play().catch(e => {
+      console.log('No se pudo reproducir sonido');
+    });
   }
   
   // Función para mostrar errores
@@ -327,7 +386,10 @@
         
         if (Notification.permission === "granted") {
           new Notification("¡Nueva orden en Pincer!", {
-            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`
+            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
+            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
+            tag: "pincer-new-order",
+            requireInteraction: true
           });
         }
       }
@@ -466,10 +528,36 @@
     }
   };
   
-  // Pedir permiso para notificaciones
-  if (Notification.permission === "default") {
-    Notification.requestPermission();
-  }
+  // 🔔 INICIALIZAR PERMISOS DE NOTIFICACIÓN AL CARGAR
+  window.addEventListener('DOMContentLoaded', async () => {
+    console.log("🚀 Iniciando Pincer Dashboard...");
+    
+    // Verificar si el navegador soporta notificaciones
+    if (!("Notification" in window)) {
+      console.log("❌ Este navegador no soporta notificaciones");
+      return;
+    }
+
+    console.log("Estado actual de notificaciones:", Notification.permission);
+
+    // Mostrar banner si aún no ha dado permiso
+    if (Notification.permission === "default") {
+      document.getElementById('notification-banner').classList.add('show');
+      console.log("⚠️ Mostrando banner para solicitar permisos");
+    } else if (Notification.permission === "granted") {
+      console.log("✅ Permisos de notificación ya concedidos");
+      
+      // Mostrar notificación de bienvenida
+      new Notification("Pincer Dashboard Iniciado", {
+        body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
+        tag: "pincer-dashboard-ready"
+      });
+    } else if (Notification.permission === "denied") {
+      console.log("❌ Permisos de notificación denegados por el usuario");
+      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 en la barra de direcciones para habilitarlas.");
+    }
+  });
   
   // Cargar órdenes al inicio
   loadOrders();
@@ -477,12 +565,13 @@
   // Recargar cada 3 segundos
   setInterval(loadOrders, 3000);
   
-  // Habilitar sonido
+  // Habilitar sonido al primer click
   document.addEventListener('click', () => {
     hasPlayedSound = true;
   }, { once: true });
   
-  console.log("✅ Pincer Dashboard iniciado correctamente");
+  console.log("✅ Pincer Dashboard configurado correctamente");
+  console.log("🔗 Conectado a:", SUPABASE_URL);
 </script>
 </body>
 </html>
