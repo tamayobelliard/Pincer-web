@@ -555,7 +555,7 @@
 
 <!-- PINZER START: Floating Button -->
 <button id="pinzer-btn" onclick="openPinzer()">
-  Need help choosing? 🤖
+  ¿Necesitas ayuda eligiendo? 🤖
 </button>
 
 <!-- PINZER START: Chat Modal -->
@@ -570,7 +570,7 @@
     justify-content: space-between;
     align-items: center;
   ">
-    <span>🤖 Pinzer - Virtual Waiter</span>
+    <span>🤖 Pinzer - Mesero Virtual</span>
     <button onclick="closePinzer()" style="
       background: none;
       border: none;
@@ -867,12 +867,12 @@ function openPinzer() {
   if (pinzerState === 'idle') {
     pinzerState = 'greeting';
     setTimeout(() => {
-      pinzerSay("Welcome to Juan's Food Truck 👋");
+      pinzerSay("¡Bienvenido al Food Truck de Juan! 👋");
       setTimeout(() => {
-        pinzerSay("My name is Pinzer and I'm your virtual waiter.");
+        pinzerSay("Mi nombre es Pinzer y soy tu mesero virtual.");
         setTimeout(() => {
-          pinzerSay("What are you in the mood for today?");
-          pinzerShowReplies(['Something quick', "I'm hungry", 'Surprise me']);
+          pinzerSay("¿Qué se te antoja hoy?");
+          pinzerShowReplies(['Algo rápido', 'Tengo hambre', 'Sorpréndeme']);
         }, 800);
       }, 800);
     }, 300);
@@ -944,11 +944,11 @@ function pinzerHandleReply(reply) {
 function handleGreetingResponse(reply) {
   let item;
   
-  if (reply === 'Something quick') {
+  if (reply === 'Algo rápido') {
     item = pinzerMenu.main.find(i => i.tags.includes('quick'));
-  } else if (reply === "I'm hungry") {
+  } else if (reply === 'Tengo hambre') {
     item = pinzerMenu.main.find(i => i.tags.includes('hungry'));
-  } else if (reply === 'Surprise me') {
+  } else if (reply === 'Sorpréndeme') {
     const surpriseItems = pinzerMenu.main.filter(i => i.tags.includes('surprise'));
     item = surpriseItems[Math.floor(Math.random() * surpriseItems.length)] || pinzerMenu.main[0];
   }
@@ -957,21 +957,21 @@ function handleGreetingResponse(reply) {
   pinzerState = 'recommendation';
   
   setTimeout(() => {
-    pinzerSay(`Great choice! I recommend our ${item.name} for $${item.price} 🍽️`);
+    pinzerSay(`¡Excelente elección! Te recomiendo nuestra ${item.name} por $${item.price} 🍽️`);
     setTimeout(() => {
-      pinzerSay("Would you like to add it to your order?");
-      pinzerShowReplies(['Yes, add it', 'No, thanks']);
+      pinzerSay("¿Te gustaría agregarlo a tu pedido?");
+      pinzerShowReplies(['Sí, agrégalo', 'No, gracias']);
     }, 800);
   }, 500);
 }
 
 // Handle recommendation responses
 function handleRecommendationResponse(reply) {
-  if (reply === 'Yes, add it') {
+  if (reply === 'Sí, agrégalo') {
     addItem(pinzerRecommendation.name, pinzerRecommendation.price);
     
     setTimeout(() => {
-      pinzerSay(`Perfect! Added ${pinzerRecommendation.name} to your order ✅`);
+      pinzerSay(`¡Perfecto! Agregué ${pinzerRecommendation.name} a tu pedido ✅`);
       
       if (!pinzerHasUpsold) {
         pinzerState = 'upsell';
@@ -979,8 +979,8 @@ function handleRecommendationResponse(reply) {
         pinzerUpsellItem = upsellItem;
         
         setTimeout(() => {
-          pinzerSay(`Would you like to add ${upsellItem.name} for just $${upsellItem.price}? 🍟`);
-          pinzerShowReplies(['Yes, add it', 'No, thanks']);
+          pinzerSay(`¿Te gustaría agregar ${upsellItem.name} por solo $${upsellItem.price}? 🍟`);
+          pinzerShowReplies(['Sí, agrégalo', 'No, gracias']);
           pinzerHasUpsold = true;
         }, 800);
       } else {
@@ -988,10 +988,10 @@ function handleRecommendationResponse(reply) {
       }
     }, 500);
     
-  } else if (reply === 'No, thanks') {
+  } else if (reply === 'No, gracias') {
     setTimeout(() => {
-      pinzerSay("No problem! Feel free to browse the menu above 📋");
-      pinzerSay("Let me know if you need anything else!");
+      pinzerSay("¡No hay problema! Puedes explorar el menú arriba 📋");
+      pinzerSay("¡Avísame si necesitas algo más!");
       pinzerState = 'done';
       setTimeout(() => closePinzer(), 2000);
     }, 500);
@@ -1000,15 +1000,15 @@ function handleRecommendationResponse(reply) {
 
 // Handle upsell responses
 function handleUpsellResponse(reply) {
-  if (reply === 'Yes, add it') {
+  if (reply === 'Sí, agrégalo') {
     addItem(pinzerUpsellItem.name, pinzerUpsellItem.price);
     
     setTimeout(() => {
-      pinzerSay(`Great! Added ${pinzerUpsellItem.name} ✅`);
+      pinzerSay(`¡Genial! Agregué ${pinzerUpsellItem.name} ✅`);
       goToCheckout();
     }, 500);
     
-  } else if (reply === 'No, thanks') {
+  } else if (reply === 'No, gracias') {
     goToCheckout();
   }
 }
@@ -1018,16 +1018,16 @@ function goToCheckout() {
   pinzerState = 'checkout';
   
   setTimeout(() => {
-    pinzerSay("Your order is ready! You can review it above and checkout when ready 🛒");
-    pinzerShowReplies(['Checkout']);
+    pinzerSay("¡Tu pedido está listo! Puedes revisarlo arriba y finalizar cuando quieras 🛒");
+    pinzerShowReplies(['Finalizar pedido']);
   }, 800);
 }
 
 // Handle checkout
 function handleCheckoutResponse(reply) {
-  if (reply === 'Checkout') {
+  if (reply === 'Finalizar pedido') {
     pinzerState = 'done';
-    pinzerSay("Thank you! Scroll down to complete your order 😊");
+    pinzerSay("¡Gracias! Desliza hacia abajo para completar tu orden 😊");
     
     setTimeout(() => {
       closePinzer();
