@@ -40,6 +40,35 @@
       font-size: 1.1em;
       opacity: 0.9;
     }
+
+    .qr-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+
+    .qr-code {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      display: inline-block;
+      margin: 15px 0;
+    }
+
+    .qr-code img {
+      display: block;
+      max-width: 250px;
+      height: auto;
+    }
+
+    .qr-instructions {
+      color: #64748b;
+      font-size: 0.95em;
+      margin-top: 10px;
+    }
     
     .menu-section {
       background: white;
@@ -238,6 +267,7 @@
       text-align: center;
       z-index: 1000;
       transition: all 0.3s;
+      max-width: 90%;
     }
     
     .success-message.show {
@@ -259,6 +289,41 @@
     .success-subtext {
       color: #64748b;
       font-size: 1.1em;
+      margin-bottom: 20px;
+    }
+
+    .order-number-display {
+      font-size: 4em;
+      font-weight: bold;
+      color: #1e40af;
+      background: #dbeafe;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .status-checking {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fef3c7;
+      border-radius: 8px;
+      color: #92400e;
+    }
+
+    .status-ready {
+      margin-top: 20px;
+      padding: 15px;
+      background: #d1fae5;
+      border-radius: 8px;
+      color: #065f46;
+      font-weight: bold;
+      font-size: 1.2em;
+      animation: pulse-ready 1s infinite;
+    }
+
+    @keyframes pulse-ready {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
     }
     
     .overlay {
@@ -287,6 +352,13 @@
   <div class="header">
     <h1>🍔 Pincer</h1>
     <p>Ordena desde tu mesa, sin filas</p>
+  </div>
+
+  <!-- QR Code Section -->
+  <div class="qr-section" id="qr-section">
+    <h2 class="section-title">📱 Escanea para ordenar</h2>
+    <div class="qr-code" id="qr-code"></div>
+    <p class="qr-instructions">Escanea este código QR con tu cámara<br>para acceder al menú desde tu mesa</p>
   </div>
 
   <!-- Menu -->
@@ -374,11 +446,17 @@
 <div class="success-message" id="successMessage">
   <div class="success-icon">✅</div>
   <div class="success-text">¡Pedido Enviado!</div>
-  <div class="success-subtext" id="orderNumber"></div>
+  <div class="success-subtext">Guarda tu número de orden</div>
+  <div class="order-number-display" id="orderNumberDisplay">#0000</div>
+  <div id="orderStatus" class="status-checking">
+    ⏳ Preparando tu pedido...<br>
+    <small>Te avisaremos cuando esté listo</small>
+  </div>
 </div>
 
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 <script>
   // Configuración de Supabase
   const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
@@ -386,8 +464,25 @@
   
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   
+  // Generar QR Code automáticamente
+  window.addEventListener('DOMContentLoaded', () => {
+    const currentURL = window.location.href;
+    const qrContainer = document.getElementById('qr-code');
+    
+    new QRCode(qrContainer, {
+      text: currentURL,
+      width: 250,
+      height: 250,
+      colorDark: "#1e40af",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  });
+  
   // Array para guardar el pedido
   let order = [];
+  let currentOrderId = null;
+  let orderStatusChecker = null;
   
   // Función para agregar item al pedido
   function addItem(name, price) {
@@ -457,6 +552,58 @@
     totalDiv.style.display = 'block';
   }
   
+  // Función para verificar estado de la orden
+  async function checkOrderStatus(orderId) {
+    try {
+      const { data, error } = await db
+        .from("orders")
+        .select("status")
+        .eq("id", orderId)
+        .single();
+      
+      if (error) {
+        console.error("Error al verificar estado:", error);
+        return;
+      }
+      
+      const statusDiv = document.getElementById("orderStatus");
+      
+      if (data.status === "ready") {
+        // ¡Orden lista!
+        statusDiv.className = "status-ready";
+        statusDiv.innerHTML = "🎉 ¡TU PEDIDO ESTÁ LISTO!<br>Puedes recogerlo ahora";
+        
+        // Reproducir sonido
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
+        audio.play();
+        
+        // Vibrar
+        if (navigator.vibrate) {
+          navigator.vibrate([500, 200, 500, 200, 500]);
+        }
+        
+        // Notificación del navegador
+        if (Notification.permission === "granted") {
+          new Notification("¡Tu pedido está listo!", {
+            body: `Orden #${orderId} - Puedes recogerla ahora`,
+            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
+          });
+        }
+        
+        // Detener el checker
+        if (orderStatusChecker) {
+          clearInterval(orderStatusChecker);
+          orderStatusChecker = null;
+        }
+      } else if (data.status === "accepted") {
+        statusDiv.className = "status-checking";
+        statusDiv.innerHTML = "👨‍🍳 Tu pedido está siendo preparado...<br><small>Te avisaremos cuando esté listo</small>";
+      }
+    } catch (err) {
+      console.error("Error al verificar estado:", err);
+    }
+  }
+  
   // Función para realizar el pedido
   async function placeOrder() {
     if (order.length === 0) {
@@ -476,12 +623,12 @@
       
       console.log("📤 Enviando pedido a Supabase:", { items, total, status: "pending" });
       
-      // 🔥 AQUÍ ESTÁ EL CAMBIO IMPORTANTE - status: "pending"
+      // Enviar a Supabase
       const { data, error } = await db
         .from("orders")
         .insert({
           items: items,
-          status: "pending",  // ← CAMBIADO DE "accepted" A "pending"
+          status: "pending",
           total: total
         })
         .select();
@@ -498,7 +645,16 @@
       
       // Éxito - mostrar mensaje
       const orderNumber = data[0].id;
+      currentOrderId = orderNumber;
       showSuccessMessage(orderNumber);
+      
+      // Iniciar verificación de estado cada 3 segundos
+      orderStatusChecker = setInterval(() => {
+        checkOrderStatus(orderNumber);
+      }, 3000);
+      
+      // Verificar inmediatamente
+      checkOrderStatus(orderNumber);
       
       // Limpiar pedido
       order = [];
@@ -516,24 +672,37 @@
   function showSuccessMessage(orderNumber) {
     const overlay = document.getElementById("overlay");
     const successMessage = document.getElementById("successMessage");
-    const orderNumberText = document.getElementById("orderNumber");
+    const orderNumberDisplay = document.getElementById("orderNumberDisplay");
     
-    orderNumberText.textContent = `Tu número de orden es: #${orderNumber}`;
+    orderNumberDisplay.textContent = `#${orderNumber}`;
     
     overlay.classList.add("show");
     successMessage.classList.add("show");
     
-    // Ocultar después de 3 segundos
-    setTimeout(() => {
-      overlay.classList.remove("show");
-      successMessage.classList.remove("show");
-      
-      // Habilitar botón de nuevo
-      const placeOrderBtn = document.getElementById("placeOrderBtn");
-      placeOrderBtn.disabled = true;
-      placeOrderBtn.textContent = "Realizar Pedido";
-    }, 3000);
+    // Pedir permiso para notificaciones
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    
+    // NO cerrar automáticamente - dejar abierto hasta que esté listo
   }
+  
+  // Cerrar el modal cuando hagan click en el overlay
+  document.getElementById("overlay").addEventListener("click", () => {
+    document.getElementById("overlay").classList.remove("show");
+    document.getElementById("successMessage").classList.remove("show");
+    
+    // Detener checker si existe
+    if (orderStatusChecker) {
+      clearInterval(orderStatusChecker);
+      orderStatusChecker = null;
+    }
+    
+    // Reset botón
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+    placeOrderBtn.disabled = true;
+    placeOrderBtn.textContent = "Realizar Pedido";
+  });
   
   console.log("✅ Pincer Menu cargado correctamente");
   console.log("🔗 Conectado a Supabase:", SUPABASE_URL);
