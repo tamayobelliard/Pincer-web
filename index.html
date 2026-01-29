@@ -5,135 +5,535 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pincer - Ordena desde tu mesa</title>
   <style>
-    /* ===== TU CSS ORIGINAL (NO TOCADO) ===== */
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;padding-bottom:100px}
-    .container{max-width:500px;margin:0 auto}
-    .header{text-align:center;color:white;margin-bottom:30px}
-    .header h1{font-size:2.5em;margin-bottom:10px}
-    .menu-section,.order-summary{background:white;border-radius:16px;padding:20px;margin-bottom:20px}
-    .menu-item{background:#f8fafc;border-radius:12px;padding:15px;margin-bottom:12px;display:flex;justify-content:space-between}
-    .add-btn{background:#3b82f6;color:white;border:none;padding:10px 18px;border-radius:8px}
-    .order-item{display:flex;justify-content:space-between;padding:10px;background:#f1f5f9;border-radius:8px;margin-bottom:8px}
-    .remove-btn{background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:6px}
-    .place-order-btn{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:calc(100% - 40px);max-width:460px;background:#16a34a;color:white;border:none;padding:16px;border-radius:12px;font-size:1.2em}
-    .status-box{margin-top:15px;padding:15px;border-radius:10px;text-align:center;font-weight:bold;font-size:1.1em}
-    .pending{background:#fde68a;color:#92400e}
-    .preparing{background:#bfdbfe;color:#1e40af}
-    .ready{background:#bbf7d0;color:#065f46}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+    
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+    
+    .menu-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .section-title {
+      font-size: 1.5em;
+      color: #1e40af;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #dbeafe;
+    }
+    
+    .menu-item {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+    
+    .menu-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-color: #3b82f6;
+    }
+    
+    .item-info {
+      flex: 1;
+    }
+    
+    .item-name {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 5px;
+    }
+    
+    .item-description {
+      font-size: 0.9em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    
+    .item-price {
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #16a34a;
+    }
+    
+    .add-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+    
+    .add-btn:hover {
+      background: #2563eb;
+      transform: scale(1.05);
+    }
+    
+    .add-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .order-summary {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .order-item-name {
+      font-weight: 600;
+      color: #1e293b;
+    }
+    
+    .remove-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .remove-btn:hover {
+      background: #dc2626;
+    }
+    
+    .order-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #dbeafe;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #1e40af;
+    }
+    
+    .empty-order {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+      font-size: 1.1em;
+    }
+    
+    .place-order-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 460px;
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 18px;
+      border-radius: 12px;
+      font-size: 1.3em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(22, 163, 74, 0.4);
+      transition: all 0.3s;
+    }
+    
+    .place-order-btn:hover {
+      background: #15803d;
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 12px 24px rgba(22, 163, 74, 0.5);
+    }
+    
+    .place-order-btn:active {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .place-order-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      font-size: 0.9em;
+      margin-left: 8px;
+    }
+    
+    .success-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      z-index: 1000;
+      transition: all 0.3s;
+    }
+    
+    .success-message.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    
+    .success-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+    
+    .success-text {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #16a34a;
+      margin-bottom: 10px;
+    }
+    
+    .success-subtext {
+      color: #64748b;
+      font-size: 1.1em;
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 999;
+    }
+    
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <!-- Header -->
   <div class="header">
     <h1>🍔 Pincer</h1>
-    <p>Ordena desde tu mesa</p>
+    <p>Ordena desde tu mesa, sin filas</p>
   </div>
 
+  <!-- Menu -->
   <div class="menu-section">
-    <h2>Menú</h2>
-    <button class="add-btn" onclick="addItem('Hamburguesa',10)">🍔 Hamburguesa $10</button><br><br>
-    <button class="add-btn" onclick="addItem('Pizza',12)">🍕 Pizza $12</button><br><br>
-    <button class="add-btn" onclick="addItem('Papas',4)">🍟 Papas $4</button>
+    <h2 class="section-title">📋 Menú</h2>
+    
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🍔 Hamburguesa Clásica</div>
+        <div class="item-description">Carne, queso, lechuga, tomate</div>
+        <div class="item-price">$10</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Hamburguesa Clásica', 10)">Agregar</button>
+    </div>
+
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🍕 Pizza Personal</div>
+        <div class="item-description">Pepperoni, queso mozzarella</div>
+        <div class="item-price">$12</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Pizza Personal', 12)">Agregar</button>
+    </div>
+
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🍝 Pasta Alfredo</div>
+        <div class="item-description">Fetuccini con salsa cremosa</div>
+        <div class="item-price">$11</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Pasta Alfredo', 11)">Agregar</button>
+    </div>
+
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🌮 Tacos (3 unid.)</div>
+        <div class="item-description">Carne asada, cebolla, cilantro</div>
+        <div class="item-price">$9</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Tacos (3 unid.)', 9)">Agregar</button>
+    </div>
+
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🍟 Papas Fritas</div>
+        <div class="item-description">Crujientes y doradas</div>
+        <div class="item-price">$4</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Papas Fritas', 4)">Agregar</button>
+    </div>
+
+    <div class="menu-item">
+      <div class="item-info">
+        <div class="item-name">🥤 Refresco</div>
+        <div class="item-description">Coca-Cola, Sprite, Fanta</div>
+        <div class="item-price">$2</div>
+      </div>
+      <button class="add-btn" onclick="addItem('Refresco', 2)">Agregar</button>
+    </div>
   </div>
 
+  <!-- Order Summary -->
   <div class="order-summary">
-    <h2>Tu pedido</h2>
-    <div id="orderList"></div>
-    <div id="orderStatus"></div>
+    <h2 class="section-title">
+      🛒 Tu Pedido
+      <span class="badge" id="order-count" style="display: none;">0</span>
+    </h2>
+    <div id="orderList">
+      <div class="empty-order">
+        Tu pedido está vacío<br>
+        Agrega items del menú
+      </div>
+    </div>
+    <div id="orderTotal" style="display: none;"></div>
   </div>
 </div>
 
-<button class="place-order-btn" onclick="placeOrder()">Enviar Pedido</button>
+<!-- Place Order Button -->
+<button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
+  Realizar Pedido
+</button>
 
-<!-- 🔊 Sonido -->
-<audio id="statusSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-</audio>
+<!-- Success Message -->
+<div class="overlay" id="overlay"></div>
+<div class="success-message" id="successMessage">
+  <div class="success-icon">✅</div>
+  <div class="success-text">¡Pedido Enviado!</div>
+  <div class="success-subtext" id="orderNumber"></div>
+</div>
 
-<!-- Supabase -->
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  // Configuración de Supabase
   const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-  const SUPABASE_KEY = "TU_ANON_KEY";
-  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+  
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // Array para guardar el pedido
   let order = [];
-  let currentOrderId = null;
-  let lastStatus = null;
-
+  
+  // Función para agregar item al pedido
   function addItem(name, price) {
     order.push({ name, price });
     renderOrder();
+    
+    // Animación del botón
+    event.target.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+      event.target.style.transform = 'scale(1)';
+    }, 200);
   }
-
+  
+  // Función para remover item del pedido
+  function removeItem(index) {
+    order.splice(index, 1);
+    renderOrder();
+  }
+  
+  // Función para renderizar el pedido
   function renderOrder() {
     const list = document.getElementById("orderList");
+    const countBadge = document.getElementById("order-count");
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+    const totalDiv = document.getElementById("orderTotal");
+    
+    // Si el pedido está vacío
+    if (order.length === 0) {
+      list.innerHTML = '<div class="empty-order">Tu pedido está vacío<br>Agrega items del menú</div>';
+      countBadge.style.display = 'none';
+      placeOrderBtn.disabled = true;
+      totalDiv.style.display = 'none';
+      return;
+    }
+    
+    // Mostrar contador
+    countBadge.textContent = order.length;
+    countBadge.style.display = 'inline-block';
+    placeOrderBtn.disabled = false;
+    
+    // Renderizar items
     list.innerHTML = "";
-    order.forEach(i => {
-      list.innerHTML += `<div class="order-item">${i.name} - $${i.price}</div>`;
+    let total = 0;
+    
+    order.forEach((item, index) => {
+      total += item.price;
+      
+      const div = document.createElement("div");
+      div.className = "order-item";
+      div.innerHTML = `
+        <span class="order-item-name">${item.name}</span>
+        <span>
+          <strong style="color: #16a34a; margin-right: 10px;">$${item.price}</strong>
+          <button class="remove-btn" onclick="removeItem(${index})">✕</button>
+        </span>
+      `;
+      list.appendChild(div);
     });
+    
+    // Mostrar total
+    totalDiv.innerHTML = `
+      <div class="order-total">
+        <span>TOTAL:</span>
+        <span>$${total}</span>
+      </div>
+    `;
+    totalDiv.style.display = 'block';
   }
-
+  
+  // Función para realizar el pedido
   async function placeOrder() {
-    if (order.length === 0) return alert("Pedido vacío");
-
-    const items = order.map(i => i.name).join(", ");
-    const total = order.reduce((s,i)=>s+i.price,0);
-
-    const { data, error } = await db
-      .from("orders")
-      .insert({
-        items,
-        total,
-        status: "pending"
-      })
-      .select()
-      .single();
-
-    if (error) return alert("Error");
-
-    currentOrderId = data.id;
-    order = [];
-    renderOrder();
-    startStatusCheck();
-    showStatus("Pedido enviado", "pending");
-  }
-
-  function showStatus(text, statusClass) {
-    const box = document.getElementById("orderStatus");
-    box.className = `status-box ${statusClass}`;
-    box.innerText = text;
-  }
-
-  function startStatusCheck() {
-    setInterval(checkStatus, 5000);
-  }
-
-  async function checkStatus() {
-    if (!currentOrderId) return;
-
-    const { data } = await db
-      .from("orders")
-      .select("status")
-      .eq("id", currentOrderId)
-      .single();
-
-    if (!data || data.status === lastStatus) return;
-
-    lastStatus = data.status;
-    document.getElementById("statusSound").play();
-
-    if (data.status === "preparing") {
-      showStatus("🟡 En preparación", "preparing");
+    if (order.length === 0) {
+      alert("⚠️ Tu pedido está vacío");
+      return;
     }
-
-    if (data.status === "ready") {
-      showStatus("🟢 Lista para retirar", "ready");
+    
+    // Deshabilitar botón mientras se procesa
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+    placeOrderBtn.disabled = true;
+    placeOrderBtn.textContent = "Enviando...";
+    
+    try {
+      // Preparar datos
+      const items = order.map(item => item.name).join(", ");
+      const total = order.reduce((sum, item) => sum + item.price, 0);
+      
+      // Enviar a Supabase
+      const { data, error } = await db
+        .from("orders")
+        .insert({
+          items: items,
+          status: "pending",
+          total: total
+        })
+        .select();
+      
+      if (error) {
+        console.error("Error:", error);
+        alert("❌ Error al enviar el pedido. Intenta de nuevo.");
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.textContent = "Realizar Pedido";
+        return;
+      }
+      
+      // Éxito - mostrar mensaje
+      const orderNumber = data[0].id;
+      showSuccessMessage(orderNumber);
+      
+      // Limpiar pedido
+      order = [];
+      renderOrder();
+      
+    } catch (err) {
+      console.error("Error inesperado:", err);
+      alert("❌ Error de conexión. Verifica tu internet.");
+      placeOrderBtn.disabled = false;
+      placeOrderBtn.textContent = "Realizar Pedido";
     }
   }
+  
+  // Función para mostrar mensaje de éxito
+  function showSuccessMessage(orderNumber) {
+    const overlay = document.getElementById("overlay");
+    const successMessage = document.getElementById("successMessage");
+    const orderNumberText = document.getElementById("orderNumber");
+    
+    orderNumberText.textContent = `Tu número de orden es: #${orderNumber}`;
+    
+    overlay.classList.add("show");
+    successMessage.classList.add("show");
+    
+    // Ocultar después de 3 segundos
+    setTimeout(() => {
+      overlay.classList.remove("show");
+      successMessage.classList.remove("show");
+      
+      // Habilitar botón de nuevo
+      const placeOrderBtn = document.getElementById("placeOrderBtn");
+      placeOrderBtn.disabled = true;
+      placeOrderBtn.textContent = "Realizar Pedido";
+    }, 3000);
+  }
+  
+  console.log("✅ Pincer Menu cargado correctamente");
 </script>
+
 </body>
 </html>
 
