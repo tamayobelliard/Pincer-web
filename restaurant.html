@@ -346,124 +346,151 @@
   }
   
   // Función para cargar órdenes
-  async function loadOrders() {
-    try {
-      const { data, error } = await db
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (error) {
-        console.error("Error de Supabase:", error);
-        showError(`Error al cargar órdenes: ${error.message}`);
-        document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
-        return;
-      }
-      
-      // Actualizar estado de conexión
-      document.getElementById("connection-status").innerHTML = "🟢 Conectado";
-      
-      const container = document.getElementById("orders");
-      
-      // Si no hay órdenes
-      if (!data || data.length === 0) {
-        container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
-        updateStats([]);
-        return;
-      }
-      
-      // Actualizar estadísticas
-      updateStats(data);
-      
-      // 🔊 Detectar nueva orden
-      const currentOrderCount = data.filter(o => o.status === 'pending' || !o.status).length;
-      if (hasPlayedSound && lastOrderCount > 0 && currentOrderCount > lastOrderCount) {
-        playNotificationSound();
-        
-        if (navigator.vibrate) {
-          navigator.vibrate([200, 100, 200, 100, 200]);
-        }
-        
-        if (Notification.permission === "granted") {
-          new Notification("¡Nueva orden en Pincer!", {
-            body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
-            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
-            tag: "pincer-new-order",
-            requireInteraction: true
-          });
-        }
-      }
-      lastOrderCount = currentOrderCount;
-      hasPlayedSound = true;
-      
-      // Limpiar container
-      container.innerHTML = "";
-      
-      // Renderizar cada orden
-      data.forEach(order => {
-        const createdAt = new Date(order.created_at);
-        const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-        
-        // Determinar status
-        const status = order.status || 'pending';
-        
-        // Determinar clase según tiempo y status
-        let statusClass = "new";
-        if (status === 'ready') {
-          statusClass = "ready";
-        } else if (status === 'accepted') {
-          statusClass = "accepted";
-        } else {
-          if (minutes > 5) statusClass = "late";
-          else if (minutes > 2) statusClass = "warning";
-        }
-        
-        // Determinar badge de status
-        let statusBadge = '';
-        let statusText = '';
-        if (status === 'ready') {
-          statusBadge = 'status-ready';
-          statusText = '✓ LISTA PARA RETIRAR';
-        } else if (status === 'accepted') {
-          statusBadge = 'status-accepted';
-          statusText = '👨‍🍳 EN PREPARACIÓN';
-        } else {
-          statusBadge = 'status-pending';
-          statusText = '⏳ PENDIENTE';
-        }
-        
-        // Crear elemento de orden
-        const div = document.createElement("div");
-        div.className = `order ${statusClass}`;
-        div.innerHTML = `
-          <div class="order-number">#${order.id}</div>
-          <span class="order-status ${statusBadge}">
-            ${statusText}
-          </span>
-          <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
-          <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
-          <br>
-          ${status === 'pending' ? 
-            `<button class="btn-accept" onclick="window.acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
-            : ''}
-          ${status === 'accepted' ? 
-            `<button class="btn-ready" onclick="window.markReady(${order.id})">🎉 Marcar como LISTA</button>` 
-            : ''}
-          ${status === 'ready' ? 
-            `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` 
-            : ''}
-        `;
-        container.appendChild(div);
-      });
-      
-      document.getElementById("error-message").innerHTML = "";
-      
-    } catch (err) {
-      console.error("Error inesperado:", err);
-      showError(`Error inesperado: ${err.message}`);
-      document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
+async function loadOrders() {
+  try {
+    const { data, error } = await db
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error de Supabase:", error);
+      showError(`Error al cargar órdenes: ${error.message}`);
+      document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
+      return;
     }
+    
+    // Actualizar estado de conexión
+    document.getElementById("connection-status").innerHTML = "🟢 Conectado";
+    
+    const container = document.getElementById("orders");
+    
+    // Si no hay órdenes
+    if (!data || data.length === 0) {
+      container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
+      updateStats([]);
+      lastOrderCount = 0; // Reset counter
+      return;
+    }
+    
+    // Actualizar estadísticas
+    updateStats(data);
+    
+    // 🔊 MEJORADO: Detectar nueva orden
+    const currentOrderCount = data.filter(o => o.status === 'pending' || o.status === 'new' || !o.status).length;
+    
+    console.log(`📊 Órdenes actuales: ${currentOrderCount}, Anteriores: ${lastOrderCount}, hasPlayedSound: ${hasPlayedSound}`);
+    
+    // Detectar si hay una orden NUEVA (más órdenes que antes)
+    if (hasPlayedSound && currentOrderCount > lastOrderCount) {
+      console.log("🔔 ¡NUEVA ORDEN DETECTADA! Reproduciendo notificación...");
+      
+      // Reproducir sonido
+      playNotificationSound();
+      
+      // Vibración
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+      }
+      
+      // Notificación del navegador
+      if (Notification.permission === "granted") {
+        console.log("📱 Enviando notificación del navegador...");
+        
+        const notification = new Notification("¡Nueva orden en Pincer!", {
+          body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
+          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
+          tag: "pincer-new-order-" + Date.now(), // Tag único para evitar que se reemplace
+          requireInteraction: true,
+          silent: false
+        });
+        
+        // Click en la notificación para enfocar la ventana
+        notification.onclick = function() {
+          window.focus();
+          this.close();
+        };
+        
+        console.log("✅ Notificación enviada");
+      } else {
+        console.log("❌ No hay permisos de notificación. Estado:", Notification.permission);
+      }
+    } else {
+      console.log("ℹ️ No se detectó orden nueva");
+    }
+    
+    // Actualizar contador
+    lastOrderCount = currentOrderCount;
+    hasPlayedSound = true;
+    
+    // Limpiar container
+    container.innerHTML = "";
+    
+    // Renderizar cada orden
+    data.forEach(order => {
+      const createdAt = new Date(order.created_at);
+      const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+      
+      // Determinar status
+      const status = order.status || 'pending';
+      
+      // Determinar clase según tiempo y status
+      let statusClass = "new";
+      if (status === 'ready') {
+        statusClass = "ready";
+      } else if (status === 'accepted') {
+        statusClass = "accepted";
+      } else {
+        if (minutes > 5) statusClass = "late";
+        else if (minutes > 2) statusClass = "warning";
+      }
+      
+      // Determinar badge de status
+      let statusBadge = '';
+      let statusText = '';
+      if (status === 'ready') {
+        statusBadge = 'status-ready';
+        statusText = '✓ LISTA PARA RETIRAR';
+      } else if (status === 'accepted') {
+        statusBadge = 'status-accepted';
+        statusText = '👨‍🍳 EN PREPARACIÓN';
+      } else {
+        statusBadge = 'status-pending';
+        statusText = '⏳ PENDIENTE';
+      }
+      
+      // Crear elemento de orden
+      const div = document.createElement("div");
+      div.className = `order ${statusClass}`;
+      div.innerHTML = `
+        <div class="order-number">#${order.id}</div>
+        <span class="order-status ${statusBadge}">
+          ${statusText}
+        </span>
+        <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
+        <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
+        <br>
+        ${status === 'pending' ? 
+          `<button class="btn-accept" onclick="window.acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
+          : ''}
+        ${status === 'accepted' ? 
+          `<button class="btn-ready" onclick="window.markReady(${order.id})">🎉 Marcar como LISTA</button>` 
+          : ''}
+        ${status === 'ready' ? 
+          `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` 
+          : ''}
+      `;
+      container.appendChild(div);
+    });
+    
+    document.getElementById("error-message").innerHTML = "";
+    
+  } catch (err) {
+    console.error("Error inesperado:", err);
+    showError(`Error inesperado: ${err.message}`);
+    document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
   }
+}
   
   // ⚡ FUNCIÓN GLOBAL para aceptar orden (digitada)
   window.acceptOrder = async function(id) {
