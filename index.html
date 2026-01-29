@@ -343,6 +343,105 @@
       opacity: 1;
       visibility: visible;
     }
+
+    /* PINZER START: Styles */
+    #pinzer-btn {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 15px 20px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      z-index: 998;
+      transition: all 0.3s;
+    }
+
+    #pinzer-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+    }
+
+    #pinzer-modal {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-width: 90vw;
+      height: 500px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      z-index: 999;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pinzer-message {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .pinzer-bot {
+      background: #e0f2fe;
+      color: #0c4a6e;
+      align-self: flex-start;
+    }
+
+    .pinzer-user {
+      background: #10b981;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .pinzer-reply-btn {
+      background: white;
+      border: 2px solid #10b981;
+      color: #10b981;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pinzer-reply-btn:hover {
+      background: #10b981;
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #pinzer-messages {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #f8fafc;
+    }
+    /* PINZER END: Styles */
   </style>
 </head>
 <body>
@@ -453,6 +552,51 @@
     <small>Te avisaremos cuando esté listo</small>
   </div>
 </div>
+
+<!-- PINZER START: Floating Button -->
+<button id="pinzer-btn" onclick="openPinzer()">
+  Need help choosing? 🤖
+</button>
+
+<!-- PINZER START: Chat Modal -->
+<div id="pinzer-modal">
+  <!-- Header -->
+  <div style="
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 15px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  ">
+    <span>🤖 Pinzer - Virtual Waiter</span>
+    <button onclick="closePinzer()" style="
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    ">×</button>
+  </div>
+  
+  <!-- Messages Container -->
+  <div id="pinzer-messages"></div>
+  
+  <!-- Quick Replies Container -->
+  <div id="pinzer-replies" style="
+    padding: 10px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  "></div>
+</div>
+<!-- PINZER END -->
 
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -569,20 +713,16 @@
       const statusDiv = document.getElementById("orderStatus");
       
       if (data.status === "ready") {
-        // ¡Orden lista!
         statusDiv.className = "status-ready";
         statusDiv.innerHTML = "🎉 ¡TU PEDIDO ESTÁ LISTO!<br>Puedes recogerlo ahora";
         
-        // Reproducir sonido
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
         audio.play();
         
-        // Vibrar
         if (navigator.vibrate) {
           navigator.vibrate([500, 200, 500, 200, 500]);
         }
         
-        // Notificación del navegador
         if (Notification.permission === "granted") {
           new Notification("¡Tu pedido está listo!", {
             body: `Orden #${orderId} - Puedes recogerla ahora`,
@@ -590,7 +730,6 @@
           });
         }
         
-        // Detener el checker
         if (orderStatusChecker) {
           clearInterval(orderStatusChecker);
           orderStatusChecker = null;
@@ -611,19 +750,16 @@
       return;
     }
     
-    // Deshabilitar botón mientras se procesa
     const placeOrderBtn = document.getElementById("placeOrderBtn");
     placeOrderBtn.disabled = true;
     placeOrderBtn.textContent = "Enviando...";
     
     try {
-      // Preparar datos
       const items = order.map(item => item.name).join(", ");
       const total = order.reduce((sum, item) => sum + item.price, 0);
       
       console.log("📤 Enviando pedido a Supabase:", { items, total, status: "pending" });
       
-      // Enviar a Supabase
       const { data, error } = await db
         .from("orders")
         .insert({
@@ -643,20 +779,16 @@
       
       console.log("✅ Pedido enviado exitosamente:", data);
       
-      // Éxito - mostrar mensaje
       const orderNumber = data[0].id;
       currentOrderId = orderNumber;
       showSuccessMessage(orderNumber);
       
-      // Iniciar verificación de estado cada 3 segundos
       orderStatusChecker = setInterval(() => {
         checkOrderStatus(orderNumber);
       }, 3000);
       
-      // Verificar inmediatamente
       checkOrderStatus(orderNumber);
       
-      // Limpiar pedido
       order = [];
       renderOrder();
       
@@ -679,12 +811,9 @@
     overlay.classList.add("show");
     successMessage.classList.add("show");
     
-    // Pedir permiso para notificaciones
     if (Notification.permission === "default") {
       Notification.requestPermission();
     }
-    
-    // NO cerrar automáticamente - dejar abierto hasta que esté listo
   }
   
   // Cerrar el modal cuando hagan click en el overlay
@@ -692,13 +821,11 @@
     document.getElementById("overlay").classList.remove("show");
     document.getElementById("successMessage").classList.remove("show");
     
-    // Detener checker si existe
     if (orderStatusChecker) {
       clearInterval(orderStatusChecker);
       orderStatusChecker = null;
     }
     
-    // Reset botón
     const placeOrderBtn = document.getElementById("placeOrderBtn");
     placeOrderBtn.disabled = true;
     placeOrderBtn.textContent = "Realizar Pedido";
@@ -706,6 +833,210 @@
   
   console.log("✅ Pincer Menu cargado correctamente");
   console.log("🔗 Conectado a Supabase:", SUPABASE_URL);
+</script>
+
+<script>
+// PINZER START: JavaScript State Machine
+
+// State variables
+let pinzerState = 'idle';
+let pinzerRecommendation = null;
+let pinzerUpsellItem = null;
+let pinzerHasUpsold = false;
+
+// Menu items reference
+const pinzerMenu = {
+  main: [
+    { name: 'Hamburguesa Clásica', price: 10, tags: ['hungry', 'quick'] },
+    { name: 'Pizza Personal', price: 12, tags: ['hungry'] },
+    { name: 'Pasta Alfredo', price: 11, tags: ['hungry'] },
+    { name: 'Tacos (3 unid.)', price: 9, tags: ['quick', 'surprise'] }
+  ],
+  sides: [
+    { name: 'Papas Fritas', price: 4 },
+    { name: 'Refresco', price: 2 }
+  ]
+};
+
+// Open Pinzer chat
+function openPinzer() {
+  const modal = document.getElementById('pinzer-modal');
+  modal.style.display = 'flex';
+  document.getElementById('pinzer-btn').style.display = 'none';
+  
+  if (pinzerState === 'idle') {
+    pinzerState = 'greeting';
+    setTimeout(() => {
+      pinzerSay("Welcome to Juan's Food Truck 👋");
+      setTimeout(() => {
+        pinzerSay("My name is Pinzer and I'm your virtual waiter.");
+        setTimeout(() => {
+          pinzerSay("What are you in the mood for today?");
+          pinzerShowReplies(['Something quick', "I'm hungry", 'Surprise me']);
+        }, 800);
+      }, 800);
+    }, 300);
+  }
+}
+
+// Close Pinzer chat
+function closePinzer() {
+  document.getElementById('pinzer-modal').style.display = 'none';
+  document.getElementById('pinzer-btn').style.display = 'block';
+}
+
+// Pinzer says something
+function pinzerSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-bot';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+// User says something
+function pinzerUserSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-user';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+// Show quick reply buttons
+function pinzerShowReplies(replies) {
+  const container = document.getElementById('pinzer-replies');
+  container.innerHTML = '';
+  
+  replies.forEach(reply => {
+    const btn = document.createElement('button');
+    btn.className = 'pinzer-reply-btn';
+    btn.textContent = reply;
+    btn.onclick = () => pinzerHandleReply(reply);
+    container.appendChild(btn);
+  });
+}
+
+// Clear quick replies
+function pinzerClearReplies() {
+  document.getElementById('pinzer-replies').innerHTML = '';
+}
+
+// Handle user reply
+function pinzerHandleReply(reply) {
+  pinzerUserSay(reply);
+  pinzerClearReplies();
+  
+  if (pinzerState === 'greeting') {
+    handleGreetingResponse(reply);
+  } else if (pinzerState === 'recommendation') {
+    handleRecommendationResponse(reply);
+  } else if (pinzerState === 'upsell') {
+    handleUpsellResponse(reply);
+  } else if (pinzerState === 'checkout') {
+    handleCheckoutResponse(reply);
+  }
+}
+
+// Handle greeting responses
+function handleGreetingResponse(reply) {
+  let item;
+  
+  if (reply === 'Something quick') {
+    item = pinzerMenu.main.find(i => i.tags.includes('quick'));
+  } else if (reply === "I'm hungry") {
+    item = pinzerMenu.main.find(i => i.tags.includes('hungry'));
+  } else if (reply === 'Surprise me') {
+    const surpriseItems = pinzerMenu.main.filter(i => i.tags.includes('surprise'));
+    item = surpriseItems[Math.floor(Math.random() * surpriseItems.length)] || pinzerMenu.main[0];
+  }
+  
+  pinzerRecommendation = item;
+  pinzerState = 'recommendation';
+  
+  setTimeout(() => {
+    pinzerSay(`Great choice! I recommend our ${item.name} for $${item.price} 🍽️`);
+    setTimeout(() => {
+      pinzerSay("Would you like to add it to your order?");
+      pinzerShowReplies(['Yes, add it', 'No, thanks']);
+    }, 800);
+  }, 500);
+}
+
+// Handle recommendation responses
+function handleRecommendationResponse(reply) {
+  if (reply === 'Yes, add it') {
+    addItem(pinzerRecommendation.name, pinzerRecommendation.price);
+    
+    setTimeout(() => {
+      pinzerSay(`Perfect! Added ${pinzerRecommendation.name} to your order ✅`);
+      
+      if (!pinzerHasUpsold) {
+        pinzerState = 'upsell';
+        const upsellItem = pinzerMenu.sides[0];
+        pinzerUpsellItem = upsellItem;
+        
+        setTimeout(() => {
+          pinzerSay(`Would you like to add ${upsellItem.name} for just $${upsellItem.price}? 🍟`);
+          pinzerShowReplies(['Yes, add it', 'No, thanks']);
+          pinzerHasUpsold = true;
+        }, 800);
+      } else {
+        goToCheckout();
+      }
+    }, 500);
+    
+  } else if (reply === 'No, thanks') {
+    setTimeout(() => {
+      pinzerSay("No problem! Feel free to browse the menu above 📋");
+      pinzerSay("Let me know if you need anything else!");
+      pinzerState = 'done';
+      setTimeout(() => closePinzer(), 2000);
+    }, 500);
+  }
+}
+
+// Handle upsell responses
+function handleUpsellResponse(reply) {
+  if (reply === 'Yes, add it') {
+    addItem(pinzerUpsellItem.name, pinzerUpsellItem.price);
+    
+    setTimeout(() => {
+      pinzerSay(`Great! Added ${pinzerUpsellItem.name} ✅`);
+      goToCheckout();
+    }, 500);
+    
+  } else if (reply === 'No, thanks') {
+    goToCheckout();
+  }
+}
+
+// Go to checkout
+function goToCheckout() {
+  pinzerState = 'checkout';
+  
+  setTimeout(() => {
+    pinzerSay("Your order is ready! You can review it above and checkout when ready 🛒");
+    pinzerShowReplies(['Checkout']);
+  }, 800);
+}
+
+// Handle checkout
+function handleCheckoutResponse(reply) {
+  if (reply === 'Checkout') {
+    pinzerState = 'done';
+    pinzerSay("Thank you! Scroll down to complete your order 😊");
+    
+    setTimeout(() => {
+      closePinzer();
+      document.querySelector('.order-summary').scrollIntoView({ behavior: 'smooth' });
+    }, 1500);
+  }
+}
+
+// PINZER END: JavaScript State Machine
 </script>
 
 </body>
