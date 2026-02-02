@@ -5,92 +5,603 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mr. Sandwich by Chef Elly</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%); min-height: 100vh; padding: 20px; padding-bottom: 100px; }
-    .container { max-width: 500px; margin: 0 auto; }
-    .header { text-align: center; color: white; margin-bottom: 30px; }
-    .logo-container { background: white; width: 160px; height: 160px; border-radius: 50%; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); overflow: hidden; border: 5px solid #f4e4c1; }
-    .logo-container img { width: 100%; height: 100%; object-fit: cover; }
-    .header h1 { font-size: 2em; margin-bottom: 5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: 700; letter-spacing: 0.5px; }
-    .header .subtitle { font-size: 1.1em; opacity: 0.95; font-weight: 500; color: #f4e4c1; letter-spacing: 2px; }
-    .menu-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-    .section-title { font-size: 1.5em; color: #2d5016; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #f4e4c1; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    .category-title { font-size: 1.3em; color: #2d5016; margin: 25px 0 15px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-left: 4px solid #4a7c2c; padding-left: 12px; }
-    .menu-item { background: #f8f9fa; border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; transition: all 0.3s; border: 2px solid transparent; }
-    .menu-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(45, 80, 22, 0.15); border-color: #4a7c2c; }
-    .item-image { width: 100px; height: 100px; border-radius: 8px; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .item-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .item-name { font-size: 1.15em; font-weight: 700; color: #2d5016; margin-bottom: 5px; }
-    .item-description { font-size: 0.85em; color: #6c757d; margin-bottom: 8px; line-height: 1.4; }
-    .item-bottom { display: flex; justify-content: space-between; align-items: center; }
-    .item-price { font-size: 1.2em; font-weight: 700; color: #4a7c2c; }
-    .add-btn { background: #4a7c2c; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 0.95em; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(74, 124, 44, 0.3); white-space: nowrap; }
-    .add-btn:hover { background: #2d5016; transform: scale(1.05); }
-    .add-btn:active { transform: scale(0.98); }
-    .order-summary { background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-    .order-item { display: flex; flex-direction: column; padding: 12px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; }
-    .order-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .order-item-name { font-weight: 600; color: #2d5016; }
-    .order-item-notes { font-size: 0.85em; color: #6c757d; font-style: italic; padding: 6px 8px; background: white; border-radius: 4px; border-left: 3px solid #4a7c2c; }
-    .remove-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.2s; }
-    .remove-btn:hover { background: #c82333; }
-    .order-total { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f4e4c1; border-radius: 8px; margin-top: 15px; font-size: 1.3em; font-weight: bold; color: #2d5016; }
-    .empty-order { text-align: center; padding: 30px; color: #94a3b8; font-size: 1.1em; }
-    .place-order-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 460px; background: #4a7c2c; color: white; border: none; padding: 18px; border-radius: 12px; font-size: 1.3em; font-weight: bold; cursor: pointer; box-shadow: 0 8px 16px rgba(74, 124, 44, 0.4); transition: all 0.3s; }
-    .place-order-btn:hover { background: #2d5016; transform: translateX(-50%) translateY(-2px); box-shadow: 0 12px 24px rgba(74, 124, 44, 0.5); }
-    .place-order-btn:active { transform: translateX(-50%) translateY(0); }
-    .place-order-btn:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
-    .badge { display: inline-block; background: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 0.9em; margin-left: 8px; }
-    .success-message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; z-index: 1000; transition: all 0.3s; max-width: 90%; }
-    .success-message.show { transform: translate(-50%, -50%) scale(1); }
-    .success-icon { font-size: 4em; margin-bottom: 20px; }
-    .success-text { font-size: 1.5em; font-weight: bold; color: #4a7c2c; margin-bottom: 10px; }
-    .success-subtext { color: #64748b; font-size: 1.1em; margin-bottom: 20px; }
-    .order-number-display { font-size: 4em; font-weight: bold; color: #2d5016; background: #f4e4c1; padding: 20px; border-radius: 12px; margin: 20px 0; }
-    .status-checking { margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; color: #856404; font-weight: 600; }
-    .status-ready { margin-top: 20px; padding: 18px; background: #d4edda; border-radius: 8px; color: #155724; font-weight: bold; font-size: 1.2em; animation: pulse-ready 1s infinite; line-height: 1.6; }
-    @keyframes pulse-ready { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-    .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: all 0.3s; z-index: 999; }
-    .overlay.show { opacity: 1; visibility: visible; }
-    .notes-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: white; padding: 25px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); z-index: 1001; transition: all 0.3s; max-width: 90%; width: 400px; }
-    .notes-popup.show { transform: translate(-50%, -50%) scale(1); }
-    .notes-popup h3 { color: #2d5016; margin-bottom: 10px; font-size: 1.3em; }
-    .notes-popup p { color: #6c757d; margin-bottom: 15px; font-size: 0.95em; }
-    .notes-popup textarea { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical; min-height: 80px; margin-bottom: 15px; }
-    .notes-popup textarea:focus { outline: none; border-color: #4a7c2c; }
-    .notes-popup-buttons { display: flex; gap: 10px; justify-content: flex-end; }
-    .notes-popup button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .notes-popup .btn-cancel { background: #e2e8f0; color: #64748b; }
-    .notes-popup .btn-cancel:hover { background: #cbd5e1; }
-    .notes-popup .btn-add { background: #4a7c2c; color: white; }
-    .notes-popup .btn-add:hover { background: #2d5016; }
-    #pinzer-btn { position: fixed; bottom: 90px; right: 20px; background: linear-gradient(135deg, #4a7c2c, #2d5016); color: white; border: none; padding: 14px 20px; border-radius: 50px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 24px rgba(74, 124, 44, 0.6); z-index: 998; transition: all 0.3s; line-height: 1.5; text-align: center; max-width: 200px; }
-    #pinzer-btn:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 12px 32px rgba(74, 124, 44, 0.7); }
-    #pinzer-modal { display: none; position: fixed; bottom: 20px; right: 20px; width: 350px; max-width: 90vw; height: 500px; max-height: 70vh; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 999; flex-direction: column; overflow: hidden; }
-    .pinzer-message { margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; max-width: 80%; animation: slideIn 0.3s ease-out; }
-    .pinzer-bot { background: #f4e4c1; color: #2d5016; align-self: flex-start; }
-    .pinzer-user { background: #4a7c2c; color: white; align-self: flex-end; margin-left: auto; }
-    .pinzer-reply-btn { background: white; border: 2px solid #4a7c2c; color: #4a7c2c; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .pinzer-reply-btn:hover { background: #4a7c2c; color: white; }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    #pinzer-messages { display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; }
-    .note-papas { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin-top: 15px; border-radius: 8px; font-size: 0.9em; color: #856404; font-weight: 600; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
+      min-height: 100vh;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+    
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    .logo-container {
+      background: white;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      margin: 0 auto 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      border: 5px solid #f4e4c1;
+    }
+
+    .logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .header h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header .subtitle {
+      font-size: 1.1em;
+      opacity: 0.95;
+      font-weight: 500;
+      color: #f4e4c1;
+      letter-spacing: 2px;
+    }
+    
+    .menu-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .section-title {
+      font-size: 1.5em;
+      color: #2d5016;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #f4e4c1;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .category-title {
+      font-size: 1.3em;
+      color: #2d5016;
+      margin: 25px 0 15px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 4px solid #4a7c2c;
+      padding-left: 12px;
+    }
+    
+    .menu-item {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+    
+    .menu-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(45, 80, 22, 0.15);
+      border-color: #4a7c2c;
+    }
+
+    .item-image {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .item-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .item-name {
+      font-size: 1.15em;
+      font-weight: 700;
+      color: #2d5016;
+      margin-bottom: 5px;
+    }
+    
+    .item-description {
+      font-size: 0.85em;
+      color: #6c757d;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .item-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .item-price {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #4a7c2c;
+    }
+    
+    .add-btn {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(74, 124, 44, 0.3);
+      white-space: nowrap;
+    }
+    
+    .add-btn:hover {
+      background: #2d5016;
+      transform: scale(1.05);
+    }
+    
+    .add-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .order-summary {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .order-item {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .order-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .order-item-name {
+      font-weight: 600;
+      color: #2d5016;
+    }
+
+    .order-item-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      padding: 6px 8px;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid #4a7c2c;
+    }
+    
+    .remove-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .remove-btn:hover {
+      background: #c82333;
+    }
+    
+    .order-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #f4e4c1;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #2d5016;
+    }
+    
+    .empty-order {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+      font-size: 1.1em;
+    }
+    
+    .place-order-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 460px;
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 18px;
+      border-radius: 12px;
+      font-size: 1.3em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(74, 124, 44, 0.4);
+      transition: all 0.3s;
+    }
+    
+    .place-order-btn:hover {
+      background: #2d5016;
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 12px 24px rgba(74, 124, 44, 0.5);
+    }
+    
+    .place-order-btn:active {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .place-order-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #dc3545;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      font-size: 0.9em;
+      margin-left: 8px;
+    }
+    
+    .success-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      z-index: 1000;
+      transition: all 0.3s;
+      max-width: 90%;
+    }
+    
+    .success-message.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    
+    .success-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+    
+    .success-text {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #4a7c2c;
+      margin-bottom: 10px;
+    }
+    
+    .success-subtext {
+      color: #64748b;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+    }
+
+    .order-number-display {
+      font-size: 4em;
+      font-weight: bold;
+      color: #2d5016;
+      background: #f4e4c1;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .status-checking {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff3cd;
+      border-radius: 8px;
+      color: #856404;
+      font-weight: 600;
+    }
+
+    .status-ready {
+      margin-top: 20px;
+      padding: 18px;
+      background: #d4edda;
+      border-radius: 8px;
+      color: #155724;
+      font-weight: bold;
+      font-size: 1.2em;
+      animation: pulse-ready 1s infinite;
+      line-height: 1.6;
+    }
+
+    @keyframes pulse-ready {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 999;
+    }
+    
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .notes-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 400px;
+    }
+
+    .notes-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .notes-popup h3 {
+      color: #2d5016;
+      margin-bottom: 10px;
+      font-size: 1.3em;
+    }
+
+    .notes-popup p {
+      color: #6c757d;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    .notes-popup textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 15px;
+    }
+
+    .notes-popup textarea:focus {
+      outline: none;
+      border-color: #4a7c2c;
+    }
+
+    .notes-popup-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .notes-popup button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .notes-popup .btn-cancel {
+      background: #e2e8f0;
+      color: #64748b;
+    }
+
+    .notes-popup .btn-cancel:hover {
+      background: #cbd5e1;
+    }
+
+    .notes-popup .btn-add {
+      background: #4a7c2c;
+      color: white;
+    }
+
+    .notes-popup .btn-add:hover {
+      background: #2d5016;
+    }
+
+    #pinzer-btn {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      background: linear-gradient(135deg, #4a7c2c, #2d5016);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 50px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(74, 124, 44, 0.6);
+      z-index: 998;
+      transition: all 0.3s;
+      line-height: 1.5;
+      text-align: center;
+      max-width: 200px;
+    }
+
+    #pinzer-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 32px rgba(74, 124, 44, 0.7);
+    }
+
+    #pinzer-modal {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-width: 90vw;
+      height: 500px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      z-index: 999;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pinzer-message {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .pinzer-bot {
+      background: #f4e4c1;
+      color: #2d5016;
+      align-self: flex-start;
+    }
+
+    .pinzer-user {
+      background: #4a7c2c;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .pinzer-reply-btn {
+      background: white;
+      border: 2px solid #4a7c2c;
+      color: #4a7c2c;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pinzer-reply-btn:hover {
+      background: #4a7c2c;
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #pinzer-messages {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+
+    .note-papas {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      color: #856404;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
+
 <div class="container">
   <div class="header">
     <div class="logo-container">
-      <img src="391477108_288699400782293_4956946354340162282_n.jpg" alt="Mr. Sandwich">
+      <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Mr. Sandwich">
     </div>
     <h1>MR. SANDWICH</h1>
     <p class="subtitle">BY CHEF ELLY</p>
   </div>
+
   <div class="menu-section">
     <h2 class="section-title">Menú</h2>
+    
     <div class="category-title">MUNCHIES</div>
+    
     <div class="menu-item">
-      <img src="WhatsApp_Image_2026-01-31_at_9_15_15_AM.jpeg" alt="Yukita Cubana" class="item-image">
+      <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Yukita Cubana" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">YUKITA CUBANA</div>
@@ -102,8 +613,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="WhatsApp_Image_2026-01-31_at_9_15_15_AM.jpeg" alt="Mr. Fries" class="item-image">
+      <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Mr. Fries" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">MR. FRIES</div>
@@ -115,9 +627,11 @@
         </div>
       </div>
     </div>
+
     <div class="category-title">SÁNDWICHS</div>
+
     <div class="menu-item">
-      <img src="Mr_Pastrami.jpeg" alt="Mr. Pastrami" class="item-image">
+      <img src="https://i.imgur.com/h2C6YGu.jpeg" alt="Mr. Pastrami" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">MR. PASTRAMI</div>
@@ -129,8 +643,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Choppe_Cheese.jpeg" alt="Chopped Cheese" class="item-image">
+      <img src="https://i.imgur.com/YZvXvhb.jpeg" alt="Chopped Cheese" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">CHOPPED CHEESE</div>
@@ -142,8 +657,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Mr__Phillie_Cheese_Steak.jpeg" alt="Mr. Phillie Cheese Steak" class="item-image">
+      <img src="https://i.imgur.com/gD4tBQZ.jpeg" alt="Mr. Phillie Cheese Steak" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">MR. PHILLIE CHEESE STEAK</div>
@@ -155,8 +671,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Ellys_Clasis_Smashburguer.jpeg" alt="Elly's Classic Smashburger" class="item-image">
+      <img src="https://i.imgur.com/RJntO70.jpeg" alt="Elly's Classic Smashburger" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">ELLY'S CLASSIC SMASHBURGER</div>
@@ -168,8 +685,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Sanguche_de_Pierna.jpeg" alt="Sanguche de Pierna" class="item-image">
+      <img src="https://i.imgur.com/P1Z3xJE.jpeg" alt="Sanguche de Pierna" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">SANGUCHE DE PIERNA</div>
@@ -181,8 +699,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Cubano.jpeg" alt="Cubano" class="item-image">
+      <img src="https://i.imgur.com/zpJOUwE.jpeg" alt="Cubano" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">CUBANO</div>
@@ -194,8 +713,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="Club_Sandwich.jpeg" alt="Club Sandwich" class="item-image">
+      <img src="https://i.imgur.com/0R9hwrT.jpeg" alt="Club Sandwich" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">CLUB SANDWICH</div>
@@ -207,8 +727,9 @@
         </div>
       </div>
     </div>
+
     <div class="menu-item">
-      <img src="El_Chimichurri.jpeg" alt="El Chimichurri" class="item-image">
+      <img src="https://i.imgur.com/PMeJVl3.jpeg" alt="El Chimichurri" class="item-image">
       <div class="item-info">
         <div>
           <div class="item-name">EL CHIMICHURRI</div>
@@ -220,38 +741,54 @@
         </div>
       </div>
     </div>
-    <div class="note-papas">✨ TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>
+
+    <div class="note-papas">
+      ✨ TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS
+    </div>
+
     <div class="category-title">EXTRAS</div>
+
     <div class="menu-item">
       <div class="item-info">
-        <div><div class="item-name">TOCINETA</div></div>
+        <div>
+          <div class="item-name">TOCINETA</div>
+        </div>
         <div class="item-bottom">
           <div class="item-price">RD$100</div>
           <button class="add-btn" onclick="showNotesPopup('Extra Tocineta', 100)">Agregar</button>
         </div>
       </div>
     </div>
+
     <div class="menu-item">
       <div class="item-info">
-        <div><div class="item-name">FONDUE DE QUESO VELVEETA</div></div>
+        <div>
+          <div class="item-name">FONDUE DE QUESO VELVEETA</div>
+        </div>
         <div class="item-bottom">
           <div class="item-price">RD$100</div>
           <button class="add-btn" onclick="showNotesPopup('Extra Fondue de Queso Velveeta', 100)">Agregar</button>
         </div>
       </div>
     </div>
+
     <div class="menu-item">
       <div class="item-info">
-        <div><div class="item-name">SALSITA DE AJO Y PEREJIL</div></div>
+        <div>
+          <div class="item-name">SALSITA DE AJO Y PEREJIL</div>
+        </div>
         <div class="item-bottom">
           <div class="item-price">RD$50</div>
           <button class="add-btn" onclick="showNotesPopup('Extra Salsita de Ajo y Perejil', 50)">Agregar</button>
         </div>
       </div>
     </div>
+
     <div class="menu-item">
       <div class="item-info">
-        <div><div class="item-name">ELLY'S MAYO</div></div>
+        <div>
+          <div class="item-name">ELLY'S MAYO</div>
+        </div>
         <div class="item-bottom">
           <div class="item-price">RD$50</div>
           <button class="add-btn" onclick="showNotesPopup('Extra Ellys Mayo', 50)">Agregar</button>
@@ -259,21 +796,38 @@
       </div>
     </div>
   </div>
+
   <div class="order-summary">
-    <h2 class="section-title">Tu Orden<span class="badge" id="order-count" style="display: none;">0</span></h2>
-    <div id="orderList"><div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div></div>
+    <h2 class="section-title">
+      Tu Orden
+      <span class="badge" id="order-count" style="display: none;">0</span>
+    </h2>
+    <div id="orderList">
+      <div class="empty-order">
+        Tu orden está vacía<br>
+        Agrega items del menú
+      </div>
+    </div>
     <div id="orderTotal" style="display: none;"></div>
   </div>
 </div>
-<button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>Ordenar Ahora</button>
+
+<button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
+  Ordenar Ahora
+</button>
+
 <div class="overlay" id="overlay"></div>
 <div class="success-message" id="successMessage">
   <div class="success-icon">✅</div>
   <div class="success-text">¡Orden Recibida!</div>
   <div class="success-subtext">Guarda tu número de orden</div>
   <div class="order-number-display" id="orderNumberDisplay">#0000</div>
-  <div id="orderStatus" class="status-checking">👨‍🍳 Chef Elly está preparando tu orden...<br><small>Te avisamo cuando té lista</small></div>
+  <div id="orderStatus" class="status-checking">
+    👨‍🍳 Chef Elly está preparando tu orden...<br>
+    <small>Te avisamo cuando té lista</small>
+  </div>
 </div>
+
 <div class="notes-popup" id="notesPopup">
   <h3 id="notesItemName">Agregar item</h3>
   <p>¿Alguna observación? (Opcional)</p>
@@ -283,28 +837,494 @@
     <button class="btn-add" onclick="addItemWithNotes()">Agregar</button>
   </div>
 </div>
-<button id="pinzer-btn" onclick="openPinzer()">¿No sabes qué pedir?<br>Habla con Chef Elly</button>
+
+<button id="pinzer-btn" onclick="openPinzer()">
+  ¿No sabes qué pedir?<br>Habla con Chef Elly
+</button>
+
 <div id="pinzer-modal">
-  <div style="background: linear-gradient(135deg, #4a7c2c, #2d5016); color: white; padding: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+  <div style="
+    background: linear-gradient(135deg, #4a7c2c, #2d5016);
+    color: white;
+    padding: 15px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  ">
     <span>👨‍🍳 Chef Elly - Tu Mesero</span>
-    <button onclick="closePinzer()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;">×</button>
+    <button onclick="closePinzer()" style="
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    ">×</button>
   </div>
+  
   <div id="pinzer-messages"></div>
-  <div id="pinzer-replies" style="padding: 10px; background: white; border-top: 1px solid #e2e8f0; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+  
+  <div id="pinzer-replies" style="
+    padding: 10px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  "></div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL="https://wtkqpfswpkfgztozgwzl.supabase.co";const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let order=[],currentOrderId=null,orderStatusChecker=null,pendingItem=null;function showNotesPopup(n,e){pendingItem={name:n,price:e},document.getElementById("notesItemName").textContent=n,document.getElementById("notesTextarea").value="",document.getElementById("notesPopup").classList.add("show"),document.getElementById("overlay").classList.add("show")}function closeNotesPopup(){document.getElementById("notesPopup").classList.remove("show"),document.getElementById("overlay").classList.remove("show"),pendingItem=null}function addItemWithNotes(){if(!pendingItem)return;const n=document.getElementById("notesTextarea").value.trim();order.push({name:pendingItem.name,price:pendingItem.price,notes:n||null}),renderOrder(),closeNotesPopup()}function addItem(n,e,t=null){order.push({name:n,price:e,notes:t}),renderOrder()}function removeItem(n){order.splice(n,1),renderOrder()}function renderOrder(){const n=document.getElementById("orderList"),e=document.getElementById("order-count"),t=document.getElementById("placeOrderBtn"),o=document.getElementById("orderTotal");if(0===order.length)return n.innerHTML='<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>',e.style.display="none",t.disabled=!0,void(o.style.display="none");e.textContent=order.length,e.style.display="inline-block",t.disabled=!1,n.innerHTML="";let s=0;order.forEach((e,t)=>{s+=e.price;const o=document.createElement("div");o.className="order-item";let r="";e.notes&&(r=`<div class="order-item-notes">📝 ${e.notes}</div>`),o.innerHTML=`<div class="order-item-top"><span class="order-item-name">${e.name}</span><span><strong style="color: #4a7c2c; margin-right: 10px;">RD$${e.price}</strong><button class="remove-btn" onclick="removeItem(${t})">✕</button></span></div>${r}`,n.appendChild(o)}),o.innerHTML=`<div class="order-total"><span>TOTAL:</span><span>RD$${s}</span></div>`,o.style.display="block"}async function checkOrderStatus(n){try{const{data:e,error:t}=await db.from("orders").select("status").eq("id",n).single();if(t)return void console.error("Error al verificar estado:",t);const o=document.getElementById("orderStatus");if("ready"===e.status){o.className="status-ready",o.innerHTML="🎉 ¡TU ORDEN TÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";const e=new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==");e.play(),navigator.vibrate&&navigator.vibrate([500,200,500,200,500]),"granted"===Notification.permission&&new Notification("¡Tu orden está lista!",{body:`Orden #${n} - Pasa a la caja a pagar`,icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"}),orderStatusChecker&&(clearInterval(orderStatusChecker),orderStatusChecker=null)}else"accepted"===e.status&&(o.className="status-checking",o.innerHTML="👨‍🍳 Chef Elly tá cocinando tu orden...<br><small>Te avisamo cuando té lista pa que pases a pagar</small>")}catch(e){console.error("Error al verificar estado:",e)}}async function placeOrder(){if(0===order.length)return void alert("⚠️ Tu orden tá vacía");const n=document.getElementById("placeOrderBtn");n.disabled=!0,n.textContent="Enviando...";try{const e=order.map(n=>n.notes?`${n.name} (${n.notes})`:n.name).join(", "),t=order.reduce((n,e)=>n+e.price,0);console.log("📤 Enviando orden:",{items:e,total:t,status:"pending"});const{data:o,error:s}=await db.from("orders").insert({items:e,status:"pending",total:t}).select();if(s)return console.error("❌ Error de Supabase:",s),alert("❌ Error al enviar la orden. Intenta de nuevo."),n.disabled=!1,void(n.textContent="Ordenar Ahora");console.log("✅ Orden enviada:",o);const r=o[0].id;currentOrderId=r,showSuccessMessage(r),orderStatusChecker=setInterval(()=>{checkOrderStatus(r)},3e3),checkOrderStatus(r),order=[],renderOrder()}catch(e){console.error("❌ Error inesperado:",e),alert("❌ Error de conexión. Verifica tu internet."),n.disabled=!1,n.textContent="Ordenar Ahora"}}function showSuccessMessage(n){document.getElementById("orderNumberDisplay").textContent=`#${n}`,closeNotesPopup(),document.getElementById("overlay").classList.add("show"),document.getElementById("successMessage").classList.add("show"),"default"===Notification.permission&&Notification.requestPermission()}document.getElementById("overlay").addEventListener("click",()=>{const n=document.getElementById("successMessage"),e=document.getElementById("notesPopup");n.classList.contains("show")?(document.getElementById("overlay").classList.remove("show"),n.classList.remove("show"),orderStatusChecker&&(clearInterval(orderStatusChecker),orderStatusChecker=null),document.getElementById("placeOrderBtn").disabled=!0,document.getElementById("placeOrderBtn").textContent="Ordenar Ahora"):e.classList.contains("show")&&closeNotesPopup()}),console.log("✅ Mr. Sandwich cargado");
+  const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+  
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  let order = [];
+  let currentOrderId = null;
+  let orderStatusChecker = null;
+  let pendingItem = null;
+  
+  function showNotesPopup(name, price) {
+    pendingItem = { name, price };
+    document.getElementById('notesItemName').textContent = name;
+    document.getElementById('notesTextarea').value = '';
+    document.getElementById('notesPopup').classList.add('show');
+    document.getElementById('overlay').classList.add('show');
+  }
+  
+  function closeNotesPopup() {
+    document.getElementById('notesPopup').classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
+    pendingItem = null;
+  }
+  
+  function addItemWithNotes() {
+    if (!pendingItem) return;
+    
+    const notes = document.getElementById('notesTextarea').value.trim();
+    const item = {
+      name: pendingItem.name,
+      price: pendingItem.price,
+      notes: notes || null
+    };
+    
+    order.push(item);
+    renderOrder();
+    closeNotesPopup();
+  }
+  
+  function addItem(name, price, notes = null) {
+    order.push({ name, price, notes });
+    renderOrder();
+  }
+  
+  function removeItem(index) {
+    order.splice(index, 1);
+    renderOrder();
+  }
+  
+  function renderOrder() {
+    const list = document.getElementById("orderList");
+    const countBadge = document.getElementById("order-count");
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+    const totalDiv = document.getElementById("orderTotal");
+    
+    if (order.length === 0) {
+      list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
+      countBadge.style.display = 'none';
+      placeOrderBtn.disabled = true;
+      totalDiv.style.display = 'none';
+      return;
+    }
+    
+    countBadge.textContent = order.length;
+    countBadge.style.display = 'inline-block';
+    placeOrderBtn.disabled = false;
+    
+    list.innerHTML = "";
+    let total = 0;
+    
+    order.forEach((item, index) => {
+      total += item.price;
+      
+      const div = document.createElement("div");
+      div.className = "order-item";
+      
+      let notesHTML = '';
+      if (item.notes) {
+        notesHTML = `<div class="order-item-notes">📝 ${item.notes}</div>`;
+      }
+      
+      div.innerHTML = `
+        <div class="order-item-top">
+          <span class="order-item-name">${item.name}</span>
+          <span>
+            <strong style="color: #4a7c2c; margin-right: 10px;">RD$${item.price}</strong>
+            <button class="remove-btn" onclick="removeItem(${index})">✕</button>
+          </span>
+        </div>
+        ${notesHTML}
+      `;
+      list.appendChild(div);
+    });
+    
+    totalDiv.innerHTML = `
+      <div class="order-total">
+        <span>TOTAL:</span>
+        <span>RD$${total}</span>
+      </div>
+    `;
+    totalDiv.style.display = 'block';
+  }
+  
+  async function checkOrderStatus(orderId) {
+    try {
+      const { data, error } = await db
+        .from("orders")
+        .select("status")
+        .eq("id", orderId)
+        .single();
+      
+      if (error) {
+        console.error("Error al verificar estado:", error);
+        return;
+      }
+      
+      const statusDiv = document.getElementById("orderStatus");
+      
+      if (data.status === "ready") {
+        statusDiv.className = "status-ready";
+        statusDiv.innerHTML = "🎉 ¡TU ORDEN TÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+        
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
+        audio.play();
+        
+        if (navigator.vibrate) {
+          navigator.vibrate([500, 200, 500, 200, 500]);
+        }
+        
+        if (Notification.permission === "granted") {
+          new Notification("¡Tu orden está lista!", {
+            body: `Orden #${orderId} - Pasa a la caja a pagar`,
+            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
+          });
+        }
+        
+        if (orderStatusChecker) {
+          clearInterval(orderStatusChecker);
+          orderStatusChecker = null;
+        }
+      } else if (data.status === "accepted") {
+        statusDiv.className = "status-checking";
+        statusDiv.innerHTML = "👨‍🍳 Chef Elly tá cocinando tu orden...<br><small>Te avisamo cuando té lista pa que pases a pagar</small>";
+      }
+    } catch (err) {
+      console.error("Error al verificar estado:", err);
+    }
+  }
+  
+  async function placeOrder() {
+    if (order.length === 0) {
+      alert("⚠️ Tu orden tá vacía");
+      return;
+    }
+    
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+    placeOrderBtn.disabled = true;
+    placeOrderBtn.textContent = "Enviando...";
+    
+    try {
+      const itemsText = order.map(item => {
+        if (item.notes) {
+          return `${item.name} (${item.notes})`;
+        }
+        return item.name;
+      }).join(", ");
+      
+      const total = order.reduce((sum, item) => sum + item.price, 0);
+      
+      console.log("📤 Enviando orden:", { items: itemsText, total, status: "pending" });
+      
+      const { data, error } = await db
+        .from("orders")
+        .insert({
+          items: itemsText,
+          status: "pending",
+          total: total
+        })
+        .select();
+      
+      if (error) {
+        console.error("❌ Error de Supabase:", error);
+        alert("❌ Error al enviar la orden. Intenta de nuevo.");
+        placeOrderBtn.disabled = false;
+        placeOrderBtn.textContent = "Ordenar Ahora";
+        return;
+      }
+      
+      console.log("✅ Orden enviada:", data);
+      
+      const orderNumber = data[0].id;
+      currentOrderId = orderNumber;
+      showSuccessMessage(orderNumber);
+      
+      orderStatusChecker = setInterval(() => {
+        checkOrderStatus(orderNumber);
+      }, 3000);
+      
+      checkOrderStatus(orderNumber);
+      
+      order = [];
+      renderOrder();
+      
+    } catch (err) {
+      console.error("❌ Error inesperado:", err);
+      alert("❌ Error de conexión. Verifica tu internet.");
+      placeOrderBtn.disabled = false;
+      placeOrderBtn.textContent = "Ordenar Ahora";
+    }
+  }
+  
+  function showSuccessMessage(orderNumber) {
+    const orderNumberDisplay = document.getElementById("orderNumberDisplay");
+    const successMessage = document.getElementById("successMessage");
+    
+    orderNumberDisplay.textContent = `#${orderNumber}`;
+    
+    closeNotesPopup();
+    
+    document.getElementById('overlay').classList.add("show");
+    successMessage.classList.add("show");
+    
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+  
+  document.getElementById("overlay").addEventListener("click", () => {
+    const successMessage = document.getElementById("successMessage");
+    const notesPopup = document.getElementById("notesPopup");
+    
+    if (successMessage.classList.contains('show')) {
+      document.getElementById("overlay").classList.remove("show");
+      successMessage.classList.remove("show");
+      
+      if (orderStatusChecker) {
+        clearInterval(orderStatusChecker);
+        orderStatusChecker = null;
+      }
+      
+      const placeOrderBtn = document.getElementById("placeOrderBtn");
+      placeOrderBtn.disabled = true;
+      placeOrderBtn.textContent = "Ordenar Ahora";
+    } else if (notesPopup.classList.contains('show')) {
+      closeNotesPopup();
+    }
+  });
+  
+  console.log("✅ Mr. Sandwich cargado");
 </script>
+
 <script>
-let pinzerState="idle",pinzerRecommendation=null,pinzerUpsellItem=null,pinzerHasUpsold=!1;const pinzerMenu={sandwiches:[{name:"Mr. Pastrami",price:1900,tags:["premium","hungry"]},{name:"Chopped Cheese",price:1100,tags:["hungry","popular"]},{name:"Mr. Phillie Cheese Steak",price:950,tags:["hungry"]},{name:"Ellys Classic Smashburger",price:850,tags:["hungry","quick","popular"]},{name:"Sanguche de Pierna",price:700,tags:["quick","local"]},{name:"Cubano",price:700,tags:["quick","popular"]},{name:"Club Sandwich",price:700,tags:["quick"]},{name:"El Chimichurri",price:650,tags:["quick","local"]}],munchies:[{name:"Yukita Cubana",price:600},{name:"Mr. Fries",price:650}],extras:[{name:"Extra Tocineta",price:100},{name:"Extra Fondue de Queso Velveeta",price:100}]};function openPinzer(){const e=document.getElementById("pinzer-modal");e.style.display="flex",document.getElementById("pinzer-btn").style.display="none","idle"===pinzerState&&(pinzerState="greeting",setTimeout(()=>{pinzerSay("¡Klk manito! Bienvenido a Mr. Sandwich 👋"),setTimeout(()=>{pinzerSay("Soy Chef Elly y toy aquí pa ayudarte."),setTimeout(()=>{pinzerSay("¿Qué tú quieres comer hoy, tigre?"),pinzerShowReplies(["Algo rápido","Tengo hambre","Lo má popular"])},800)},800)},300))}function closePinzer(){document.getElementById("pinzer-modal").style.display="none",document.getElementById("pinzer-btn").style.display="block"}function pinzerSay(e){const n=document.getElementById("pinzer-messages"),a=document.createElement("div");a.className="pinzer-message pinzer-bot",a.textContent=e,n.appendChild(a),n.scrollTop=n.scrollHeight}function pinzerUserSay(e){const n=document.getElementById("pinzer-messages"),a=document.createElement("div");a.className="pinzer-message pinzer-user",a.textContent=e,n.appendChild(a),n.scrollTop=n.scrollHeight}function pinzerShowReplies(e){const n=document.getElementById("pinzer-replies");n.innerHTML="",e.forEach(e=>{const a=document.createElement("button");a.className="pinzer-reply-btn",a.textContent=e,a.onclick=()=>pinzerHandleReply(e),n.appendChild(a)})}function pinzerClearReplies(){document.getElementById("pinzer-replies").innerHTML=""}function pinzerHandleReply(e){pinzerUserSay(e),pinzerClearReplies(),"greeting"===pinzerState?handleGreetingResponse(e):"recommendation"===pinzerState?handleRecommendationResponse(e):"upsell"===pinzerState?handleUpsellResponse(e):"checkout"===pinzerState&&handleCheckoutResponse(e)}function handleGreetingResponse(e){let n;if("Algo rápido"===e){const e=pinzerMenu.sandwiches.filter(e=>e.tags&&e.tags.includes("quick"));n=e[Math.floor(Math.random()*e.length)]}else if("Tengo hambre"===e){n=pinzerMenu.sandwiches.filter(e=>e.tags&&e.tags.includes("hungry"))[0]}else if("Lo má popular"===e){const e=pinzerMenu.sandwiches.filter(e=>e.tags&&e.tags.includes("popular"));n=e[Math.floor(Math.random()*e.length)]}pinzerRecommendation=n,pinzerState="recommendation",setTimeout(()=>{pinzerSay(`¡Eso tá brutal! Te recomiendo el ${n.name} por RD$${n.price} 🔥`),setTimeout(()=>{pinzerSay("¿Lo añadimos a tu orden?"),pinzerShowReplies(["Sí, dale","No, dejálo"])},800)},500)}function handleRecommendationResponse(e){"Sí, dale"===e?( addItem(pinzerRecommendation.name,pinzerRecommendation.price),setTimeout(()=>{if(pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`),!pinzerHasUpsold){pinzerState="upsell";const e=pinzerMenu.munchies[1];pinzerUpsellItem=e,setTimeout(()=>{pinzerSay(`¿Y qué tal unas ${e.name} por solo RD$${e.price}? Tán de madre 🍟`),pinzerShowReplies(["Sí, dale","No, dejálo"]),pinzerHasUpsold=!0},800)}else goToCheckout()},500)):"No, dejálo"===e&&setTimeout(()=>{pinzerSay("Tá bien, tranquilo. Mira el menú arriba 📋"),pinzerSay("¡Cualquier cosa me dices!"),pinzerState="done",setTimeout(()=>closePinzer(),2e3)},500)}function handleUpsellResponse(e){"Sí, dale"===e?(addItem(pinzerUpsellItem.name,pinzerUpsellItem.price),setTimeout(()=>{pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`),goToCheckout()},500)):"No, dejálo"===e&&goToCheckout()}function goToCheckout(){pinzerState="checkout",setTimeout(()=>{pinzerSay("¡Tu orden tá lista, tigre! Revísala arriba y dale click pa ordenar 🛒"),pinzerShowReplies(["Ordenar ahora"])},800)}function handleCheckoutResponse(e){"Ordenar ahora"===e&&(pinzerState="done",pinzerSay("¡Que lo disfrutes, mi hermano! 😊"),setTimeout(()=>{closePinzer(),document.querySelector(".order-summary").scrollIntoView({behavior:"smooth"})},1500))}
+let pinzerState = 'idle';
+let pinzerRecommendation = null;
+let pinzerUpsellItem = null;
+let pinzerHasUpsold = false;
+
+const pinzerMenu = {
+  sandwiches: [
+    { name: 'Mr. Pastrami', price: 1900, tags: ['premium', 'hungry'] },
+    { name: 'Chopped Cheese', price: 1100, tags: ['hungry', 'popular'] },
+    { name: 'Mr. Phillie Cheese Steak', price: 950, tags: ['hungry'] },
+    { name: 'Ellys Classic Smashburger', price: 850, tags: ['hungry', 'quick', 'popular'] },
+    { name: 'Sanguche de Pierna', price: 700, tags: ['quick', 'local'] },
+    { name: 'Cubano', price: 700, tags: ['quick', 'popular'] },
+    { name: 'Club Sandwich', price: 700, tags: ['quick'] },
+    { name: 'El Chimichurri', price: 650, tags: ['quick', 'local'] }
+  ],
+  munchies: [
+    { name: 'Yukita Cubana', price: 600 },
+    { name: 'Mr. Fries', price: 650 }
+  ],
+  extras: [
+    { name: 'Extra Tocineta', price: 100 },
+    { name: 'Extra Fondue de Queso Velveeta', price: 100 }
+  ]
+};
+
+function openPinzer() {
+  const modal = document.getElementById('pinzer-modal');
+  modal.style.display = 'flex';
+  document.getElementById('pinzer-btn').style.display = 'none';
+  
+  if (pinzerState === 'idle') {
+    pinzerState = 'greeting';
+    setTimeout(() => {
+      pinzerSay("¡Klk manito! Bienvenido a Mr. Sandwich 👋");
+      setTimeout(() => {
+        pinzerSay("Soy Chef Elly y toy aquí pa ayudarte.");
+        setTimeout(() => {
+          pinzerSay("¿Qué tú quieres comer hoy, tigre?");
+          pinzerShowReplies(['Algo rápido', 'Tengo hambre', 'Lo má popular']);
+        }, 800);
+      }, 800);
+    }, 300);
+  }
+}
+
+function closePinzer() {
+  document.getElementById('pinzer-modal').style.display = 'none';
+  document.getElementById('pinzer-btn').style.display = 'block';
+}
+
+function pinzerSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-bot';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function pinzerUserSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-user';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function pinzerShowReplies(replies) {
+  const container = document.getElementById('pinzer-replies');
+  container.innerHTML = '';
+  
+  replies.forEach(reply => {
+    const btn = document.createElement('button');
+    btn.className = 'pinzer-reply-btn';
+    btn.textContent = reply;
+    btn.onclick = () => pinzerHandleReply(reply);
+    container.appendChild(btn);
+  });
+}
+
+function pinzerClearReplies() {
+  document.getElementById('pinzer-replies').innerHTML = '';
+}
+
+function pinzerHandleReply(reply) {
+  pinzerUserSay(reply);
+  pinzerClearReplies();
+  
+  if (pinzerState === 'greeting') {
+    handleGreetingResponse(reply);
+  } else if (pinzerState === 'recommendation') {
+    handleRecommendationResponse(reply);
+  } else if (pinzerState === 'upsell') {
+    handleUpsellResponse(reply);
+  } else if (pinzerState === 'checkout') {
+    handleCheckoutResponse(reply);
+  }
+}
+
+function handleGreetingResponse(reply) {
+  let item;
+  
+  if (reply === 'Algo rápido') {
+    const quickItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('quick'));
+    item = quickItems[Math.floor(Math.random() * quickItems.length)];
+  } else if (reply === 'Tengo hambre') {
+    const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('hungry'));
+    item = hungryItems[0];
+  } else if (reply === 'Lo má popular') {
+    const popularItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('popular'));
+    item = popularItems[Math.floor(Math.random() * popularItems.length)];
+  }
+  
+  pinzerRecommendation = item;
+  pinzerState = 'recommendation';
+  
+  setTimeout(() => {
+    pinzerSay(`¡Eso tá brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
+    setTimeout(() => {
+      pinzerSay("¿Lo añadimos a tu orden?");
+      pinzerShowReplies(['Sí, dale', 'No, dejálo']);
+    }, 800);
+  }, 500);
+}
+
+function handleRecommendationResponse(reply) {
+  if (reply === 'Sí, dale') {
+    addItem(pinzerRecommendation.name, pinzerRecommendation.price);
+    
+    setTimeout(() => {
+      pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
+      
+      if (!pinzerHasUpsold) {
+        pinzerState = 'upsell';
+        const upsellItem = pinzerMenu.munchies[1];
+        pinzerUpsellItem = upsellItem;
+        
+        setTimeout(() => {
+          pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Tán de madre 🍟`);
+          pinzerShowReplies(['Sí, dale', 'No, dejálo']);
+          pinzerHasUpsold = true;
+        }, 800);
+      } else {
+        goToCheckout();
+      }
+    }, 500);
+    
+  } else if (reply === 'No, dejálo') {
+    setTimeout(() => {
+      pinzerSay("Tá bien, tranquilo. Mira el menú arriba 📋");
+      pinzerSay("¡Cualquier cosa me dices!");
+      pinzerState = 'done';
+      setTimeout(() => closePinzer(), 2000);
+    }, 500);
+  }
+}
+
+function handleUpsellResponse(reply) {
+  if (reply === 'Sí, dale') {
+    addItem(pinzerUpsellItem.name, pinzerUpsellItem.price);
+    
+    setTimeout(() => {
+      pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`);
+      goToCheckout();
+    }, 500);
+    
+  } else if (reply === 'No, dejálo') {
+    goToCheckout();
+  }
+}
+
+function goToCheckout() {
+  pinzerState = 'checkout';
+  
+  setTimeout(() => {
+    pinzerSay("¡Tu orden tá lista, tigre! Revísala arriba y dale click pa ordenar 🛒");
+    pinzerShowReplies(['Ordenar ahora']);
+  }, 800);
+}
+
+function handleCheckoutResponse(reply) {
+  if (reply === 'Ordenar ahora') {
+    pinzerState = 'done';
+    pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
+    
+    setTimeout(() => {
+      closePinzer();
+      document.querySelector('.order-summary').scrollIntoView({ behavior: 'smooth' });
+    }, 1500);
+  }
+}
 </script>
+
 </body>
 </html>
-
-
-
-
-
-
-
