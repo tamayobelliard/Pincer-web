@@ -528,6 +528,7 @@ async function requestNotificationPermission() {
 function sendNotification(title, body, tag) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    console.log("📱 Enviando notificación:", title);
     const n = new Notification(title, {
       body,
       icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
@@ -798,11 +799,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if ("Notification" in window) {
     if      (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
     else if (Notification.permission === "granted") {
-      new Notification("Pincer Dashboard Iniciado", {
-        body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
-        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
-        tag: "pincer-dashboard-ready"
-      });
+      try {
+        new Notification("Pincer Dashboard Iniciado", {
+          body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
+          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
+          tag: "pincer-dashboard-ready"
+        });
+      } catch (e) {
+        console.log("Notificación de bienvenida no soportada en este navegador");
+      }
     } else if (Notification.permission === "denied") {
       showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
     }
