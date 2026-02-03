@@ -1283,15 +1283,17 @@ async function placeOrder() {
   placeOrderBtn.textContent = "Enviando...";
 
   try {
-    const itemsText = order.map(item => {
-      let txt = item.qty > 1 ? `${item.qty}x ${item.name}` : item.name;
-      if (item.notes) txt += ` (${item.notes})`;
-      return txt;
-    }).join(", ");
+    // Guardar items como JSON array para que el dashboard los muestre estructurados
+    const itemsArray = order.map(item => ({
+      name: item.name,
+      qty: item.qty,
+      notes: item.notes || null
+    }));
+    const itemsJSON = JSON.stringify(itemsArray);
 
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
-    const body = JSON.stringify({ items: itemsText, status: "pending", total: total });
+    const body = JSON.stringify({ items: itemsJSON, status: "pending", total: total });
 
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/orders',
@@ -1695,4 +1697,3 @@ function handleCheckoutResponse(reply) {
 
 </body>
 </html>
-
