@@ -234,10 +234,60 @@
       border-radius: 8px;
     }
     .order-items {
-      font-size: 18px;
-      margin: 10px 0;
-      color: #334155;
-      line-height: 1.6;
+      margin: 12px 0;
+    }
+    .order-items-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .order-item-row {
+      background: #f8fafc;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      border-left: 3px solid #cbd5e1;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .order-item-qty {
+      font-weight: 700;
+      color: #1e40af;
+      font-size: 1.1em;
+      min-width: 30px;
+    }
+    .order-item-name {
+      flex: 1;
+      color: #1e293b;
+      font-weight: 600;
+    }
+    .order-item-notes {
+      font-size: 0.9em;
+      color: #64748b;
+      font-style: italic;
+      margin-top: 3px;
+    }
+    
+    /* Alerta de tiempo para órdenes pendientes antiguas */
+    .time-alert {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 4px 10px;
+      background: #fef3c7;
+      color: #92400e;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: 600;
+      animation: alertPulse 1.5s infinite;
+    }
+    .time-alert.critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    @keyframes alertPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
     }
     .order-time {
       display: inline-block;
@@ -640,6 +690,33 @@ function updateProductCardUI(productId, isSoldOut) {
   chk.checked       = isSoldOut;
 }
 
+
+// ── Renderizar items como lista estructurada ─────────────────
+function renderOrderItems(itemsJSON) {
+  try {
+    const items = JSON.parse(itemsJSON);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
+    }
+    return items.map(item => {
+      const notesHTML = item.notes 
+        ? `<div class="order-item-notes">· ${item.notes}</div>`
+        : '';
+      return `
+        <li class="order-item-row">
+          <span class="order-item-qty">${item.qty}x</span>
+          <div style="flex: 1;">
+            <div class="order-item-name">${item.name}</div>
+            ${notesHTML}
+          </div>
+        </li>`;
+    }).join('');
+  } catch (e) {
+    // Fallback por si el formato viejo sigue en la DB
+    return `<li class="order-item-row"><span class="order-item-name">${itemsJSON || 'Sin especificar'}</span></li>`;
+  }
+}
+
 // ── ÓRDENES: cargar + renderizar ─────────────────────────────
 async function loadOrders() {
   console.log("🔵 loadOrders iniciado");
@@ -712,8 +789,16 @@ async function loadOrders() {
       div.innerHTML = `
         <div class="order-number">#${order.id}</div>
         <span class="order-status ${statusBadgeClass}">${statusText}</span>
-        <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
-        <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
+        <div class="order-items">
+          <strong style="color: #1e40af; font-size: 0.95em;">📋 ITEMS:</strong>
+          <ul class="order-items-list">
+            ${renderOrderItems(order.items)}
+          </ul>
+        </div>
+        <div class="order-time">
+          ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
+          ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
+        </div>
         <br>
         ${status === 'pending'  ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready"  onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>`  : ''}
