@@ -425,11 +425,12 @@ function sbWriteHeaders(extra = {}) {
   };
 }
 
-// fetch con timeout — si no responde en 8s lanza error en lugar de colgarse
+// fetch con timeout usando Promise.race — más compatible que AbortController en Android
 function fetchWithTimeout(url, options = {}, ms = 8000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout ' + ms + 'ms')), ms)
+  );
+  return Promise.race([fetch(url, options), timeout]);
 }
 
 // ── Menu completo (mismo MENU_DATA que en index.html) ───────
@@ -539,14 +540,17 @@ function sendNotification(title, body, tag) {
 
 // ── PRODUCTOS: cargar + renderizar + togglear ────────────────
 async function loadProducts() {
+  console.log("🟢 loadProducts iniciado");
   try {
+    console.log("🟢 fetch products URL:", SUPABASE_URL + '/rest/v1/products?select=id,sold_out');
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
       { headers: sbGetHeaders() }
     );
+    console.log("🟢 fetch products completado, status:", res.status);
     if (!res.ok) {
       // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
-      console.warn("⚠️ products table HTTP " + res.status);
+      console.warn("⚠️ products table HTTP error " + res.status);
       soldOutSet = new Set();
       renderProducts();
       return;
@@ -555,7 +559,7 @@ async function loadProducts() {
     soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
     console.log("✅ Productos cargados, agotados:", [...soldOutSet]);
   } catch (e) {
-    console.warn("⚠️ loadProducts:", e.message);
+    console.warn("⚠️ loadProducts catch:", e.name, e.message);
     soldOutSet = new Set();
   }
   renderProducts();
@@ -637,13 +641,16 @@ function updateProductCardUI(productId, isSoldOut) {
 
 // ── ÓRDENES: cargar + renderizar ─────────────────────────────
 async function loadOrders() {
+  console.log("🔵 loadOrders iniciado");
   try {
+    console.log("🔵 fetch orders URL:", SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc');
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
       { headers: sbGetHeaders() }
     );
+    console.log("🔵 fetch orders completado, status:", res.status);
     if (!res.ok) {
-      console.error("loadOrders HTTP", res.status);
+      console.error("❌ loadOrders HTTP error", res.status);
       showError("Error al cargar órdenes (HTTP " + res.status + ")");
       document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
       return;
@@ -715,7 +722,7 @@ async function loadOrders() {
 
     clearError();
   } catch (err) {
-    console.error("loadOrders error:", err);
+    console.error("❌ loadOrders catch:", err.name, err.message);
     showError("Error inesperado: " + err.message);
     document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
   }
@@ -770,8 +777,22 @@ async function markReady(id) {
 }
 
 // ── Init ─────────────────────────────────────────────────────
+
+// Catch global de errores
+window.addEventListener('error', (e) => {
+  console.error('❌ Error global:', e.message, e.filename, e.lineno);
+  document.getElementById("connection-status").innerHTML = "🔴 Error: " + e.message;
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('❌ Promise sin catch:', e.reason);
+  document.getElementById("connection-status").innerHTML = "🔴 Promise error";
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log("🚀 Iniciando Pincer Dashboard...");
+  console.log("🚀 SUPABASE_URL:", SUPABASE_URL);
+  console.log("🚀 User agent:", navigator.userAgent);
 
   // Notificaciones
   if ("Notification" in window) {
@@ -791,8 +812,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadProducts();
   loadOrders();
 
-  // Polling de órdenes cada 3s
+  // Polling de órdenes cada 3s — también actualiza productos cada 30s
   setInterval(loadOrders, 3000);
+  setInterval(loadProducts, 30000);
 
   // Primer click → habilita audio
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
@@ -802,4 +824,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-
