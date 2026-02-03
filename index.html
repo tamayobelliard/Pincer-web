@@ -591,6 +591,62 @@
       background: #2d5016;
     }
 
+    /* Popup producto agotado */
+    .soldout-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 30px 25px 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 380px;
+      text-align: center;
+    }
+    .soldout-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .soldout-popup .soldout-emoji {
+      font-size: 2.8em;
+      margin-bottom: 8px;
+    }
+    .soldout-popup h3 {
+      color: #dc2626;
+      font-size: 1.25em;
+      margin-bottom: 6px;
+    }
+    .soldout-popup .soldout-product-name {
+      font-weight: 700;
+      color: #1e1b4b;
+      font-size: 1.05em;
+      margin-bottom: 10px;
+    }
+    .soldout-popup p {
+      color: #64748b;
+      font-size: 0.95em;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+    .soldout-popup button {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .soldout-popup button:hover {
+      background: #2d5016;
+    }
+
     #pinzer-btn {
       position: fixed;
       bottom: 90px;
@@ -798,6 +854,16 @@
   </div>
 </div>
 
+<!-- Popup producto agotado -->
+<div class="soldout-popup" id="soldoutPopup">
+  <div class="soldout-emoji">😔</div>
+  <h3>¡Producto agotado!</h3>
+  <div class="soldout-product-name" id="soldoutProductName">—</div>
+  <p>Lamentablemente este producto no está disponible en este momento.<br>
+     ¡Pero no te preocupes! Tenemos otros deliciosos opciones que te van a encantar. 🍔</p>
+  <button onclick="closeSoldOutPopup()">Ver otros productos</button>
+</div>
+
 <button id="pinzer-btn" onclick="openPinzer()">
   ¿No sabes qué pedir?<br>Habla con Chef Elly
 </button>
@@ -855,9 +921,9 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ── Menu estático (nombre, precio, descripción, imagen, categoría) ──
 const MENU_DATA = {
   munchies: [
-    { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/mqzDXK4.jpeg',
+    { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/7L5Pv7T.jpeg',
       desc:'Yukita frita, cerdo asado en mojo verde, salsita verde de ajo y perejil y queso fresco' },
-    { id:'fries',    name:'Mr. Fries',      price:650,  img:'https://i.imgur.com/mqzDXK4.jpeg',
+    { id:'fries',    name:'Mr. Fries',      price:650,  img:'https://i.imgur.com/TRGVwtX.jpeg',
       desc:'Papas fritas sazonadas, fondue de queso velveeta, tocineta caramelizada, queso parmesano y puerrito' }
   ],
   sandwiches: [
@@ -1003,8 +1069,16 @@ function menuItemHTML(item) {
     descHTML = `<div class="item-description">${item.desc}</div>`;
   }
 
-  // Cantidad actual de este producto en la orden (sin notas específicas para el contador visual)
+  // Cantidad actual de este producto en la orden
   const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+  // Si está agotado: sin botones, solo el badge
+  const qtyHTML = isSoldOut ? '' : `
+            ${currentQty > 0 ? `
+              <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+              <span class="menu-qty-num">${currentQty}</span>
+            ` : ''}
+            <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
   return `
     <div class="menu-item${soldOutClass}" data-item-id="${item.id}">
@@ -1017,13 +1091,7 @@ function menuItemHTML(item) {
         </div>
         <div class="item-bottom">
           <div class="item-price">RD$${item.price.toLocaleString()}</div>
-          <div class="menu-qty-wrap" id="menuQty_${item.id}">
-            ${currentQty > 0 ? `
-              <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
-              <span class="menu-qty-num">${currentQty}</span>
-            ` : ''}
-            <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>
-          </div>
+          <div class="menu-qty-wrap" id="menuQty_${item.id}">${qtyHTML}</div>
         </div>
       </div>
     </div>`;
@@ -1044,6 +1112,17 @@ function closeNotesPopup() {
   pendingItem = null;
 }
 
+// ── Popup producto agotado ──────────────────────────────────
+function showSoldOutPopup(productName) {
+  document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
+  document.getElementById('soldoutPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSoldOutPopup() {
+  document.getElementById('soldoutPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
 function addItemWithNotes() {
   if (!pendingItem) return;
   const notes = document.getElementById('notesTextarea').value.trim();
@@ -1057,6 +1136,9 @@ function menuQtyChange(itemId, delta) {
   const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
   const menuItem = allItems.find(i => i.id === itemId);
   if (!menuItem) return;
+
+  // Bloquear si está agotado → mostrar popup
+  if (soldOutSet.has(itemId)) { showSoldOutPopup(menuItem.name); return; }
 
   const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
 
@@ -1092,6 +1174,7 @@ function menuQtyChange(itemId, delta) {
 function updateMenuQtyBadges() {
   const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
   allItems.forEach(item => {
+    if (soldOutSet.has(item.id)) { const w = document.getElementById("menuQty_" + item.id); if (w) w.innerHTML = ""; return; }
     const wrap = document.getElementById('menuQty_' + item.id);
     if (!wrap) return;
     const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
@@ -1107,6 +1190,9 @@ function updateMenuQtyBadges() {
   });
 }
 function addItem(id, name, price, notes = null) {
+  // Bloquear si está agotado → mostrar popup
+  if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
+
   // Buscar si ya existe un item con mismo id Y mismas notas
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
   if (idx !== -1) {
@@ -1609,3 +1695,4 @@ function handleCheckoutResponse(reply) {
 
 </body>
 </html>
+
