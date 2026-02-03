@@ -23,6 +23,15 @@
       font-size: 2.5em;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
+    h2 {
+      color: white;
+      font-size: 1.5em;
+      margin-bottom: 15px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
     #connection-status {
       text-align: center;
       color: white;
@@ -35,7 +44,6 @@
       padding: 15px;
       text-align: center;
       border-radius: 12px;
-      margin-bottom: 20px;
       max-width: 1200px;
       margin: 0 auto 20px auto;
       font-weight: 600;
@@ -50,6 +58,145 @@
     #notification-banner.show {
       display: block;
     }
+
+    /* ─── PRODUCTOS / SOLD OUT ─── */
+    .products-panel {
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto 24px auto;
+    }
+    .products-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .products-panel-header h3 {
+      font-size: 1.25em;
+      color: #1e1b4b;
+      margin: 0;
+    }
+    .products-panel-header .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 0.85em;
+      color: #64748b;
+    }
+    .products-panel-header .legend span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .legend-dot.available { background: #22c55e; }
+    .legend-dot.soldout   { background: #ef4444; }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .product-card {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .product-card.is-soldout {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+    .product-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .product-card-name {
+      font-weight: 700;
+      font-size: 0.9em;
+      color: #1e1b4b;
+      line-height: 1.3;
+      flex: 1;
+      padding-right: 8px;
+    }
+    .product-card-price {
+      font-size: 0.82em;
+      color: #64748b;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+    .toggle-label {
+      font-size: 0.78em;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .product-card.is-soldout .toggle-label {
+      color: #dc2626;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #22c55e;
+      border-radius: 26px;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+    .toggle-slider:before {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.25s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #ef4444;
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+    .toggle-switch input:focus + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba(239,68,68,0.25);
+    }
+
+    /* ─── ORDERS ─── */
     #orders {
       max-width: 1200px;
       margin: 0 auto;
@@ -67,37 +214,14 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
-    .new {
-      border-left-color: #22c55e;
-      background: #f0fdf4;
-    }
-    .warning {
-      border-left-color: #f97316;
-      background: #fff7ed;
-    }
-    .late {
-      border-left-color: #ef4444;
-      background: #fef2f2;
-      animation: pulse 2s infinite;
-    }
-    .accepted {
-      border-left-color: #3b82f6;
-      background: #eff6ff;
-    }
-    .ready {
-      border-left-color: #16a34a;
-      background: #f0fdf4;
-      opacity: 0.6;
-    }
+    .new      { border-left-color: #22c55e; background: #f0fdf4; }
+    .warning  { border-left-color: #f97316; background: #fff7ed; }
+    .late     { border-left-color: #ef4444; background: #fef2f2; animation: pulse 2s infinite; }
+    .accepted { border-left-color: #3b82f6; background: #eff6ff; }
+    .ready    { border-left-color: #16a34a; background: #f0fdf4; opacity: 0.6; }
     @keyframes pulse {
-      0%, 100% { 
-        opacity: 1;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      }
-      50% { 
-        opacity: 0.8;
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
-      }
+      0%, 100% { opacity: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      50%      { opacity: 0.8; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
     }
     .order-number {
       font-size: 32px;
@@ -132,18 +256,10 @@
       font-weight: bold;
       margin-left: 10px;
     }
-    .status-pending {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .status-accepted {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-    .status-ready {
-      background: #d1fae5;
-      color: #065f46;
-    }
+    .status-pending  { background: #fef3c7; color: #92400e; }
+    .status-accepted { background: #dbeafe; color: #1e40af; }
+    .status-ready    { background: #d1fae5; color: #065f46; }
+
     button {
       margin-top: 15px;
       margin-right: 10px;
@@ -155,33 +271,29 @@
       font-weight: 600;
       font-size: 16px;
       transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn-accept {
       background: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 2px 4px rgba(59,130,246,0.3);
     }
     .btn-accept:hover {
       background: #2563eb;
       transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+      box-shadow: 0 4px 8px rgba(59,130,246,0.4);
     }
     .btn-ready {
       background: #16a34a;
-      box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
+      box-shadow: 0 2px 4px rgba(22,163,74,0.3);
     }
     .btn-ready:hover {
       background: #15803d;
       transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+      box-shadow: 0 4px 8px rgba(22,163,74,0.4);
     }
-    button:active {
-      transform: translateY(0);
-    }
-    button:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-      transform: none;
-    }
+    button:active  { transform: translateY(0); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
     .error {
       background: #fee2e2;
       color: #991b1b;
@@ -190,6 +302,9 @@
       margin-bottom: 20px;
       text-align: center;
       border-left: 4px solid #dc2626;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
     }
     .loading {
       text-align: center;
@@ -214,7 +329,6 @@
       background: rgba(255,255,255,0.95);
       padding: 20px;
       border-radius: 12px;
-      margin-bottom: 20px;
       max-width: 1200px;
       margin: 0 auto 20px auto;
       display: flex;
@@ -222,25 +336,14 @@
       flex-wrap: wrap;
       gap: 15px;
     }
-    .stat-item {
-      text-align: center;
-      min-width: 150px;
-    }
-    .stat-number {
-      font-size: 32px;
-      font-weight: bold;
-      color: #1e40af;
-    }
-    .stat-label {
-      font-size: 14px;
-      color: #64748b;
-      margin-top: 5px;
-    }
+    .stat-item { text-align: center; min-width: 150px; }
+    .stat-number { font-size: 32px; font-weight: bold; color: #1e40af; }
+    .stat-label  { font-size: 14px; color: #64748b; margin-top: 5px; }
   </style>
 </head>
 <body>
-<h1>📟 Pincer – Orders Dashboard</h1>
 
+<h1>📟 Pincer – Orders Dashboard</h1>
 <div id="connection-status">🔄 Conectando...</div>
 
 <!-- Banner de notificaciones -->
@@ -248,6 +351,7 @@
   🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
 </div>
 
+<!-- Stats -->
 <div class="stats" id="stats">
   <div class="stat-item">
     <div class="stat-number" id="total-orders">0</div>
@@ -273,332 +377,403 @@
   <div class="loading">⏳ Cargando órdenes...</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Productos / Sold Out -->
+<div class="products-panel" id="productsPanel">
+  <div class="products-panel-header">
+    <h3>📦 Productos</h3>
+    <div class="legend">
+      <span><span class="legend-dot available"></span> Disponible</span>
+      <span><span class="legend-dot soldout"></span> Agotado</span>
+    </div>
+  </div>
+  <div class="products-grid" id="productsGrid">
+    <!-- se genera por JS -->
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────────────── -->
 <script>
-  // 🔑 CREDENCIALES DE SUPABASE
-  const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
-  
-  // Crear cliente de Supabase
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
-  // Variables globales
-  let lastOrderCount = 0;
-  let hasPlayedSound = false;
-  
-  // 🔔 Función para solicitar permisos de notificación
-  async function requestNotificationPermission() {
-    // Verificar si el navegador soporta notificaciones
-    if (!("Notification" in window)) {
-      alert("Tu navegador no soporta notificaciones de escritorio");
+// ── Credenciales ─────────────────────────────────────────────
+const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+
+// Helper: headers para fetch nativo
+function sbHeaders(extra = {}) {
+  return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    ...extra
+  };
+}
+
+// ── Menu completo (mismo MENU_DATA que en index.html) ───────
+const MENU_DATA = [
+  // munchies
+  { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
+  { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
+  // sandwiches
+  { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
+  { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
+  { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
+  { id:'smash',           name:'Ellys Classic Smashburger',      price:850,  cat:'Sándwiches' },
+  { id:'pierna',          name:'Sanguche de Pierna',             price:700,  cat:'Sándwiches' },
+  { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
+  { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
+  { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
+  // extras
+  { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
+  { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
+  { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
+  { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
+];
+
+// ── Estado global ────────────────────────────────────────────
+let soldOutSet      = new Set();   // IDs actualmente agotados
+let lastOrderCount  = 0;
+let hasInteracted   = false;       // reemplaza hasPlayedSound
+
+// ── AudioContext (mismo patrón que index.html) ──────────────
+let audioCtx = null;
+function ensureAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
+
+function playBeeps(freqs, volume = 0.4) {
+  try {
+    if (!audioCtx) return;
+    ensureAudioContext();
+    const now = audioCtx.currentTime;
+    freqs.forEach((freq, i) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
+      osc.start(now + i * 0.18);
+      osc.stop(now  + i * 0.18 + 0.16);
+    });
+  } catch (e) { /* silente */ }
+}
+
+// Nueva orden: 3 beeps ascendentes rápidos
+function playNewOrderSound()   { playBeeps([660, 880, 1100]); }
+// Confirmación (aceptar / marcar lista): 2 beeps suaves
+function playConfirmSound()    { playBeeps([440, 660], 0.3); }
+
+// ── Utilidades ───────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
+}
+function clearError() {
+  document.getElementById("error-message").innerHTML = '';
+}
+
+function updateStats(orders) {
+  document.getElementById('total-orders').textContent     = orders.length;
+  document.getElementById('pending-orders').textContent   = orders.filter(o => o.status === 'pending' || !o.status).length;
+  document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
+  document.getElementById('ready-orders').textContent     = orders.filter(o => o.status === 'ready').length;
+}
+
+// ── Notificaciones de navegador ──────────────────────────────
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      document.getElementById('notification-banner').classList.remove('show');
+      new Notification("¡Notificaciones Habilitadas!", {
+        body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
+        tag: "pincer-notifications-enabled"
+      });
+    } else if (perm === "denied") {
+      alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
+    }
+  } catch (e) { console.error("requestNotificationPermission:", e); }
+}
+
+function sendNotification(title, body, tag) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const n = new Notification(title, {
+      body,
+      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
+      tag: tag || ('pincer-' + Date.now()),
+      requireInteraction: true
+    });
+    n.onclick = function() { window.focus(); this.close(); };
+  } catch (e) { /* silente */ }
+}
+
+// ── PRODUCTOS: cargar + renderizar + togglear ────────────────
+async function loadProducts() {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) {
+      // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
+      console.warn("⚠️ products table HTTP " + res.status);
+      soldOutSet = new Set();
+      renderProducts();
       return;
     }
+    const rows = await res.json();
+    soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
+    console.log("✅ Productos cargados, agotados:", [...soldOutSet]);
+  } catch (e) {
+    console.warn("⚠️ loadProducts:", e.message);
+    soldOutSet = new Set();
+  }
+  renderProducts();
+}
 
-    try {
-      const permission = await Notification.requestPermission();
-      
-      if (permission === "granted") {
-        console.log("✅ Permisos de notificación concedidos");
-        
-        // Ocultar banner
-        document.getElementById('notification-banner').classList.remove('show');
-        
-        // Mostrar notificación de prueba
-        new Notification("¡Notificaciones Habilitadas!", {
-          body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
-          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
-          tag: "pincer-notifications-enabled"
-        });
-      } else if (permission === "denied") {
-        alert("⚠️ Has bloqueado las notificaciones. Para habilitarlas:\n\n1. Click en el ícono del candado (🔒) en la barra de direcciones\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '';
+
+  MENU_DATA.forEach(item => {
+    const isSoldOut = soldOutSet.has(item.id);
+
+    const card = document.createElement('div');
+    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
+    card.id = 'prodCard_' + item.id;
+    card.innerHTML = `
+      <div class="product-card-top">
+        <div>
+          <div class="product-card-name">${item.name}</div>
+          <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
+        <label class="toggle-switch">
+          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function toggleSoldOut(productId, isSoldOut) {
+  // Optimistic update inmediato
+  if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
+  updateProductCardUI(productId, isSoldOut);
+
+  try {
+    // UPSERT: si existe actualiza, si no existe lo inserta
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products',
+      {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify({ id: productId, sold_out: isSoldOut })
       }
-    } catch (error) {
-      console.error("Error al solicitar permisos:", error);
+    );
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("❌ toggleSoldOut upsert →", res.status, txt);
+      // Revertir si falló
+      if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+      updateProductCardUI(productId, !isSoldOut);
+      showError("No se pudo actualizar el producto. Verifica la conexión.");
+      return;
     }
+    console.log("✅ Producto", productId, "→ sold_out:", isSoldOut);
+    clearError();
+  } catch (e) {
+    console.error("❌ toggleSoldOut:", e.message);
+    // Revertir
+    if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+    updateProductCardUI(productId, !isSoldOut);
+    showError("Error de conexión al actualizar producto.");
   }
-  
-  // 🔊 Función para reproducir sonido de notificación
-  function playNotificationSound() {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
-    audio.volume = 0.5;
-    audio.play().catch(e => {
-      console.log('No se pudo reproducir sonido');
-    });
-  }
-  
-  // Función para mostrar errores
-  function showError(message) {
-    const errorDiv = document.getElementById("error-message");
-    errorDiv.innerHTML = `<div class="error">❌ ${message}</div>`;
-  }
-  
-  // Función para actualizar estadísticas
-  function updateStats(orders) {
-    const total = orders.length;
-    const pending = orders.filter(o => o.status === 'pending' || !o.status).length;
-    const preparing = orders.filter(o => o.status === 'accepted').length;
-    const ready = orders.filter(o => o.status === 'ready').length;
-    
-    document.getElementById('total-orders').textContent = total;
-    document.getElementById('pending-orders').textContent = pending;
-    document.getElementById('preparing-orders').textContent = preparing;
-    document.getElementById('ready-orders').textContent = ready;
-  }
-  
-  // Función para cargar órdenes
+}
+
+function updateProductCardUI(productId, isSoldOut) {
+  const card  = document.getElementById('prodCard_' + productId);
+  if (!card) return;
+  const label = card.querySelector('.toggle-label');
+  const chk   = card.querySelector('input[type=checkbox]');
+
+  card.classList.toggle('is-soldout', isSoldOut);
+  label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
+  chk.checked       = isSoldOut;
+}
+
+// ── ÓRDENES: cargar + renderizar ─────────────────────────────
 async function loadOrders() {
   try {
-    const { data, error } = await db
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (error) {
-      console.error("Error de Supabase:", error);
-      showError(`Error al cargar órdenes: ${error.message}`);
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
+      { headers: sbHeaders() }
+    );
+    if (!res.ok) {
+      console.error("loadOrders HTTP", res.status);
+      showError("Error al cargar órdenes (HTTP " + res.status + ")");
       document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
       return;
     }
-    
-    // Actualizar estado de conexión
+    const data = await res.json();
+
     document.getElementById("connection-status").innerHTML = "🟢 Conectado";
-    
+
     const container = document.getElementById("orders");
-    
-    // Si no hay órdenes
+
     if (!data || data.length === 0) {
       container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
       updateStats([]);
-      lastOrderCount = 0; // Reset counter
+      lastOrderCount = 0;
+      hasInteracted  = true;
       return;
     }
-    
-    // Actualizar estadísticas
+
     updateStats(data);
-    
-    // 🔊 MEJORADO: Detectar nueva orden
-    const currentOrderCount = data.filter(o => o.status === 'pending' || o.status === 'new' || !o.status).length;
-    
-    console.log(`📊 Órdenes actuales: ${currentOrderCount}, Anteriores: ${lastOrderCount}, hasPlayedSound: ${hasPlayedSound}`);
-    
-    // Detectar si hay una orden NUEVA (más órdenes que antes)
-    if (hasPlayedSound && currentOrderCount > lastOrderCount) {
-      console.log("🔔 ¡NUEVA ORDEN DETECTADA! Reproduciendo notificación...");
-      
-      // Reproducir sonido
-      playNotificationSound();
-      
-      // Vibración
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 200]);
-      }
-      
-      // Notificación del navegador
-      if (Notification.permission === "granted") {
-        console.log("📱 Enviando notificación del navegador...");
-        
-        const notification = new Notification("¡Nueva orden en Pincer!", {
-          body: `Tienes ${currentOrderCount} orden(es) pendiente(s)`,
-          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
-          tag: "pincer-new-order-" + Date.now(), // Tag único para evitar que se reemplace
-          requireInteraction: true,
-          silent: false
-        });
-        
-        // Click en la notificación para enfocar la ventana
-        notification.onclick = function() {
-          window.focus();
-          this.close();
-        };
-        
-        console.log("✅ Notificación enviada");
-      } else {
-        console.log("❌ No hay permisos de notificación. Estado:", Notification.permission);
-      }
-    } else {
-      console.log("ℹ️ No se detectó orden nueva");
+
+    // ── Detectar nueva orden ──
+    const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
+
+    if (hasInteracted && currentPending > lastOrderCount) {
+      console.log("🔔 Nueva orden detectada");
+      playNewOrderSound();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+      sendNotification(
+        "¡Nueva orden en Pincer!",
+        `Tienes ${currentPending} orden(es) pendiente(s)`
+      );
     }
-    
-    // Actualizar contador
-    lastOrderCount = currentOrderCount;
-    hasPlayedSound = true;
-    
-    // Limpiar container
-    container.innerHTML = "";
-    
-    // Renderizar cada orden
+
+    lastOrderCount = currentPending;
+    hasInteracted  = true;
+
+    // ── Renderizar órdenes ──
+    container.innerHTML = '';
+
     data.forEach(order => {
       const createdAt = new Date(order.created_at);
-      const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-      
-      // Determinar status
-      const status = order.status || 'pending';
-      
-      // Determinar clase según tiempo y status
-      let statusClass = "new";
-      if (status === 'ready') {
-        statusClass = "ready";
-      } else if (status === 'accepted') {
-        statusClass = "accepted";
-      } else {
-        if (minutes > 5) statusClass = "late";
-        else if (minutes > 2) statusClass = "warning";
-      }
-      
-      // Determinar badge de status
-      let statusBadge = '';
-      let statusText = '';
-      if (status === 'ready') {
-        statusBadge = 'status-ready';
-        statusText = '✓ LISTA PARA RETIRAR';
-      } else if (status === 'accepted') {
-        statusBadge = 'status-accepted';
-        statusText = '👨‍🍳 EN PREPARACIÓN';
-      } else {
-        statusBadge = 'status-pending';
-        statusText = '⏳ PENDIENTE';
-      }
-      
-      // Crear elemento de orden
+      const minutes   = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+      const status    = order.status || 'pending';
+
+      let statusClass = 'new';
+      if      (status === 'ready')    statusClass = 'ready';
+      else if (status === 'accepted') statusClass = 'accepted';
+      else if (minutes > 5)           statusClass = 'late';
+      else if (minutes > 2)           statusClass = 'warning';
+
+      let statusBadgeClass, statusText;
+      if      (status === 'ready')    { statusBadgeClass = 'status-ready';    statusText = '✓ LISTA PARA RETIRAR'; }
+      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
+      else                            { statusBadgeClass = 'status-pending';  statusText = '⏳ PENDIENTE'; }
+
       const div = document.createElement("div");
       div.className = `order ${statusClass}`;
       div.innerHTML = `
         <div class="order-number">#${order.id}</div>
-        <span class="order-status ${statusBadge}">
-          ${statusText}
-        </span>
+        <span class="order-status ${statusBadgeClass}">${statusText}</span>
         <div class="order-items"><strong>📋 Items:</strong> ${order.items || 'Sin especificar'}</div>
         <div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>
         <br>
-        ${status === 'pending' ? 
-          `<button class="btn-accept" onclick="window.acceptOrder(${order.id})">✅ Marcar como digitada</button>` 
-          : ''}
-        ${status === 'accepted' ? 
-          `<button class="btn-ready" onclick="window.markReady(${order.id})">🎉 Marcar como LISTA</button>` 
-          : ''}
-        ${status === 'ready' ? 
-          `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` 
-          : ''}
-      `;
+        ${status === 'pending'  ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready"  onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>`  : ''}
+        ${status === 'ready'    ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
       container.appendChild(div);
     });
-    
-    document.getElementById("error-message").innerHTML = "";
-    
+
+    clearError();
   } catch (err) {
-    console.error("Error inesperado:", err);
-    showError(`Error inesperado: ${err.message}`);
+    console.error("loadOrders error:", err);
+    showError("Error inesperado: " + err.message);
     document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
   }
 }
-  
-  // ⚡ FUNCIÓN GLOBAL para aceptar orden (digitada)
-  window.acceptOrder = async function(id) {
-    console.log(`🔄 Marcando orden #${id} como digitada`);
-    
-    try {
-      const { data, error } = await db
-        .from("orders")
-        .update({ status: "accepted" })
-        .eq("id", id)
-        .select();
-      
-      if (error) {
-        console.error("Error al actualizar:", error);
-        showError(`Error al marcar orden: ${error.message}`);
-        return;
+
+// ── Aceptar orden (pending → accepted) ──────────────────────
+async function acceptOrder(id) {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
+      {
+        method: 'PATCH',
+        headers: sbHeaders(),
+        body: JSON.stringify({ status: 'accepted' })
       }
-      
-      console.log(`✅ Orden #${id} marcada como EN PREPARACIÓN`);
-      
-      // Sonido de confirmación
-      const confirmSound = new Audio('data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==');
-      confirmSound.play().catch(() => {});
-      
-      // Recargar
-      setTimeout(() => loadOrders(), 100);
-      
-    } catch (err) {
-      console.error("Error inesperado:", err);
-      showError(`Error inesperado: ${err.message}`);
-    }
-  };
-  
-  // ⚡ FUNCIÓN GLOBAL para marcar orden como LISTA
-  window.markReady = async function(id) {
-    console.log(`🎉 Marcando orden #${id} como LISTA`);
-    
-    try {
-      const { data, error } = await db
-        .from("orders")
-        .update({ status: "ready" })
-        .eq("id", id)
-        .select();
-      
-      if (error) {
-        console.error("Error al actualizar:", error);
-        showError(`Error al marcar orden: ${error.message}`);
-        return;
-      }
-      
-      console.log(`✅ Orden #${id} marcada como LISTA - Cliente será notificado`);
-      
-      // Sonido especial de "orden lista"
-      playNotificationSound();
-      
-      // Recargar
-      setTimeout(() => loadOrders(), 100);
-      
-    } catch (err) {
-      console.error("Error inesperado:", err);
-      showError(`Error inesperado: ${err.message}`);
-    }
-  };
-  
-  // 🔔 INICIALIZAR PERMISOS DE NOTIFICACIÓN AL CARGAR
-  window.addEventListener('DOMContentLoaded', async () => {
-    console.log("🚀 Iniciando Pincer Dashboard...");
-    
-    // Verificar si el navegador soporta notificaciones
-    if (!("Notification" in window)) {
-      console.log("❌ Este navegador no soporta notificaciones");
+    );
+    if (!res.ok) {
+      showError("Error al marcar orden #" + id);
       return;
     }
+    console.log("✅ Orden #" + id + " → accepted");
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) {
+    console.error("acceptOrder:", e);
+    showError("Error inesperado al aceptar orden.");
+  }
+}
 
-    console.log("Estado actual de notificaciones:", Notification.permission);
+// ── Marcar lista (accepted → ready) ─────────────────────────
+async function markReady(id) {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
+      {
+        method: 'PATCH',
+        headers: sbHeaders(),
+        body: JSON.stringify({ status: 'ready' })
+      }
+    );
+    if (!res.ok) {
+      showError("Error al marcar orden #" + id + " como lista");
+      return;
+    }
+    console.log("✅ Orden #" + id + " → ready");
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) {
+    console.error("markReady:", e);
+    showError("Error inesperado al marcar como lista.");
+  }
+}
 
-    // Mostrar banner si aún no ha dado permiso
-    if (Notification.permission === "default") {
-      document.getElementById('notification-banner').classList.add('show');
-      console.log("⚠️ Mostrando banner para solicitar permisos");
-    } else if (Notification.permission === "granted") {
-      console.log("✅ Permisos de notificación ya concedidos");
-      
-      // Mostrar notificación de bienvenida
+// ── Init ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  console.log("🚀 Iniciando Pincer Dashboard...");
+
+  // Notificaciones
+  if ("Notification" in window) {
+    if      (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
+    else if (Notification.permission === "granted") {
       new Notification("Pincer Dashboard Iniciado", {
         body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
         tag: "pincer-dashboard-ready"
       });
     } else if (Notification.permission === "denied") {
-      console.log("❌ Permisos de notificación denegados por el usuario");
-      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 en la barra de direcciones para habilitarlas.");
+      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
     }
-  });
-  
-  // Cargar órdenes al inicio
+  }
+
+  // Cargar productos y órdenes
+  loadProducts();
   loadOrders();
-  
-  // Recargar cada 3 segundos
+
+  // Polling de órdenes cada 3s
   setInterval(loadOrders, 3000);
-  
-  // Habilitar sonido al primer click
-  document.addEventListener('click', () => {
-    hasPlayedSound = true;
-  }, { once: true });
-  
-  console.log("✅ Pincer Dashboard configurado correctamente");
-  console.log("🔗 Conectado a:", SUPABASE_URL);
+
+  // Primer click → habilita audio
+  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
+
+  console.log("✅ Pincer Dashboard configurado");
+});
 </script>
 </body>
 </html>
