@@ -105,12 +105,34 @@
       gap: 12px;
       transition: all 0.3s;
       border: 2px solid transparent;
+      position: relative;
     }
     
     .menu-item:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(45, 80, 22, 0.15);
       border-color: #4a7c2c;
+    }
+
+    /* Agotado overlay */
+    .menu-item.sold-out {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .sold-out-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #dc3545;
+      color: white;
+      font-size: 0.75em;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
     }
 
     .item-image {
@@ -147,12 +169,63 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
     }
     
     .item-price {
       font-size: 1.2em;
       font-weight: 700;
       color: #4a7c2c;
+      flex-shrink: 0;
+    }
+
+    /* Qty selector en la tarjeta del menú */
+    .menu-qty-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    .menu-qty-btn {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      width: 32px;
+      height: 32px;
+      font-size: 1.2em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+      line-height: 1;
+    }
+
+    .menu-qty-btn:first-child {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .menu-qty-btn:last-child {
+      border-radius: 0 8px 8px 0;
+    }
+
+    .menu-qty-btn:active {
+      background: #2d5016;
+    }
+
+    .menu-qty-num {
+      background: #eef2ee;
+      color: #2d5016;
+      font-weight: 700;
+      font-size: 0.95em;
+      width: 28px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .add-btn {
@@ -167,6 +240,7 @@
       transition: all 0.2s;
       box-shadow: 0 2px 4px rgba(74, 124, 44, 0.3);
       white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .add-btn:hover {
@@ -199,7 +273,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     
     .order-item-name {
@@ -215,21 +289,63 @@
       background: white;
       border-radius: 4px;
       border-left: 3px solid #4a7c2c;
+      margin-top: 4px;
     }
-    
-    .remove-btn {
-      background: #dc3545;
+
+    /* Quantity controls in order */
+    .order-item-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qty-btn {
+      background: #4a7c2c;
       color: white;
       border: none;
-      padding: 6px 12px;
+      width: 28px;
+      height: 28px;
       border-radius: 6px;
-      font-size: 0.9em;
+      font-size: 1.1em;
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
     }
-    
-    .remove-btn:hover {
+
+    .qty-btn:hover {
+      background: #2d5016;
+    }
+
+    .qty-btn:active {
+      background: #1a3a0e;
+    }
+
+    .qty-btn.minus {
+      background: #dc3545;
+    }
+
+    .qty-btn.minus:hover {
       background: #c82333;
+    }
+
+    .qty-display {
+      font-weight: 700;
+      font-size: 1em;
+      color: #2d5016;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .order-item-price {
+      font-weight: 700;
+      color: #4a7c2c;
+      font-size: 0.95em;
+      margin-left: 8px;
     }
     
     .order-total {
@@ -269,6 +385,7 @@
       cursor: pointer;
       box-shadow: 0 8px 16px rgba(74, 124, 44, 0.4);
       transition: all 0.3s;
+      -webkit-tap-highlight-color: transparent;
     }
     
     .place-order-btn:hover {
@@ -313,6 +430,7 @@
       z-index: 1000;
       transition: all 0.3s;
       max-width: 90%;
+      width: 90%;
     }
     
     .success-message.show {
@@ -452,6 +570,7 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .notes-popup .btn-cancel {
@@ -490,6 +609,7 @@
       line-height: 1.5;
       text-align: center;
       max-width: 200px;
+      -webkit-tap-highlight-color: transparent;
     }
 
     #pinzer-btn:hover {
@@ -545,6 +665,7 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .pinzer-reply-btn:hover {
@@ -582,6 +703,42 @@
       color: #856404;
       font-weight: 600;
     }
+
+    /* Banner cuando la orden está lista y el modal se cerró */
+    .ready-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #155724;
+      color: white;
+      text-align: center;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 1.05em;
+      z-index: 2000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: slideDown 0.4s ease-out;
+      line-height: 1.5;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
+    }
+
+    .ready-banner button {
+      display: block;
+      margin: 8px auto 0;
+      background: #f4e4c1;
+      color: #155724;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -595,206 +752,9 @@
     <p class="subtitle">BY CHEF ELLY</p>
   </div>
 
-  <div class="menu-section">
+  <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
-    
-    <div class="category-title">MUNCHIES</div>
-    
-    <div class="menu-item">
-      <img src="https://i.imgur.com/7L5Pv7T.jpeg" alt="Yukita Cubana" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">YUKITA CUBANA</div>
-          <div class="item-description">Yukita frita, cerdo asado en mojo verde, salsita verde de ajo y perejil y queso fresco</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$600</div>
-          <button class="add-btn" onclick="showNotesPopup('Yukita Cubana', 600)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/TRGVwtX.jpeg" alt="Mr. Fries" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">MR. FRIES</div>
-          <div class="item-description">Papas fritas sazonadas, fondue de queso velveeta, tocineta caramelizada, queso parmesano y puerrito</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$650</div>
-          <button class="add-btn" onclick="showNotesPopup('Mr. Fries', 650)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="category-title">SÁNDWICHS</div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/h2C6YGu.jpeg" alt="Mr. Pastrami" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">MR. PASTRAMI</div>
-          <div class="item-description">Barra gallega de masa madre de 12", 1/2 lb de pastrami de res angus, mermelada de pimiento morrón ahumada, queso suizo, queso cheddar y Elly's mayo</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$1,900</div>
-          <button class="add-btn" onclick="showNotesPopup('Mr. Pastrami', 1900)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/YZvXvhb.jpeg" alt="Chopped Cheese" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">CHOPPED CHEESE</div>
-          <div class="item-description">Media baguette, carne molida angus, queso cheddar, queso provolone, tocineta, lechuga, tomate, cebolla, chicharrón ahumado y Elly's mayo</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$1,100</div>
-          <button class="add-btn" onclick="showNotesPopup('Chopped Cheese', 1100)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/gD4tBQZ.jpeg" alt="Mr. Phillie Cheese Steak" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">MR. PHILLIE CHEESE STEAK</div>
-          <div class="item-description">Pan hoagie roll, filete de res angus, cebollas caramelizadas, hongos asados, queso provolone y fondue de queso velveeta</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$950</div>
-          <button class="add-btn" onclick="showNotesPopup('Mr. Phillie Cheese Steak', 950)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/RJntO70.jpeg" alt="Elly's Classic Smashburger" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">ELLY'S CLASSIC SMASHBURGER</div>
-          <div class="item-description">Pan de papa, doble carne angus smash de 4 oz c/u, cebolla blanca, doble queso cheddar, tocineta caramelizada y Elly's Mayo</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$850</div>
-          <button class="add-btn" onclick="showNotesPopup('Ellys Classic Smashburger', 850)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/P1Z3xJE.jpeg" alt="Sanguche de Pierna" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">SANGUCHE DE PIERNA</div>
-          <div class="item-description">Pan cubano, cerdo asado en mojo verde, tomate, repollo, cebolla, queso gouda y mayoketchup</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$700</div>
-          <button class="add-btn" onclick="showNotesPopup('Sanguche de Pierna', 700)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/zpJOUwE.jpeg" alt="Cubano" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">CUBANO</div>
-          <div class="item-description">Pan cubano, cerdo asado en mojo verde, queso suizo, jamón ahumado Caserío, pepinillo y aderezo cubano</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$700</div>
-          <button class="add-btn" onclick="showNotesPopup('Cubano', 700)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/0R9hwrT.jpeg" alt="Club Sandwich" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">CLUB SANDWICH</div>
-          <div class="item-description">Pan brioche de molde, pechuga de pollo al grill, queso philadelphia, tocineta, queso cheddar, queso suizo, jamón ahumado, lechuga, tomate, cebolla y Elly's mayo</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$700</div>
-          <button class="add-btn" onclick="showNotesPopup('Club Sandwich', 700)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <img src="https://i.imgur.com/PMeJVl3.jpeg" alt="El Chimichurri" class="item-image">
-      <div class="item-info">
-        <div>
-          <div class="item-name">EL CHIMICHURRI</div>
-          <div class="item-description">Pan ciabatta, carne de chimí elaborada con carne de res y cerdo, queso provolone, salsa chimichurri, tomate, repollo, cebolla encurtida, mayonesa, ketchup y mostaza</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$650</div>
-          <button class="add-btn" onclick="showNotesPopup('El Chimichurri', 650)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="note-papas">
-      ✨ TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS
-    </div>
-
-    <div class="category-title">EXTRAS</div>
-
-    <div class="menu-item">
-      <div class="item-info">
-        <div>
-          <div class="item-name">TOCINETA</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$100</div>
-          <button class="add-btn" onclick="showNotesPopup('Extra Tocineta', 100)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <div class="item-info">
-        <div>
-          <div class="item-name">FONDUE DE QUESO VELVEETA</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$100</div>
-          <button class="add-btn" onclick="showNotesPopup('Extra Fondue de Queso Velveeta', 100)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <div class="item-info">
-        <div>
-          <div class="item-name">SALSITA DE AJO Y PEREJIL</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$50</div>
-          <button class="add-btn" onclick="showNotesPopup('Extra Salsita de Ajo y Perejil', 50)">Agregar</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="menu-item">
-      <div class="item-info">
-        <div>
-          <div class="item-name">ELLY'S MAYO</div>
-        </div>
-        <div class="item-bottom">
-          <div class="item-price">RD$50</div>
-          <button class="add-btn" onclick="showNotesPopup('Extra Ellys Mayo', 50)">Agregar</button>
-        </div>
-      </div>
-    </div>
+    <!-- El menú se genera por JS para soportar soldOut dinámico -->
   </div>
 
   <div class="order-summary">
@@ -862,6 +822,7 @@
       padding: 0;
       width: 30px;
       height: 30px;
+      -webkit-tap-highlight-color: transparent;
     ">×</button>
   </div>
   
@@ -877,283 +838,614 @@
   "></div>
 </div>
 
+<!-- ============================================================
+     SUPABASE SDK
+     ============================================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ============================================================
+     CORE: Supabase init, menu data, soldOut, order logic
+     ============================================================ -->
 <script>
-  const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
-  
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
-  let order = [];
-  let currentOrderId = null;
-  let orderStatusChecker = null;
-  let pendingItem = null;
-  
-  function showNotesPopup(name, price) {
-    pendingItem = { name, price };
-    document.getElementById('notesItemName').textContent = name;
-    document.getElementById('notesTextarea').value = '';
-    document.getElementById('notesPopup').classList.add('show');
-    document.getElementById('overlay').classList.add('show');
-  }
-  
-  function closeNotesPopup() {
-    document.getElementById('notesPopup').classList.remove('show');
-    document.getElementById('overlay').classList.remove('show');
-    pendingItem = null;
-  }
-  
-  function addItemWithNotes() {
-    if (!pendingItem) return;
-    
-    const notes = document.getElementById('notesTextarea').value.trim();
-    const item = {
-      name: pendingItem.name,
-      price: pendingItem.price,
-      notes: notes || null
-    };
-    
-    order.push(item);
-    renderOrder();
-    closeNotesPopup();
-  }
-  
-  function addItem(name, price, notes = null) {
-    order.push({ name, price, notes });
-    renderOrder();
-  }
-  
-  function removeItem(index) {
-    order.splice(index, 1);
-    renderOrder();
-  }
-  
-  function renderOrder() {
-    const list = document.getElementById("orderList");
-    const countBadge = document.getElementById("order-count");
-    const placeOrderBtn = document.getElementById("placeOrderBtn");
-    const totalDiv = document.getElementById("orderTotal");
-    
-    if (order.length === 0) {
-      list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
-      countBadge.style.display = 'none';
-      placeOrderBtn.disabled = true;
-      totalDiv.style.display = 'none';
+// ── Supabase ─────────────────────────────────────────────────
+const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Menu estático (nombre, precio, descripción, imagen, categoría) ──
+const MENU_DATA = {
+  munchies: [
+    { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/mqzDXK4.jpeg',
+      desc:'Yukita frita, cerdo asado en mojo verde, salsita verde de ajo y perejil y queso fresco' },
+    { id:'fries',    name:'Mr. Fries',      price:650,  img:'https://i.imgur.com/mqzDXK4.jpeg',
+      desc:'Papas fritas sazonadas, fondue de queso velveeta, tocineta caramelizada, queso parmesano y puerrito' }
+  ],
+  sandwiches: [
+    { id:'pastrami', name:'Mr. Pastrami',   price:1900, img:'https://i.imgur.com/h2C6YGu.jpeg',
+      desc:'Barra gallega de masa madre de 12", 1/2 lb de pastrami de res angus, mermelada de pimiento morrón ahumada, queso suizo, queso cheddar y Elly\'s mayo' },
+    { id:'chopped',  name:'Chopped Cheese', price:1100, img:'https://i.imgur.com/YZvXvhb.jpeg',
+      desc:'Media baguette, carne molida angus, queso cheddar, queso provolone, tocineta, lechuga, tomate, cebolla, chicharrón ahumado y Elly\'s mayo' },
+    { id:'phillie',  name:'Mr. Phillie Cheese Steak', price:950, img:'https://i.imgur.com/gD4tBQZ.jpeg',
+      desc:'Pan hoagie roll, filete de res angus, cebollas caramelizadas, hongos asados, queso provolone y fondue de queso velveeta' },
+    { id:'smash',    name:'Ellys Classic Smashburger', price:850, img:'https://i.imgur.com/RJntO70.jpeg',
+      desc:'Pan de papa, doble carne angus smash de 4 oz c/u, cebolla blanca, doble queso cheddar, tocineta caramelizada y Elly\'s Mayo' },
+    { id:'pierna',   name:'Sanguche de Pierna', price:700, img:'https://i.imgur.com/P1Z3xJE.jpeg',
+      desc:'Pan cubano, cerdo asado en mojo verde, tomate, repollo, cebolla, queso gouda y mayoketchup' },
+    { id:'cubano',   name:'Cubano',          price:700,  img:'https://i.imgur.com/zpJOUwE.jpeg',
+      desc:'Pan cubano, cerzo asado en mojo verde, queso suizo, jamón ahumado Caserío, pepinillo y aderezo cubano' },
+    { id:'club',     name:'Club Sandwich',   price:700,  img:'https://i.imgur.com/0R9hwrT.jpeg',
+      desc:'Pan brioche de molde, pechuga de pollo al grill, queso philadelphia, tocineta, queso cheddar, queso suizo, jamón ahumado, lechuga, tomate, cebolla y Elly\'s mayo' },
+    { id:'chimi',    name:'El Chimichurri',  price:650,  img:'https://i.imgur.com/PMeJVl3.jpeg',
+      desc:'Pan ciabatta, carne de chimí elaborada con carne de res y cerdo, queso provolone, salsa chimichurri, tomate, repollo, cebolla encurtida, mayonesa, ketchup y mostaza' }
+  ],
+  extras: [
+    { id:'extra_tocineta',  name:'Extra Tocineta',                price:100, img:null, desc:null },
+    { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100, img:null, desc:null },
+    { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,  img:null, desc:null },
+    { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,  img:null, desc:null }
+  ]
+};
+
+// ── Estado ───────────────────────────────────────────────────
+let order            = [];          // { id, name, price, qty, notes }
+let soldOutSet       = new Set();   // IDs de productos agotados
+let currentOrderId   = null;
+let orderStatusChecker = null;
+let pendingItem      = null;
+
+// ── Cargar soldOut desde Supabase (fetch nativo para evitar DataCloneError en iOS) ──
+async function loadSoldOut() {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) {
+      console.warn("⚠️ loadSoldOut HTTP " + res.status + " (tabla 'products' puede no existir aún)");
       return;
     }
-    
-    countBadge.textContent = order.length;
-    countBadge.style.display = 'inline-block';
-    placeOrderBtn.disabled = false;
-    
-    list.innerHTML = "";
-    let total = 0;
-    
-    order.forEach((item, index) => {
-      total += item.price;
-      
-      const div = document.createElement("div");
-      div.className = "order-item";
-      
-      let notesHTML = '';
-      if (item.notes) {
-        notesHTML = `<div class="order-item-notes">📝 ${item.notes}</div>`;
+    const data = await res.json();
+    soldOutSet = new Set(data.map(r => r.id));
+    console.log("✅ Productos agotados cargados:", [...soldOutSet]);
+  } catch (e) {
+    console.warn("⚠️ loadSoldOut error:", e.message);
+  }
+}
+
+// ── Subscribir a cambios de products ────────────────────────
+// Intenta realtime; si falla (DataCloneError en iOS) cae a polling cada 30s.
+let soldOutPoller = null;
+
+function subscribeSoldOut() {
+  try {
+    const channel = db.channel('products-changes');
+    channel
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        const row = payload.new || payload.old;
+        if (!row) return;
+        if (row.sold_out) {
+          soldOutSet.add(row.id);
+        } else {
+          soldOutSet.delete(row.id);
+        }
+        renderMenu();
+        console.log("🔄 soldOut realtime:", row.id, row.sold_out);
+      })
+      .subscribe((status, err) => {
+        if (err || status === 'CHANNEL_ERROR') {
+          console.warn("⚠️ Realtime subscription fallback a polling:", err);
+          startSoldOutPoller();
+        }
+      });
+  } catch (e) {
+    console.warn("⚠️ subscribeSoldOut threw, fallback a polling:", e.message);
+    startSoldOutPoller();
+  }
+}
+
+function startSoldOutPoller() {
+  if (soldOutPoller) return; // ya activo
+  soldOutPoller = setInterval(async () => {
+    try {
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const newSet = new Set(data.map(r => r.id));
+      // Solo re-render si cambió algo
+      if (newSet.size !== soldOutSet.size || [...newSet].some(id => !soldOutSet.has(id))) {
+        soldOutSet = newSet;
+        renderMenu();
+        console.log("🔄 soldOut polling actualizado:", [...soldOutSet]);
       }
-      
-      div.innerHTML = `
-        <div class="order-item-top">
-          <span class="order-item-name">${item.name}</span>
-          <span>
-            <strong style="color: #4a7c2c; margin-right: 10px;">RD$${item.price}</strong>
-            <button class="remove-btn" onclick="removeItem(${index})">✕</button>
-          </span>
+    } catch (e) { /* silente */ }
+  }, 30000); // cada 30s
+}
+
+// ── Render Menu ──────────────────────────────────────────────
+function renderMenu() {
+  const container = document.getElementById('menuSection');
+
+  let html = '<h2 class="section-title">Menú</h2>';
+
+  // MUNCHIES
+  html += '<div class="category-title">MUNCHIES</div>';
+  MENU_DATA.munchies.forEach(item => { html += menuItemHTML(item); });
+
+  // SÁNDWICHES
+  html += '<div class="category-title">SÁNDWICHES</div>';
+  MENU_DATA.sandwiches.forEach(item => { html += menuItemHTML(item); });
+
+  // Nota papas (sin emoji ✨)
+  html += `<div class="note-papas">TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>`;
+
+  // EXTRAS
+  html += '<div class="category-title">EXTRAS</div>';
+  MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
+
+  container.innerHTML = html;
+}
+
+function menuItemHTML(item) {
+  const isSoldOut = soldOutSet.has(item.id);
+  const soldOutClass = isSoldOut ? ' sold-out' : '';
+  const soldOutBadge = isSoldOut ? '<span class="sold-out-badge">Agotado</span>' : '';
+
+  let imgHTML = '';
+  if (item.img) {
+    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image">`;
+  }
+
+  let descHTML = '';
+  if (item.desc) {
+    descHTML = `<div class="item-description">${item.desc}</div>`;
+  }
+
+  // Cantidad actual de este producto en la orden (sin notas específicas para el contador visual)
+  const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+  return `
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}">
+      ${soldOutBadge}
+      ${imgHTML}
+      <div class="item-info">
+        <div>
+          <div class="item-name">${item.name}</div>
+          ${descHTML}
         </div>
-        ${notesHTML}
-      `;
-      list.appendChild(div);
-    });
-    
-    totalDiv.innerHTML = `
-      <div class="order-total">
-        <span>TOTAL:</span>
-        <span>RD$${total}</span>
+        <div class="item-bottom">
+          <div class="item-price">RD$${item.price.toLocaleString()}</div>
+          <div class="menu-qty-wrap" id="menuQty_${item.id}">
+            ${currentQty > 0 ? `
+              <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+              <span class="menu-qty-num">${currentQty}</span>
+            ` : ''}
+            <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>
+          </div>
+        </div>
       </div>
-    `;
-    totalDiv.style.display = 'block';
+    </div>`;
+}
+
+// ── Notes popup ─────────────────────────────────────────────
+function showNotesPopup(id, name, price) {
+  pendingItem = { id, name, price };
+  document.getElementById('notesItemName').textContent = name;
+  document.getElementById('notesTextarea').value = '';
+  document.getElementById('notesPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeNotesPopup() {
+  document.getElementById('notesPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  pendingItem = null;
+}
+
+function addItemWithNotes() {
+  if (!pendingItem) return;
+  const notes = document.getElementById('notesTextarea').value.trim();
+  addItem(pendingItem.id, pendingItem.name, pendingItem.price, notes || null);
+  closeNotesPopup();
+}
+
+// ── Menu qty change (+ / - en la tarjeta del menú) ──────────
+function menuQtyChange(itemId, delta) {
+  // Encontrar el producto en MENU_DATA
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  const menuItem = allItems.find(i => i.id === itemId);
+  if (!menuItem) return;
+
+  const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
+
+  if (delta === 1 && currentQty === 0) {
+    // Primera vez que lo agrega → abrir popup de notas
+    showNotesPopup(itemId, menuItem.name, menuItem.price);
+    return;
   }
-  
-  async function checkOrderStatus(orderId) {
-    try {
-      const { data, error } = await db
-        .from("orders")
-        .select("status")
-        .eq("id", orderId)
-        .single();
-      
-      if (error) {
-        console.error("Error al verificar estado:", error);
-        return;
+
+  if (delta === 1) {
+    // Ya existe → solo incrementar (buscar la primera entrada sin notas, o la primera)
+    const idx = order.findIndex(o => o.id === itemId && !o.notes) !== -1
+      ? order.findIndex(o => o.id === itemId && !o.notes)
+      : order.findIndex(o => o.id === itemId);
+    if (idx !== -1) {
+      order[idx].qty += 1;
+    }
+  } else {
+    // Decrementar → buscar una entrada y bajar qty
+    const idx = order.findIndex(o => o.id === itemId);
+    if (idx !== -1) {
+      order[idx].qty -= 1;
+      if (order[idx].qty <= 0) {
+        order.splice(idx, 1);
       }
-      
-      const statusDiv = document.getElementById("orderStatus");
-      
-      if (data.status === "ready") {
-        statusDiv.className = "status-ready";
-        statusDiv.innerHTML = "🎉 ¡TU ORDEN TÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
-        
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltrzxnMpBSh+zPLaizsIGGS57OihUhELTKXh8bllHAU2jdXzzn0vBSZ6yvLejz0JE1y16+mjUBEKSqDf8LtoHgU0iNP00IExBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFApIoN7xvWgeBTKI1PPRgTIHHWvA7uacSg4OU6nk77NgGgc8k9jzynYrBSZ7yvHcjj4JFVu15+2tWhQKSKDe8b1oHgUyiNTz0YEyBx1rwO7mnEoODlOp5O+zYBoHPJPY88p2KwUme8rx3I4+CRVbteftrVoUCkig3vG9aB4FMojU89GBMgcda8Du5pxKDg5TqeTvs2AaBzyT2PPKdisFJnvK8dyOPgkVW7Xn7a1aFA==');
-        audio.play();
-        
-        if (navigator.vibrate) {
-          navigator.vibrate([500, 200, 500, 200, 500]);
-        }
-        
-        if (Notification.permission === "granted") {
-          new Notification("¡Tu orden está lista!", {
-            body: `Orden #${orderId} - Pasa a la caja a pagar`,
-            icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
-          });
-        }
-        
-        if (orderStatusChecker) {
-          clearInterval(orderStatusChecker);
-          orderStatusChecker = null;
-        }
-      } else if (data.status === "accepted") {
-        statusDiv.className = "status-checking";
-        statusDiv.innerHTML = "👨‍🍳 Chef Elly tá cocinando tu orden...<br><small>Te avisamo cuando té lista pa que pases a pagar</small>";
-      }
-    } catch (err) {
-      console.error("Error al verificar estado:", err);
     }
   }
-  
-  async function placeOrder() {
-    if (order.length === 0) {
-      alert("⚠️ Tu orden tá vacía");
-      return;
-    }
-    
-    const placeOrderBtn = document.getElementById("placeOrderBtn");
-    placeOrderBtn.disabled = true;
-    placeOrderBtn.textContent = "Enviando...";
-    
-    try {
-      const itemsText = order.map(item => {
-        if (item.notes) {
-          return `${item.name} (${item.notes})`;
-        }
-        return item.name;
-      }).join(", ");
-      
-      const total = order.reduce((sum, item) => sum + item.price, 0);
-      
-      console.log("📤 Enviando orden:", { items: itemsText, total, status: "pending" });
-      
-      const { data, error } = await db
-        .from("orders")
-        .insert({
-          items: itemsText,
-          status: "pending",
-          total: total
-        })
-        .select();
-      
-      if (error) {
-        console.error("❌ Error de Supabase:", error);
-        alert("❌ Error al enviar la orden. Intenta de nuevo.");
-        placeOrderBtn.disabled = false;
-        placeOrderBtn.textContent = "Ordenar Ahora";
-        return;
-      }
-      
-      console.log("✅ Orden enviada:", data);
-      
-      const orderNumber = data[0].id;
-      currentOrderId = orderNumber;
-      showSuccessMessage(orderNumber);
-      
-      orderStatusChecker = setInterval(() => {
-        checkOrderStatus(orderNumber);
-      }, 3000);
-      
-      checkOrderStatus(orderNumber);
-      
-      order = [];
-      renderOrder();
-      
-    } catch (err) {
-      console.error("❌ Error inesperado:", err);
-      alert("❌ Error de conexión. Verifica tu internet.");
-      placeOrderBtn.disabled = false;
-      placeOrderBtn.textContent = "Ordenar Ahora";
-    }
-  }
-  
-  function showSuccessMessage(orderNumber) {
-    const orderNumberDisplay = document.getElementById("orderNumberDisplay");
-    const successMessage = document.getElementById("successMessage");
-    
-    orderNumberDisplay.textContent = `#${orderNumber}`;
-    
-    closeNotesPopup();
-    
-    document.getElementById('overlay').classList.add("show");
-    successMessage.classList.add("show");
-    
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }
-  
-  document.getElementById("overlay").addEventListener("click", () => {
-    const successMessage = document.getElementById("successMessage");
-    const notesPopup = document.getElementById("notesPopup");
-    
-    if (successMessage.classList.contains('show')) {
-      document.getElementById("overlay").classList.remove("show");
-      successMessage.classList.remove("show");
-      
-      if (orderStatusChecker) {
-        clearInterval(orderStatusChecker);
-        orderStatusChecker = null;
-      }
-      
-      const placeOrderBtn = document.getElementById("placeOrderBtn");
-      placeOrderBtn.disabled = true;
-      placeOrderBtn.textContent = "Ordenar Ahora";
-    } else if (notesPopup.classList.contains('show')) {
-      closeNotesPopup();
+
+  renderOrder();
+}
+
+// ── Actualizar solo los badges de qty en el menú (sin re-render completo) ──
+function updateMenuQtyBadges() {
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  allItems.forEach(item => {
+    const wrap = document.getElementById('menuQty_' + item.id);
+    if (!wrap) return;
+    const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+    if (currentQty > 0) {
+      wrap.innerHTML = `
+        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+        <span class="menu-qty-num">${currentQty}</span>
+        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)">+</button>`;
+    } else {
+      wrap.innerHTML = `<button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="border-radius:8px;">+</button>`;
     }
   });
-  
+}
+function addItem(id, name, price, notes = null) {
+  // Buscar si ya existe un item con mismo id Y mismas notas
+  const idx = order.findIndex(o => o.id === id && o.notes === notes);
+  if (idx !== -1) {
+    order[idx].qty += 1;
+  } else {
+    order.push({ id, name, price, qty: 1, notes });
+  }
+  renderOrder();
+}
+
+function changeQty(index, delta) {
+  order[index].qty += delta;
+  if (order[index].qty <= 0) {
+    order.splice(index, 1);
+  }
+  renderOrder();
+}
+
+function renderOrder() {
+  const list          = document.getElementById("orderList");
+  const countBadge    = document.getElementById("order-count");
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+  const totalDiv      = document.getElementById("orderTotal");
+
+  const totalQty = order.reduce((s, i) => s + i.qty, 0);
+
+  if (order.length === 0) {
+    list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
+    countBadge.style.display = 'none';
+    placeOrderBtn.disabled   = true;
+    totalDiv.style.display   = 'none';
+    updateMenuQtyBadges();
+    return;
+  }
+
+  countBadge.textContent    = totalQty;
+  countBadge.style.display  = 'inline-block';
+  placeOrderBtn.disabled    = false;
+
+  list.innerHTML = '';
+  let total = 0;
+
+  order.forEach((item, index) => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+
+    const div = document.createElement("div");
+    div.className = "order-item";
+
+    let notesHTML = item.notes
+      ? `<div class="order-item-notes">📝 ${item.notes}</div>`
+      : '';
+
+    div.innerHTML = `
+      <div class="order-item-top">
+        <span class="order-item-name">${item.name}</span>
+        <span class="order-item-price">RD$${subtotal.toLocaleString()}</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+        <div class="order-item-controls">
+          <button class="qty-btn minus" onclick="changeQty(${index}, -1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn"      onclick="changeQty(${index},  1)">+</button>
+          <span style="font-size:0.82em; color:#6c757d; margin-left:4px;">× RD$${item.price.toLocaleString()}</span>
+        </div>
+      </div>
+      ${notesHTML}`;
+    list.appendChild(div);
+  });
+
+  totalDiv.innerHTML = `
+    <div class="order-total">
+      <span>TOTAL:</span>
+      <span>RD$${total.toLocaleString()}</span>
+    </div>`;
+  totalDiv.style.display = 'block';
+
+  // Sincronizar badges de qty en las tarjetas del menú
+  updateMenuQtyBadges();
+}
+
+// ── Place order (fetch nativo → evita DataCloneError en iOS) ──
+async function placeOrder() {
+  if (order.length === 0) return;
+
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+  placeOrderBtn.disabled    = true;
+  placeOrderBtn.textContent = "Enviando...";
+
+  try {
+    const itemsText = order.map(item => {
+      let txt = item.qty > 1 ? `${item.qty}x ${item.name}` : item.name;
+      if (item.notes) txt += ` (${item.notes})`;
+      return txt;
+    }).join(", ");
+
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const body = JSON.stringify({ items: itemsText, status: "pending", total: total });
+
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=representation'
+        },
+        body: body
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("❌ Supabase POST /orders →", res.status, errText);
+      alert("❌ Error al enviar la orden. Intenta de nuevo.");
+      placeOrderBtn.disabled    = false;
+      placeOrderBtn.textContent = "Ordenar Ahora";
+      return;
+    }
+
+    const data = await res.json();
+    // Supabase retorna un array con Prefer: return=representation
+    const orderNumber = Array.isArray(data) ? data[0].id : data.id;
+    currentOrderId     = orderNumber;
+    orderReadyNotified = false;
+
+    showSuccessMessage(orderNumber);
+
+    // Empezar polling de estado
+    if (orderStatusChecker) clearInterval(orderStatusChecker);
+    orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
+    checkOrderStatus(orderNumber);
+
+    order = [];
+    renderOrder();
+
+  } catch (err) {
+    console.error("❌ placeOrder error:", err);
+    alert("❌ Error de conexión. Verifica tu internet.");
+    placeOrderBtn.disabled    = false;
+    placeOrderBtn.textContent = "Ordenar Ahora";
+  }
+}
+
+// ── Success modal ────────────────────────────────────────────
+function showSuccessMessage(orderNumber) {
+  document.getElementById("orderNumberDisplay").textContent = `#${orderNumber}`;
+  closeNotesPopup();
+  document.getElementById('overlay').classList.add("show");
+  document.getElementById('successMessage').classList.add("show");
+
+  // Solicitar permiso de notificación de forma segura (iOS no lo soporta, no tira error)
+  if (typeof Notification !== 'undefined' && Notification.permission === "default") {
+    Notification.requestPermission().catch(() => {});   // .catch para iOS
+  }
+}
+
+// ── Overlay click ────────────────────────────────────────────
+document.getElementById("overlay").addEventListener("click", () => {
+  const successMessage = document.getElementById("successMessage");
+  const notesPopup     = document.getElementById("notesPopup");
+
+  if (successMessage.classList.contains('show')) {
+    document.getElementById("overlay").classList.remove("show");
+    successMessage.classList.remove("show");
+    // NO detenemos el polling aquí; sigue verificando en background
+  } else if (notesPopup.classList.contains('show')) {
+    closeNotesPopup();
+  }
+});
+
+// ── Check order status (polling) ─────────────────────────────
+// En iOS Safari los setInterval se pausan cuando la tab va al background.
+// Solución: cuando la tab vuelve al foco, hacemos un check inmediato.
+let orderReadyNotified = false;
+
+async function checkOrderStatus(orderId) {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=status',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) { console.error("checkOrderStatus HTTP", res.status); return; }
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return;
+
+    const status    = rows[0].status;
+    const statusDiv = document.getElementById("orderStatus");
+
+    if (status === "accepted") {
+      statusDiv.className = "status-checking";
+      statusDiv.innerHTML = "👨‍🍳 Chef Elly tá cocinando tu orden...<br><small>Te avisamo cuando té lista pa que pases a pagar</small>";
+    }
+
+    if (status === "ready" && !orderReadyNotified) {
+      orderReadyNotified = true;
+
+      statusDiv.className = "status-ready";
+      statusDiv.innerHTML = "🎉 ¡TU ORDEN TÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+
+      if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
+
+      showReadyBanner(orderId);
+      if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+      playReadySound();
+      sendDesktopNotification(orderId);
+    }
+  } catch (e) {
+    console.error("checkOrderStatus error:", e.message);
+  }
+}
+
+// Cuando la tab recupera foco → check inmediato (solución principal para iOS)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentOrderId && !orderReadyNotified) {
+    checkOrderStatus(currentOrderId);
+  }
+});
+
+// También al hacer focus (por si visibilitychange no se dispara)
+window.addEventListener('focus', () => {
+  if (currentOrderId && !orderReadyNotified) {
+    checkOrderStatus(currentOrderId);
+  }
+});
+
+// ── Banner "orden lista" (siempre visible, incluso si el modal se cerró) ──
+function showReadyBanner(orderId) {
+  // Si ya existe, no crear otra
+  if (document.getElementById('readyBanner')) return;
+
+  const banner = document.createElement('div');
+  banner.id        = 'readyBanner';
+  banner.className = 'ready-banner';
+  banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} TÁ LISTA!<br>
+    <span style="font-weight:400; font-size:0.92em;">Pasa a la caja a pagar y retira tu orden</span>
+    <button onclick="document.getElementById('readyBanner').remove()">Entendido</button>`;
+  document.body.prepend(banner);
+}
+
+// ── Audio helper ─────────────────────────────────────────────
+// iOS bloquea audio si no hay un gesto del usuario previo en el mismo contexto.
+// Usamos un AudioContext creado en un gesture y lo reutilizamos.
+let audioCtx = null;
+
+function ensureAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Crear audioCtx al primer toque/click (necesario para iOS)
+['touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, ensureAudioContext, { once: true });
+});
+
+function playReadySound() {
+  try {
+    if (!audioCtx) {
+      // Si nunca hubo gesture, no podemos reproducir audio en iOS → es esperado
+      console.log("🔇 No hay AudioContext (sin gesto previo). Normal en iOS.");
+      return;
+    }
+    ensureAudioContext();
+
+    // Tono simple: 3 beeps cortos ascendentes
+    const now = audioCtx.currentTime;
+    [880, 1047, 1319].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.4, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
+      osc.start(now + i * 0.18);
+      osc.stop(now + i * 0.18 + 0.16);
+    });
+  } catch (e) {
+    console.warn("🔇 playReadySound error (esperado en iOS):", e.message);
+  }
+}
+
+// ── Desktop/Android Notification ─────────────────────────────
+function sendDesktopNotification(orderId) {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'granted') {
+      new Notification("¡Tu orden está lista!", {
+        body: `Orden #${orderId} – Pasa a la caja a pagar`,
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
+      });
+    }
+  } catch (e) {
+    console.warn("Notification no disponible:", e.message);
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  await loadSoldOut();
+  renderMenu();
+  subscribeSoldOut();
   console.log("✅ Mr. Sandwich cargado");
+}
+init();
 </script>
 
+<!-- ============================================================
+     PINZER (Chef Elly chatbot) – sin cambios de lógica,
+     solo usa addItem() actualizada
+     ============================================================ -->
 <script>
 let pinzerState = 'idle';
 let pinzerRecommendation = null;
 let pinzerUpsellItem = null;
-let pinzerHasUpsold = false;
+let pinzerHasUpsold  = false;
 
 const pinzerMenu = {
   sandwiches: [
-    { name: 'Mr. Pastrami', price: 1900, tags: ['premium', 'hungry'] },
-    { name: 'Chopped Cheese', price: 1100, tags: ['hungry', 'popular'] },
-    { name: 'Mr. Phillie Cheese Steak', price: 950, tags: ['hungry'] },
-    { name: 'Ellys Classic Smashburger', price: 850, tags: ['hungry', 'quick', 'popular'] },
-    { name: 'Sanguche de Pierna', price: 700, tags: ['quick', 'local'] },
-    { name: 'Cubano', price: 700, tags: ['quick', 'popular'] },
-    { name: 'Club Sandwich', price: 700, tags: ['quick'] },
-    { name: 'El Chimichurri', price: 650, tags: ['quick', 'local'] }
+    { id:'pastrami', name:'Mr. Pastrami',              price:1900, tags:['premium','hungry'] },
+    { id:'chopped', name:'Chopped Cheese',             price:1100, tags:['hungry','popular'] },
+    { id:'phillie', name:'Mr. Phillie Cheese Steak',   price:950,  tags:['hungry'] },
+    { id:'smash',   name:'Ellys Classic Smashburger',  price:850,  tags:['hungry','quick','popular'] },
+    { id:'pierna',  name:'Sanguche de Pierna',         price:700,  tags:['quick','local'] },
+    { id:'cubano',  name:'Cubano',                     price:700,  tags:['quick','popular'] },
+    { id:'club',    name:'Club Sandwich',              price:700,  tags:['quick'] },
+    { id:'chimi',   name:'El Chimichurri',             price:650,  tags:['quick','local'] }
   ],
   munchies: [
-    { name: 'Yukita Cubana', price: 600 },
-    { name: 'Mr. Fries', price: 650 }
-  ],
-  extras: [
-    { name: 'Extra Tocineta', price: 100 },
-    { name: 'Extra Fondue de Queso Velveeta', price: 100 }
+    { id:'yukita', name:'Yukita Cubana', price:600 },
+    { id:'fries',  name:'Mr. Fries',    price:650 }
   ]
 };
 
@@ -1161,7 +1453,7 @@ function openPinzer() {
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
   document.getElementById('pinzer-btn').style.display = 'none';
-  
+
   if (pinzerState === 'idle') {
     pinzerState = 'greeting';
     setTimeout(() => {
@@ -1170,7 +1462,7 @@ function openPinzer() {
         pinzerSay("Soy Chef Elly y toy aquí pa ayudarte.");
         setTimeout(() => {
           pinzerSay("¿Qué tú quieres comer hoy, tigre?");
-          pinzerShowReplies(['Algo rápido', 'Tengo hambre', 'Lo má popular']);
+          pinzerShowReplies(['Algo rápido','Tengo hambre','Lo má popular']);
         }, 800);
       }, 800);
     }, 300);
@@ -1179,13 +1471,13 @@ function openPinzer() {
 
 function closePinzer() {
   document.getElementById('pinzer-modal').style.display = 'none';
-  document.getElementById('pinzer-btn').style.display = 'block';
+  document.getElementById('pinzer-btn').style.display   = 'block';
 }
 
 function pinzerSay(message) {
   const container = document.getElementById('pinzer-messages');
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'pinzer-message pinzer-bot';
+  const msgDiv    = document.createElement('div');
+  msgDiv.className  = 'pinzer-message pinzer-bot';
   msgDiv.textContent = message;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
@@ -1193,8 +1485,8 @@ function pinzerSay(message) {
 
 function pinzerUserSay(message) {
   const container = document.getElementById('pinzer-messages');
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'pinzer-message pinzer-user';
+  const msgDiv    = document.createElement('div');
+  msgDiv.className  = 'pinzer-message pinzer-user';
   msgDiv.textContent = message;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
@@ -1203,12 +1495,11 @@ function pinzerUserSay(message) {
 function pinzerShowReplies(replies) {
   const container = document.getElementById('pinzer-replies');
   container.innerHTML = '';
-  
   replies.forEach(reply => {
     const btn = document.createElement('button');
-    btn.className = 'pinzer-reply-btn';
+    btn.className  = 'pinzer-reply-btn';
     btn.textContent = reply;
-    btn.onclick = () => pinzerHandleReply(reply);
+    btn.onclick    = () => pinzerHandleReply(reply);
     container.appendChild(btn);
   });
 }
@@ -1220,67 +1511,61 @@ function pinzerClearReplies() {
 function pinzerHandleReply(reply) {
   pinzerUserSay(reply);
   pinzerClearReplies();
-  
-  if (pinzerState === 'greeting') {
-    handleGreetingResponse(reply);
-  } else if (pinzerState === 'recommendation') {
-    handleRecommendationResponse(reply);
-  } else if (pinzerState === 'upsell') {
-    handleUpsellResponse(reply);
-  } else if (pinzerState === 'checkout') {
-    handleCheckoutResponse(reply);
-  }
+
+  if      (pinzerState === 'greeting')       handleGreetingResponse(reply);
+  else if (pinzerState === 'recommendation') handleRecommendationResponse(reply);
+  else if (pinzerState === 'upsell')         handleUpsellResponse(reply);
+  else if (pinzerState === 'checkout')       handleCheckoutResponse(reply);
 }
 
 function handleGreetingResponse(reply) {
   let item;
-  
   if (reply === 'Algo rápido') {
-    const quickItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('quick'));
+    const quickItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('quick'));
     item = quickItems[Math.floor(Math.random() * quickItems.length)];
   } else if (reply === 'Tengo hambre') {
-    const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('hungry'));
+    const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('hungry'));
     item = hungryItems[0];
   } else if (reply === 'Lo má popular') {
-    const popularItems = pinzerMenu.sandwiches.filter(i => i.tags && i.tags.includes('popular'));
+    const popularItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('popular'));
     item = popularItems[Math.floor(Math.random() * popularItems.length)];
   }
-  
+
   pinzerRecommendation = item;
   pinzerState = 'recommendation';
-  
+
   setTimeout(() => {
     pinzerSay(`¡Eso tá brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
     setTimeout(() => {
       pinzerSay("¿Lo añadimos a tu orden?");
-      pinzerShowReplies(['Sí, dale', 'No, dejálo']);
+      pinzerShowReplies(['Sí, dale','No, dejálo']);
     }, 800);
   }, 500);
 }
 
 function handleRecommendationResponse(reply) {
   if (reply === 'Sí, dale') {
-    addItem(pinzerRecommendation.name, pinzerRecommendation.price);
-    
+    addItem(pinzerRecommendation.id, pinzerRecommendation.name, pinzerRecommendation.price);
+
     setTimeout(() => {
       pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
-      
+
       if (!pinzerHasUpsold) {
         pinzerState = 'upsell';
-        const upsellItem = pinzerMenu.munchies[1];
+        const upsellItem = pinzerMenu.munchies[1]; // Mr. Fries
         pinzerUpsellItem = upsellItem;
-        
+        pinzerHasUpsold  = true;
+
         setTimeout(() => {
           pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Tán de madre 🍟`);
-          pinzerShowReplies(['Sí, dale', 'No, dejálo']);
-          pinzerHasUpsold = true;
+          pinzerShowReplies(['Sí, dale','No, dejálo']);
         }, 800);
       } else {
         goToCheckout();
       }
     }, 500);
-    
-  } else if (reply === 'No, dejálo') {
+
+  } else {
     setTimeout(() => {
       pinzerSay("Tá bien, tranquilo. Mira el menú arriba 📋");
       pinzerSay("¡Cualquier cosa me dices!");
@@ -1292,21 +1577,18 @@ function handleRecommendationResponse(reply) {
 
 function handleUpsellResponse(reply) {
   if (reply === 'Sí, dale') {
-    addItem(pinzerUpsellItem.name, pinzerUpsellItem.price);
-    
+    addItem(pinzerUpsellItem.id, pinzerUpsellItem.name, pinzerUpsellItem.price);
     setTimeout(() => {
       pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`);
       goToCheckout();
     }, 500);
-    
-  } else if (reply === 'No, dejálo') {
+  } else {
     goToCheckout();
   }
 }
 
 function goToCheckout() {
   pinzerState = 'checkout';
-  
   setTimeout(() => {
     pinzerSay("¡Tu orden tá lista, tigre! Revísala arriba y dale click pa ordenar 🛒");
     pinzerShowReplies(['Ordenar ahora']);
@@ -1317,10 +1599,9 @@ function handleCheckoutResponse(reply) {
   if (reply === 'Ordenar ahora') {
     pinzerState = 'done';
     pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
-    
     setTimeout(() => {
       closePinzer();
-      document.querySelector('.order-summary').scrollIntoView({ behavior: 'smooth' });
+      document.querySelector('.order-summary').scrollIntoView({ behavior:'smooth' });
     }, 1500);
   }
 }
