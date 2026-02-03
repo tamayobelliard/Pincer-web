@@ -408,8 +408,15 @@
 const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
 
-// Helper: headers para fetch nativo
-function sbHeaders(extra = {}) {
+// Headers para GET (sin Content-Type — Android Chrome falla con CORS si lo incluye en GET)
+function sbGetHeaders() {
+  return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+  };
+}
+// Headers para POST / PATCH / PUT (con Content-Type)
+function sbWriteHeaders(extra = {}) {
   return {
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
@@ -528,7 +535,7 @@ async function loadProducts() {
   try {
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
-      { headers: sbHeaders() }
+      { headers: sbGetHeaders() }
     );
     if (!res.ok) {
       // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
@@ -586,7 +593,7 @@ async function toggleSoldOut(productId, isSoldOut) {
       SUPABASE_URL + '/rest/v1/products',
       {
         method: 'POST',
-        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
         body: JSON.stringify({ id: productId, sold_out: isSoldOut })
       }
     );
@@ -626,7 +633,7 @@ async function loadOrders() {
   try {
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
-      { headers: sbHeaders() }
+      { headers: sbGetHeaders() }
     );
     if (!res.ok) {
       console.error("loadOrders HTTP", res.status);
@@ -714,7 +721,7 @@ async function acceptOrder(id) {
       SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
       {
         method: 'PATCH',
-        headers: sbHeaders(),
+        headers: sbWriteHeaders(),
         body: JSON.stringify({ status: 'accepted' })
       }
     );
@@ -738,7 +745,7 @@ async function markReady(id) {
       SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
       {
         method: 'PATCH',
-        headers: sbHeaders(),
+        headers: sbWriteHeaders(),
         body: JSON.stringify({ status: 'ready' })
       }
     );
@@ -788,4 +795,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-
