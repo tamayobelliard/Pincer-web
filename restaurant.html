@@ -425,6 +425,13 @@ function sbWriteHeaders(extra = {}) {
   };
 }
 
+// fetch con timeout — si no responde en 8s lanza error en lugar de colgarse
+function fetchWithTimeout(url, options = {}, ms = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 // ── Menu completo (mismo MENU_DATA que en index.html) ───────
 const MENU_DATA = [
   // munchies
@@ -533,7 +540,7 @@ function sendNotification(title, body, tag) {
 // ── PRODUCTOS: cargar + renderizar + togglear ────────────────
 async function loadProducts() {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
       { headers: sbGetHeaders() }
     );
@@ -589,7 +596,7 @@ async function toggleSoldOut(productId, isSoldOut) {
 
   try {
     // UPSERT: si existe actualiza, si no existe lo inserta
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products',
       {
         method: 'POST',
@@ -631,7 +638,7 @@ function updateProductCardUI(productId, isSoldOut) {
 // ── ÓRDENES: cargar + renderizar ─────────────────────────────
 async function loadOrders() {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
       { headers: sbGetHeaders() }
     );
@@ -717,7 +724,7 @@ async function loadOrders() {
 // ── Aceptar orden (pending → accepted) ──────────────────────
 async function acceptOrder(id) {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
       {
         method: 'PATCH',
@@ -741,7 +748,7 @@ async function acceptOrder(id) {
 // ── Marcar lista (accepted → ready) ─────────────────────────
 async function markReady(id) {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
       {
         method: 'PATCH',
@@ -795,3 +802,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
