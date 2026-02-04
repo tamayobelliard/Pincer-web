@@ -892,6 +892,10 @@
       display: none;
       position: absolute;
       bottom: 110%;
+    }
+    
+    .speech-bubble.show {
+      display: block;
       right: 0;
       background: white;
       padding: 15px 18px;
@@ -1840,7 +1844,7 @@ const clippyMessages = [
 
 function hideBubble() {
   const bubble = document.getElementById('speechBubble');
-  if (bubble) bubble.style.display = 'none';
+  if (bubble) bubble.classList.remove('show');
 }
 
 function showBubble(text, emoji) {
@@ -1851,7 +1855,7 @@ function showBubble(text, emoji) {
   if (bubble && bubbleText && bubbleEmoji) {
     bubbleText.textContent = text;
     bubbleEmoji.textContent = emoji;
-    bubble.style.display = 'block';
+    bubble.classList.add('show');
   }
 }
 
@@ -1885,7 +1889,10 @@ if (document.readyState === 'loading') {
 function openPinzer() {
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
-  document.getElementById('pinzer-btn').style.display = 'none';
+  
+  // Ocultar el chef clippy cuando se abre el modal
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'none';
 
   if (pinzerState === 'idle') {
     pinzerState = 'greeting';
@@ -1904,7 +1911,10 @@ function openPinzer() {
 
 function closePinzer() {
   document.getElementById('pinzer-modal').style.display = 'none';
-  document.getElementById('pinzer-btn').style.display   = 'block';
+  
+  // Volver a mostrar el chef clippy
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'block';
 }
 
 function pinzerSay(message) {
