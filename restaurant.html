@@ -440,7 +440,181 @@
 </head>
 <body>
 
+<!-- Pantalla de Login -->
+<div id="loginScreen" style="
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+">
+  <div style="
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 400px;
+    width: 90%;
+  ">
+    <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em;">
+      📟 Pincer Dashboard
+    </h1>
+    <p style="text-align: center; color: #64748b; margin-bottom: 30px;">
+      Mr. Sandwich by Chef Elly
+    </p>
+    
+    <div id="loginError" style="
+      display: none;
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+    "></div>
+    
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
+          Usuario
+        </label>
+        <input 
+          type="text" 
+          id="username" 
+          required
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+          "
+          placeholder="mrsandwich"
+        >
+      </div>
+      
+      <div style="margin-bottom: 25px;">
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
+          Contraseña
+        </label>
+        <input 
+          type="password" 
+          id="password" 
+          required
+          style="
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+          "
+          placeholder="••••••••"
+        >
+      </div>
+      
+      <button 
+        type="submit"
+        id="loginBtn"
+        style="
+          width: 100%;
+          padding: 15px;
+          background: linear-gradient(135deg, #4a7c2c, #2d5016);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 1.1em;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.2s;
+        "
+      >
+        Iniciar Sesión
+      </button>
+    </form>
+  </div>
+</div>
+
+
 <h1>📟 Pincer – Orders Dashboard</h1>
+
+<!-- Stats Diarios -->
+<div id="dailyStatsPanel" style="
+  background: rgba(255,255,255,0.95);
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 1200px;
+  margin: 0 auto 20px auto;
+  display: none;
+">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h3 style="color: #1e40af; font-size: 1.2em; margin: 0;">
+      📊 Resumen del Día
+    </h3>
+    <button onclick="refreshStats()" style="
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    ">
+      🔄 Actualizar
+    </button>
+  </div>
+  
+  <div style="
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+  ">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total-orders">0</div>
+      <div class="stat-label">Órdenes Totales</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total-sales" style="color: #059669;">RD$0</div>
+      <div class="stat-label">Ventas del Día</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-avg-order">RD$0</div>
+      <div class="stat-label">Ticket Promedio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-completed">0</div>
+      <div class="stat-label">Completadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-top-product">-</div>
+      <div class="stat-label">Más Vendido</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .stat-card {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid #e2e8f0;
+  }
+  .stat-value {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #1e40af;
+    margin-bottom: 5px;
+  }
+  .stat-label {
+    font-size: 0.85em;
+    color: #64748b;
+    font-weight: 600;
+  }
+</style>
+
 <div id="connection-status">🔄 Conectando...</div>
 
 <!-- Banner de notificaciones -->
@@ -999,6 +1173,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log("✅ Pincer Dashboard configurado");
 });
+
 </script>
 </body>
 </html>
+
