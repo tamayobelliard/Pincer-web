@@ -1164,6 +1164,128 @@
      CORE: Supabase init, menu data, soldOut, order logic
      ============================================================ -->
 <script>
+
+
+
+
+
+// ── SESIÓN CON TIMEOUT (10 minutos desde escaneo QR) ────────
+function initSession() {
+  const now = Date.now();
+  const existingSession = localStorage.getItem('pincer_session');
+  
+  if (existingSession) {
+    try {
+      const session = JSON.parse(existingSession);
+      const elapsed = now - session.startTime;
+      const tenMinutes = 10 * 60 * 1000;
+      
+      if (elapsed > tenMinutes) {
+        // Sesión expirada
+        showSessionExpired();
+        return;
+      }
+      
+      // Sesión válida - continuar
+      console.log('Sesión activa, tiempo restante:', Math.floor((tenMinutes - elapsed) / 1000 / 60), 'minutos');
+      
+    } catch (e) {
+      // Sesión corrupta - crear nueva
+      createSession();
+    }
+  } else {
+    // Primera vez - crear sesión
+    createSession();
+  }
+}
+
+function createSession() {
+  const session = {
+    startTime: Date.now(),
+    sessionId: 'session_' + Date.now()
+  };
+  localStorage.setItem('pincer_session', JSON.stringify(session));
+  console.log('Nueva sesión creada');
+}
+
+function showSessionExpired() {
+  // Limpiar sesión
+  localStorage.removeItem('pincer_session');
+  
+  // Mostrar modal
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+  
+  modal.innerHTML = `
+    <div style="
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 400px;
+      margin: 20px;
+    ">
+      <div style="font-size: 3em; margin-bottom: 20px;">⏱️</div>
+      <h2 style="color: #1e293b; margin-bottom: 15px;">Sesión Expirada</h2>
+      <p style="color: #64748b; line-height: 1.6; margin-bottom: 25px;">
+        Han pasado más de 10 minutos desde que escaneaste el código QR.
+      </p>
+      <p style="color: #2d5016; font-weight: 600; font-size: 1.1em; margin-bottom: 25px;">
+        Escanea el código QR nuevamente para continuar
+      </p>
+      <button onclick="location.reload()" style="
+        background: #4a7c2c;
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        border-radius: 12px;
+        font-size: 1.1em;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+      ">
+        Entendido
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+// Verificar sesión cada 30 segundos
+setInterval(() => {
+  const session = localStorage.getItem('pincer_session');
+  if (!session) return;
+  
+  try {
+    const data = JSON.parse(session);
+    const elapsed = Date.now() - data.startTime;
+    const tenMinutes = 10 * 60 * 1000;
+    
+    if (elapsed > tenMinutes) {
+      showSessionExpired();
+    }
+  } catch (e) {
+    // Ignorar
+  }
+}, 30000);
+
+// Iniciar sesión al cargar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSession);
+} else {
+  initSession();
+}
+
+
 // ── Supabase ─────────────────────────────────────────────────
 const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
@@ -1586,7 +1708,7 @@ async function placeOrder() {
 
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
-    const body = JSON.stringify({ items: itemsJSON, status: "pending", total: total });
+    // No expira - la sesión expira);
 
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/orders',
@@ -2052,6 +2174,5 @@ function handleCheckoutResponse(reply) {
 
 </body>
 </html>
-
 
 
