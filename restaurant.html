@@ -1248,7 +1248,7 @@ async function refreshStats() {
       
       document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
       document.getElementById('stat-total-sales').textContent = 
-        'RD
+'RD$' + (data.total_sales || 0).toLocaleString();      
   // Verificar sesión
   if (checkSession()) {
     document.getElementById('loginScreen').style.display = 'none';
