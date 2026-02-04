@@ -1137,11 +1137,195 @@ window.addEventListener('unhandledrejection', (e) => {
   document.getElementById("connection-status").innerHTML = "🔴 Promise error";
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+
+// ══════════════════════════════════════════════════════════════
+// AUTHENTICATION
+// ══════════════════════════════════════════════════════════════
+async function handleLogin(e) {
+  e.preventDefault();
+  
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Verificando...';
+  loginError.style.display = 'none';
+  
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/rpc/verify_dashboard_login',
+      {
+        method: 'POST',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({ p_username: username, p_password: password })
+      },
+      8000
+    );
+    
+    if (!res.ok) {
+      throw new Error('Error de conexión');
+    }
+    
+    const result = await res.json();
+    
+    // RPC retorna un array, tomar el primer elemento
+    const data = Array.isArray(result) ? result[0] : result;
+    
+    if (data && data.success) {
+      // Login exitoso - guardar sesión
+      sessionStorage.setItem('dashboard_session', JSON.stringify({
+        userId: data.user_id,
+        restaurantId: data.restaurant_id,
+        username: username
+      }));
+      
+      // Ocultar login, mostrar dashboard
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dailyStatsPanel').style.display = 'block';
+      
+      // Iniciar dashboard
+      initializeDashboard();
+      
+    } else {
+      loginError.textContent = 'Usuario o contraseña incorrectos';
+      loginError.style.display = 'block';
+    }
+    
+  } catch (err) {
+    console.error('Login error:', err);
+    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
+    loginError.style.display = 'block';
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Iniciar Sesión';
+  }
+}
+
+function checkSession() {
+  const sessionStr = sessionStorage.getItem('dashboard_session');
+  if (!sessionStr) return false;
+  
+  try {
+    const session = JSON.parse(sessionStr);
+    // Sesión permanente - no expira automáticamente
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('dashboard_session');
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DAILY STATS
+// ══════════════════════════════════════════════════════════════
+async function refreshStats() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/rpc/get_daily_stats',
+      {
+        method: 'POST',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({})
+      },
+      8000
+    );
+    
+    if (!res.ok) {
+      console.error('Stats fetch error:', res.status);
+      return;
+    }
+    
+    const stats = await res.json();
+    
+    if (stats && stats.length > 0) {
+      const data = stats[0];
+      
+      document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
+      document.getElementById('stat-total-sales').textContent = 
+        'RD
+  // Verificar sesión
+  if (checkSession()) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dailyStatsPanel').style.display = 'block';
+    initializeDashboard();
+  }
+  // Si no hay sesión, se queda en pantalla de login
+});
+
+</script>
+</body>
+</html>
+ + (data.total_sales || 0).toLocaleString();
+      document.getElementById('stat-avg-order').textContent = 
+        'RD
+  // Verificar sesión
+  if (checkSession()) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dailyStatsPanel').style.display = 'block';
+    initializeDashboard();
+  }
+  // Si no hay sesión, se queda en pantalla de login
+});
+
+</script>
+</body>
+</html>
+ + Math.round(data.avg_order_value || 0).toLocaleString();
+      document.getElementById('stat-completed').textContent = data.completed_orders || 0;
+      document.getElementById('stat-top-product').textContent = 
+        data.top_product === 'N/A' ? '-' : data.top_product;
+    }
+    
+  } catch (err) {
+    console.error('Stats error:', err);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DAILY CLEANUP
+// ══════════════════════════════════════════════════════════════
+async function dailyCleanup() {
+  try {
+    // Limpiar órdenes del día anterior (moverlas al archivo)
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders',
+      {
+        method: 'POST',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({})
+      },
+      8000
+    );
+    
+    if (res.ok) {
+      const result = await res.json();
+      console.log('Daily cleanup: archivadas', result, 'órdenes del día anterior');
+    }
+  } catch (err) {
+    console.error('Daily cleanup error:', err);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INITIALIZE DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function initializeDashboard() {
   console.log("🚀 Iniciando Pincer Dashboard...");
   console.log("🚀 SUPABASE_URL:", SUPABASE_URL);
   console.log("🚀 User agent:", navigator.userAgent);
-
+  
+  // Cleanup de órdenes del día anterior
+  dailyCleanup();
+  
+  // Stats iniciales
+  refreshStats();
+  
   // Notificaciones
   if ("Notification" in window) {
     if      (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
@@ -1159,22 +1343,39 @@ document.addEventListener('DOMContentLoaded', () => {
       showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
     }
   }
-
+  
   // Cargar productos y órdenes
   loadProducts();
   loadOrders();
-
-  // Polling de órdenes cada 3s — también actualiza productos cada 30s
+  
+  // Polling de órdenes cada 3s
   setInterval(loadOrders, 3000);
+  
+  // Refresh stats cada 30s
+  setInterval(refreshStats, 30000);
+  
+  // Refresh products cada 30s
   setInterval(loadProducts, 30000);
-
+  
   // Primer click → habilita audio
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
-
+  
   console.log("✅ Pincer Dashboard configurado");
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Verificar sesión
+  if (checkSession()) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dailyStatsPanel').style.display = 'block';
+    initializeDashboard();
+  }
+  // Si no hay sesión, se queda en pantalla de login
 });
 
 </script>
 </body>
 </html>
+
 
