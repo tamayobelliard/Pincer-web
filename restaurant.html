@@ -1286,6 +1286,13 @@ function addAIMessage(message, isUser = false) {
   container.scrollTop = container.scrollHeight;
 }
 
+
+function askQuickQuestion(question) {
+  const input = document.getElementById('aiChatInput');
+  input.value = question;
+  sendAIMessage();
+}
+
 async function sendAIMessage() {
   const input = document.getElementById('aiChatInput');
   const loading = document.getElementById('aiChatLoading');
@@ -1497,11 +1504,65 @@ document.addEventListener('DOMContentLoaded', () => {
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       ">
         👋 Hola! Soy tu asistente de ventas. Puedo ayudarte a analizar tus datos.<br><br>
-        Pregúntame cosas como:<br>
-        • ¿Cuánto vendí hoy?<br>
-        • ¿Cuál fue mi mejor día este mes?<br>
-        • ¿Qué producto se vende más?<br>
-        • ¿A qué hora tengo más pedidos?
+        <strong style="color: #4a7c2c; margin-bottom: 8px; display: block;">Preguntas rápidas:</strong>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 2px solid #4ade80;
+            color: #166534;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 0.95em;
+          " onmouseover="this.style.background='linear-gradient(135deg, #dcfce7, #bbf7d0)'" onmouseout="this.style.background='linear-gradient(135deg, #f0fdf4, #dcfce7)'">
+            💰 ¿Cuánto vendí hoy?
+          </button>
+          <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #fbbf24;
+            color: #92400e;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 0.95em;
+          " onmouseover="this.style.background='linear-gradient(135deg, #fde68a, #fcd34d)'" onmouseout="this.style.background='linear-gradient(135deg, #fef3c7, #fde68a)'">
+            ⭐ ¿Qué producto se vende más?
+          </button>
+          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border: 2px solid #60a5fa;
+            color: #1e40af;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 0.95em;
+          " onmouseover="this.style.background='linear-gradient(135deg, #bfdbfe, #93c5fd)'" onmouseout="this.style.background='linear-gradient(135deg, #dbeafe, #bfdbfe)'">
+            ⏰ ¿A qué hora tengo más pedidos?
+          </button>
+          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="
+            background: linear-gradient(135deg, #fae8ff, #f5d0fe);
+            border: 2px solid #d946ef;
+            color: #86198f;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 0.95em;
+          " onmouseover="this.style.background='linear-gradient(135deg, #f5d0fe, #e879f9)'" onmouseout="this.style.background='linear-gradient(135deg, #fae8ff, #f5d0fe)'">
+            📦 ¿Cuántas órdenes tuve hoy?
+          </button>
+        </div>
       </div>
     </div>
     
