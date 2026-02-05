@@ -1348,31 +1348,65 @@ async function fetchSalesData() {
 }
 
 async function askClaudeAI(question, salesData) {
-  try {
-    // Llamar a nuestro endpoint de Vercel en vez de Claude directo
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        question: question,
-        salesData: salesData
-      })
-    });
-    
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || 'Error del servidor');
-    }
-    
-    const data = await res.json();
-    return data.answer;
-    
-  } catch (error) {
-    console.error('API error:', error);
-    throw error;
+  // Chatbot simple basado en reglas (sin API)
+  const q = question.toLowerCase();
+  
+  // Calcular totales
+  const today = salesData.find(d => d.date === new Date().toISOString().split('T')[0]);
+  const totalOrders = today?.total_orders || 0;
+  const totalSales = today?.total_sales || 0;
+  const topItem = today?.top_item || 'ninguno todavía';
+  const peakHour = today?.peak_hour;
+  
+  // Respuestas basadas en palabras clave
+  if (q.includes('hola') || q.includes('hi')) {
+    return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
   }
+  
+  if (q.includes('cuanto') && (q.includes('vend') || q.includes('hoy'))) {
+    if (totalOrders === 0) {
+      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
+    }
+    return `💰 ¡Hola! Hoy has vendido <strong>RD${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
+  }
+  
+  if (q.includes('producto') || q.includes('vende') && q.includes('mas')) {
+    if (totalOrders === 0) {
+      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
+    }
+    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
+  }
+  
+  if (q.includes('hora') || q.includes('pico') || q.includes('cuando')) {
+    if (!peakHour) {
+      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
+    }
+    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
+    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
+  }
+  
+  if (q.includes('orden') && q.includes('cuant')) {
+    if (totalOrders === 0) {
+      return '📦 Hoy todavía no has tenido órdenes.';
+    }
+    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
+  }
+  
+  if (q.includes('ayud') || q.includes('puedes')) {
+    return `🤖 Puedo ayudarte con:<br><br>
+    • ¿Cuánto vendí hoy?<br>
+    • ¿Qué producto se vende más?<br>
+    • ¿A qué hora tengo más pedidos?<br>
+    • ¿Cuántas órdenes tuve hoy?<br><br>
+    Solo pregúntame! 😊`;
+  }
+  
+  // Respuesta por defecto
+  return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
+  • "¿Cuánto vendí hoy?"<br>
+  • "¿Qué producto se vende más?"<br>
+  • "¿A qué hora tengo más pedidos?"<br><br>
+  O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
 }
 
 
