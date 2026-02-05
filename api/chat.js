@@ -1,4 +1,14 @@
 export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Solo permitir POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -47,17 +57,21 @@ ${JSON.stringify(salesData, null, 2)}`;
       })
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(`Claude API error: ${response.status}`);
+      console.error('Claude API error:', data);
+      return res.status(response.status).json({ 
+        error: `Claude API error: ${data.error?.message || 'Unknown error'}` 
+      });
     }
 
-    const data = await response.json();
     const answer = data.content.find(c => c.type === 'text')?.text || 'No pude generar una respuesta.';
 
     res.status(200).json({ answer });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Server error:', error);
     res.status(500).json({ error: error.message });
   }
 }
