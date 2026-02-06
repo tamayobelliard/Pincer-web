@@ -551,7 +551,7 @@
 ">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
     <h3 style="color: #1e40af; font-size: 1.2em; margin: 0;">
-      📊 Resumen del Día
+      📊 Resumen del Día <span id="currentDateDisplay" style="font-size: 0.9em; color: #64748b; font-weight: normal;"></span>
     </h3>
     <button onclick="refreshStats()" style="
       background: #4a7c2c;
@@ -664,6 +664,46 @@
 
 <!-- ──────────────────────────────────────────────────────────── -->
 <script>
+// ══════════════════════════════════════════════════════════════
+// TIMEZONE UTILITIES (República Dominicana = UTC-4)
+// ══════════════════════════════════════════════════════════════
+
+const DR_TIMEZONE_OFFSET = -4; // República Dominicana es UTC-4
+
+// Obtener la fecha/hora actual en República Dominicana
+function getDRDate() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const drTime = new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
+  return drTime;
+}
+
+// Convertir Date a string formato YYYY-MM-DD en hora RD
+function getDRDateString(date = null) {
+  const d = date || getDRDate();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Formatear fecha para mostrar (ej: "Viernes 7 Feb 2025")
+function formatDRDate(date = null) {
+  const d = date || getDRDate();
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Actualizar display de fecha actual
+function updateCurrentDateDisplay() {
+  const display = document.getElementById('currentDateDisplay');
+  if (display) {
+    display.textContent = `(${formatDRDate()})`;
+  }
+}
+
 // ── Credenciales ─────────────────────────────────────────────
 const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
@@ -1190,13 +1230,24 @@ function checkSession() {
 
 async function refreshStats() {
   try {
+    // Usar fecha actual de República Dominicana
+    const todayDR = getDRDateString();
+    console.log('📊 Actualizando stats para fecha RD:', todayDR);
+    
     const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
       method: 'POST',
       headers: sbWriteHeaders(),
-      body: JSON.stringify({})
+      body: JSON.stringify({ p_date: todayDR })
     }, 8000);
-    if (!res.ok) { console.error('Stats fetch error:', res.status); return; }
+    
+    if (!res.ok) { 
+      console.error('Stats fetch error:', res.status); 
+      return; 
+    }
+    
     const stats = await res.json();
+    console.log('📊 Stats recibidos:', stats);
+    
     if (stats && stats.length > 0) {
       const data = stats[0];
       document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
@@ -1205,25 +1256,41 @@ async function refreshStats() {
       document.getElementById('stat-completed').textContent = data.completed_orders || 0;
       document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
     }
-  } catch (err) { console.error('Stats error:', err); }
+    
+    // Actualizar display de fecha
+    updateCurrentDateDisplay();
+  } catch (err) { 
+    console.error('Stats error:', err); 
+  }
 }
 
 async function dailyCleanup() {
   try {
+    // Usar fecha actual de República Dominicana
+    const todayDR = getDRDateString();
+    console.log('🧹 Daily cleanup para fecha RD:', todayDR);
+    
     const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
       method: 'POST',
       headers: sbWriteHeaders(),
-      body: JSON.stringify({})
+      body: JSON.stringify({ p_current_date: todayDR })
     }, 8000);
+    
     if (res.ok) {
       const result = await res.json();
-      console.log('Daily cleanup: archivadas', result, 'órdenes del día anterior');
+      console.log('✅ Daily cleanup completado:', result);
     }
-  } catch (err) { console.error('Daily cleanup error:', err); }
+  } catch (err) { 
+    console.error('Daily cleanup error:', err); 
+  }
 }
 
 function initializeDashboard() {
   console.log("🚀 Iniciando Pincer Dashboard...");
+  
+  // Actualizar display de fecha al iniciar
+  updateCurrentDateDisplay();
+  
   dailyCleanup();
   refreshStats();
   if ("Notification" in window) {
@@ -1309,7 +1376,7 @@ async function sendAIMessage() {
     // 1. Obtener datos de ventas de Supabase
     const salesData = await fetchSalesData();
     
-    // 2. Enviar a Claude API para análisis
+    // 2. Enviar a Claude AI para análisis
     const answer = await askClaudeAI(question, salesData);
     
     // 3. Mostrar respuesta
@@ -1325,10 +1392,11 @@ async function sendAIMessage() {
 
 async function fetchSalesData() {
   try {
-    // Obtener últimos 30 días de datos
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
-    const startDateStr = startDate.toISOString().split('T')[0];
+    // Obtener últimos 30 días usando fecha de República Dominicana
+    const endDateDR = getDRDateString();
+    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
+    
+    console.log('📊 Fetching sales data desde', startDateDR, 'hasta', endDateDR);
     
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/rpc/get_sales_data',
@@ -1336,8 +1404,8 @@ async function fetchSalesData() {
         method: 'POST',
         headers: sbWriteHeaders(),
         body: JSON.stringify({
-          p_start_date: startDateStr,
-          p_end_date: new Date().toISOString().split('T')[0]
+          p_start_date: startDateDR,
+          p_end_date: endDateDR
         })
       },
       8000
@@ -1358,12 +1426,15 @@ async function askClaudeAI(question, salesData) {
   // Chatbot simple basado en reglas (sin API)
   const q = question.toLowerCase();
   
-  // Calcular totales
-  const today = salesData.find(d => d.date === new Date().toISOString().split('T')[0]);
+  // Calcular totales usando fecha de RD
+  const todayStr = getDRDateString();
+  const today = salesData.find(d => d.date === todayStr);
   const totalOrders = today?.total_orders || 0;
   const totalSales = today?.total_sales || 0;
   const topItem = today?.top_item || 'ninguno todavía';
   const peakHour = today?.peak_hour;
+  
+  console.log('🤖 AI procesando pregunta. Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
   
   // Respuestas basadas en palabras clave
   if (q.includes('hola') || q.includes('hi')) {
@@ -1613,6 +1684,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
-
-
