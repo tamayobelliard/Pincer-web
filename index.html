@@ -1083,8 +1083,8 @@
   <div class="success-subtext">Guarda tu número de orden</div>
   <div class="order-number-display" id="orderNumberDisplay">#0000</div>
   <div id="orderStatus" class="status-checking">
-    👨‍🍳 Chef Elly está preparando tu orden...<br>
-    <small>Te avisamos cuando esté lista</small>
+    ⏳ Tu orden ha sido recibida<br>
+    <small>En cualquier momento comenzarán a prepararla</small>
   </div>
 </div>
 
@@ -1620,9 +1620,18 @@ function renderOrder() {
 async function placeOrder() {
   if (order.length === 0) return;
 
+  // Scroll al total primero para que vean su orden
+  const orderSummary = document.querySelector('.order-summary');
+  if (orderSummary) {
+    orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Esperar un momento para que vean el total
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   const placeOrderBtn = document.getElementById("placeOrderBtn");
   placeOrderBtn.disabled = true;
-  placeOrderBtn.textContent = "Enviando...";
+  placeOrderBtn.textContent = "Procesando...";
 
   try {
     const itemsArray = order.map(item => ({
@@ -1761,6 +1770,7 @@ async function checkOrderStatus(orderId) {
     const status = rows[0].status;
     const statusDiv = document.getElementById("orderStatus");
 
+    // Solo actualizar si el status es "accepted" o "ready"
     if (status === "accepted") {
       statusDiv.className = "status-checking";
       statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
@@ -2124,3 +2134,4 @@ init();
 
 </body>
 </html>
+
