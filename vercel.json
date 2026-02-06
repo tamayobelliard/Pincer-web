@@ -1,7 +1,22 @@
 {
-  "routes": [
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/restaurant", "dest": "/restaurant.html" },
-    { "src": "/restaurant.html", "dest": "/restaurant.html" }
+  "headers": [
+    {
+      "source": "/restaurant/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
   ]
 }
