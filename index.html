@@ -1228,6 +1228,7 @@ let currentOrderId = null;
 let orderStatusChecker = null;
 let pendingItem = null;
 let orderReadyNotified = false;
+let orderReviewed = false; // Nueva variable para saber si el usuario revisó el total
 
 // ══════════════════════════════════════════════════════════════
 // FUNCIONES DE ERROR MEJORADAS
@@ -1564,6 +1565,7 @@ function renderOrder() {
     countBadge.style.display = 'none';
     placeOrderBtn.disabled = true;
     totalDiv.style.display = 'none';
+    orderReviewed = false; // Resetear cuando se vacía
     updateMenuQtyBadges();
     return;
   }
@@ -1571,6 +1573,10 @@ function renderOrder() {
   countBadge.textContent = totalQty;
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
+  
+  // Resetear el estado de revisión y el texto del botón cuando cambia la orden
+  orderReviewed = false;
+  placeOrderBtn.textContent = "Ordenar Ahora";
 
   list.innerHTML = '';
   let total = 0;
@@ -1620,16 +1626,22 @@ function renderOrder() {
 async function placeOrder() {
   if (order.length === 0) return;
 
-  // Scroll al total primero para que vean su orden
-  const orderSummary = document.querySelector('.order-summary');
-  if (orderSummary) {
-    orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+
+  // PRIMER PASO: Scroll al total para que revisen la orden
+  if (!orderReviewed) {
+    const orderSummary = document.querySelector('.order-summary');
+    if (orderSummary) {
+      orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    // Cambiar el botón a "Completar Orden"
+    placeOrderBtn.textContent = "Completar Orden";
+    orderReviewed = true;
+    return; // Salir aquí, esperar a que presionen de nuevo
   }
 
-  // Esperar un momento para que vean el total
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const placeOrderBtn = document.getElementById("placeOrderBtn");
+  // SEGUNDO PASO: Enviar la orden
   placeOrderBtn.disabled = true;
   placeOrderBtn.textContent = "Procesando...";
 
@@ -2134,4 +2146,5 @@ init();
 
 </body>
 </html>
+
 
