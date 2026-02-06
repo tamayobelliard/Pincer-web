@@ -1441,33 +1441,38 @@ async function askClaudeAI(question, salesData) {
     return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
   }
   
-  if (q.includes('cuanto') && (q.includes('vend') || q.includes('hoy'))) {
+  // ¿Cuánto vendí hoy?
+  if ((q.includes('cuanto') || q.includes('cuánto')) && (q.includes('vend') || q.includes('hoy'))) {
     if (totalOrders === 0) {
       return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
     }
-    return `💰 ¡Hola! Hoy has vendido <strong>RD${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
+    return `💰 ¡Hola! Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
   }
   
-  if (q.includes('producto') || q.includes('vende') && q.includes('mas')) {
+  // ¿Cuántas órdenes tuve hoy?
+  if ((q.includes('cuanta') || q.includes('cuánta') || q.includes('cuanto') || q.includes('cuánto')) && 
+      (q.includes('orden') || q.includes('tuve') || q.includes('tengo'))) {
+    if (totalOrders === 0) {
+      return '📦 Hoy todavía no has tenido órdenes.';
+    }
+    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
+  }
+  
+  // ¿Qué producto se vende más?
+  if ((q.includes('producto') || q.includes('item')) && (q.includes('mas') || q.includes('más') || q.includes('vende'))) {
     if (totalOrders === 0) {
       return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
     }
     return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
   }
   
-  if (q.includes('hora') || q.includes('pico') || q.includes('cuando')) {
+  // ¿A qué hora tengo más pedidos?
+  if (q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo')) {
     if (!peakHour) {
       return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
     }
     const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
     return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
-  }
-  
-  if (q.includes('orden') && q.includes('cuant')) {
-    if (totalOrders === 0) {
-      return '📦 Hoy todavía no has tenido órdenes.';
-    }
-    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
   }
   
   if (q.includes('ayud') || q.includes('puedes')) {
