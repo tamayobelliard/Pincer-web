@@ -1434,48 +1434,22 @@ async function askClaudeAI(question, salesData) {
   const topItem = today?.top_item || 'ninguno todavía';
   const peakHour = today?.peak_hour;
   
-  console.log('🤖 AI procesando pregunta. Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
+  console.log('🤖 AI procesando pregunta:', question);
+  console.log('🤖 Pregunta en lowercase:', q);
+  console.log('🤖 Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
+  console.log('🤖 Sales data recibido:', salesData);
   
-  // Respuestas basadas en palabras clave
+  // Respuestas basadas en palabras clave (orden importa - específico primero)
+  
+  // Saludo
   if (q.includes('hola') || q.includes('hi')) {
+    console.log('✅ Match: Saludo');
     return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
   }
   
-  // ¿Cuánto vendí hoy?
-  if ((q.includes('cuanto') || q.includes('cuánto')) && (q.includes('vend') || q.includes('hoy'))) {
-    if (totalOrders === 0) {
-      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
-    }
-    return `💰 ¡Hola! Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
-  }
-  
-  // ¿Cuántas órdenes tuve hoy?
-  if ((q.includes('cuanta') || q.includes('cuánta') || q.includes('cuanto') || q.includes('cuánto')) && 
-      (q.includes('orden') || q.includes('tuve') || q.includes('tengo'))) {
-    if (totalOrders === 0) {
-      return '📦 Hoy todavía no has tenido órdenes.';
-    }
-    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
-  }
-  
-  // ¿Qué producto se vende más?
-  if ((q.includes('producto') || q.includes('item')) && (q.includes('mas') || q.includes('más') || q.includes('vende'))) {
-    if (totalOrders === 0) {
-      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
-    }
-    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
-  }
-  
-  // ¿A qué hora tengo más pedidos?
-  if (q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo')) {
-    if (!peakHour) {
-      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
-    }
-    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
-    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
-  }
-  
+  // Ayuda
   if (q.includes('ayud') || q.includes('puedes')) {
+    console.log('✅ Match: Ayuda');
     return `🤖 Puedo ayudarte con:<br><br>
     • ¿Cuánto vendí hoy?<br>
     • ¿Qué producto se vende más?<br>
@@ -1484,11 +1458,61 @@ async function askClaudeAI(question, salesData) {
     Solo pregúntame! 😊`;
   }
   
+  // ¿Cuántas órdenes? (PRIMERO para que no lo capture "cuánto vendí")
+  const tieneCuantas = q.includes('cuanta') || q.includes('cuánta');
+  const tieneOrden = q.includes('orden') || q.includes('tuve') || q.includes('tengo');
+  
+  if (tieneCuantas && tieneOrden) {
+    console.log('✅ Match: Cuántas órdenes');
+    if (totalOrders === 0) {
+      return '📦 Hoy todavía no has tenido órdenes.';
+    }
+    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
+  }
+  
+  // ¿Cuánto vendí hoy?
+  const tieneCuanto = q.includes('cuanto') || q.includes('cuánto');
+  const tieneVenta = q.includes('vend') || q.includes('venta') || q.includes('hoy');
+  
+  if (tieneCuanto && tieneVenta) {
+    console.log('✅ Match: Cuánto vendí');
+    if (totalOrders === 0) {
+      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
+    }
+    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
+  }
+  
+  // ¿Qué producto se vende más?
+  const tieneProducto = q.includes('producto') || q.includes('item');
+  const tieneMas = q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular');
+  
+  if (tieneProducto && tieneMas) {
+    console.log('✅ Match: Producto más vendido');
+    if (totalOrders === 0) {
+      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
+    }
+    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
+  }
+  
+  // ¿A qué hora tengo más pedidos?
+  const tieneHora = q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo');
+  
+  if (tieneHora) {
+    console.log('✅ Match: Hora pico');
+    if (!peakHour) {
+      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
+    }
+    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
+    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
+  }
+  
   // Respuesta por defecto
+  console.log('❌ No match - Respuesta por defecto');
   return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
   • "¿Cuánto vendí hoy?"<br>
   • "¿Qué producto se vende más?"<br>
-  • "¿A qué hora tengo más pedidos?"<br><br>
+  • "¿A qué hora tengo más pedidos?"<br>
+  • "¿Cuántas órdenes tuve hoy?"<br><br>
   O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
 }
 
