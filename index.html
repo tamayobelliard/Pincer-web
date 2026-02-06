@@ -114,6 +114,7 @@
       border-color: #4a7c2c;
     }
 
+    /* Agotado overlay */
     .menu-item.sold-out {
       opacity: 0.5;
       pointer-events: none;
@@ -178,6 +179,7 @@
       flex-shrink: 0;
     }
 
+    /* Qty selector en la tarjeta del menú */
     .menu-qty-wrap {
       display: flex;
       align-items: center;
@@ -290,6 +292,7 @@
       margin-top: 4px;
     }
 
+    /* Quantity controls in order */
     .order-item-controls {
       display: flex;
       align-items: center;
@@ -588,6 +591,7 @@
       background: #2d5016;
     }
 
+    /* Popup producto agotado */
     .soldout-popup {
       position: fixed;
       top: 50%;
@@ -643,6 +647,7 @@
       background: #2d5016;
     }
 
+    /* Extras en el popup de notas */
     .extras-section {
       margin: 15px 0 10px 0;
       padding-top: 12px;
@@ -691,6 +696,108 @@
       color: #4a7c2c;
     }
 
+    #pinzer-btn {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      background: linear-gradient(135deg, #4a7c2c, #2d5016);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 50px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(74, 124, 44, 0.6);
+      z-index: 998;
+      transition: all 0.3s;
+      line-height: 1.5;
+      text-align: center;
+      max-width: 200px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #pinzer-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 32px rgba(74, 124, 44, 0.7);
+    }
+
+    #pinzer-modal {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-width: 90vw;
+      height: 500px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      z-index: 999;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pinzer-message {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .pinzer-bot {
+      background: #f4e4c1;
+      color: #2d5016;
+      align-self: flex-start;
+    }
+
+    .pinzer-user {
+      background: #4a7c2c;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .pinzer-reply-btn {
+      background: white;
+      border: 2px solid #4a7c2c;
+      color: #4a7c2c;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .pinzer-reply-btn:hover {
+      background: #4a7c2c;
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #pinzer-messages {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+
     .note-papas {
       background: #fff3cd;
       border-left: 4px solid #ffc107;
@@ -702,6 +809,7 @@
       font-weight: 600;
     }
 
+    /* Banner cuando la orden está lista y el modal se cerró */
     .ready-banner {
       position: fixed;
       top: 0;
@@ -737,6 +845,7 @@
       cursor: pointer;
     }
 
+    /* ========== CHEF ELLY CLIPPY ========== */
     .chef-clippy {
       position: fixed;
       bottom: 20px;
@@ -902,82 +1011,6 @@
         box-shadow: 0 0 0 8px rgba(239,68,68,0);
       }
     }
-
-    #pinzer-modal {
-      display: none;
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 350px;
-      max-width: 90vw;
-      height: 500px;
-      max-height: 70vh;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-      z-index: 999;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .pinzer-message {
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      max-width: 80%;
-      animation: slideInMsg 0.3s ease-out;
-    }
-
-    @keyframes slideInMsg {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .pinzer-bot {
-      background: #f4e4c1;
-      color: #2d5016;
-      align-self: flex-start;
-    }
-
-    .pinzer-user {
-      background: #4a7c2c;
-      color: white;
-      align-self: flex-end;
-      margin-left: auto;
-    }
-
-    .pinzer-reply-btn {
-      background: white;
-      border: 2px solid #4a7c2c;
-      color: #4a7c2c;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .pinzer-reply-btn:hover {
-      background: #4a7c2c;
-      color: white;
-    }
-
-    #pinzer-messages {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-      background: #f8f9fa;
-    }
     
     @media (max-width: 768px) {
       .clippy-avatar {
@@ -988,200 +1021,6 @@
         max-width: 200px;
         font-size: 0.9em;
       }
-    }
-
-    /* Error popup mejorado */
-    .error-popup {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      background: white;
-      padding: 30px 25px;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      z-index: 1001;
-      transition: all 0.3s;
-      max-width: 90%;
-      width: 380px;
-      text-align: center;
-    }
-    .error-popup.show {
-      transform: translate(-50%, -50%) scale(1);
-    }
-    .error-popup .error-emoji {
-      font-size: 3em;
-      margin-bottom: 15px;
-    }
-    .error-popup h3 {
-      color: #dc2626;
-      font-size: 1.3em;
-      margin-bottom: 12px;
-    }
-    .error-popup p {
-      color: #64748b;
-      font-size: 0.95em;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-    .error-popup button {
-      background: #4a7c2c;
-      color: white;
-      border: none;
-      padding: 12px 30px;
-      border-radius: 8px;
-      font-size: 1em;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-      width: 100%;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .error-popup button:hover {
-      background: #2d5016;
-    }
-
-    /* My Orders Section */
-    .my-orders-section {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-
-    .my-order-card {
-      background: #f8fafc;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      border-left: 5px solid #94a3b8;
-      position: relative;
-      transition: all 0.3s;
-    }
-
-    .my-order-card.status-pending {
-      border-left-color: #f59e0b;
-      background: #fffbeb;
-    }
-
-    .my-order-card.status-accepted {
-      border-left-color: #3b82f6;
-      background: #eff6ff;
-    }
-
-    .my-order-card.status-ready {
-      border-left-color: #22c55e;
-      background: #f0fdf4;
-      animation: pulseReady 2s infinite;
-    }
-
-    @keyframes pulseReady {
-      0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(34,197,94,0.3); }
-      50% { transform: scale(1.02); box-shadow: 0 4px 16px rgba(34,197,94,0.6); }
-    }
-
-    .my-order-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .my-order-number {
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #1e40af;
-    }
-
-    .my-order-status {
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .status-pending .my-order-status {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .status-accepted .my-order-status {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .status-ready .my-order-status {
-      background: #d1fae5;
-      color: #065f46;
-      font-weight: 700;
-      font-size: 0.9em;
-    }
-
-    .my-order-remove {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #ef4444;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      transition: all 0.2s;
-      line-height: 1;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .my-order-remove:hover {
-      background: #dc2626;
-      transform: scale(1.1);
-    }
-
-    .my-order-items {
-      margin: 10px 0;
-      padding: 10px;
-      background: white;
-      border-radius: 8px;
-      font-size: 0.95em;
-    }
-
-    .my-order-item {
-      color: #475569;
-      margin-bottom: 4px;
-    }
-
-    .my-order-item strong {
-      color: #1e293b;
-    }
-
-    .my-order-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid #e2e8f0;
-    }
-
-    .my-order-total {
-      font-weight: 700;
-      color: #4a7c2c;
-      font-size: 1.1em;
-    }
-
-    .my-order-time {
-      font-size: 0.85em;
-      color: #64748b;
     }
   </style>
 </head>
@@ -1198,6 +1037,7 @@
 
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
+    <!-- El menú se genera por JS para soportar soldOut dinámico -->
   </div>
 
   <div class="order-summary">
@@ -1215,14 +1055,6 @@
   </div>
 </div>
 
-<!-- My Orders Section -->
-<div class="container">
-  <div class="my-orders-section" id="myOrdersSection" style="display: none;">
-    <h2 class="section-title">📦 Mis Órdenes</h2>
-    <div id="myOrdersList"></div>
-  </div>
-</div>
-
 <button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
   Ordenar Ahora
 </button>
@@ -1235,7 +1067,7 @@
   <div class="order-number-display" id="orderNumberDisplay">#0000</div>
   <div id="orderStatus" class="status-checking">
     👨‍🍳 Chef Elly está preparando tu orden...<br>
-    <small>Te avisamos cuando esté lista</small>
+    <small>Te avisamo cuando té lista</small>
   </div>
 </div>
 
@@ -1246,7 +1078,9 @@
   
   <div class="extras-section" id="extrasSection">
     <h4>➕ Agregar extras (opcional)</h4>
-    <div class="extras-list" id="extrasList"></div>
+    <div class="extras-list" id="extrasList">
+      <!-- Se genera dinámicamente por JS -->
+    </div>
   </div>
 
   <div class="notes-popup-buttons">
@@ -1255,25 +1089,20 @@
   </div>
 </div>
 
+<!-- Popup producto agotado -->
 <div class="soldout-popup" id="soldoutPopup">
   <div class="soldout-emoji">😔</div>
   <h3>¡Producto agotado!</h3>
   <div class="soldout-product-name" id="soldoutProductName">—</div>
   <p>Lamentablemente este producto no está disponible en este momento.<br>
-     ¡Pero no te preocupes! Tenemos otras deliciosas opciones que te van a encantar. 🍔</p>
+     ¡Pero no te preocupes! Tenemos otros deliciosos opciones que te van a encantar. 🍔</p>
   <button onclick="closeSoldOutPopup()">Ver otros productos</button>
 </div>
 
-<!-- Error popup mejorado -->
-<div class="error-popup" id="errorPopup">
-  <div class="error-emoji">⚠️</div>
-  <h3 id="errorTitle">Error de Conexión</h3>
-  <p id="errorMessage">Hubo un problema al procesar tu solicitud. Por favor intenta de nuevo.</p>
-  <button onclick="closeErrorPopup()">Entendido</button>
-</div>
-
+<!-- CHEF ELLY CLIPPY -->
 <div class="chef-clippy" id="chefClippy">
   <div class="clippy-container">
+    <!-- Globo de diálogo -->
     <div class="speech-bubble" id="speechBubble">
       <button class="bubble-close" onclick="hideBubble()">×</button>
       <p class="bubble-text">
@@ -1282,6 +1111,7 @@
       </p>
     </div>
     
+    <!-- Avatar con logo real -->
     <div class="clippy-avatar" onclick="openPinzer()">
       <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Chef Elly" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
       <div class="notification-pulse" id="notificationBadge" style="display: none;">3</div>
@@ -1325,17 +1155,21 @@
   "></div>
 </div>
 
+<!-- ============================================================
+     SUPABASE SDK
+     ============================================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<!-- ============================================================
+     CORE: Supabase init, menu data, soldOut, order logic
+     ============================================================ -->
 <script>
-// ══════════════════════════════════════════════════════════════
-// CONFIGURACIÓN Y DATOS
-// ══════════════════════════════════════════════════════════════
-
-const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+// ── Supabase ─────────────────────────────────────────────────
+const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── Menu estático (nombre, precio, descripción, imagen, categoría) ──
 const MENU_DATA = {
   munchies: [
     { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/7L5Pv7T.jpeg',
@@ -1369,37 +1203,14 @@ const MENU_DATA = {
   ]
 };
 
-// ══════════════════════════════════════════════════════════════
-// VARIABLES DE ESTADO
-// ══════════════════════════════════════════════════════════════
-
-let order = [];
-let soldOutSet = new Set();
-let currentOrderId = null;
+// ── Estado ───────────────────────────────────────────────────
+let order            = [];          // { id, name, price, qty, notes }
+let soldOutSet       = new Set();   // IDs de productos agotados
+let currentOrderId   = null;
 let orderStatusChecker = null;
-let pendingItem = null;
-let orderReadyNotified = false;
+let pendingItem      = null;
 
-// ══════════════════════════════════════════════════════════════
-// FUNCIONES DE ERROR MEJORADAS
-// ══════════════════════════════════════════════════════════════
-
-function showError(title, message) {
-  document.getElementById('errorTitle').textContent = title;
-  document.getElementById('errorMessage').textContent = message;
-  document.getElementById('errorPopup').classList.add('show');
-  document.getElementById('overlay').classList.add('show');
-}
-
-function closeErrorPopup() {
-  document.getElementById('errorPopup').classList.remove('show');
-  document.getElementById('overlay').classList.remove('show');
-}
-
-// ══════════════════════════════════════════════════════════════
-// CARGAR PRODUCTOS AGOTADOS
-// ══════════════════════════════════════════════════════════════
-
+// ── Cargar soldOut desde Supabase (fetch nativo para evitar DataCloneError en iOS) ──
 async function loadSoldOut() {
   try {
     const res = await fetch(
@@ -1407,7 +1218,7 @@ async function loadSoldOut() {
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
     );
     if (!res.ok) {
-      console.warn("⚠️ loadSoldOut HTTP " + res.status);
+      console.warn("⚠️ loadSoldOut HTTP " + res.status + " (tabla 'products' puede no existir aún)");
       return;
     }
     const data = await res.json();
@@ -1418,10 +1229,8 @@ async function loadSoldOut() {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// SUBSCRIBIR A CAMBIOS (con fallback a polling)
-// ══════════════════════════════════════════════════════════════
-
+// ── Subscribir a cambios de products ────────────────────────
+// Intenta realtime; si falla (DataCloneError en iOS) cae a polling cada 30s.
 let soldOutPoller = null;
 
 function subscribeSoldOut() {
@@ -1441,7 +1250,7 @@ function subscribeSoldOut() {
       })
       .subscribe((status, err) => {
         if (err || status === 'CHANNEL_ERROR') {
-          console.warn("⚠️ Realtime fallback a polling:", err);
+          console.warn("⚠️ Realtime subscription fallback a polling:", err);
           startSoldOutPoller();
         }
       });
@@ -1452,7 +1261,7 @@ function subscribeSoldOut() {
 }
 
 function startSoldOutPoller() {
-  if (soldOutPoller) return;
+  if (soldOutPoller) return; // ya activo
   soldOutPoller = setInterval(async () => {
     try {
       const res = await fetch(
@@ -1462,32 +1271,34 @@ function startSoldOutPoller() {
       if (!res.ok) return;
       const data = await res.json();
       const newSet = new Set(data.map(r => r.id));
+      // Solo re-render si cambió algo
       if (newSet.size !== soldOutSet.size || [...newSet].some(id => !soldOutSet.has(id))) {
         soldOutSet = newSet;
         renderMenu();
         console.log("🔄 soldOut polling actualizado:", [...soldOutSet]);
       }
     } catch (e) { /* silente */ }
-  }, 30000);
+  }, 30000); // cada 30s
 }
 
-// ══════════════════════════════════════════════════════════════
-// RENDER MENU
-// ══════════════════════════════════════════════════════════════
-
+// ── Render Menu ──────────────────────────────────────────────
 function renderMenu() {
   const container = document.getElementById('menuSection');
 
   let html = '<h2 class="section-title">Menú</h2>';
 
+  // MUNCHIES
   html += '<div class="category-title">MUNCHIES</div>';
   MENU_DATA.munchies.forEach(item => { html += menuItemHTML(item); });
 
+  // SÁNDWICHES
   html += '<div class="category-title">SÁNDWICHES</div>';
   MENU_DATA.sandwiches.forEach(item => { html += menuItemHTML(item); });
 
+  // Nota papas (sin emoji ✨)
   html += `<div class="note-papas">TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>`;
 
+  // EXTRAS
   html += '<div class="category-title">EXTRAS</div>';
   MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
 
@@ -1509,8 +1320,10 @@ function menuItemHTML(item) {
     descHTML = `<div class="item-description">${item.desc}</div>`;
   }
 
+  // Cantidad actual de este producto en la orden
   const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
 
+  // Si está agotado O es un extra: sin botones
   const isExtra = item.id.startsWith('extra_');
   const qtyHTML = (isSoldOut || isExtra) ? '' : `
             ${currentQty > 0 ? `
@@ -1536,15 +1349,13 @@ function menuItemHTML(item) {
     </div>`;
 }
 
-// ══════════════════════════════════════════════════════════════
-// NOTES POPUP
-// ══════════════════════════════════════════════════════════════
-
+// ── Notes popup ─────────────────────────────────────────────
 function showNotesPopup(id, name, price) {
   pendingItem = { id, name, price, extras: [] };
   document.getElementById('notesItemName').textContent = name;
   document.getElementById('notesTextarea').value = '';
   
+  // Renderizar checkboxes de extras
   const extrasList = document.getElementById('extrasList');
   extrasList.innerHTML = MENU_DATA.extras.map(extra => {
     const isSoldOut = soldOutSet.has(extra.id);
@@ -1556,7 +1367,7 @@ function showNotesPopup(id, name, price) {
                onchange="toggleExtra('${extra.id}', '${extra.name}', ${extra.price}, this.checked)">
         <label for="extra_${extra.id}" style="${isSoldOut ? 'cursor:not-allowed;' : ''}">
           <span>${label}</span>
-          <span class="extra-price">+RD$${extra.price}</span>
+          <span class="extra-price">+RD${extra.price}</span>
         </label>
       </div>`;
   }).join('');
@@ -1580,12 +1391,25 @@ function toggleExtra(id, name, price, checked) {
   }
 }
 
+// ── Popup producto agotado ──────────────────────────────────
+function showSoldOutPopup(productName) {
+  document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
+  document.getElementById('soldoutPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSoldOutPopup() {
+  document.getElementById('soldoutPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
 function addItemWithNotes() {
   if (!pendingItem) return;
   const notes = document.getElementById('notesTextarea').value.trim();
   
+  // Agregar el item principal
   addItem(pendingItem.id, pendingItem.name, pendingItem.price, notes || null);
   
+  // Agregar cada extra como un item vinculado (nota indica a qué pertenece)
   if (pendingItem.extras && pendingItem.extras.length > 0) {
     pendingItem.extras.forEach(extra => {
       const extraNote = `(para ${pendingItem.name})`;
@@ -1596,42 +1420,29 @@ function addItemWithNotes() {
   closeNotesPopup();
 }
 
-// ══════════════════════════════════════════════════════════════
-// SOLDOUT POPUP
-// ══════════════════════════════════════════════════════════════
-
-function showSoldOutPopup(productName) {
-  document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
-  document.getElementById('soldoutPopup').classList.add('show');
-  document.getElementById('overlay').classList.add('show');
-}
-
-function closeSoldOutPopup() {
-  document.getElementById('soldoutPopup').classList.remove('show');
-  document.getElementById('overlay').classList.remove('show');
-}
-
-// ══════════════════════════════════════════════════════════════
-// MENU QTY CHANGE
-// ══════════════════════════════════════════════════════════════
-
+// ── Menu qty change (+ / - en la tarjeta del menú) ──────────
 function menuQtyChange(itemId, delta) {
+  // Bloquear si es un extra (solo se agregan desde el popup)
   if (itemId.startsWith('extra_')) return;
 
+  // Encontrar el producto en MENU_DATA
   const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
   const menuItem = allItems.find(i => i.id === itemId);
   if (!menuItem) return;
 
+  // Bloquear si está agotado → mostrar popup
   if (soldOutSet.has(itemId)) { showSoldOutPopup(menuItem.name); return; }
 
   const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
 
   if (delta === 1 && currentQty === 0) {
+    // Primera vez que lo agrega → abrir popup de notas
     showNotesPopup(itemId, menuItem.name, menuItem.price);
     return;
   }
 
   if (delta === 1) {
+    // Ya existe → solo incrementar (buscar la primera entrada sin notas, o la primera)
     const idx = order.findIndex(o => o.id === itemId && !o.notes) !== -1
       ? order.findIndex(o => o.id === itemId && !o.notes)
       : order.findIndex(o => o.id === itemId);
@@ -1639,6 +1450,7 @@ function menuQtyChange(itemId, delta) {
       order[idx].qty += 1;
     }
   } else {
+    // Decrementar → buscar una entrada y bajar qty
     const idx = order.findIndex(o => o.id === itemId);
     if (idx !== -1) {
       order[idx].qty -= 1;
@@ -1651,14 +1463,11 @@ function menuQtyChange(itemId, delta) {
   renderOrder();
 }
 
+// ── Actualizar solo los badges de qty en el menú (sin re-render completo) ──
 function updateMenuQtyBadges() {
   const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
   allItems.forEach(item => {
-    if (soldOutSet.has(item.id)) { 
-      const w = document.getElementById("menuQty_" + item.id); 
-      if (w) w.innerHTML = ""; 
-      return; 
-    }
+    if (soldOutSet.has(item.id)) { const w = document.getElementById("menuQty_" + item.id); if (w) w.innerHTML = ""; return; }
     const wrap = document.getElementById('menuQty_' + item.id);
     if (!wrap) return;
     const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
@@ -1673,14 +1482,11 @@ function updateMenuQtyBadges() {
     }
   });
 }
-
-// ══════════════════════════════════════════════════════════════
-// ADD ITEM
-// ══════════════════════════════════════════════════════════════
-
 function addItem(id, name, price, notes = null) {
+  // Bloquear si está agotado → mostrar popup
   if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
 
+  // Buscar si ya existe un item con mismo id Y mismas notas
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
   if (idx !== -1) {
     order[idx].qty += 1;
@@ -1698,30 +1504,26 @@ function changeQty(index, delta) {
   renderOrder();
 }
 
-// ══════════════════════════════════════════════════════════════
-// RENDER ORDER
-// ══════════════════════════════════════════════════════════════
-
 function renderOrder() {
-  const list = document.getElementById("orderList");
-  const countBadge = document.getElementById("order-count");
+  const list          = document.getElementById("orderList");
+  const countBadge    = document.getElementById("order-count");
   const placeOrderBtn = document.getElementById("placeOrderBtn");
-  const totalDiv = document.getElementById("orderTotal");
+  const totalDiv      = document.getElementById("orderTotal");
 
   const totalQty = order.reduce((s, i) => s + i.qty, 0);
 
   if (order.length === 0) {
     list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
     countBadge.style.display = 'none';
-    placeOrderBtn.disabled = true;
-    totalDiv.style.display = 'none';
+    placeOrderBtn.disabled   = true;
+    totalDiv.style.display   = 'none';
     updateMenuQtyBadges();
     return;
   }
 
-  countBadge.textContent = totalQty;
-  countBadge.style.display = 'inline-block';
-  placeOrderBtn.disabled = false;
+  countBadge.textContent    = totalQty;
+  countBadge.style.display  = 'inline-block';
+  placeOrderBtn.disabled    = false;
 
   list.innerHTML = '';
   let total = 0;
@@ -1746,7 +1548,7 @@ function renderOrder() {
         <div class="order-item-controls">
           <button class="qty-btn minus" onclick="changeQty(${index}, -1)">−</button>
           <span class="qty-display">${item.qty}</span>
-          <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+          <button class="qty-btn"      onclick="changeQty(${index},  1)">+</button>
           <span style="font-size:0.82em; color:#6c757d; margin-left:4px;">× RD$${item.price.toLocaleString()}</span>
         </div>
       </div>
@@ -1761,194 +1563,30 @@ function renderOrder() {
     </div>`;
   totalDiv.style.display = 'block';
 
+  // Sincronizar badges de qty en las tarjetas del menú
   updateMenuQtyBadges();
 }
 
-// ══════════════════════════════════════════════════════════════
-// MY ORDERS SYSTEM
-// ══════════════════════════════════════════════════════════════
-
-let myOrdersArray = [];
-let myOrdersChecker = null;
-
-function loadMyOrders() {
-  try {
-    const stored = localStorage.getItem('pincer_my_orders');
-    myOrdersArray = stored ? JSON.parse(stored) : [];
-    console.log('📦 Loaded', myOrdersArray.length, 'orders');
-  } catch (e) {
-    myOrdersArray = [];
-  }
-}
-
-function saveMyOrders() {
-  try {
-    localStorage.setItem('pincer_my_orders', JSON.stringify(myOrdersArray));
-  } catch (e) {
-    console.error('Error saving:', e);
-  }
-}
-
-function addToMyOrders(orderId, items, total) {
-  myOrdersArray.push({
-    id: orderId,
-    items: items.map(i => ({name: i.name, qty: i.qty, notes: i.notes})),
-    total: total,
-    status: 'pending',
-    timestamp: new Date().toISOString()
-  });
-  saveMyOrders();
-  renderMyOrders();
-  
-  if (!myOrdersChecker) {
-    myOrdersChecker = setInterval(checkMyOrdersStatus, 3000);
-    checkMyOrdersStatus();
-  }
-}
-
-function removeFromMyOrders(orderId) {
-  myOrdersArray = myOrdersArray.filter(o => o.id !== orderId);
-  saveMyOrders();
-  renderMyOrders();
-  
-  if (myOrdersArray.length === 0 && myOrdersChecker) {
-    clearInterval(myOrdersChecker);
-    myOrdersChecker = null;
-  }
-}
-
-function renderMyOrders() {
-  const section = document.getElementById('myOrdersSection');
-  const list = document.getElementById('myOrdersList');
-  
-  if (myOrdersArray.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-  
-  section.style.display = 'block';
-  list.innerHTML = '';
-  
-  const sorted = [...myOrdersArray].sort((a, b) => 
-    new Date(b.timestamp) - new Date(a.timestamp)
-  );
-  
-  sorted.forEach(o => {
-    const card = document.createElement('div');
-    card.className = `my-order-card status-${o.status}`;
-    
-    let statusText = '⏳ Pendiente';
-    if (o.status === 'accepted') statusText = '👨‍🍳 En Preparación';
-    if (o.status === 'ready') statusText = '✅ LISTA PARA RETIRAR';
-    
-    const itemsHTML = o.items.map(i => 
-      `<div class="my-order-item"><strong>${i.qty}x</strong> ${i.name}${i.notes ? ` <em>(${i.notes})</em>` : ''}</div>`
-    ).join('');
-    
-    const timeAgo = getTimeAgo(o.timestamp);
-    
-    card.innerHTML = `
-      <button class="my-order-remove" onclick="removeFromMyOrders(${o.id})" title="Quitar">×</button>
-      <div class="my-order-header">
-        <div class="my-order-number">#${o.id}</div>
-        <div class="my-order-status">${statusText}</div>
-      </div>
-      <div class="my-order-items">${itemsHTML}</div>
-      <div class="my-order-footer">
-        <div class="my-order-total">Total: RD$${o.total.toLocaleString()}</div>
-        <div class="my-order-time">🕐 ${timeAgo}</div>
-      </div>
-    `;
-    
-    list.appendChild(card);
-  });
-}
-
-function getTimeAgo(timestamp) {
-  const diffMs = new Date() - new Date(timestamp);
-  const diffMins = Math.floor(diffMs / 60000);
-  
-  if (diffMins < 1) return 'Ahora';
-  if (diffMins === 1) return 'Hace 1 minuto';
-  if (diffMins < 60) return `Hace ${diffMins} minutos`;
-  
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours === 1) return 'Hace 1 hora';
-  if (diffHours < 24) return `Hace ${diffHours} horas`;
-  
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'Hace 1 día';
-  return `Hace ${diffDays} días`;
-}
-
-async function checkMyOrdersStatus() {
-  if (myOrdersArray.length === 0) return;
-  
-  const ids = myOrdersArray.map(o => o.id).join(',');
-  
-  try {
-    const res = await fetch(
-      SUPABASE_URL + `/rest/v1/orders?id=in.(${ids})&select=id,status`,
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
-    );
-    
-    if (!res.ok) return;
-    
-    const orders = await res.json();
-    
-    orders.forEach(dbOrder => {
-      const myOrder = myOrdersArray.find(o => o.id === dbOrder.id);
-      if (!myOrder) return;
-      
-      const oldStatus = myOrder.status;
-      const newStatus = dbOrder.status;
-      
-      if (oldStatus !== newStatus) {
-        myOrder.status = newStatus;
-        
-        if (newStatus === 'ready' && !myOrder.notified) {
-          myOrder.notified = true;
-          showReadyBanner(dbOrder.id);
-          if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
-          playReadySound();
-          sendDesktopNotification(dbOrder.id);
-        }
-      }
-    });
-    
-    saveMyOrders();
-    renderMyOrders();
-    
-  } catch (e) {
-    console.error('Check status error:', e);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// PLACE ORDER (con mejor manejo de errores)
-// ══════════════════════════════════════════════════════════════
-
+// ── Place order (fetch nativo → evita DataCloneError en iOS) ──
 async function placeOrder() {
   if (order.length === 0) return;
 
   const placeOrderBtn = document.getElementById("placeOrderBtn");
-  placeOrderBtn.disabled = true;
+  placeOrderBtn.disabled    = true;
   placeOrderBtn.textContent = "Enviando...";
 
   try {
+    // Guardar items como JSON array para que el dashboard los muestre estructurados
     const itemsArray = order.map(item => ({
       name: item.name,
       qty: item.qty,
       notes: item.notes || null
     }));
     const itemsJSON = JSON.stringify(itemsArray);
+
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
-    const body = JSON.stringify({
-      items: itemsJSON,
-      total: total,
-      status: 'pending'
-    });
+    const body = JSON.stringify({ items: itemsJSON, status: "pending", total: total });
 
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/orders',
@@ -1967,35 +1605,21 @@ async function placeOrder() {
     if (!res.ok) {
       const errText = await res.text();
       console.error("❌ Supabase POST /orders →", res.status, errText);
-      
-      let errorTitle = "Error al Enviar Orden";
-      let errorMessage = "No pudimos procesar tu orden en este momento. ";
-      
-      if (res.status === 0 || res.status >= 500) {
-        errorMessage += "Parece que hay un problema con el servidor. Por favor intenta de nuevo en unos momentos.";
-      } else if (res.status === 401 || res.status === 403) {
-        errorMessage += "Hay un problema de autenticación. Por favor recarga la página y escanea el código QR nuevamente.";
-      } else if (res.status === 400) {
-        errorMessage += "Los datos de tu orden no son válidos. Por favor verifica tu orden e intenta nuevamente.";
-      } else {
-        errorMessage += "Error desconocido. Por favor intenta de nuevo.";
-      }
-      
-      showError(errorTitle, errorMessage);
-      placeOrderBtn.disabled = false;
+      alert("❌ Error al enviar la orden. Intenta de nuevo.");
+      placeOrderBtn.disabled    = false;
       placeOrderBtn.textContent = "Ordenar Ahora";
       return;
     }
 
     const data = await res.json();
+    // Supabase retorna un array con Prefer: return=representation
     const orderNumber = Array.isArray(data) ? data[0].id : data.id;
-    currentOrderId = orderNumber;
+    currentOrderId     = orderNumber;
     orderReadyNotified = false;
-
-    addToMyOrders(orderNumber, order, total);
 
     showSuccessMessage(orderNumber);
 
+    // Empezar polling de estado
     if (orderStatusChecker) clearInterval(orderStatusChecker);
     orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
     checkOrderStatus(orderNumber);
@@ -2005,102 +1629,43 @@ async function placeOrder() {
 
   } catch (err) {
     console.error("❌ placeOrder error:", err);
-    
-    let errorTitle = "Error de Conexión";
-    let errorMessage = "No pudimos conectar con el servidor. ";
-    
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      errorMessage += "Verifica tu conexión a internet e intenta nuevamente.";
-    } else if (err.name === 'AbortError') {
-      errorMessage += "La solicitud tardó demasiado. Por favor intenta de nuevo.";
-    } else {
-      errorMessage += "Error: " + err.message;
-    }
-    
-    showError(errorTitle, errorMessage);
-    placeOrderBtn.disabled = false;
+    alert("❌ Error de conexión. Verifica tu internet.");
+    placeOrderBtn.disabled    = false;
     placeOrderBtn.textContent = "Ordenar Ahora";
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// SUCCESS MESSAGE
-// ══════════════════════════════════════════════════════════════
-
+// ── Success modal ────────────────────────────────────────────
 function showSuccessMessage(orderNumber) {
   document.getElementById("orderNumberDisplay").textContent = `#${orderNumber}`;
-  
-  const active = myOrdersArray.filter(o => o.status !== 'ready');
-  let statusHTML = '';
-  
-  if (active.length > 1) {
-    statusHTML = `
-      <div class="success-subtext">
-        📦 TIENES ${active.length} ÓRDENES ACTIVAS:
-      </div>
-      <div style="
-        background: #f1f5f9;
-        padding: 15px;
-        border-radius: 12px;
-        margin: 15px 0;
-        text-align: left;
-      ">`;
-    
-    active.forEach(o => {
-      let st = '⏳ Pendiente';
-      if (o.status === 'accepted') st = '👨‍🍳 En preparación';
-      if (o.status === 'ready') st = '✅ Lista';
-      
-      statusHTML += `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <span style="font-weight: 600; color: #1e40af;">#${o.id}</span>
-          <span style="font-size: 0.9em; color: #64748b;">${st}</span>
-        </div>`;
-    });
-    
-    statusHTML += `</div>
-      <div class="success-subtext">Te avisamos cuando estén listas</div>`;
-    
-    document.getElementById("orderStatus").innerHTML = statusHTML;
-  } else {
-    document.getElementById("orderStatus").innerHTML = `
-      <div class="status-checking">
-        👨‍🍳 Chef Elly está preparando tu orden...<br>
-        <small>Te avisamos cuando esté lista</small>
-      </div>`;
-  }
-  
   closeNotesPopup();
   document.getElementById('overlay').classList.add("show");
   document.getElementById('successMessage').classList.add("show");
 
+  // Solicitar permiso de notificación de forma segura (iOS no lo soporta, no tira error)
   if (typeof Notification !== 'undefined' && Notification.permission === "default") {
-    Notification.requestPermission().catch(() => {});
+    Notification.requestPermission().catch(() => {});   // .catch para iOS
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// OVERLAY CLICK
-// ══════════════════════════════════════════════════════════════
-
+// ── Overlay click ────────────────────────────────────────────
 document.getElementById("overlay").addEventListener("click", () => {
   const successMessage = document.getElementById("successMessage");
-  const notesPopup = document.getElementById("notesPopup");
-  const errorPopup = document.getElementById("errorPopup");
+  const notesPopup     = document.getElementById("notesPopup");
 
   if (successMessage.classList.contains('show')) {
     document.getElementById("overlay").classList.remove("show");
     successMessage.classList.remove("show");
+    // NO detenemos el polling aquí; sigue verificando en background
   } else if (notesPopup.classList.contains('show')) {
     closeNotesPopup();
-  } else if (errorPopup.classList.contains('show')) {
-    closeErrorPopup();
   }
 });
 
-// ══════════════════════════════════════════════════════════════
-// CHECK ORDER STATUS
-// ══════════════════════════════════════════════════════════════
+// ── Check order status (polling) ─────────────────────────────
+// En iOS Safari los setInterval se pausan cuando la tab va al background.
+// Solución: cuando la tab vuelve al foco, hacemos un check inmediato.
+let orderReadyNotified = false;
 
 async function checkOrderStatus(orderId) {
   try {
@@ -2112,19 +1677,19 @@ async function checkOrderStatus(orderId) {
     const rows = await res.json();
     if (!rows || rows.length === 0) return;
 
-    const status = rows[0].status;
+    const status    = rows[0].status;
     const statusDiv = document.getElementById("orderStatus");
 
     if (status === "accepted") {
       statusDiv.className = "status-checking";
-      statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
+      statusDiv.innerHTML = "👨‍🍳 Chef Elly tá cocinando tu orden...<br><small>Te avisamo cuando té lista pa que pases a pagar</small>";
     }
 
     if (status === "ready" && !orderReadyNotified) {
       orderReadyNotified = true;
 
       statusDiv.className = "status-ready";
-      statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+      statusDiv.innerHTML = "🎉 ¡TU ORDEN TÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
 
       if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
 
@@ -2138,38 +1703,37 @@ async function checkOrderStatus(orderId) {
   }
 }
 
+// Cuando la tab recupera foco → check inmediato (solución principal para iOS)
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && currentOrderId && !orderReadyNotified) {
     checkOrderStatus(currentOrderId);
   }
 });
 
+// También al hacer focus (por si visibilitychange no se dispara)
 window.addEventListener('focus', () => {
   if (currentOrderId && !orderReadyNotified) {
     checkOrderStatus(currentOrderId);
   }
 });
 
-// ══════════════════════════════════════════════════════════════
-// READY BANNER
-// ══════════════════════════════════════════════════════════════
-
+// ── Banner "orden lista" (siempre visible, incluso si el modal se cerró) ──
 function showReadyBanner(orderId) {
+  // Si ya existe, no crear otra
   if (document.getElementById('readyBanner')) return;
 
   const banner = document.createElement('div');
-  banner.id = 'readyBanner';
+  banner.id        = 'readyBanner';
   banner.className = 'ready-banner';
-  banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} ESTÁ LISTA!<br>
+  banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} TÁ LISTA!<br>
     <span style="font-weight:400; font-size:0.92em;">Pasa a la caja a pagar y retira tu orden</span>
     <button onclick="document.getElementById('readyBanner').remove()">Entendido</button>`;
   document.body.prepend(banner);
 }
 
-// ══════════════════════════════════════════════════════════════
-// AUDIO & NOTIFICATIONS
-// ══════════════════════════════════════════════════════════════
-
+// ── Audio helper ─────────────────────────────────────────────
+// iOS bloquea audio si no hay un gesto del usuario previo en el mismo contexto.
+// Usamos un AudioContext creado en un gesture y lo reutilizamos.
 let audioCtx = null;
 
 function ensureAudioContext() {
@@ -2181,6 +1745,7 @@ function ensureAudioContext() {
   }
 }
 
+// Crear audioCtx al primer toque/click (necesario para iOS)
 ['touchstart', 'click'].forEach(evt => {
   document.addEventListener(evt, ensureAudioContext, { once: true });
 });
@@ -2188,11 +1753,13 @@ function ensureAudioContext() {
 function playReadySound() {
   try {
     if (!audioCtx) {
-      console.log("🔇 No hay AudioContext");
+      // Si nunca hubo gesture, no podemos reproducir audio en iOS → es esperado
+      console.log("🔇 No hay AudioContext (sin gesto previo). Normal en iOS.");
       return;
     }
     ensureAudioContext();
 
+    // Tono simple: 3 beeps cortos ascendentes
     const now = audioCtx.currentTime;
     [880, 1047, 1319].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
@@ -2207,10 +1774,11 @@ function playReadySound() {
       osc.stop(now + i * 0.18 + 0.16);
     });
   } catch (e) {
-    console.warn("🔇 playReadySound error:", e.message);
+    console.warn("🔇 playReadySound error (esperado en iOS):", e.message);
   }
 }
 
+// ── Desktop/Android Notification ─────────────────────────────
 function sendDesktopNotification(orderId) {
   try {
     if (typeof Notification === 'undefined') return;
@@ -2225,10 +1793,45 @@ function sendDesktopNotification(orderId) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// CHEF CLIPPY / PINZER CHATBOT
-// ══════════════════════════════════════════════════════════════
+// ── Init ─────────────────────────────────────────────────────
+async function init() {
+  await loadSoldOut();
+  renderMenu();
+  subscribeSoldOut();
+  console.log("✅ Mr. Sandwich cargado");
+}
+init();
+</script>
 
+<!-- ============================================================
+     PINZER (Chef Elly chatbot) – sin cambios de lógica,
+     solo usa addItem() actualizada
+     ============================================================ -->
+<script>
+let pinzerState = 'idle';
+let pinzerRecommendation = null;
+let pinzerUpsellItem = null;
+let pinzerHasUpsold  = false;
+
+const pinzerMenu = {
+  sandwiches: [
+    { id:'pastrami', name:'Mr. Pastrami',              price:1900, tags:['premium','hungry'] },
+    { id:'chopped', name:'Chopped Cheese',             price:1100, tags:['hungry','popular'] },
+    { id:'phillie', name:'Mr. Phillie Cheese Steak',   price:950,  tags:['hungry'] },
+    { id:'smash',   name:'Ellys Classic Smashburger',  price:850,  tags:['hungry','quick','popular'] },
+    { id:'pierna',  name:'Sanguche de Pierna',         price:700,  tags:['quick','local'] },
+    { id:'cubano',  name:'Cubano',                     price:700,  tags:['quick','popular'] },
+    { id:'club',    name:'Club Sandwich',              price:700,  tags:['quick'] },
+    { id:'chimi',   name:'El Chimichurri',             price:650,  tags:['quick','local'] }
+  ],
+  munchies: [
+    { id:'yukita', name:'Yukita Cubana', price:600 },
+    { id:'fries',  name:'Mr. Fries',    price:650 }
+  ]
+};
+
+
+// ── Clippy/Chef Elly helper functions ──────────────────────
 let autoMessageInterval;
 let currentMessageIndex = 0;
 
@@ -2257,10 +1860,12 @@ function showBubble(text, emoji) {
 }
 
 function startAutoMessages() {
+  // Mostrar primer mensaje después de 2 segundos
   setTimeout(() => {
     showBubble(clippyMessages[0].text, clippyMessages[0].emoji);
   }, 2000);
   
+  // Rotar mensajes cada 10 segundos
   autoMessageInterval = setInterval(() => {
     currentMessageIndex = (currentMessageIndex + 1) % clippyMessages.length;
     const msg = clippyMessages[currentMessageIndex];
@@ -2268,43 +1873,24 @@ function startAutoMessages() {
   }, 10000);
 }
 
+// Mostrar badge después de 5 segundos
 setTimeout(() => {
   const badge = document.getElementById('notificationBadge');
   if (badge) badge.style.display = 'flex';
 }, 5000);
 
+// Iniciar mensajes automáticos cuando carga la página
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', startAutoMessages);
 } else {
   startAutoMessages();
 }
 
-let pinzerState = 'idle';
-let pinzerRecommendation = null;
-let pinzerUpsellItem = null;
-let pinzerHasUpsold = false;
-
-const pinzerMenu = {
-  sandwiches: [
-    { id:'pastrami', name:'Mr. Pastrami', price:1900, tags:['premium','hungry'] },
-    { id:'chopped', name:'Chopped Cheese', price:1100, tags:['hungry','popular'] },
-    { id:'phillie', name:'Mr. Phillie Cheese Steak', price:950, tags:['hungry'] },
-    { id:'smash', name:'Ellys Classic Smashburger', price:850, tags:['hungry','quick','popular'] },
-    { id:'pierna', name:'Sanguche de Pierna', price:700, tags:['quick','local'] },
-    { id:'cubano', name:'Cubano', price:700, tags:['quick','popular'] },
-    { id:'club', name:'Club Sandwich', price:700, tags:['quick'] },
-    { id:'chimi', name:'El Chimichurri', price:650, tags:['quick','local'] }
-  ],
-  munchies: [
-    { id:'yukita', name:'Yukita Cubana', price:600 },
-    { id:'fries', name:'Mr. Fries', price:650 }
-  ]
-};
-
 function openPinzer() {
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
   
+  // Ocultar el chef clippy cuando se abre el modal
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'none';
 
@@ -2313,10 +1899,10 @@ function openPinzer() {
     setTimeout(() => {
       pinzerSay("¡Klk manito! Bienvenido a Mr. Sandwich 👋");
       setTimeout(() => {
-        pinzerSay("Soy Chef Elly y estoy aquí para ayudarte.");
+        pinzerSay("Soy Chef Elly y toy aquí pa ayudarte.");
         setTimeout(() => {
-          pinzerSay("¿Qué quieres comer hoy, tigre?");
-          pinzerShowReplies(['Algo rápido','Tengo hambre','Lo más popular']);
+          pinzerSay("¿Qué tú quieres comer hoy, tigre?");
+          pinzerShowReplies(['Algo rápido','Tengo hambre','Lo má popular']);
         }, 800);
       }, 800);
     }, 300);
@@ -2326,14 +1912,15 @@ function openPinzer() {
 function closePinzer() {
   document.getElementById('pinzer-modal').style.display = 'none';
   
+  // Volver a mostrar el chef clippy
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
 }
 
 function pinzerSay(message) {
   const container = document.getElementById('pinzer-messages');
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'pinzer-message pinzer-bot';
+  const msgDiv    = document.createElement('div');
+  msgDiv.className  = 'pinzer-message pinzer-bot';
   msgDiv.textContent = message;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
@@ -2341,8 +1928,8 @@ function pinzerSay(message) {
 
 function pinzerUserSay(message) {
   const container = document.getElementById('pinzer-messages');
-  const msgDiv = document.createElement('div');
-  msgDiv.className = 'pinzer-message pinzer-user';
+  const msgDiv    = document.createElement('div');
+  msgDiv.className  = 'pinzer-message pinzer-user';
   msgDiv.textContent = message;
   container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
@@ -2353,9 +1940,9 @@ function pinzerShowReplies(replies) {
   container.innerHTML = '';
   replies.forEach(reply => {
     const btn = document.createElement('button');
-    btn.className = 'pinzer-reply-btn';
+    btn.className  = 'pinzer-reply-btn';
     btn.textContent = reply;
-    btn.onclick = () => pinzerHandleReply(reply);
+    btn.onclick    = () => pinzerHandleReply(reply);
     container.appendChild(btn);
   });
 }
@@ -2368,10 +1955,10 @@ function pinzerHandleReply(reply) {
   pinzerUserSay(reply);
   pinzerClearReplies();
 
-  if (pinzerState === 'greeting') handleGreetingResponse(reply);
+  if      (pinzerState === 'greeting')       handleGreetingResponse(reply);
   else if (pinzerState === 'recommendation') handleRecommendationResponse(reply);
-  else if (pinzerState === 'upsell') handleUpsellResponse(reply);
-  else if (pinzerState === 'checkout') handleCheckoutResponse(reply);
+  else if (pinzerState === 'upsell')         handleUpsellResponse(reply);
+  else if (pinzerState === 'checkout')       handleCheckoutResponse(reply);
 }
 
 function handleGreetingResponse(reply) {
@@ -2382,7 +1969,7 @@ function handleGreetingResponse(reply) {
   } else if (reply === 'Tengo hambre') {
     const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('hungry'));
     item = hungryItems[0];
-  } else if (reply === 'Lo más popular') {
+  } else if (reply === 'Lo má popular') {
     const popularItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('popular'));
     item = popularItems[Math.floor(Math.random() * popularItems.length)];
   }
@@ -2391,10 +1978,10 @@ function handleGreetingResponse(reply) {
   pinzerState = 'recommendation';
 
   setTimeout(() => {
-    pinzerSay(`¡Eso está brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
+    pinzerSay(`¡Eso tá brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
     setTimeout(() => {
       pinzerSay("¿Lo añadimos a tu orden?");
-      pinzerShowReplies(['Sí, dale','No, déjalo']);
+      pinzerShowReplies(['Sí, dale','No, dejálo']);
     }, 800);
   }, 500);
 }
@@ -2404,72 +1991,64 @@ function handleRecommendationResponse(reply) {
     addItem(pinzerRecommendation.id, pinzerRecommendation.name, pinzerRecommendation.price);
 
     setTimeout(() => {
-      pinzerSay(`¡WepaContinuar5 feb! Añadí el ${pinzerRecommendation.name} ✅`);
-  if (!pinzerHasUpsold) {
-    pinzerState = 'upsell';
-    const upsellItem = pinzerMenu.munchies[1];
-    pinzerUpsellItem = upsellItem;
-    pinzerHasUpsold = true;
+      pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
 
+      if (!pinzerHasUpsold) {
+        pinzerState = 'upsell';
+        const upsellItem = pinzerMenu.munchies[1]; // Mr. Fries
+        pinzerUpsellItem = upsellItem;
+        pinzerHasUpsold  = true;
+
+        setTimeout(() => {
+          pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Tán de madre 🍟`);
+          pinzerShowReplies(['Sí, dale','No, dejálo']);
+        }, 800);
+      } else {
+        goToCheckout();
+      }
+    }, 500);
+
+  } else {
     setTimeout(() => {
-      pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Están de madre 🍟`);
-      pinzerShowReplies(['Sí, dale','No, déjalo']);
-    }, 800);
+      pinzerSay("Tá bien, tranquilo. Mira el menú arriba 📋");
+      pinzerSay("¡Cualquier cosa me dices!");
+      pinzerState = 'done';
+      setTimeout(() => closePinzer(), 2000);
+    }, 500);
+  }
+}
+
+function handleUpsellResponse(reply) {
+  if (reply === 'Sí, dale') {
+    addItem(pinzerUpsellItem.id, pinzerUpsellItem.name, pinzerUpsellItem.price);
+    setTimeout(() => {
+      pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`);
+      goToCheckout();
+    }, 500);
   } else {
     goToCheckout();
   }
-}, 500);
-} else {
-setTimeout(() => {
-pinzerSay("Está bien, tranquilo. Mira el menú arriba 📋");
-pinzerSay("¡Cualquier cosa me dices!");
-pinzerState = 'done';
-setTimeout(() => closePinzer(), 2000);
-}, 500);
 }
-}
-function handleUpsellResponse(reply) {
-if (reply === 'Sí, dale') {
-addItem(pinzerUpsellItem.id, pinzerUpsellItem.name, pinzerUpsellItem.price);
-setTimeout(() => {
-pinzerSay(¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅);
-goToCheckout();
-}, 500);
-} else {
-goToCheckout();
-}
-}
+
 function goToCheckout() {
-pinzerState = 'checkout';
-setTimeout(() => {
-pinzerSay("¡Tu orden está lista, tigre! Revísala arriba y dale click para ordenar 🛒");
-pinzerShowReplies(['Ordenar ahora']);
-}, 800);
+  pinzerState = 'checkout';
+  setTimeout(() => {
+    pinzerSay("¡Tu orden tá lista, tigre! Revísala arriba y dale click pa ordenar 🛒");
+    pinzerShowReplies(['Ordenar ahora']);
+  }, 800);
 }
+
 function handleCheckoutResponse(reply) {
-if (reply === 'Ordenar ahora') {
-pinzerState = 'done';
-pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
-setTimeout(() => {
-closePinzer();
-document.querySelector('.order-summary').scrollIntoView({ behavior:'smooth' });
-}, 1500);
+  if (reply === 'Ordenar ahora') {
+    pinzerState = 'done';
+    pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
+    setTimeout(() => {
+      closePinzer();
+      document.querySelector('.order-summary').scrollIntoView({ behavior:'smooth' });
+    }, 1500);
+  }
 }
-}
-// ══════════════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════════════
-async function init() {
-await loadSoldOut();
-renderMenu();
-subscribeSoldOut();
-console.log("✅ Mr. Sandwich cargado (sin timeout de sesión)");
-}
-loadMyOrders();
-renderMyOrders();
-init();
 </script>
+
 </body>
 </html>
-
-
