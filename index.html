@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Mr. Sandwich by Chef Elly</title>
   <style>
     * {
@@ -1850,6 +1853,8 @@ async function placeOrder() {
     showSuccessMessage(orderNumber);
     renderMyOrders(); // Actualizar la vista de "Mis Órdenes"
 
+    // El interval sigue corriendo aunque cierres el popup
+    // Esto permite que recibas notificaciones de TODAS tus órdenes activas
     if (orderStatusChecker) clearInterval(orderStatusChecker);
     orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
     checkOrderStatus(orderNumber);
@@ -1934,29 +1939,44 @@ async function checkOrderStatus(orderId) {
     if (!rows || rows.length === 0) return;
 
     const statusDiv = document.getElementById("orderStatus");
-    let statusHTML = '';
-    let hasAccepted = false;
-    let hasReady = false;
     
-    // Procesar cada orden
+    // SOLO mostrar el estado de la orden actual en el popup (currentOrderId)
+    // Las demás se mostrarán en "Mis Órdenes"
+    if (currentOrderId && statusDiv) {
+      const currentOrder = rows.find(r => r.id === currentOrderId);
+      
+      if (currentOrder) {
+        const status = currentOrder.status;
+        
+        if (status === "accepted") {
+          statusDiv.className = "status-checking";
+          statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
+        }
+        
+        if (status === "ready") {
+          statusDiv.className = "status-ready";
+          statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+          
+          // Notificar solo una vez
+          const notifiedKey = 'notified_' + currentOrderId;
+          if (!localStorage.getItem(notifiedKey)) {
+            localStorage.setItem(notifiedKey, 'true');
+            showReadyBanner(currentOrderId);
+            if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+            playReadySound();
+            sendDesktopNotification(currentOrderId);
+          }
+        }
+      }
+    }
+    
+    // Procesar TODAS las órdenes para notificaciones en background
     rows.forEach(orderData => {
       const status = orderData.status;
       const currentId = orderData.id;
       
-      if (status === "accepted") {
-        hasAccepted = true;
-        statusHTML += `<div class="order-status-item">
-          <strong>Orden #${currentId}</strong>: 👨‍🍳 Chef Elly está cocinando...
-        </div>`;
-      }
-      
       if (status === "ready") {
-        hasReady = true;
-        statusHTML += `<div class="order-status-item order-ready-item">
-          <strong>Orden #${currentId}</strong>: 🎉 ¡LISTA! Pasa a pagar
-        </div>`;
-        
-        // Notificar solo una vez por orden
+        // Notificar solo una vez por orden (incluso si no es la actual)
         const notifiedKey = 'notified_' + currentId;
         if (!localStorage.getItem(notifiedKey)) {
           localStorage.setItem(notifiedKey, 'true');
@@ -1974,16 +1994,6 @@ async function checkOrderStatus(orderId) {
         }, 60000); // 1 minuto
       }
     });
-    
-    // Actualizar el display
-    if (statusHTML) {
-      if (hasReady) {
-        statusDiv.className = "status-ready";
-      } else if (hasAccepted) {
-        statusDiv.className = "status-checking";
-      }
-      statusDiv.innerHTML = statusHTML + '<br><small>Refrescamos automáticamente cada 3 segundos</small>';
-    }
     
     // Sincronizar estados con el historial de órdenes
     const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
@@ -2453,6 +2463,7 @@ init();
 
 </body>
 </html>
+
 
 
 
