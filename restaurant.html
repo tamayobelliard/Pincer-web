@@ -1,1715 +1,2462 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Pincer – Restaurant Dashboard</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mr. Sandwich by Chef Elly</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
+    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
       min-height: 100vh;
       padding: 20px;
+      padding-bottom: 100px;
     }
-    h1 {
+    
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .header {
       text-align: center;
       color: white;
       margin-bottom: 30px;
-      font-size: 2.5em;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    h2 {
-      color: white;
-      font-size: 1.5em;
-      margin-bottom: 15px;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
-      max-width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    #connection-status {
-      text-align: center;
-      color: white;
-      margin-bottom: 15px;
-      font-size: 14px;
-    }
-    #notification-banner {
-      background: rgba(251, 191, 36, 0.95);
-      color: #78350f;
-      padding: 15px;
-      text-align: center;
-      border-radius: 12px;
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      font-weight: 600;
-      display: none;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    #notification-banner:hover {
-      background: rgba(251, 191, 36, 1);
-      transform: scale(1.02);
-    }
-    #notification-banner.show {
-      display: block;
     }
 
-    /* ─── PRODUCTOS / SOLD OUT ─── */
-    .products-panel {
-      background: rgba(255,255,255,0.95);
-      border-radius: 16px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto 24px auto;
-    }
-    .products-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .products-panel-header h3 {
-      font-size: 1.25em;
-      color: #1e1b4b;
-      margin: 0;
-    }
-    .products-panel-header .legend {
-      display: flex;
-      gap: 16px;
-      font-size: 0.85em;
-      color: #64748b;
-    }
-    .products-panel-header .legend span {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .legend-dot {
-      width: 12px;
-      height: 12px;
+    .logo-container {
+      background: white;
+      width: 160px;
+      height: 160px;
       border-radius: 50%;
-    }
-    .legend-dot.available { background: #22c55e; }
-    .legend-dot.soldout   { background: #ef4444; }
-
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 10px;
-    }
-    .product-card {
-      background: #f8fafc;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .product-card.is-soldout {
-      background: #fef2f2;
-      border-color: #fca5a5;
-    }
-    .product-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    .product-card-name {
-      font-weight: 700;
-      font-size: 0.9em;
-      color: #1e1b4b;
-      line-height: 1.3;
-      flex: 1;
-      padding-right: 8px;
-    }
-    .product-card-price {
-      font-size: 0.82em;
-      color: #64748b;
-      white-space: nowrap;
-      margin-top: 2px;
-    }
-
-    /* Toggle switch */
-    .toggle-row {
+      margin: 0 auto 20px auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-top: auto;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      border: 5px solid #f4e4c1;
     }
-    .toggle-label {
-      font-size: 0.78em;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
+
+    .logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .header h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-weight: 700;
       letter-spacing: 0.5px;
     }
-    .product-card.is-soldout .toggle-label {
-      color: #dc2626;
-    }
 
-    .toggle-switch {
-      position: relative;
-      width: 48px;
-      height: 26px;
-    }
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .toggle-slider {
-      position: absolute;
-      inset: 0;
-      background: #22c55e;
-      border-radius: 26px;
-      cursor: pointer;
-      transition: 0.25s;
-    }
-    .toggle-slider:before {
-      content: "";
-      position: absolute;
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 0.25s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .toggle-switch input:checked + .toggle-slider {
-      background: #ef4444;
-    }
-    .toggle-switch input:checked + .toggle-slider:before {
-      transform: translateX(22px);
-    }
-    .toggle-switch input:focus + .toggle-slider {
-      box-shadow: 0 0 0 3px rgba(239,68,68,0.25);
-    }
-
-    /* ─── ORDERS ─── */
-    #orders {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .order {
-      background: white;
-      padding: 20px;
-      margin-bottom: 15px;
-      border-radius: 12px;
-      border-left: 8px solid #22c55e;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .order:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    .new      { border-left-color: #22c55e; background: #f0fdf4; }
-    .warning  { border-left-color: #f97316; background: #fff7ed; }
-    .late     { border-left-color: #ef4444; background: #fef2f2; animation: pulse 2s infinite; }
-    .accepted { border-left-color: #3b82f6; background: #eff6ff; }
-    .ready    { border-left-color: #16a34a; background: #f0fdf4; opacity: 0.6; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-      50%      { opacity: 0.8; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
-    }
-    .order-number {
-      font-size: 32px;
-      font-weight: bold;
-      color: #1e40af;
-      margin-bottom: 10px;
-      display: inline-block;
-      padding: 5px 15px;
-      background: #dbeafe;
-      border-radius: 8px;
-    }
-    .order-items {
-      margin: 12px 0;
-    }
-    .order-items-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .order-item-row {
-      background: #f8fafc;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      border-radius: 6px;
-      border-left: 3px solid #cbd5e1;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-    .order-item-qty {
-      font-weight: 700;
-      color: #1e40af;
+    .header .subtitle {
       font-size: 1.1em;
-      min-width: 30px;
-    }
-    .order-item-name {
-      flex: 1;
-      color: #1e293b;
-      font-weight: 600;
-    }
-    .order-item-notes {
-      font-size: 0.9em;
-      color: #64748b;
-      font-style: italic;
-      margin-top: 3px;
-    }
-    
-    /* Extras indentados */
-    .order-item-row.is-extra {
-      background: #f1f5f9;
-      margin-left: 35px;
-      border-left-color: #94a3b8;
-      padding: 6px 10px;
-      font-size: 0.95em;
-    }
-    .order-item-row.is-extra .order-item-qty {
-      font-size: 1em;
-      color: #64748b;
-    }
-    .order-item-row.is-extra .order-item-name {
-      color: #475569;
+      opacity: 0.95;
       font-weight: 500;
+      color: #f4e4c1;
+      letter-spacing: 2px;
     }
     
-    /* Total de la orden */
-    .order-total {
-      margin-top: 12px;
-      padding: 10px 12px;
-      background: linear-gradient(135deg, #4a7c2c, #2d5016);
+    .menu-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .section-title {
+      font-size: 1.5em;
+      color: #2d5016;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #f4e4c1;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .category-title {
+      font-size: 1.3em;
+      color: #2d5016;
+      margin: 25px 0 15px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 4px solid #4a7c2c;
+      padding-left: 12px;
+    }
+    
+    .menu-item {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    
+    .menu-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(45, 80, 22, 0.15);
+      border-color: #4a7c2c;
+    }
+
+    .menu-item.sold-out {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .sold-out-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #dc3545;
       color: white;
+      font-size: 0.75em;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
+    }
+
+    .item-image {
+      width: 100px;
+      height: 100px;
       border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .item-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .item-name {
+      font-size: 1.15em;
+      font-weight: 700;
+      color: #2d5016;
+      margin-bottom: 5px;
+    }
+    
+    .item-description {
+      font-size: 0.85em;
+      color: #6c757d;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .item-bottom {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-weight: 700;
-      font-size: 1.1em;
+      gap: 8px;
     }
-    .order-total-label {
+    
+    .item-price {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #4a7c2c;
+      flex-shrink: 0;
+    }
+
+    .menu-qty-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    .menu-qty-btn {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      width: 32px;
+      height: 32px;
+      font-size: 1.2em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+      line-height: 1;
+    }
+
+    .menu-qty-btn:first-child {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .menu-qty-btn:last-child {
+      border-radius: 0 8px 8px 0;
+    }
+
+    .menu-qty-btn:active {
+      background: #2d5016;
+    }
+
+    .menu-qty-num {
+      background: #eef2ee;
+      color: #2d5016;
+      font-weight: 700;
+      font-size: 0.95em;
+      width: 28px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .add-btn {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(74, 124, 44, 0.3);
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .add-btn:hover {
+      background: #2d5016;
+      transform: scale(1.05);
+    }
+    
+    .add-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .order-summary {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .order-item {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .order-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    
+    .order-item-name {
+      font-weight: 600;
+      color: #2d5016;
+    }
+
+    .order-item-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      padding: 6px 8px;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid #4a7c2c;
+      margin-top: 4px;
+    }
+
+    .order-item-controls {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    
-    /* Alerta de tiempo para órdenes pendientes antiguas */
-    .time-alert {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 4px 10px;
-      background: #fef3c7;
-      color: #92400e;
+
+    .qty-btn {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      width: 28px;
+      height: 28px;
       border-radius: 6px;
+      font-size: 1.1em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+
+    .qty-btn:hover {
+      background: #2d5016;
+    }
+
+    .qty-btn:active {
+      background: #1a3a0e;
+    }
+
+    .qty-btn.minus {
+      background: #dc3545;
+    }
+
+    .qty-btn.minus:hover {
+      background: #c82333;
+    }
+
+    .qty-display {
+      font-weight: 700;
+      font-size: 1em;
+      color: #2d5016;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .order-item-price {
+      font-weight: 700;
+      color: #4a7c2c;
+      font-size: 0.95em;
+      margin-left: 8px;
+    }
+    
+    .order-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #f4e4c1;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #2d5016;
+    }
+    
+    .empty-order {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+      font-size: 1.1em;
+    }
+    
+    .place-order-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 460px;
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 18px;
+      border-radius: 12px;
+      font-size: 1.3em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(74, 124, 44, 0.4);
+      transition: all 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .place-order-btn:hover {
+      background: #2d5016;
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 12px 24px rgba(74, 124, 44, 0.5);
+    }
+    
+    .place-order-btn:active {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .place-order-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #dc3545;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      font-size: 0.9em;
+      margin-left: 8px;
+    }
+    
+    .success-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      z-index: 1000;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 90%;
+    }
+    
+    .success-message.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    
+    .success-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+    
+    .success-text {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #4a7c2c;
+      margin-bottom: 10px;
+    }
+    
+    .success-subtext {
+      color: #64748b;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+    }
+
+    .order-number-display {
+      font-size: 4em;
+      font-weight: bold;
+      color: #2d5016;
+      background: #f4e4c1;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .status-checking {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff3cd;
+      border-radius: 8px;
+      color: #856404;
+      font-weight: 600;
+    }
+
+    .status-ready {
+      margin-top: 20px;
+      padding: 18px;
+      background: #d4edda;
+      border-radius: 8px;
+      color: #155724;
+      font-weight: bold;
+      font-size: 1.2em;
+      animation: pulse-ready 1s infinite;
+      line-height: 1.6;
+    }
+
+    @keyframes pulse-ready {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .order-status-item {
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border-left: 4px solid #ffc107;
+    }
+
+    .order-ready-item {
+      border-left: 4px solid #28a745;
+      background: #f0fdf4;
+      font-weight: 600;
+    }
+
+    .my-orders-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    .order-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-left: 4px solid #4a7c2c;
+    }
+
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    .order-card-number {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #2d5016;
+    }
+
+    .order-card-status {
+      padding: 6px 12px;
+      border-radius: 20px;
       font-size: 0.85em;
       font-weight: 600;
-      animation: alertPulse 1.5s infinite;
+      text-transform: uppercase;
     }
-    .time-alert.critical {
-      background: #fee2e2;
-      color: #991b1b;
+
+    .order-status-pending {
+      background: #fff3cd;
+      color: #856404;
     }
-    @keyframes alertPulse {
+
+    .order-status-accepted {
+      background: #cfe2ff;
+      color: #084298;
+    }
+
+    .order-status-ready {
+      background: #d1e7dd;
+      color: #0f5132;
+      animation: pulse-status 2s infinite;
+    }
+
+    @keyframes pulse-status {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.7; }
     }
-    .order-time {
-      display: inline-block;
-      padding: 5px 12px;
-      background: #f1f5f9;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #475569;
-      margin: 10px 0;
-    }
-    .order-status {
-      display: inline-block;
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-left: 10px;
-    }
-    .status-pending  { background: #fef3c7; color: #92400e; }
-    .status-accepted { background: #dbeafe; color: #1e40af; }
-    .status-ready    { background: #d1fae5; color: #065f46; }
 
-    button {
-      margin-top: 15px;
-      margin-right: 10px;
-      padding: 12px 24px;
-      cursor: pointer;
-      color: white;
+    .order-card-items {
+      margin-bottom: 10px;
+    }
+
+    .order-card-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 0.95em;
+      color: #495057;
+    }
+
+    .order-card-item-name {
+      flex: 1;
+    }
+
+    .order-card-item-qty {
+      font-weight: 600;
+      margin-right: 8px;
+      color: #6c757d;
+    }
+
+    .order-card-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      padding-left: 8px;
+      margin-top: 2px;
+    }
+
+    .order-card-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 2px solid #e9ecef;
+      font-weight: 700;
+      font-size: 1.1em;
+      color: #2d5016;
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 999;
+    }
+    
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .notes-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 400px;
+    }
+
+    .notes-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .notes-popup h3 {
+      color: #2d5016;
+      margin-bottom: 10px;
+      font-size: 1.3em;
+    }
+
+    .notes-popup p {
+      color: #6c757d;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    .notes-popup textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 15px;
+    }
+
+    .notes-popup textarea:focus {
+      outline: none;
+      border-color: #4a7c2c;
+    }
+
+    .notes-popup-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .notes-popup button {
+      padding: 10px 20px;
       border: none;
       border-radius: 8px;
       font-weight: 600;
-      font-size: 16px;
+      cursor: pointer;
       transition: all 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
-    .btn-accept {
-      background: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59,130,246,0.3);
-    }
-    .btn-accept:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(59,130,246,0.4);
-    }
-    .btn-ready {
-      background: #16a34a;
-      box-shadow: 0 2px 4px rgba(22,163,74,0.3);
-    }
-    .btn-ready:hover {
-      background: #15803d;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(22,163,74,0.4);
-    }
-    button:active  { transform: translateY(0); }
-    button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
 
-    .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 15px;
+    .notes-popup .btn-cancel {
+      background: #e2e8f0;
+      color: #64748b;
+    }
+
+    .notes-popup .btn-cancel:hover {
+      background: #cbd5e1;
+    }
+
+    .notes-popup .btn-add {
+      background: #4a7c2c;
+      color: white;
+    }
+
+    .notes-popup .btn-add:hover {
+      background: #2d5016;
+    }
+
+    .soldout-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 30px 25px 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 380px;
+      text-align: center;
+    }
+    .soldout-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .soldout-popup .soldout-emoji {
+      font-size: 2.8em;
+      margin-bottom: 8px;
+    }
+    .soldout-popup h3 {
+      color: #dc2626;
+      font-size: 1.25em;
+      margin-bottom: 6px;
+    }
+    .soldout-popup .soldout-product-name {
+      font-weight: 700;
+      color: #1e1b4b;
+      font-size: 1.05em;
+      margin-bottom: 10px;
+    }
+    .soldout-popup p {
+      color: #64748b;
+      font-size: 0.95em;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+    .soldout-popup button {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 11px 28px;
       border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
-      border-left: 4px solid #dc2626;
-      max-width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: white;
-      font-size: 18px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-    }
-    .completed-badge {
-      display: inline-block;
-      padding: 5px 12px;
-      background: #16a34a;
-      color: white;
-      border-radius: 6px;
-      font-size: 14px;
+      font-size: 1em;
       font-weight: 600;
-      margin-top: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .stats {
-      background: rgba(255,255,255,0.95);
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+    .soldout-popup button:hover {
+      background: #2d5016;
     }
-    @media (max-width: 500px) {
-      .stats {
-        grid-template-columns: repeat(2, 1fr);
-        padding: 16px;
-        gap: 10px;
+
+    .extras-section {
+      margin: 15px 0 10px 0;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .extras-section h4 {
+      font-size: 0.95em;
+      color: #475569;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .extras-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .extra-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .extra-checkbox:hover {
+      background: #f1f5f9;
+    }
+    .extra-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .extra-checkbox label {
+      flex: 1;
+      cursor: pointer;
+      font-size: 0.95em;
+      color: #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .extra-checkbox .extra-price {
+      font-weight: 600;
+      color: #4a7c2c;
+    }
+
+    .note-papas {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      color: #856404;
+      font-weight: 600;
+    }
+
+    .ready-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #155724;
+      color: white;
+      text-align: center;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 1.05em;
+      z-index: 2000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: slideDown 0.4s ease-out;
+      line-height: 1.5;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
+    }
+
+    .ready-banner button {
+      display: block;
+      margin: 8px auto 0;
+      background: #f4e4c1;
+      color: #155724;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+
+    .chef-clippy {
+      position: fixed;
+      bottom: 20px;
+      right: -200px;
+      z-index: 999;
+      animation: slideIn 1s ease-out 1s forwards;
+    }
+    
+    @keyframes slideIn {
+      to { right: 20px; }
+    }
+    
+    .clippy-container {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      gap: 15px;
+    }
+    
+    .clippy-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      box-shadow: 0 8px 30px rgba(45,80,22,0.5);
+      border: 4px solid #4a7c2c;
+      animation: bounce 2.5s ease-in-out infinite;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: white;
+      position: relative;
+    }
+    
+    .clippy-avatar:hover {
+      transform: scale(1.15) rotate(5deg);
+      box-shadow: 0 12px 40px rgba(45,80,22,0.7);
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    
+    .speech-bubble {
+      display: none;
+      position: absolute;
+      bottom: 110%;
+    }
+    
+    .speech-bubble.show {
+      display: block;
+      right: 0;
+      background: white;
+      padding: 15px 18px;
+      border-radius: 18px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      border: 3px solid #4a7c2c;
+      max-width: 240px;
+      animation: bubblePop 0.5s ease-out;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    
+    .speech-bubble.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    @keyframes bubblePop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -15px;
+      right: 25px;
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 16px solid #4a7c2c;
+    }
+    
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      right: 28px;
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-top: 12px solid white;
+      z-index: 1;
+    }
+    
+    .bubble-text {
+      font-size: 0.95em;
+      color: #2d5016;
+      font-weight: 600;
+      line-height: 1.4;
+      margin: 0;
+    }
+    
+    .bubble-emoji {
+      font-size: 1.3em;
+      margin-right: 6px;
+    }
+    
+    .bubble-close {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    
+    .bubble-close:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+    
+    .notification-pulse {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 28px;
+      height: 28px;
+      background: #ef4444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 0.85em;
+      animation: pulseBadge 1.5s ease-in-out infinite;
+      border: 3px solid white;
+    }
+    
+    @keyframes pulseBadge {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239,68,68,0.7);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(239,68,68,0);
       }
     }
-    .stat-item {
-      text-align: center;
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 12px 8px;
+
+    #pinzer-modal {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-width: 90vw;
+      height: 500px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      z-index: 999;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .stat-number { font-size: 28px; font-weight: bold; color: #1e40af; }
-    .stat-label  { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    .pinzer-message {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: slideInMsg 0.3s ease-out;
+    }
+
+    @keyframes slideInMsg {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .pinzer-bot {
+      background: #f4e4c1;
+      color: #2d5016;
+      align-self: flex-start;
+    }
+
+    .pinzer-user {
+      background: #4a7c2c;
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .pinzer-reply-btn {
+      background: white;
+      border: 2px solid #4a7c2c;
+      color: #4a7c2c;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .pinzer-reply-btn:hover {
+      background: #4a7c2c;
+      color: white;
+    }
+
+    #pinzer-messages {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+    
+    @media (max-width: 768px) {
+      .clippy-avatar {
+        width: 80px;
+        height: 80px;
+      }
+      .speech-bubble {
+        max-width: 200px;
+        font-size: 0.9em;
+      }
+    }
+
+    /* Error popup mejorado */
+    .error-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 30px 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 380px;
+      text-align: center;
+    }
+    .error-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .error-popup .error-emoji {
+      font-size: 3em;
+      margin-bottom: 15px;
+    }
+    .error-popup h3 {
+      color: #dc2626;
+      font-size: 1.3em;
+      margin-bottom: 12px;
+    }
+    .error-popup p {
+      color: #64748b;
+      font-size: 0.95em;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .error-popup button {
+      background: #4a7c2c;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .error-popup button:hover {
+      background: #2d5016;
+    }
   </style>
 </head>
 <body>
 
-<!-- Pantalla de Login -->
-<div id="loginScreen" style="
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-">
-  <div style="
-    background: white;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    max-width: 400px;
-    width: 90%;
-  ">
-    <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em;">
-      📟 Pincer Dashboard
-    </h1>
-    <p style="text-align: center; color: #64748b; margin-bottom: 30px;">
-      Mr. Sandwich by Chef Elly
-    </p>
-    
-    <div id="loginError" style="
-      display: none;
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
-      font-weight: 600;
-    "></div>
-    
-    <form id="loginForm" onsubmit="handleLogin(event)">
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
-          Usuario
-        </label>
-        <input 
-          type="text" 
-          id="username" 
-          required
-          style="
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-          placeholder="mrsandwich"
-        >
+<div class="container">
+  <div class="header">
+    <div class="logo-container">
+      <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Mr. Sandwich">
+    </div>
+    <h1>MR. SANDWICH</h1>
+    <p class="subtitle">BY CHEF ELLY</p>
+  </div>
+
+  <div class="menu-section" id="menuSection">
+    <h2 class="section-title">Menú</h2>
+  </div>
+
+  <div class="order-summary">
+    <h2 class="section-title">
+      Tu Orden
+      <span class="badge" id="order-count" style="display: none;">0</span>
+    </h2>
+    <div id="orderList">
+      <div class="empty-order">
+        Tu orden está vacía<br>
+        Agrega items del menú
       </div>
-      
-      <div style="margin-bottom: 25px;">
-        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
-          Contraseña
-        </label>
-        <input 
-          type="password" 
-          id="password" 
-          required
-          style="
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-          placeholder="••••••••"
-        >
-      </div>
-      
-      <button 
-        type="submit"
-        id="loginBtn"
-        style="
-          width: 100%;
-          padding: 15px;
-          background: linear-gradient(135deg, #4a7c2c, #2d5016);
-          color: white;
-          border: none;
-          border-radius: 10px;
-          font-size: 1.1em;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.2s;
-        "
-      >
-        Iniciar Sesión
-      </button>
-    </form>
+    </div>
+    <div id="orderTotal" style="display: none;"></div>
+  </div>
+
+  <!-- Nueva sección: Mis Órdenes -->
+  <div class="my-orders-section" id="myOrdersSection" style="display: none;">
+    <h2 class="section-title">
+      📋 Mis Órdenes
+      <span class="badge" id="orders-count" style="display: none;">0</span>
+    </h2>
+    <div id="myOrdersList"></div>
   </div>
 </div>
 
+<button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
+  Ordenar Ahora
+</button>
 
-<h1>📟 Pincer – Orders Dashboard</h1>
+<div class="overlay" id="overlay"></div>
+<div class="success-message" id="successMessage">
+  <div class="success-icon">✅</div>
+  <div class="success-text">¡Orden Recibida!</div>
+  <div class="success-subtext">Guarda tu número de orden</div>
+  <div class="order-number-display" id="orderNumberDisplay">#0000</div>
+  <div id="orderStatus" class="status-checking">
+    ⏳ Tu orden ha sido recibida<br>
+    <small>En cualquier momento comenzarán a prepararla</small>
+  </div>
+</div>
 
-<!-- Stats Diarios -->
-<div id="dailyStatsPanel" style="
-  background: rgba(255,255,255,0.95);
-  padding: 20px;
-  border-radius: 12px;
-  max-width: 1200px;
-  margin: 0 auto 20px auto;
-  display: none;
-">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <h3 style="color: #1e40af; font-size: 1.2em; margin: 0;">
-      📊 Resumen del Día <span id="currentDateDisplay" style="font-size: 0.9em; color: #64748b; font-weight: normal;"></span>
-    </h3>
-    <button onclick="refreshStats()" style="
-      background: #4a7c2c;
-      color: white;
+<div class="notes-popup" id="notesPopup">
+  <h3 id="notesItemName">Agregar item</h3>
+  <p>¿Alguna observación? (Opcional)</p>
+  <textarea id="notesTextarea" placeholder="Ej: Sin cebolla, extra tomate..."></textarea>
+  
+  <div class="extras-section" id="extrasSection">
+    <h4>➕ Agregar extras (opcional)</h4>
+    <div class="extras-list" id="extrasList"></div>
+  </div>
+
+  <div class="notes-popup-buttons">
+    <button class="btn-cancel" onclick="closeNotesPopup()">Cancelar</button>
+    <button class="btn-add" onclick="addItemWithNotes()">Agregar</button>
+  </div>
+</div>
+
+<div class="soldout-popup" id="soldoutPopup">
+  <div class="soldout-emoji">😔</div>
+  <h3>¡Producto agotado!</h3>
+  <div class="soldout-product-name" id="soldoutProductName">—</div>
+  <p>Lamentablemente este producto no está disponible en este momento.<br>
+     ¡Pero no te preocupes! Tenemos otras deliciosas opciones que te van a encantar. 🍔</p>
+  <button onclick="closeSoldOutPopup()">Ver otros productos</button>
+</div>
+
+<!-- Error popup mejorado -->
+<div class="error-popup" id="errorPopup">
+  <div class="error-emoji">⚠️</div>
+  <h3 id="errorTitle">Error de Conexión</h3>
+  <p id="errorMessage">Hubo un problema al procesar tu solicitud. Por favor intenta de nuevo.</p>
+  <button onclick="closeErrorPopup()">Entendido</button>
+</div>
+
+<div class="chef-clippy" id="chefClippy">
+  <div class="clippy-container">
+    <div class="speech-bubble" id="speechBubble">
+      <button class="bubble-close" onclick="hideBubble()">×</button>
+      <p class="bubble-text">
+        <span class="bubble-emoji" id="bubbleEmoji">👋</span>
+        <span id="bubbleText">¡Hola! ¿Te ayudo a elegir?</span>
+      </p>
+    </div>
+    
+    <div class="clippy-avatar" onclick="openPinzer()">
+      <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Chef Elly" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+      <div class="notification-pulse" id="notificationBadge" style="display: none;">3</div>
+    </div>
+  </div>
+</div>
+
+<div id="pinzer-modal">
+  <div style="
+    background: linear-gradient(135deg, #4a7c2c, #2d5016);
+    color: white;
+    padding: 15px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  ">
+    <span>👨‍🍳 Chef Elly - Tu Mesero</span>
+    <button onclick="closePinzer()" style="
+      background: none;
       border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
+      color: white;
+      font-size: 24px;
       cursor: pointer;
-      font-weight: 600;
-    ">
-      🔄 Actualizar
-    </button>
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      -webkit-tap-highlight-color: transparent;
+    ">×</button>
   </div>
   
-  <div style="
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-  ">
-    <div class="stat-card">
-      <div class="stat-value" id="stat-total-orders">0</div>
-      <div class="stat-label">Órdenes Totales</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-total-sales" style="color: #059669;">RD$0</div>
-      <div class="stat-label">Ventas del Día</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-avg-order">RD$0</div>
-      <div class="stat-label">Ticket Promedio</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-completed">0</div>
-      <div class="stat-label">Completadas</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-top-product">-</div>
-      <div class="stat-label">Más Vendido</div>
-    </div>
-  </div>
+  <div id="pinzer-messages"></div>
+  
+  <div id="pinzer-replies" style="
+    padding: 10px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  "></div>
 </div>
 
-<style>
-  .stat-card {
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    border: 2px solid #e2e8f0;
-  }
-  .stat-value {
-    font-size: 1.8em;
-    font-weight: bold;
-    color: #1e40af;
-    margin-bottom: 5px;
-  }
-  .stat-label {
-    font-size: 0.85em;
-    color: #64748b;
-    font-weight: 600;
-  }
-</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<div id="connection-status">🔄 Conectando...</div>
-
-<!-- Banner de notificaciones -->
-<div id="notification-banner" onclick="requestNotificationPermission()">
-  🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
-</div>
-
-<!-- Stats -->
-<div class="stats" id="stats">
-  <div class="stat-item">
-    <div class="stat-number" id="total-orders">0</div>
-    <div class="stat-label">Total Órdenes</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="pending-orders">0</div>
-    <div class="stat-label">Pendientes</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="preparing-orders">0</div>
-    <div class="stat-label">En Preparación</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="ready-orders">0</div>
-    <div class="stat-label">Listas</div>
-  </div>
-</div>
-
-<div id="error-message"></div>
-
-<div id="orders">
-  <div class="loading">⏳ Cargando órdenes...</div>
-</div>
-
-<!-- Productos / Sold Out -->
-<div class="products-panel" id="productsPanel">
-  <div class="products-panel-header">
-    <h3>📦 Productos</h3>
-    <div class="legend">
-      <span><span class="legend-dot available"></span> Disponible</span>
-      <span><span class="legend-dot soldout"></span> Agotado</span>
-    </div>
-  </div>
-  <div class="products-grid" id="productsGrid">
-    <!-- se genera por JS -->
-  </div>
-</div>
-
-<!-- ──────────────────────────────────────────────────────────── -->
 <script>
 // ══════════════════════════════════════════════════════════════
-// TIMEZONE UTILITIES (República Dominicana = UTC-4)
+// CONFIGURACIÓN Y DATOS
 // ══════════════════════════════════════════════════════════════
 
-const DR_TIMEZONE_OFFSET = -4; // República Dominicana es UTC-4
+const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Obtener la fecha/hora actual en República Dominicana
-function getDRDate() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const drTime = new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
-  return drTime;
+const MENU_DATA = {
+  munchies: [
+    { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/7L5Pv7T.jpeg',
+      desc:'Yukita frita, cerdo asado en mojo verde, salsita verde de ajo y perejil y queso fresco' },
+    { id:'fries',    name:'Mr. Fries',      price:650,  img:'https://i.imgur.com/TRGVwtX.jpeg',
+      desc:'Papas fritas sazonadas, fondue de queso velveeta, tocineta caramelizada, queso parmesano y puerrito' }
+  ],
+  sandwiches: [
+    { id:'pastrami', name:'Mr. Pastrami',   price:1900, img:'https://i.imgur.com/h2C6YGu.jpeg',
+      desc:'Barra gallega de masa madre de 12", 1/2 lb de pastrami de res angus, mermelada de pimiento morrón ahumada, queso suizo, queso cheddar y Elly\'s mayo' },
+    { id:'chopped',  name:'Chopped Cheese', price:1100, img:'https://i.imgur.com/YZvXvhb.jpeg',
+      desc:'Media baguette, carne molida angus, queso cheddar, queso provolone, tocineta, lechuga, tomate, cebolla, chicharrón ahumado y Elly\'s mayo' },
+    { id:'phillie',  name:'Mr. Phillie Cheese Steak', price:950, img:'https://i.imgur.com/gD4tBQZ.jpeg',
+      desc:'Pan hoagie roll, filete de res angus, cebollas caramelizadas, hongos asados, queso provolone y fondue de queso velveeta' },
+    { id:'smash',    name:'Ellys Classic Smashburger', price:850, img:'https://i.imgur.com/RJntO70.jpeg',
+      desc:'Pan de papa, doble carne angus smash de 4 oz c/u, cebolla blanca, doble queso cheddar, tocineta caramelizada y Elly\'s Mayo' },
+    { id:'pierna',   name:'Sanguche de Pierna', price:700, img:'https://i.imgur.com/P1Z3xJE.jpeg',
+      desc:'Pan cubano, cerdo asado en mojo verde, tomate, repollo, cebolla, queso gouda y mayoketchup' },
+    { id:'cubano',   name:'Cubano',          price:700,  img:'https://i.imgur.com/zpJOUwE.jpeg',
+      desc:'Pan cubano, cerzo asado en mojo verde, queso suizo, jamón ahumado Caserío, pepinillo y aderezo cubano' },
+    { id:'club',     name:'Club Sandwich',   price:700,  img:'https://i.imgur.com/0R9hwrT.jpeg',
+      desc:'Pan brioche de molde, pechuga de pollo al grill, queso philadelphia, tocineta, queso cheddar, queso suizo, jamón ahumado, lechuga, tomate, cebolla y Elly\'s mayo' },
+    { id:'chimi',    name:'El Chimichurri',  price:650,  img:'https://i.imgur.com/PMeJVl3.jpeg',
+      desc:'Pan ciabatta, carne de chimí elaborada con carne de res y cerdo, queso provolone, salsa chimichurri, tomate, repollo, cebolla encurtida, mayonesa, ketchup y mostaza' }
+  ],
+  extras: [
+    { id:'extra_tocineta',  name:'Extra Tocineta',                price:100, img:null, desc:null },
+    { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100, img:null, desc:null },
+    { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,  img:null, desc:null },
+    { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,  img:null, desc:null }
+  ]
+};
+
+// ══════════════════════════════════════════════════════════════
+// VARIABLES DE ESTADO
+// ══════════════════════════════════════════════════════════════
+
+let order = [];
+let soldOutSet = new Set();
+let currentOrderId = null;
+let orderStatusChecker = null;
+let pendingItem = null;
+let orderReadyNotified = false;
+let orderReviewed = false; // Nueva variable para saber si el usuario revisó el total
+
+// ══════════════════════════════════════════════════════════════
+// FUNCIONES DE ERROR MEJORADAS
+// ══════════════════════════════════════════════════════════════
+
+function showError(title, message) {
+  document.getElementById('errorTitle').textContent = title;
+  document.getElementById('errorMessage').textContent = message;
+  document.getElementById('errorPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
 }
 
-// Convertir Date a string formato YYYY-MM-DD en hora RD
-function getDRDateString(date = null) {
-  const d = date || getDRDate();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function closeErrorPopup() {
+  document.getElementById('errorPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
 }
 
-// Formatear fecha para mostrar (ej: "Viernes 7 Feb 2025")
-function formatDRDate(date = null) {
-  const d = date || getDRDate();
-  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+// ══════════════════════════════════════════════════════════════
+// CARGAR PRODUCTOS AGOTADOS
+// ══════════════════════════════════════════════════════════════
 
-// Actualizar display de fecha actual
-function updateCurrentDateDisplay() {
-  const display = document.getElementById('currentDateDisplay');
-  if (display) {
-    display.textContent = `(${formatDRDate()})`;
+async function loadSoldOut() {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) {
+      console.warn("⚠️ loadSoldOut HTTP " + res.status);
+      return;
+    }
+    const data = await res.json();
+    soldOutSet = new Set(data.map(r => r.id));
+    console.log("✅ Productos agotados cargados:", [...soldOutSet]);
+  } catch (e) {
+    console.warn("⚠️ loadSoldOut error:", e.message);
   }
 }
 
-// ── Credenciales ─────────────────────────────────────────────
-const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+// ══════════════════════════════════════════════════════════════
+// SUBSCRIBIR A CAMBIOS (con fallback a polling)
+// ══════════════════════════════════════════════════════════════
 
-// Headers para GET (sin Content-Type — Android Chrome falla con CORS si lo incluye en GET)
-function sbGetHeaders() {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-  };
-}
-// Headers para POST / PATCH / PUT (con Content-Type)
-function sbWriteHeaders(extra = {}) {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-    ...extra
-  };
-}
+let soldOutPoller = null;
 
-// fetch con timeout usando Promise.race — más compatible que AbortController en Android
-function fetchWithTimeout(url, options = {}, ms = 8000) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout ' + ms + 'ms')), ms)
-  );
-  return Promise.race([fetch(url, options), timeout]);
-}
-
-// ── Menu completo (mismo MENU_DATA que en index.html) ───────
-const MENU_DATA = [
-  // munchies
-  { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
-  { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
-  // sandwiches
-  { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
-  { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
-  { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
-  { id:'smash',           name:'Ellys Classic Smashburger',      price:850,  cat:'Sándwiches' },
-  { id:'pierna',          name:'Sanguche de Pierna',             price:700,  cat:'Sándwiches' },
-  { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
-  { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
-  { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
-  // extras
-  { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
-  { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
-  { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
-  { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
-];
-
-// ── Estado global ────────────────────────────────────────────
-let soldOutSet      = new Set();   // IDs actualmente agotados
-let lastOrderCount  = 0;
-let hasInteracted   = false;       // reemplaza hasPlayedSound
-
-// ── AudioContext (mismo patrón que index.html) ──────────────
-let audioCtx = null;
-function ensureAudioContext() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
-
-function playBeeps(freqs, volume = 0.4) {
+function subscribeSoldOut() {
   try {
-    if (!audioCtx) return;
+    const channel = db.channel('products-changes');
+    channel
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        const row = payload.new || payload.old;
+        if (!row) return;
+        if (row.sold_out) {
+          soldOutSet.add(row.id);
+        } else {
+          soldOutSet.delete(row.id);
+        }
+        renderMenu();
+        console.log("🔄 soldOut realtime:", row.id, row.sold_out);
+      })
+      .subscribe((status, err) => {
+        if (err || status === 'CHANNEL_ERROR') {
+          console.warn("⚠️ Realtime fallback a polling:", err);
+          startSoldOutPoller();
+        }
+      });
+  } catch (e) {
+    console.warn("⚠️ subscribeSoldOut threw, fallback a polling:", e.message);
+    startSoldOutPoller();
+  }
+}
+
+function startSoldOutPoller() {
+  if (soldOutPoller) return;
+  soldOutPoller = setInterval(async () => {
+    try {
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const newSet = new Set(data.map(r => r.id));
+      if (newSet.size !== soldOutSet.size || [...newSet].some(id => !soldOutSet.has(id))) {
+        soldOutSet = newSet;
+        renderMenu();
+        console.log("🔄 soldOut polling actualizado:", [...soldOutSet]);
+      }
+    } catch (e) { /* silente */ }
+  }, 30000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER MENU
+// ══════════════════════════════════════════════════════════════
+
+function renderMenu() {
+  const container = document.getElementById('menuSection');
+
+  let html = '<h2 class="section-title">Menú</h2>';
+
+  html += '<div class="category-title">MUNCHIES</div>';
+  MENU_DATA.munchies.forEach(item => { html += menuItemHTML(item); });
+
+  html += '<div class="category-title">SÁNDWICHES</div>';
+  MENU_DATA.sandwiches.forEach(item => { html += menuItemHTML(item); });
+
+  html += `<div class="note-papas">TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>`;
+
+  html += '<div class="category-title">EXTRAS</div>';
+  MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
+
+  container.innerHTML = html;
+}
+
+function menuItemHTML(item) {
+  const isSoldOut = soldOutSet.has(item.id);
+  const soldOutClass = isSoldOut ? ' sold-out' : '';
+  const soldOutBadge = isSoldOut ? '<span class="sold-out-badge">Agotado</span>' : '';
+
+  let imgHTML = '';
+  if (item.img) {
+    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image">`;
+  }
+
+  let descHTML = '';
+  if (item.desc) {
+    descHTML = `<div class="item-description">${item.desc}</div>`;
+  }
+
+  const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+  const isExtra = item.id.startsWith('extra_');
+  const qtyHTML = (isSoldOut || isExtra) ? '' : `
+            ${currentQty > 0 ? `
+              <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+              <span class="menu-qty-num">${currentQty}</span>
+            ` : ''}
+            <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
+
+  return `
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}">
+      ${soldOutBadge}
+      ${imgHTML}
+      <div class="item-info">
+        <div>
+          <div class="item-name">${item.name}</div>
+          ${descHTML}
+        </div>
+        <div class="item-bottom">
+          <div class="item-price">RD$${item.price.toLocaleString()}</div>
+          <div class="menu-qty-wrap" id="menuQty_${item.id}">${qtyHTML}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTES POPUP
+// ══════════════════════════════════════════════════════════════
+
+function showNotesPopup(id, name, price) {
+  pendingItem = { id, name, price, extras: [] };
+  document.getElementById('notesItemName').textContent = name;
+  document.getElementById('notesTextarea').value = '';
+  
+  const extrasList = document.getElementById('extrasList');
+  extrasList.innerHTML = MENU_DATA.extras.map(extra => {
+    const isSoldOut = soldOutSet.has(extra.id);
+    const disabled = isSoldOut ? 'disabled' : '';
+    const label = isSoldOut ? extra.name + ' (Agotado)' : extra.name;
+    return `
+      <div class="extra-checkbox" style="${isSoldOut ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+        <input type="checkbox" id="extra_${extra.id}" value="${extra.id}" ${disabled}
+               onchange="toggleExtra('${extra.id}', '${extra.name}', ${extra.price}, this.checked)">
+        <label for="extra_${extra.id}" style="${isSoldOut ? 'cursor:not-allowed;' : ''}">
+          <span>${label}</span>
+          <span class="extra-price">+RD$${extra.price}</span>
+        </label>
+      </div>`;
+  }).join('');
+  
+  document.getElementById('notesPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeNotesPopup() {
+  document.getElementById('notesPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  pendingItem = null;
+}
+
+function toggleExtra(id, name, price, checked) {
+  if (!pendingItem) return;
+  if (checked) {
+    pendingItem.extras.push({ id, name, price });
+  } else {
+    pendingItem.extras = pendingItem.extras.filter(e => e.id !== id);
+  }
+}
+
+function addItemWithNotes() {
+  if (!pendingItem) return;
+  const notes = document.getElementById('notesTextarea').value.trim();
+  
+  addItem(pendingItem.id, pendingItem.name, pendingItem.price, notes || null);
+  
+  if (pendingItem.extras && pendingItem.extras.length > 0) {
+    pendingItem.extras.forEach(extra => {
+      const extraNote = `(para ${pendingItem.name})`;
+      addItem(extra.id, extra.name, extra.price, extraNote);
+    });
+  }
+  
+  closeNotesPopup();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SOLDOUT POPUP
+// ══════════════════════════════════════════════════════════════
+
+function showSoldOutPopup(productName) {
+  document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
+  document.getElementById('soldoutPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeSoldOutPopup() {
+  document.getElementById('soldoutPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MENU QTY CHANGE
+// ══════════════════════════════════════════════════════════════
+
+function menuQtyChange(itemId, delta) {
+  if (itemId.startsWith('extra_')) return;
+
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  const menuItem = allItems.find(i => i.id === itemId);
+  if (!menuItem) return;
+
+  if (soldOutSet.has(itemId)) { showSoldOutPopup(menuItem.name); return; }
+
+  const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
+
+  if (delta === 1 && currentQty === 0) {
+    showNotesPopup(itemId, menuItem.name, menuItem.price);
+    return;
+  }
+
+  if (delta === 1) {
+    const idx = order.findIndex(o => o.id === itemId && !o.notes) !== -1
+      ? order.findIndex(o => o.id === itemId && !o.notes)
+      : order.findIndex(o => o.id === itemId);
+    if (idx !== -1) {
+      order[idx].qty += 1;
+    }
+  } else {
+    const idx = order.findIndex(o => o.id === itemId);
+    if (idx !== -1) {
+      order[idx].qty -= 1;
+      if (order[idx].qty <= 0) {
+        order.splice(idx, 1);
+      }
+    }
+  }
+
+  renderOrder();
+}
+
+function updateMenuQtyBadges() {
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  allItems.forEach(item => {
+    if (soldOutSet.has(item.id)) { 
+      const w = document.getElementById("menuQty_" + item.id); 
+      if (w) w.innerHTML = ""; 
+      return; 
+    }
+    const wrap = document.getElementById('menuQty_' + item.id);
+    if (!wrap) return;
+    const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+    if (currentQty > 0) {
+      wrap.innerHTML = `
+        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+        <span class="menu-qty-num">${currentQty}</span>
+        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)">+</button>`;
+    } else {
+      wrap.innerHTML = `<button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="border-radius:8px;">+</button>`;
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD ITEM
+// ══════════════════════════════════════════════════════════════
+
+function addItem(id, name, price, notes = null) {
+  if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
+
+  const idx = order.findIndex(o => o.id === id && o.notes === notes);
+  if (idx !== -1) {
+    order[idx].qty += 1;
+  } else {
+    order.push({ id, name, price, qty: 1, notes });
+  }
+  renderOrder();
+}
+
+function changeQty(index, delta) {
+  order[index].qty += delta;
+  if (order[index].qty <= 0) {
+    order.splice(index, 1);
+  }
+  renderOrder();
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER ORDER
+// ══════════════════════════════════════════════════════════════
+
+function renderOrder() {
+  const list = document.getElementById("orderList");
+  const countBadge = document.getElementById("order-count");
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+  const totalDiv = document.getElementById("orderTotal");
+
+  const totalQty = order.reduce((s, i) => s + i.qty, 0);
+
+  if (order.length === 0) {
+    list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
+    countBadge.style.display = 'none';
+    placeOrderBtn.disabled = true;
+    totalDiv.style.display = 'none';
+    orderReviewed = false; // Resetear cuando se vacía
+    updateMenuQtyBadges();
+    return;
+  }
+
+  countBadge.textContent = totalQty;
+  countBadge.style.display = 'inline-block';
+  placeOrderBtn.disabled = false;
+  
+  // Resetear el estado de revisión y el texto del botón cuando cambia la orden
+  orderReviewed = false;
+  placeOrderBtn.textContent = "Ordenar Ahora";
+
+  list.innerHTML = '';
+  let total = 0;
+
+  order.forEach((item, index) => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+
+    const div = document.createElement("div");
+    div.className = "order-item";
+
+    let notesHTML = item.notes
+      ? `<div class="order-item-notes">📝 ${item.notes}</div>`
+      : '';
+
+    div.innerHTML = `
+      <div class="order-item-top">
+        <span class="order-item-name">${item.name}</span>
+        <span class="order-item-price">RD$${subtotal.toLocaleString()}</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+        <div class="order-item-controls">
+          <button class="qty-btn minus" onclick="changeQty(${index}, -1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+          <span style="font-size:0.82em; color:#6c757d; margin-left:4px;">× RD$${item.price.toLocaleString()}</span>
+        </div>
+      </div>
+      ${notesHTML}`;
+    list.appendChild(div);
+  });
+
+  totalDiv.innerHTML = `
+    <div class="order-total">
+      <span>TOTAL:</span>
+      <span>RD$${total.toLocaleString()}</span>
+    </div>`;
+  totalDiv.style.display = 'block';
+
+  updateMenuQtyBadges();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PLACE ORDER (con mejor manejo de errores)
+// ══════════════════════════════════════════════════════════════
+
+async function placeOrder() {
+  if (order.length === 0) return;
+
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+
+  // PRIMER PASO: Scroll al total para que revisen la orden
+  if (!orderReviewed) {
+    const orderSummary = document.querySelector('.order-summary');
+    if (orderSummary) {
+      orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    // Cambiar el botón a "Completar Orden"
+    placeOrderBtn.textContent = "Completar Orden";
+    orderReviewed = true;
+    return; // Salir aquí, esperar a que presionen de nuevo
+  }
+
+  // SEGUNDO PASO: Enviar la orden
+  placeOrderBtn.disabled = true;
+  placeOrderBtn.textContent = "Procesando...";
+
+  try {
+    const itemsArray = order.map(item => ({
+      name: item.name,
+      qty: item.qty,
+      notes: item.notes || null
+    }));
+    const itemsJSON = JSON.stringify(itemsArray);
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const body = JSON.stringify({
+      items: itemsJSON,
+      total: total,
+      status: 'pending'
+    });
+
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Prefer': 'return=representation'
+        },
+        body: body
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("❌ Supabase POST /orders →", res.status, errText);
+      
+      let errorTitle = "Error al Enviar Orden";
+      let errorMessage = "No pudimos procesar tu orden en este momento. ";
+      
+      if (res.status === 0 || res.status >= 500) {
+        errorMessage += "Parece que hay un problema con el servidor. Por favor intenta de nuevo en unos momentos.";
+      } else if (res.status === 401 || res.status === 403) {
+        errorMessage += "Hay un problema de autenticación. Por favor recarga la página y escanea el código QR nuevamente.";
+      } else if (res.status === 400) {
+        errorMessage += "Los datos de tu orden no son válidos. Por favor verifica tu orden e intenta nuevamente.";
+      } else {
+        errorMessage += "Error desconocido. Por favor intenta de nuevo.";
+      }
+      
+      showError(errorTitle, errorMessage);
+      placeOrderBtn.disabled = false;
+      placeOrderBtn.textContent = "Ordenar Ahora";
+      return;
+    }
+
+    const data = await res.json();
+    const orderNumber = Array.isArray(data) ? data[0].id : data.id;
+    currentOrderId = orderNumber;
+    orderReadyNotified = false;
+
+    // Guardar el orderId en el array de órdenes activas
+    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+    if (!activeOrders.includes(orderNumber)) {
+      activeOrders.push(orderNumber);
+      localStorage.setItem('activeOrders', JSON.stringify(activeOrders));
+    }
+
+    // Guardar el detalle completo de la orden para mostrar historial
+    const orderDetails = {
+      id: orderNumber,
+      items: itemsArray,
+      total: total,
+      status: 'pending',
+      timestamp: new Date().toISOString()
+    };
+    
+    const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
+    allOrders.push(orderDetails);
+    localStorage.setItem('allOrders', JSON.stringify(allOrders));
+
+    showSuccessMessage(orderNumber);
+    renderMyOrders(); // Actualizar la vista de "Mis Órdenes"
+
+    // El interval sigue corriendo aunque cierres el popup
+    // Esto permite que recibas notificaciones de TODAS tus órdenes activas
+    if (orderStatusChecker) clearInterval(orderStatusChecker);
+    orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
+    checkOrderStatus(orderNumber);
+
+    order = [];
+    renderOrder();
+
+  } catch (err) {
+    console.error("❌ placeOrder error:", err);
+    
+    let errorTitle = "Error de Conexión";
+    let errorMessage = "No pudimos conectar con el servidor. ";
+    
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      errorMessage += "Verifica tu conexión a internet e intenta nuevamente.";
+    } else if (err.name === 'AbortError') {
+      errorMessage += "La solicitud tardó demasiado. Por favor intenta de nuevo.";
+    } else {
+      errorMessage += "Error: " + err.message;
+    }
+    
+    showError(errorTitle, errorMessage);
+    placeOrderBtn.disabled = false;
+    placeOrderBtn.textContent = "Ordenar Ahora";
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SUCCESS MESSAGE
+// ══════════════════════════════════════════════════════════════
+
+function showSuccessMessage(orderNumber) {
+  document.getElementById("orderNumberDisplay").textContent = `#${orderNumber}`;
+  closeNotesPopup();
+  document.getElementById('overlay').classList.add("show");
+  document.getElementById('successMessage').classList.add("show");
+
+  if (typeof Notification !== 'undefined' && Notification.permission === "default") {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// OVERLAY CLICK
+// ══════════════════════════════════════════════════════════════
+
+document.getElementById("overlay").addEventListener("click", () => {
+  const successMessage = document.getElementById("successMessage");
+  const notesPopup = document.getElementById("notesPopup");
+  const errorPopup = document.getElementById("errorPopup");
+
+  if (successMessage.classList.contains('show')) {
+    document.getElementById("overlay").classList.remove("show");
+    successMessage.classList.remove("show");
+  } else if (notesPopup.classList.contains('show')) {
+    closeNotesPopup();
+  } else if (errorPopup.classList.contains('show')) {
+    closeErrorPopup();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// CHECK ORDER STATUS (MEJORADO: soporta múltiples órdenes)
+// ══════════════════════════════════════════════════════════════
+
+async function checkOrderStatus(orderId) {
+  try {
+    // Obtener todas las órdenes activas
+    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+    
+    if (activeOrders.length === 0) return;
+    
+    // Hacer una consulta para todas las órdenes activas
+    const orderIds = activeOrders.join(',');
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/orders?id=in.(' + orderIds + ')&select=id,status',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    
+    if (!res.ok) { console.error("checkOrderStatus HTTP", res.status); return; }
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return;
+
+    const statusDiv = document.getElementById("orderStatus");
+    
+    // SOLO mostrar el estado de la orden actual en el popup (currentOrderId)
+    // Las demás se mostrarán en "Mis Órdenes"
+    if (currentOrderId && statusDiv) {
+      const currentOrder = rows.find(r => r.id === currentOrderId);
+      
+      if (currentOrder) {
+        const status = currentOrder.status;
+        
+        if (status === "accepted") {
+          statusDiv.className = "status-checking";
+          statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
+        }
+        
+        if (status === "ready") {
+          statusDiv.className = "status-ready";
+          statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+          
+          // Notificar solo una vez
+          const notifiedKey = 'notified_' + currentOrderId;
+          if (!localStorage.getItem(notifiedKey)) {
+            localStorage.setItem(notifiedKey, 'true');
+            showReadyBanner(currentOrderId);
+            if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+            playReadySound();
+            sendDesktopNotification(currentOrderId);
+          }
+        }
+      }
+    }
+    
+    // Procesar TODAS las órdenes para notificaciones en background
+    rows.forEach(orderData => {
+      const status = orderData.status;
+      const currentId = orderData.id;
+      
+      if (status === "ready") {
+        // Notificar solo una vez por orden (incluso si no es la actual)
+        const notifiedKey = 'notified_' + currentId;
+        if (!localStorage.getItem(notifiedKey)) {
+          localStorage.setItem(notifiedKey, 'true');
+          showReadyBanner(currentId);
+          if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+          playReadySound();
+          sendDesktopNotification(currentId);
+        }
+        
+        // Remover de órdenes activas después de un tiempo
+        setTimeout(() => {
+          const updatedOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+          const filtered = updatedOrders.filter(id => id !== currentId);
+          localStorage.setItem('activeOrders', JSON.stringify(filtered));
+        }, 60000); // 1 minuto
+      }
+    });
+    
+    // Sincronizar estados con el historial de órdenes
+    const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
+    let updated = false;
+    allOrders.forEach(order => {
+      const found = rows.find(r => r.id === order.id);
+      if (found && order.status !== found.status) {
+        order.status = found.status;
+        updated = true;
+      }
+    });
+    if (updated) {
+      localStorage.setItem('allOrders', JSON.stringify(allOrders));
+      displayOrdersHTML(allOrders);
+    }
+    
+  } catch (e) {
+    console.error("checkOrderStatus error:", e.message);
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+    if (activeOrders.length > 0) {
+      checkOrderStatus(activeOrders[0]); // Solo necesitamos pasar uno para activar la función
+    }
+  }
+});
+
+window.addEventListener('focus', () => {
+  const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+  if (activeOrders.length > 0) {
+    checkOrderStatus(activeOrders[0]); // Solo necesitamos pasar uno para activar la función
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// RENDER MIS ÓRDENES (HISTORIAL)
+// ══════════════════════════════════════════════════════════════
+
+function renderMyOrders() {
+  const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
+  const myOrdersSection = document.getElementById('myOrdersSection');
+  const myOrdersList = document.getElementById('myOrdersList');
+  const ordersCount = document.getElementById('orders-count');
+  
+  if (allOrders.length === 0) {
+    myOrdersSection.style.display = 'none';
+    return;
+  }
+  
+  myOrdersSection.style.display = 'block';
+  ordersCount.textContent = allOrders.length;
+  ordersCount.style.display = 'inline-block';
+  
+  // Obtener estados actuales de todas las órdenes
+  const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
+  
+  // Consultar estados desde Supabase
+  if (activeOrders.length > 0) {
+    const orderIds = activeOrders.join(',');
+    fetch(
+      SUPABASE_URL + '/rest/v1/orders?id=in.(' + orderIds + ')&select=id,status',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    ).then(res => res.json())
+    .then(rows => {
+      // Actualizar estados en localStorage
+      allOrders.forEach(order => {
+        const found = rows.find(r => r.id === order.id);
+        if (found) {
+          order.status = found.status;
+        }
+      });
+      localStorage.setItem('allOrders', JSON.stringify(allOrders));
+      displayOrdersHTML(allOrders);
+    }).catch(() => {
+      displayOrdersHTML(allOrders);
+    });
+  } else {
+    displayOrdersHTML(allOrders);
+  }
+}
+
+function displayOrdersHTML(allOrders) {
+  const myOrdersList = document.getElementById('myOrdersList');
+  
+  // Mostrar órdenes más recientes primero
+  const sortedOrders = [...allOrders].reverse();
+  
+  myOrdersList.innerHTML = sortedOrders.map(order => {
+    const statusClass = {
+      'pending': 'order-status-pending',
+      'accepted': 'order-status-accepted',
+      'ready': 'order-status-ready'
+    }[order.status] || 'order-status-pending';
+    
+    const statusText = {
+      'pending': '⏳ Recibida',
+      'accepted': '👨‍🍳 Cocinando',
+      'ready': '🎉 Lista'
+    }[order.status] || '⏳ Recibida';
+    
+    const itemsHTML = order.items.map(item => `
+      <div class="order-card-item">
+        <div class="order-card-item-name">
+          <span class="order-card-item-qty">${item.qty}x</span>
+          ${item.name}
+          ${item.notes ? `<div class="order-card-notes">→ ${item.notes}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+    
+    return `
+      <div class="order-card">
+        <div class="order-card-header">
+          <div class="order-card-number">Orden #${order.id}</div>
+          <div class="order-card-status ${statusClass}">${statusText}</div>
+        </div>
+        <div class="order-card-items">
+          ${itemsHTML}
+        </div>
+        <div class="order-card-total">
+          <span>Total:</span>
+          <span>RD$${order.total.toLocaleString()}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Actualizar "Mis Órdenes" cada 3 segundos
+setInterval(() => {
+  const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
+  if (allOrders.length > 0) {
+    renderMyOrders();
+  }
+}, 3000);
+
+
+// ══════════════════════════════════════════════════════════════
+// READY BANNER
+// ══════════════════════════════════════════════════════════════
+
+function showReadyBanner(orderId) {
+  if (document.getElementById('readyBanner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'readyBanner';
+  banner.className = 'ready-banner';
+  banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} ESTÁ LISTA!<br>
+    <span style="font-weight:400; font-size:0.92em;">Pasa a la caja a pagar y retira tu orden</span>
+    <button onclick="document.getElementById('readyBanner').remove()">Entendido</button>`;
+  document.body.prepend(banner);
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUDIO & NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+
+let audioCtx = null;
+
+function ensureAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+['touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, ensureAudioContext, { once: true });
+});
+
+function playReadySound() {
+  try {
+    if (!audioCtx) {
+      console.log("🔇 No hay AudioContext");
+      return;
+    }
     ensureAudioContext();
+
     const now = audioCtx.currentTime;
-    freqs.forEach((freq, i) => {
-      const osc  = audioCtx.createOscillator();
+    [880, 1047, 1319].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.type = 'sine';
       osc.frequency.value = freq;
-      gain.gain.setValueAtTime(volume, now + i * 0.18);
+      gain.gain.setValueAtTime(0.4, now + i * 0.18);
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
       osc.start(now + i * 0.18);
-      osc.stop(now  + i * 0.18 + 0.16);
+      osc.stop(now + i * 0.18 + 0.16);
     });
-  } catch (e) { /* silente */ }
+  } catch (e) {
+    console.warn("🔇 playReadySound error:", e.message);
+  }
 }
 
-// Nueva orden: 3 beeps ascendentes rápidos
-function playNewOrderSound()   { playBeeps([660, 880, 1100]); }
-// Confirmación (aceptar / marcar lista): 2 beeps suaves
-function playConfirmSound()    { playBeeps([440, 660], 0.3); }
-
-// ── Utilidades ───────────────────────────────────────────────
-function showError(msg) {
-  document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
-}
-function clearError() {
-  document.getElementById("error-message").innerHTML = '';
-}
-
-function updateStats(orders) {
-  document.getElementById('total-orders').textContent     = orders.length;
-  document.getElementById('pending-orders').textContent   = orders.filter(o => o.status === 'pending' || !o.status).length;
-  document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
-  document.getElementById('ready-orders').textContent     = orders.filter(o => o.status === 'ready').length;
-}
-
-// ── Notificaciones de navegador ──────────────────────────────
-async function requestNotificationPermission() {
-  if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
+function sendDesktopNotification(orderId) {
   try {
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") {
-      document.getElementById('notification-banner').classList.remove('show');
-      new Notification("¡Notificaciones Habilitadas!", {
-        body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
-        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
-        tag: "pincer-notifications-enabled"
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'granted') {
+      new Notification("¡Tu orden está lista!", {
+        body: `Orden #${orderId} – Pasa a la caja a pagar`,
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
       });
-    } else if (perm === "denied") {
-      alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
     }
-  } catch (e) { console.error("requestNotificationPermission:", e); }
-}
-
-function sendNotification(title, body, tag) {
-  try {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    console.log("📱 Enviando notificación:", title);
-    const n = new Notification(title, {
-      body,
-      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
-      tag: tag || ('pincer-' + Date.now()),
-      requireInteraction: true
-    });
-    n.onclick = function() { window.focus(); this.close(); };
-  } catch (e) { /* silente */ }
-}
-
-// ── PRODUCTOS: cargar + renderizar + togglear ────────────────
-async function loadProducts() {
-  console.log("🟢 loadProducts iniciado");
-  try {
-    console.log("🟢 fetch products URL:", SUPABASE_URL + '/rest/v1/products?select=id,sold_out');
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
-      { headers: sbGetHeaders() }
-    );
-    console.log("🟢 fetch products completado, status:", res.status);
-    if (!res.ok) {
-      // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
-      console.warn("⚠️ products table HTTP error " + res.status);
-      soldOutSet = new Set();
-      renderProducts();
-      return;
-    }
-    const rows = await res.json();
-    soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
-    console.log("✅ Productos cargados, agotados:", [...soldOutSet]);
   } catch (e) {
-    console.warn("⚠️ loadProducts catch:", e.name, e.message);
-    soldOutSet = new Set();
-  }
-  renderProducts();
-}
-
-function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = '';
-
-  MENU_DATA.forEach(item => {
-    const isSoldOut = soldOutSet.has(item.id);
-
-    const card = document.createElement('div');
-    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
-    card.id = 'prodCard_' + item.id;
-    card.innerHTML = `
-      <div class="product-card-top">
-        <div>
-          <div class="product-card-name">${item.name}</div>
-          <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="toggle-row">
-        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
-        <label class="toggle-switch">
-          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`;
-    grid.appendChild(card);
-  });
-}
-
-async function toggleSoldOut(productId, isSoldOut) {
-  // Optimistic update inmediato
-  if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
-  updateProductCardUI(productId, isSoldOut);
-
-  try {
-    // UPSERT: si existe actualiza, si no existe lo inserta
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-        body: JSON.stringify({ id: productId, sold_out: isSoldOut })
-      }
-    );
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("❌ toggleSoldOut upsert →", res.status, txt);
-      // Revertir si falló
-      if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
-      updateProductCardUI(productId, !isSoldOut);
-      showError("No se pudo actualizar el producto. Verifica la conexión.");
-      return;
-    }
-    console.log("✅ Producto", productId, "→ sold_out:", isSoldOut);
-    clearError();
-  } catch (e) {
-    console.error("❌ toggleSoldOut:", e.message);
-    // Revertir
-    if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
-    updateProductCardUI(productId, !isSoldOut);
-    showError("Error de conexión al actualizar producto.");
+    console.warn("Notification no disponible:", e.message);
   }
 }
-
-function updateProductCardUI(productId, isSoldOut) {
-  const card  = document.getElementById('prodCard_' + productId);
-  if (!card) return;
-  const label = card.querySelector('.toggle-label');
-  const chk   = card.querySelector('input[type=checkbox]');
-
-  card.classList.toggle('is-soldout', isSoldOut);
-  label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
-  chk.checked       = isSoldOut;
-}
-
-
-// ── Renderizar items como lista estructurada ─────────────────
-function renderOrderItems(itemsJSON) {
-  try {
-    const items = JSON.parse(itemsJSON);
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
-    }
-    
-    // Agrupar: item principal + sus extras (los que tienen nota "para X")
-    let html = '';
-    let i = 0;
-    while (i < items.length) {
-      const item = items[i];
-      const isExtra = item.id && item.id.startsWith('extra_');
-      
-      if (!isExtra) {
-        // Item principal
-        const notesHTML = item.notes 
-          ? `<div class="order-item-notes">· ${item.notes}</div>`
-          : '';
-        html += `
-          <li class="order-item-row">
-            <span class="order-item-qty">${item.qty}x</span>
-            <div style="flex: 1;">
-              <div class="order-item-name">${item.name}</div>
-              ${notesHTML}
-            </div>
-          </li>`;
-        
-        // Buscar extras vinculados a este item (nota contiene "para [nombre]")
-        const linkedExtras = [];
-        for (let j = i + 1; j < items.length; j++) {
-          const next = items[j];
-          if (next.id && next.id.startsWith('extra_') && 
-              next.notes && next.notes.includes(`para ${item.name}`)) {
-            linkedExtras.push({ item: next, index: j });
-          }
-        }
-        
-        // Renderizar extras vinculados indentados
-        linkedExtras.forEach(({ item: extra }) => {
-          html += `
-            <li class="order-item-row is-extra">
-              <span class="order-item-qty">${extra.qty}x</span>
-              <div style="flex: 1;">
-                <div class="order-item-name">${extra.name}</div>
-              </div>
-            </li>`;
-        });
-        
-        // Marcar los extras ya procesados para saltarlos
-        linkedExtras.forEach(({ index }) => {
-          items[index]._processed = true;
-        });
-      } else if (!item._processed) {
-        // Extra suelto (no vinculado, caso edge)
-        html += `
-          <li class="order-item-row is-extra">
-            <span class="order-item-qty">${item.qty}x</span>
-            <div style="flex: 1;">
-              <div class="order-item-name">${item.name}</div>
-            </div>
-          </li>`;
-      }
-      i++;
-    }
-    
-    return html;
-  } catch (e) {
-    // Fallback por si el formato viejo sigue en la DB
-    return `<li class="order-item-row"><span class="order-item-name">${itemsJSON || 'Sin especificar'}</span></li>`;
-  }
-}
-
-// ── ÓRDENES: cargar + renderizar ─────────────────────────────
-async function loadOrders() {
-  console.log("🔵 loadOrders iniciado");
-  try {
-    console.log("🔵 fetch orders URL:", SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc');
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
-      { headers: sbGetHeaders() }
-    );
-    console.log("🔵 fetch orders completado, status:", res.status);
-    if (!res.ok) {
-      console.error("❌ loadOrders HTTP error", res.status);
-      showError("Error al cargar órdenes (HTTP " + res.status + ")");
-      document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
-      return;
-    }
-    const data = await res.json();
-
-    document.getElementById("connection-status").innerHTML = "🟢 Conectado";
-
-    const container = document.getElementById("orders");
-
-    if (!data || data.length === 0) {
-      container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
-      updateStats([]);
-      lastOrderCount = 0;
-      hasInteracted  = true;
-      return;
-    }
-
-    updateStats(data);
-
-    // ── Detectar nueva orden ──
-    const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
-
-    if (hasInteracted && currentPending > lastOrderCount) {
-      console.log("🔔 Nueva orden detectada");
-      playNewOrderSound();
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-      sendNotification(
-        "¡Nueva orden en Pincer!",
-        `Tienes ${currentPending} orden(es) pendiente(s)`
-      );
-    }
-
-    lastOrderCount = currentPending;
-    hasInteracted  = true;
-
-    // ── Renderizar órdenes ──
-    container.innerHTML = '';
-
-    data.forEach(order => {
-      const createdAt = new Date(order.created_at);
-      const minutes   = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-      const status    = order.status || 'pending';
-
-      let statusClass = 'new';
-      if      (status === 'ready')    statusClass = 'ready';
-      else if (status === 'accepted') statusClass = 'accepted';
-      else if (minutes > 5)           statusClass = 'late';
-      else if (minutes > 2)           statusClass = 'warning';
-
-      let statusBadgeClass, statusText;
-      if      (status === 'ready')    { statusBadgeClass = 'status-ready';    statusText = '✓ LISTA PARA RETIRAR'; }
-      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
-      else                            { statusBadgeClass = 'status-pending';  statusText = '⏳ PENDIENTE'; }
-
-      const div = document.createElement("div");
-      div.className = `order ${statusClass}`;
-      div.innerHTML = `
-        <div class="order-number">#${order.id}</div>
-        <span class="order-status ${statusBadgeClass}">${statusText}</span>
-        <div class="order-items">
-          <strong style="color: #1e40af; font-size: 0.95em;">📋 ITEMS:</strong>
-          <ul class="order-items-list">
-            ${renderOrderItems(order.items)}
-          </ul>
-        </div>
-        <div class="order-total">
-          <span class="order-total-label">💵 TOTAL A COBRAR:</span>
-          <span>RD${(order.total || 0).toLocaleString()}</span>
-        </div>
-        <div class="order-time">
-          ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
-          ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
-        </div>
-        <br>
-        ${status === 'pending'  ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready"  onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>`  : ''}
-        ${status === 'ready'    ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
-      container.appendChild(div);
-    });
-
-    clearError();
-  } catch (err) {
-    console.error("❌ loadOrders catch:", err.name, err.message);
-    showError("Error inesperado: " + err.message);
-    document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
-  }
-}
-
-// ── Aceptar orden (pending → accepted) ──────────────────────
-async function acceptOrder(id) {
-  try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'accepted' })
-      }
-    );
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id);
-      return;
-    }
-    console.log("✅ Orden #" + id + " → accepted");
-    playConfirmSound();
-    setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("acceptOrder:", e);
-    showError("Error inesperado al aceptar orden.");
-  }
-}
-
-// ── Marcar lista (accepted → ready) ─────────────────────────
-async function markReady(id) {
-  try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'ready' })
-      }
-    );
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id + " como lista");
-      return;
-    }
-    console.log("✅ Orden #" + id + " → ready");
-    playConfirmSound();
-    setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("markReady:", e);
-    showError("Error inesperado al marcar como lista.");
-  }
-}
-
-// ── Init ─────────────────────────────────────────────────────
-
-// Catch global de errores
-window.addEventListener('error', (e) => {
-  console.error('❌ Error global:', e.message, e.filename, e.lineno);
-  document.getElementById("connection-status").innerHTML = "🔴 Error: " + e.message;
-});
-
-window.addEventListener('unhandledrejection', (e) => {
-  console.error('❌ Promise sin catch:', e.reason);
-  document.getElementById("connection-status").innerHTML = "🔴 Promise error";
-});
 
 // ══════════════════════════════════════════════════════════════
-// AUTHENTICATION
-// ══════════════════════════════════════════════════════════════
-async function handleLogin(e) {
-  e.preventDefault();
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  const loginBtn = document.getElementById('loginBtn');
-  const loginError = document.getElementById('loginError');
-  loginBtn.disabled = true;
-  loginBtn.textContent = 'Verificando...';
-  loginError.style.display = 'none';
-  try {
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/verify_dashboard_login', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_username: username, p_password: password })
-    }, 8000);
-    if (!res.ok) throw new Error('Error de conexión');
-    const result = await res.json();
-    const data = Array.isArray(result) ? result[0] : result;
-    if (data && data.success) {
-      sessionStorage.setItem('dashboard_session', JSON.stringify({userId: data.user_id, restaurantId: data.restaurant_id, username: username}));
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('dailyStatsPanel').style.display = 'block';
-      initializeDashboard();
-    } else {
-      loginError.textContent = 'Usuario o contraseña incorrectos';
-      loginError.style.display = 'block';
-    }
-  } catch (err) {
-    console.error('Login error:', err);
-    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
-    loginError.style.display = 'block';
-  } finally {
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Iniciar Sesión';
-  }
-}
-
-function checkSession() {
-  const sessionStr = sessionStorage.getItem('dashboard_session');
-  if (!sessionStr) return false;
-  try {
-    const session = JSON.parse(sessionStr);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-async function refreshStats() {
-  try {
-    // Usar fecha actual de República Dominicana
-    const todayDR = getDRDateString();
-    console.log('📊 Actualizando stats para fecha RD:', todayDR);
-    
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_date: todayDR })
-    }, 8000);
-    
-    if (!res.ok) { 
-      console.error('Stats fetch error:', res.status); 
-      return; 
-    }
-    
-    const stats = await res.json();
-    console.log('📊 Stats recibidos:', stats);
-    
-    if (stats && stats.length > 0) {
-      const data = stats[0];
-      document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
-      document.getElementById('stat-total-sales').textContent = 'RD$' + (data.total_sales || 0).toLocaleString();
-      document.getElementById('stat-avg-order').textContent = 'RD$' + Math.round(data.avg_order_value || 0).toLocaleString();
-      document.getElementById('stat-completed').textContent = data.completed_orders || 0;
-      document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
-    }
-    
-    // Actualizar display de fecha
-    updateCurrentDateDisplay();
-  } catch (err) { 
-    console.error('Stats error:', err); 
-  }
-}
-
-async function dailyCleanup() {
-  try {
-    // Usar fecha actual de República Dominicana
-    const todayDR = getDRDateString();
-    console.log('🧹 Daily cleanup para fecha RD:', todayDR);
-    
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_current_date: todayDR })
-    }, 8000);
-    
-    if (res.ok) {
-      const result = await res.json();
-      console.log('✅ Daily cleanup completado:', result);
-    }
-  } catch (err) { 
-    console.error('Daily cleanup error:', err); 
-  }
-}
-
-function initializeDashboard() {
-  console.log("🚀 Iniciando Pincer Dashboard...");
-  
-  // Actualizar display de fecha al iniciar
-  updateCurrentDateDisplay();
-  
-  dailyCleanup();
-  refreshStats();
-  if ("Notification" in window) {
-    if (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
-    else if (Notification.permission === "granted") {
-      try {
-        new Notification("Pincer Dashboard Iniciado", {
-          body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
-          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
-          tag: "pincer-dashboard-ready"
-        });
-      } catch (e) { console.log("Notificación de bienvenida no soportada en este navegador"); }
-    } else if (Notification.permission === "denied") {
-      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
-    }
-  }
-  loadProducts();
-  loadOrders();
-  setInterval(loadOrders, 3000);
-  setInterval(refreshStats, 30000);
-  setInterval(loadProducts, 30000);
-  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
-  console.log("✅ Pincer Dashboard configurado");
-}
-
-
-// ══════════════════════════════════════════════════════════════
-// AI ASSISTANT CHATBOT
+// CHEF CLIPPY / PINZER CHATBOT
 // ══════════════════════════════════════════════════════════════
 
-function toggleAIChat() {
-  const window = document.getElementById('aiChatWindow');
-  const btn = document.getElementById('aiAssistantBtn');
+let autoMessageInterval;
+let currentMessageIndex = 0;
+
+const clippyMessages = [
+  { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
+  { text: '¿No sabes qué pedir?', emoji: '🤔' },
+  { text: 'Prueba nuestro Pastrami 🥪', emoji: '⭐' },
+  { text: 'Haz click para ordenar', emoji: '👈' }
+];
+
+function hideBubble() {
+  const bubble = document.getElementById('speechBubble');
+  if (bubble) bubble.classList.remove('show');
+}
+
+function showBubble(text, emoji) {
+  const bubble = document.getElementById('speechBubble');
+  const bubbleText = document.getElementById('bubbleText');
+  const bubbleEmoji = document.getElementById('bubbleEmoji');
   
-  if (window.style.display === 'none' || !window.style.display) {
-    window.style.display = 'flex';
-    btn.textContent = '✕';
-  } else {
-    window.style.display = 'none';
-    btn.textContent = '🤖';
+  if (bubble && bubbleText && bubbleEmoji) {
+    bubbleText.textContent = text;
+    bubbleEmoji.textContent = emoji;
+    bubble.classList.add('show');
   }
 }
 
-function addAIMessage(message, isUser = false) {
-  const container = document.getElementById('aiChatMessages');
-  const messageDiv = document.createElement('div');
+function startAutoMessages() {
+  setTimeout(() => {
+    showBubble(clippyMessages[0].text, clippyMessages[0].emoji);
+  }, 2000);
   
-  messageDiv.style.cssText = `
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    ${isUser 
-      ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;' 
-      : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
-    }
-  `;
+  autoMessageInterval = setInterval(() => {
+    currentMessageIndex = (currentMessageIndex + 1) % clippyMessages.length;
+    const msg = clippyMessages[currentMessageIndex];
+    showBubble(msg.text, msg.emoji);
+  }, 10000);
+}
+
+setTimeout(() => {
+  const badge = document.getElementById('notificationBadge');
+  if (badge) badge.style.display = 'flex';
+}, 5000);
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startAutoMessages);
+} else {
+  startAutoMessages();
+}
+
+let pinzerState = 'idle';
+let pinzerRecommendation = null;
+let pinzerUpsellItem = null;
+let pinzerHasUpsold = false;
+
+const pinzerMenu = {
+  sandwiches: [
+    { id:'pastrami', name:'Mr. Pastrami', price:1900, tags:['premium','hungry'] },
+    { id:'chopped', name:'Chopped Cheese', price:1100, tags:['hungry','popular'] },
+    { id:'phillie', name:'Mr. Phillie Cheese Steak', price:950, tags:['hungry'] },
+    { id:'smash', name:'Ellys Classic Smashburger', price:850, tags:['hungry','quick','popular'] },
+    { id:'pierna', name:'Sanguche de Pierna', price:700, tags:['quick','local'] },
+    { id:'cubano', name:'Cubano', price:700, tags:['quick','popular'] },
+    { id:'club', name:'Club Sandwich', price:700, tags:['quick'] },
+    { id:'chimi', name:'El Chimichurri', price:650, tags:['quick','local'] }
+  ],
+  munchies: [
+    { id:'yukita', name:'Yukita Cubana', price:600 },
+    { id:'fries', name:'Mr. Fries', price:650 }
+  ]
+};
+
+function openPinzer() {
+  const modal = document.getElementById('pinzer-modal');
+  modal.style.display = 'flex';
   
-  messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
-  container.appendChild(messageDiv);
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'none';
+
+  if (pinzerState === 'idle') {
+    pinzerState = 'greeting';
+    setTimeout(() => {
+      pinzerSay("¡Klk manito! Bienvenido a Mr. Sandwich 👋");
+      setTimeout(() => {
+        pinzerSay("Soy Chef Elly y estoy aquí para ayudarte.");
+        setTimeout(() => {
+          pinzerSay("¿Qué quieres comer hoy, tigre?");
+          pinzerShowReplies(['Algo rápido','Tengo hambre','Lo más popular']);
+        }, 800);
+      }, 800);
+    }, 300);
+  }
+}
+
+function closePinzer() {
+  document.getElementById('pinzer-modal').style.display = 'none';
+  
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'block';
+}
+
+function pinzerSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-bot';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
   container.scrollTop = container.scrollHeight;
 }
 
-
-function askQuickQuestion(question) {
-  const input = document.getElementById('aiChatInput');
-  input.value = question;
-  sendAIMessage();
+function pinzerUserSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-user';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
 }
 
-async function sendAIMessage() {
-  const input = document.getElementById('aiChatInput');
-  const loading = document.getElementById('aiChatLoading');
-  const question = input.value.trim();
-  
-  if (!question) return;
-  
-  // Agregar mensaje del usuario
-  addAIMessage(question, true);
-  input.value = '';
-  loading.style.display = 'block';
-  
-  try {
-    // 1. Obtener datos de ventas de Supabase
-    const salesData = await fetchSalesData();
-    
-    // 2. Enviar a Claude AI para análisis
-    const answer = await askClaudeAI(question, salesData);
-    
-    // 3. Mostrar respuesta
-    addAIMessage(answer);
-    
-  } catch (error) {
-    console.error('AI Error:', error);
-    addAIMessage('Lo siento, tuve un problema al analizar los datos. ¿Puedes intentar de nuevo?');
-  } finally {
-    loading.style.display = 'none';
+function pinzerShowReplies(replies) {
+  const container = document.getElementById('pinzer-replies');
+  container.innerHTML = '';
+  replies.forEach(reply => {
+    const btn = document.createElement('button');
+    btn.className = 'pinzer-reply-btn';
+    btn.textContent = reply;
+    btn.onclick = () => pinzerHandleReply(reply);
+    container.appendChild(btn);
+  });
+}
+
+function pinzerClearReplies() {
+  document.getElementById('pinzer-replies').innerHTML = '';
+}
+
+function pinzerHandleReply(reply) {
+  pinzerUserSay(reply);
+  pinzerClearReplies();
+
+  if (pinzerState === 'greeting') handleGreetingResponse(reply);
+  else if (pinzerState === 'recommendation') handleRecommendationResponse(reply);
+  else if (pinzerState === 'upsell') handleUpsellResponse(reply);
+  else if (pinzerState === 'checkout') handleCheckoutResponse(reply);
+}
+
+function handleGreetingResponse(reply) {
+  let item;
+  if (reply === 'Algo rápido') {
+    const quickItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('quick'));
+    item = quickItems[Math.floor(Math.random() * quickItems.length)];
+  } else if (reply === 'Tengo hambre') {
+    const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('hungry'));
+    item = hungryItems[0];
+  } else if (reply === 'Lo más popular') {
+    const popularItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('popular'));
+    item = popularItems[Math.floor(Math.random() * popularItems.length)];
+  }
+
+  pinzerRecommendation = item;
+  pinzerState = 'recommendation';
+
+  setTimeout(() => {
+    pinzerSay(`¡Eso está brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
+    setTimeout(() => {
+      pinzerSay("¿Lo añadimos a tu orden?");
+      pinzerShowReplies(['Sí, dale','No, déjalo']);
+    }, 800);
+  }, 500);
+}
+
+function handleRecommendationResponse(reply) {
+  if (reply === 'Sí, dale') {
+    addItem(pinzerRecommendation.id, pinzerRecommendation.name, pinzerRecommendation.price);
+
+    setTimeout(() => {
+      pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
+
+      if (!pinzerHasUpsold) {
+        pinzerState = 'upsell';
+        const upsellItem = pinzerMenu.munchies[1];
+        pinzerUpsellItem = upsellItem;
+        pinzerHasUpsold = true;
+
+        setTimeout(() => {
+          pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Están de madre 🍟`);
+          pinzerShowReplies(['Sí, dale','No, déjalo']);
+        }, 800);
+      } else {
+        goToCheckout();
+      }
+    }, 500);
+
+  } else {
+    setTimeout(() => {
+      pinzerSay("Está bien, tranquilo. Mira el menú arriba 📋");
+      pinzerSay("¡Cualquier cosa me dices!");
+      pinzerState = 'done';
+      setTimeout(() => closePinzer(), 2000);
+    }, 500);
   }
 }
 
-async function fetchSalesData() {
-  try {
-    // Obtener últimos 30 días usando fecha de República Dominicana
-    const endDateDR = getDRDateString();
-    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
-    
-    console.log('📊 Fetching sales data desde', startDateDR, 'hasta', endDateDR);
-    
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/rpc/get_sales_data',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({
-          p_start_date: startDateDR,
-          p_end_date: endDateDR
-        })
-      },
-      8000
-    );
-    
-    if (!res.ok) {
-      throw new Error('Error fetching sales data');
-    }
-    
-    return await res.json();
-  } catch (error) {
-    console.error('Error fetching sales data:', error);
-    return [];
+function handleUpsellResponse(reply) {
+  if (reply === 'Sí, dale') {
+    addItem(pinzerUpsellItem.id, pinzerUpsellItem.name, pinzerUpsellItem.price);
+    setTimeout(() => {
+      pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`);
+      goToCheckout();
+    }, 500);
+  } else {
+    goToCheckout();
   }
 }
 
-async function askClaudeAI(question, salesData) {
-  // Chatbot simple basado en reglas (sin API)
-  const q = question.toLowerCase();
-  
-  // Calcular totales usando fecha de RD
-  const todayStr = getDRDateString();
-  const today = salesData.find(d => d.date === todayStr);
-  const totalOrders = today?.total_orders || 0;
-  const totalSales = today?.total_sales || 0;
-  const topItem = today?.top_item || 'ninguno todavía';
-  const peakHour = today?.peak_hour;
-  
-  console.log('🤖 AI procesando pregunta:', question);
-  console.log('🤖 Pregunta en lowercase:', q);
-  console.log('🤖 Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
-  console.log('🤖 Sales data recibido:', salesData);
-  
-  // Respuestas basadas en palabras clave (orden importa - específico primero)
-  
-  // Saludo
-  if (q.includes('hola') || q.includes('hi')) {
-    console.log('✅ Match: Saludo');
-    return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
-  }
-  
-  // Ayuda
-  if (q.includes('ayud') || q.includes('puedes')) {
-    console.log('✅ Match: Ayuda');
-    return `🤖 Puedo ayudarte con:<br><br>
-    • ¿Cuánto vendí hoy?<br>
-    • ¿Qué producto se vende más?<br>
-    • ¿A qué hora tengo más pedidos?<br>
-    • ¿Cuántas órdenes tuve hoy?<br><br>
-    Solo pregúntame! 😊`;
-  }
-  
-  // ¿Cuántas órdenes? (PRIMERO para que no lo capture "cuánto vendí")
-  const tieneCuantas = q.includes('cuanta') || q.includes('cuánta');
-  const tieneOrden = q.includes('orden') || q.includes('tuve') || q.includes('tengo');
-  
-  if (tieneCuantas && tieneOrden) {
-    console.log('✅ Match: Cuántas órdenes');
-    if (totalOrders === 0) {
-      return '📦 Hoy todavía no has tenido órdenes.';
-    }
-    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
-  }
-  
-  // ¿Cuánto vendí hoy?
-  const tieneCuanto = q.includes('cuanto') || q.includes('cuánto');
-  const tieneVenta = q.includes('vend') || q.includes('venta') || q.includes('hoy');
-  
-  if (tieneCuanto && tieneVenta) {
-    console.log('✅ Match: Cuánto vendí');
-    if (totalOrders === 0) {
-      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
-    }
-    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
-  }
-  
-  // ¿Qué producto se vende más?
-  const tieneProducto = q.includes('producto') || q.includes('item');
-  const tieneMas = q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular');
-  
-  if (tieneProducto && tieneMas) {
-    console.log('✅ Match: Producto más vendido');
-    if (totalOrders === 0) {
-      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
-    }
-    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
-  }
-  
-  // ¿A qué hora tengo más pedidos?
-  const tieneHora = q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo');
-  
-  if (tieneHora) {
-    console.log('✅ Match: Hora pico');
-    if (!peakHour) {
-      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
-    }
-    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
-    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
-  }
-  
-  // Respuesta por defecto
-  console.log('❌ No match - Respuesta por defecto');
-  return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
-  • "¿Cuánto vendí hoy?"<br>
-  • "¿Qué producto se vende más?"<br>
-  • "¿A qué hora tengo más pedidos?"<br>
-  • "¿Cuántas órdenes tuve hoy?"<br><br>
-  O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
+function goToCheckout() {
+  pinzerState = 'checkout';
+  setTimeout(() => {
+    pinzerSay("¡Tu orden está lista, tigre! Revísala arriba y dale click para ordenar 🛒");
+    pinzerShowReplies(['Ordenar ahora']);
+  }, 800);
 }
 
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (checkSession()) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dailyStatsPanel').style.display = 'block';
-    initializeDashboard();
+function handleCheckoutResponse(reply) {
+  if (reply === 'Ordenar ahora') {
+    pinzerState = 'done';
+    pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
+    setTimeout(() => {
+      closePinzer();
+      document.querySelector('.order-summary').scrollIntoView({ behavior:'smooth' });
+    }, 1500);
   }
-});
+}
 
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+async function init() {
+  await loadSoldOut();
+  renderMenu();
+  subscribeSoldOut();
+  renderMyOrders(); // Cargar historial de órdenes al iniciar
+  console.log("✅ Mr. Sandwich cargado (sin timeout de sesión)");
+}
+
+init();
 </script>
-
-<!-- AI Assistant Chatbot -->
-<div id="aiAssistantContainer" style="
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 9999;
-">
-  <!-- Botón flotante -->
-  <button id="aiAssistantBtn" onclick="toggleAIChat()" style="
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    font-size: 2em;
-    cursor: pointer;
-    box-shadow: 0 4px 20px rgba(102,126,234,0.5);
-    transition: all 0.3s;
-  ">
-    🤖
-  </button>
-  
-  <!-- Ventana del chat -->
-  <div id="aiChatWindow" style="
-    display: none;
-    position: absolute;
-    bottom: 80px;
-    right: 0;
-    width: 400px;
-    max-width: 90vw;
-    height: 500px;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    flex-direction: column;
-    overflow: hidden;
-  ">
-    <!-- Header -->
-    <div style="
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    ">
-      <div>
-        <div style="font-weight: bold; font-size: 1.1em;">🤖 Asistente de Ventas</div>
-        <div style="font-size: 0.85em; opacity: 0.9;">Tu gerente virtual</div>
-      </div>
-      <button onclick="toggleAIChat()" style="
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.5em;
-        cursor: pointer;
-        width: 30px;
-        height: 30px;
-      ">×</button>
-    </div>
-    
-    <!-- Messages -->
-    <div id="aiChatMessages" style="
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-      background: #f8f9fa;
-    ">
-      <div class="ai-message" style="
-        background: white;
-        padding: 12px;
-        border-radius: 12px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      ">
-        👋 Hola! Soy tu asistente de ventas. Puedo ayudarte a analizar tus datos.<br><br>
-        <strong style="color: #4a7c2c; margin-bottom: 8px; display: block;">Preguntas rápidas:</strong>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            border: 2px solid #4ade80;
-            color: #166534;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #dcfce7, #bbf7d0)'" onmouseout="this.style.background='linear-gradient(135deg, #f0fdf4, #dcfce7)'">
-            💰 ¿Cuánto vendí hoy?
-          </button>
-          <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border: 2px solid #fbbf24;
-            color: #92400e;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #fde68a, #fcd34d)'" onmouseout="this.style.background='linear-gradient(135deg, #fef3c7, #fde68a)'">
-            ⭐ ¿Qué producto se vende más?
-          </button>
-          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="
-            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-            border: 2px solid #60a5fa;
-            color: #1e40af;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #bfdbfe, #93c5fd)'" onmouseout="this.style.background='linear-gradient(135deg, #dbeafe, #bfdbfe)'">
-            ⏰ ¿A qué hora tengo más pedidos?
-          </button>
-          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="
-            background: linear-gradient(135deg, #fae8ff, #f5d0fe);
-            border: 2px solid #d946ef;
-            color: #86198f;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #f5d0fe, #e879f9)'" onmouseout="this.style.background='linear-gradient(135deg, #fae8ff, #f5d0fe)'">
-            📦 ¿Cuántas órdenes tuve hoy?
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Input -->
-    <div style="
-      padding: 15px;
-      border-top: 1px solid #e2e8f0;
-      background: white;
-    ">
-      <div style="display: flex; gap: 8px;">
-        <input 
-          type="text" 
-          id="aiChatInput" 
-          placeholder="Escribe tu pregunta..."
-          onkeypress="if(event.key==='Enter') sendAIMessage()"
-          style="
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-        >
-        <button onclick="sendAIMessage()" style="
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: bold;
-        ">
-          Enviar
-        </button>
-      </div>
-      <div id="aiChatLoading" style="
-        display: none;
-        margin-top: 10px;
-        text-align: center;
-        color: #667eea;
-        font-size: 0.9em;
-      ">
-        🤔 Analizando datos...
-      </div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
