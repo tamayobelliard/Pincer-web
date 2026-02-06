@@ -1,4 +1,10 @@
 {
+  "redirects": [
+    {
+      "source": "/restaurant",
+      "destination": "/restaurant.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
