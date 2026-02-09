@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <title>Mr. Sandwich by Chef Elly</title>
   <style>
     * {
@@ -144,6 +141,12 @@
       object-fit: cover;
       flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .item-image[style*="cursor:pointer"]:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(74, 124, 44, 0.4);
     }
     
     .item-info {
@@ -489,122 +492,6 @@
     @keyframes pulse-ready {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
-    }
-
-    .order-status-item {
-      padding: 12px;
-      background: white;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      border-left: 4px solid #ffc107;
-    }
-
-    .order-ready-item {
-      border-left: 4px solid #28a745;
-      background: #f0fdf4;
-      font-weight: 600;
-    }
-
-    .my-orders-section {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-    }
-
-    .order-card {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-left: 4px solid #4a7c2c;
-    }
-
-    .order-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #e9ecef;
-    }
-
-    .order-card-number {
-      font-size: 1.1em;
-      font-weight: 700;
-      color: #2d5016;
-    }
-
-    .order-card-status {
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.85em;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .order-status-pending {
-      background: #fff3cd;
-      color: #856404;
-    }
-
-    .order-status-accepted {
-      background: #cfe2ff;
-      color: #084298;
-    }
-
-    .order-status-ready {
-      background: #d1e7dd;
-      color: #0f5132;
-      animation: pulse-status 2s infinite;
-    }
-
-    @keyframes pulse-status {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    .order-card-items {
-      margin-bottom: 10px;
-    }
-
-    .order-card-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      font-size: 0.95em;
-      color: #495057;
-    }
-
-    .order-card-item-name {
-      flex: 1;
-    }
-
-    .order-card-item-qty {
-      font-weight: 600;
-      margin-right: 8px;
-      color: #6c757d;
-    }
-
-    .order-card-notes {
-      font-size: 0.85em;
-      color: #6c757d;
-      font-style: italic;
-      padding-left: 8px;
-      margin-top: 2px;
-    }
-
-    .order-card-total {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 2px solid #e9ecef;
-      font-weight: 700;
-      font-size: 1.1em;
-      color: #2d5016;
     }
     
     .overlay {
@@ -1189,15 +1076,6 @@
     </div>
     <div id="orderTotal" style="display: none;"></div>
   </div>
-
-  <!-- Nueva sección: Mis Órdenes -->
-  <div class="my-orders-section" id="myOrdersSection" style="display: none;">
-    <h2 class="section-title">
-      📋 Mis Órdenes
-      <span class="badge" id="orders-count" style="display: none;">0</span>
-    </h2>
-    <div id="myOrdersList"></div>
-  </div>
 </div>
 
 <button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
@@ -1355,7 +1233,7 @@ let soldOutSet = new Set();
 let currentOrderId = null;
 let orderStatusChecker = null;
 let pendingItem = null;
-let orderReadyNotified = false;
+let orderReadyNotified = {}; // Cambiar a objeto para múltiples órdenes
 let orderReviewed = false; // Nueva variable para saber si el usuario revisó el total
 
 // ══════════════════════════════════════════════════════════════
@@ -1479,7 +1357,11 @@ function menuItemHTML(item) {
 
   let imgHTML = '';
   if (item.img) {
-    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image">`;
+    // Agregar onclick para abrir el popup (solo si no está agotado y no es extra)
+    const isExtra = item.id.startsWith('extra_');
+    const clickable = !isSoldOut && !isExtra;
+    const clickEvent = clickable ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price})" style="cursor:pointer;"` : '';
+    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image" ${clickEvent}>`;
   }
 
   let descHTML = '';
@@ -1828,33 +1710,10 @@ async function placeOrder() {
     const data = await res.json();
     const orderNumber = Array.isArray(data) ? data[0].id : data.id;
     currentOrderId = orderNumber;
-    orderReadyNotified = false;
-
-    // Guardar el orderId en el array de órdenes activas
-    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-    if (!activeOrders.includes(orderNumber)) {
-      activeOrders.push(orderNumber);
-      localStorage.setItem('activeOrders', JSON.stringify(activeOrders));
-    }
-
-    // Guardar el detalle completo de la orden para mostrar historial
-    const orderDetails = {
-      id: orderNumber,
-      items: itemsArray,
-      total: total,
-      status: 'pending',
-      timestamp: new Date().toISOString()
-    };
-    
-    const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
-    allOrders.push(orderDetails);
-    localStorage.setItem('allOrders', JSON.stringify(allOrders));
+    orderReadyNotified[orderNumber] = false; // Inicializar estado de esta orden específica
 
     showSuccessMessage(orderNumber);
-    renderMyOrders(); // Actualizar la vista de "Mis Órdenes"
 
-    // El interval sigue corriendo aunque cierres el popup
-    // Esto permite que recibas notificaciones de TODAS tus órdenes activas
     if (orderStatusChecker) clearInterval(orderStatusChecker);
     orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
     checkOrderStatus(orderNumber);
@@ -1917,222 +1776,57 @@ document.getElementById("overlay").addEventListener("click", () => {
 });
 
 // ══════════════════════════════════════════════════════════════
-// CHECK ORDER STATUS (MEJORADO: soporta múltiples órdenes)
+// CHECK ORDER STATUS
 // ══════════════════════════════════════════════════════════════
 
 async function checkOrderStatus(orderId) {
   try {
-    // Obtener todas las órdenes activas
-    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-    
-    if (activeOrders.length === 0) return;
-    
-    // Hacer una consulta para todas las órdenes activas
-    const orderIds = activeOrders.join(',');
     const res = await fetch(
-      SUPABASE_URL + '/rest/v1/orders?id=in.(' + orderIds + ')&select=id,status',
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=status',
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
     );
-    
     if (!res.ok) { console.error("checkOrderStatus HTTP", res.status); return; }
     const rows = await res.json();
     if (!rows || rows.length === 0) return;
 
+    const status = rows[0].status;
     const statusDiv = document.getElementById("orderStatus");
-    
-    // SOLO mostrar el estado de la orden actual en el popup (currentOrderId)
-    // Las demás se mostrarán en "Mis Órdenes"
-    if (currentOrderId && statusDiv) {
-      const currentOrder = rows.find(r => r.id === currentOrderId);
-      
-      if (currentOrder) {
-        const status = currentOrder.status;
-        
-        if (status === "accepted") {
-          statusDiv.className = "status-checking";
-          statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
-        }
-        
-        if (status === "ready") {
-          statusDiv.className = "status-ready";
-          statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
-          
-          // Notificar solo una vez
-          const notifiedKey = 'notified_' + currentOrderId;
-          if (!localStorage.getItem(notifiedKey)) {
-            localStorage.setItem(notifiedKey, 'true');
-            showReadyBanner(currentOrderId);
-            if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
-            playReadySound();
-            sendDesktopNotification(currentOrderId);
-          }
-        }
-      }
+
+    // Solo actualizar si el status es "accepted" o "ready"
+    if (status === "accepted") {
+      statusDiv.className = "status-checking";
+      statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
     }
-    
-    // Procesar TODAS las órdenes para notificaciones en background
-    rows.forEach(orderData => {
-      const status = orderData.status;
-      const currentId = orderData.id;
-      
-      if (status === "ready") {
-        // Notificar solo una vez por orden (incluso si no es la actual)
-        const notifiedKey = 'notified_' + currentId;
-        if (!localStorage.getItem(notifiedKey)) {
-          localStorage.setItem(notifiedKey, 'true');
-          showReadyBanner(currentId);
-          if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
-          playReadySound();
-          sendDesktopNotification(currentId);
-        }
-        
-        // Remover de órdenes activas después de un tiempo
-        setTimeout(() => {
-          const updatedOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-          const filtered = updatedOrders.filter(id => id !== currentId);
-          localStorage.setItem('activeOrders', JSON.stringify(filtered));
-        }, 60000); // 1 minuto
-      }
-    });
-    
-    // Sincronizar estados con el historial de órdenes
-    const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
-    let updated = false;
-    allOrders.forEach(order => {
-      const found = rows.find(r => r.id === order.id);
-      if (found && order.status !== found.status) {
-        order.status = found.status;
-        updated = true;
-      }
-    });
-    if (updated) {
-      localStorage.setItem('allOrders', JSON.stringify(allOrders));
-      displayOrdersHTML(allOrders);
+
+    if (status === "ready" && !orderReadyNotified[orderId]) {
+      orderReadyNotified[orderId] = true; // Marcar esta orden específica como notificada
+
+      statusDiv.className = "status-ready";
+      statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+
+      if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
+
+      showReadyBanner(orderId);
+      if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+      playReadySound();
+      sendDesktopNotification(orderId);
     }
-    
   } catch (e) {
     console.error("checkOrderStatus error:", e.message);
   }
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-    if (activeOrders.length > 0) {
-      checkOrderStatus(activeOrders[0]); // Solo necesitamos pasar uno para activar la función
-    }
+  if (!document.hidden && currentOrderId && !orderReadyNotified[currentOrderId]) {
+    checkOrderStatus(currentOrderId);
   }
 });
 
 window.addEventListener('focus', () => {
-  const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-  if (activeOrders.length > 0) {
-    checkOrderStatus(activeOrders[0]); // Solo necesitamos pasar uno para activar la función
+  if (currentOrderId && !orderReadyNotified[currentOrderId]) {
+    checkOrderStatus(currentOrderId);
   }
 });
-
-// ══════════════════════════════════════════════════════════════
-// RENDER MIS ÓRDENES (HISTORIAL)
-// ══════════════════════════════════════════════════════════════
-
-function renderMyOrders() {
-  const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
-  const myOrdersSection = document.getElementById('myOrdersSection');
-  const myOrdersList = document.getElementById('myOrdersList');
-  const ordersCount = document.getElementById('orders-count');
-  
-  if (allOrders.length === 0) {
-    myOrdersSection.style.display = 'none';
-    return;
-  }
-  
-  myOrdersSection.style.display = 'block';
-  ordersCount.textContent = allOrders.length;
-  ordersCount.style.display = 'inline-block';
-  
-  // Obtener estados actuales de todas las órdenes
-  const activeOrders = JSON.parse(localStorage.getItem('activeOrders') || '[]');
-  
-  // Consultar estados desde Supabase
-  if (activeOrders.length > 0) {
-    const orderIds = activeOrders.join(',');
-    fetch(
-      SUPABASE_URL + '/rest/v1/orders?id=in.(' + orderIds + ')&select=id,status',
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
-    ).then(res => res.json())
-    .then(rows => {
-      // Actualizar estados en localStorage
-      allOrders.forEach(order => {
-        const found = rows.find(r => r.id === order.id);
-        if (found) {
-          order.status = found.status;
-        }
-      });
-      localStorage.setItem('allOrders', JSON.stringify(allOrders));
-      displayOrdersHTML(allOrders);
-    }).catch(() => {
-      displayOrdersHTML(allOrders);
-    });
-  } else {
-    displayOrdersHTML(allOrders);
-  }
-}
-
-function displayOrdersHTML(allOrders) {
-  const myOrdersList = document.getElementById('myOrdersList');
-  
-  // Mostrar órdenes más recientes primero
-  const sortedOrders = [...allOrders].reverse();
-  
-  myOrdersList.innerHTML = sortedOrders.map(order => {
-    const statusClass = {
-      'pending': 'order-status-pending',
-      'accepted': 'order-status-accepted',
-      'ready': 'order-status-ready'
-    }[order.status] || 'order-status-pending';
-    
-    const statusText = {
-      'pending': '⏳ Recibida',
-      'accepted': '👨‍🍳 Cocinando',
-      'ready': '🎉 Lista'
-    }[order.status] || '⏳ Recibida';
-    
-    const itemsHTML = order.items.map(item => `
-      <div class="order-card-item">
-        <div class="order-card-item-name">
-          <span class="order-card-item-qty">${item.qty}x</span>
-          ${item.name}
-          ${item.notes ? `<div class="order-card-notes">→ ${item.notes}</div>` : ''}
-        </div>
-      </div>
-    `).join('');
-    
-    return `
-      <div class="order-card">
-        <div class="order-card-header">
-          <div class="order-card-number">Orden #${order.id}</div>
-          <div class="order-card-status ${statusClass}">${statusText}</div>
-        </div>
-        <div class="order-card-items">
-          ${itemsHTML}
-        </div>
-        <div class="order-card-total">
-          <span>Total:</span>
-          <span>RD$${order.total.toLocaleString()}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// Actualizar "Mis Órdenes" cada 3 segundos
-setInterval(() => {
-  const allOrders = JSON.parse(localStorage.getItem('allOrders') || '[]');
-  if (allOrders.length > 0) {
-    renderMyOrders();
-  }
-}, 3000);
-
 
 // ══════════════════════════════════════════════════════════════
 // READY BANNER
@@ -2215,6 +1909,7 @@ function sendDesktopNotification(orderId) {
 
 let autoMessageInterval;
 let currentMessageIndex = 0;
+let bubblePermanentlyClosed = false; // Variable para saber si el usuario cerró el bubble
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -2226,9 +1921,19 @@ const clippyMessages = [
 function hideBubble() {
   const bubble = document.getElementById('speechBubble');
   if (bubble) bubble.classList.remove('show');
+  
+  // Marcar como cerrado permanentemente y detener mensajes automáticos
+  bubblePermanentlyClosed = true;
+  if (autoMessageInterval) {
+    clearInterval(autoMessageInterval);
+    autoMessageInterval = null;
+  }
 }
 
 function showBubble(text, emoji) {
+  // No mostrar si el usuario lo cerró permanentemente
+  if (bubblePermanentlyClosed) return;
+  
   const bubble = document.getElementById('speechBubble');
   const bubbleText = document.getElementById('bubbleText');
   const bubbleEmoji = document.getElementById('bubbleEmoji');
@@ -2241,6 +1946,8 @@ function showBubble(text, emoji) {
 }
 
 function startAutoMessages() {
+  if (bubblePermanentlyClosed) return; // No iniciar si ya fue cerrado
+  
   setTimeout(() => {
     showBubble(clippyMessages[0].text, clippyMessages[0].emoji);
   }, 2000);
@@ -2454,7 +2161,6 @@ async function init() {
   await loadSoldOut();
   renderMenu();
   subscribeSoldOut();
-  renderMyOrders(); // Cargar historial de órdenes al iniciar
   console.log("✅ Mr. Sandwich cargado (sin timeout de sesión)");
 }
 
@@ -2463,6 +2169,7 @@ init();
 
 </body>
 </html>
+
 
 
 
