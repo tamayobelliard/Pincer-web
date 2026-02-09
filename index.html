@@ -525,6 +525,8 @@
       transition: all 0.3s;
       max-width: 90%;
       width: 400px;
+      max-height: 85vh;
+      overflow-y: auto;
     }
 
     .notes-popup.show {
@@ -1096,8 +1098,8 @@
 
 <div class="notes-popup" id="notesPopup">
   <h3 id="notesItemName">Agregar item</h3>
-  <div id="notesItemImageContainer" style="text-align: center; margin: 15px 0;">
-    <img id="notesItemImage" src="" alt="" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none;">
+  <div id="notesItemImageContainer" style="text-align: center; margin: 10px 0;">
+    <img id="notesItemImage" src="" alt="" style="max-width: 200px; max-height: 150px; width: auto; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; object-fit: cover;">
   </div>
   <p>¿Alguna observación? (Opcional)</p>
   <textarea id="notesTextarea" placeholder="Ej: Sin cebolla, extra tomate..."></textarea>
