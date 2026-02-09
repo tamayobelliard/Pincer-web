@@ -1096,6 +1096,9 @@
 
 <div class="notes-popup" id="notesPopup">
   <h3 id="notesItemName">Agregar item</h3>
+  <div id="notesItemImageContainer" style="text-align: center; margin: 15px 0;">
+    <img id="notesItemImage" src="" alt="" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none;">
+  </div>
   <p>¿Alguna observación? (Opcional)</p>
   <textarea id="notesTextarea" placeholder="Ej: Sin cebolla, extra tomate..."></textarea>
   
@@ -1360,7 +1363,7 @@ function menuItemHTML(item) {
     // Agregar onclick para abrir el popup (solo si no está agotado y no es extra)
     const isExtra = item.id.startsWith('extra_');
     const clickable = !isSoldOut && !isExtra;
-    const clickEvent = clickable ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price})" style="cursor:pointer;"` : '';
+    const clickEvent = clickable ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price}, '${item.img}')" style="cursor:pointer;"` : '';
     imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image" ${clickEvent}>`;
   }
 
@@ -1400,10 +1403,20 @@ function menuItemHTML(item) {
 // NOTES POPUP
 // ══════════════════════════════════════════════════════════════
 
-function showNotesPopup(id, name, price) {
+function showNotesPopup(id, name, price, imageUrl = null) {
   pendingItem = { id, name, price, extras: [] };
   document.getElementById('notesItemName').textContent = name;
   document.getElementById('notesTextarea').value = '';
+  
+  // Mostrar u ocultar la imagen del producto
+  const itemImage = document.getElementById('notesItemImage');
+  if (imageUrl) {
+    itemImage.src = imageUrl;
+    itemImage.alt = name;
+    itemImage.style.display = 'block';
+  } else {
+    itemImage.style.display = 'none';
+  }
   
   const extrasList = document.getElementById('extrasList');
   extrasList.innerHTML = MENU_DATA.extras.map(extra => {
@@ -1487,7 +1500,7 @@ function menuQtyChange(itemId, delta) {
   const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
 
   if (delta === 1 && currentQty === 0) {
-    showNotesPopup(itemId, menuItem.name, menuItem.price);
+    showNotesPopup(itemId, menuItem.name, menuItem.price, menuItem.img);
     return;
   }
 
@@ -2169,6 +2182,7 @@ init();
 
 </body>
 </html>
+
 
 
 
