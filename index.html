@@ -66,6 +66,35 @@
       letter-spacing: 2px;
     }
     
+    /* Connection status banner */
+    .conn-banner {
+      max-width: 500px;
+      margin: 0 auto 15px auto;
+      padding: 10px 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      display: none;
+    }
+    .conn-banner.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #fca5a5;
+    }
+    .conn-banner.ok {
+      display: block;
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #6ee7b7;
+      animation: fadeOut 3s forwards;
+    }
+    @keyframes fadeOut {
+      0%,70% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+
     .menu-section {
       background: white;
       border-radius: 16px;
@@ -937,14 +966,8 @@
     }
 
     @keyframes slideInMsg {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .pinzer-bot {
@@ -998,7 +1021,6 @@
       }
     }
 
-    /* Error popup mejorado */
     .error-popup {
       position: fixed;
       top: 50%;
@@ -1048,6 +1070,24 @@
     .error-popup button:hover {
       background: #2d5016;
     }
+
+    /* Debug panel - hidden by default */
+    .debug-panel {
+      display: none;
+      max-width: 500px;
+      margin: 20px auto;
+      background: rgba(0,0,0,0.8);
+      color: #22c55e;
+      padding: 15px;
+      border-radius: 12px;
+      font-family: monospace;
+      font-size: 0.8em;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .debug-panel.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -1060,6 +1100,12 @@
     <h1>MR. SANDWICH</h1>
     <p class="subtitle">BY CHEF ELLY</p>
   </div>
+
+  <!-- Connection status banner -->
+  <div class="conn-banner" id="connBanner"></div>
+
+  <!-- Debug panel (tap logo 5 times to show) -->
+  <div class="debug-panel" id="debugPanel"></div>
 
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
@@ -1124,7 +1170,6 @@
   <button onclick="closeSoldOutPopup()">Ver otros productos</button>
 </div>
 
-<!-- Error popup mejorado -->
 <div class="error-popup" id="errorPopup">
   <div class="error-emoji">⚠️</div>
   <h3 id="errorTitle">Error de Conexión</h3>
@@ -1185,16 +1230,66 @@
   "></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
 // ══════════════════════════════════════════════════════════════
 // CONFIGURACIÓN Y DATOS
 // ══════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
+
+// ── Debug logger ──
+let debugLogs = [];
+function dbg(msg) {
+  const ts = new Date().toLocaleTimeString();
+  const line = `[${ts}] ${msg}`;
+  console.log(line);
+  debugLogs.push(line);
+  const panel = document.getElementById('debugPanel');
+  if (panel && panel.classList.contains('show')) {
+    panel.innerHTML = debugLogs.slice(-30).join('<br>');
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+
+// Tap logo 5 times to show debug panel
+let logoTaps = 0;
+document.addEventListener('DOMContentLoaded', () => {
+  const logo = document.querySelector('.logo-container');
+  if (logo) {
+    logo.addEventListener('click', () => {
+      logoTaps++;
+      if (logoTaps >= 5) {
+        document.getElementById('debugPanel').classList.toggle('show');
+        document.getElementById('debugPanel').innerHTML = debugLogs.slice(-30).join('<br>');
+        logoTaps = 0;
+      }
+      setTimeout(() => { logoTaps = 0; }, 3000);
+    });
+  }
+});
+
+// ── Supabase helpers (NO client library needed) ──
+function sbHeaders(extra = {}) {
+  // New sb_publishable_ keys: use apikey header only, 
+  // Authorization must match apikey or be omitted
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    ...extra
+  };
+}
+
+// Fetch with timeout
+function fetchWithTimeout(url, options, timeoutMs = 15000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: el servidor no respondió en ' + (timeoutMs/1000) + ' segundos')), timeoutMs)
+    )
+  ]);
+}
 
 const MENU_DATA = {
   munchies: [
@@ -1238,11 +1333,44 @@ let soldOutSet = new Set();
 let currentOrderId = null;
 let orderStatusChecker = null;
 let pendingItem = null;
-let orderReadyNotified = {}; // Cambiar a objeto para múltiples órdenes
-let orderReviewed = false; // Nueva variable para saber si el usuario revisó el total
+let orderReadyNotified = {};
+let orderReviewed = false;
 
 // ══════════════════════════════════════════════════════════════
-// FUNCIONES DE ERROR MEJORADAS
+// CONNECTION TEST
+// ══════════════════════════════════════════════════════════════
+
+async function testConnection() {
+  const banner = document.getElementById('connBanner');
+  try {
+    dbg('🔌 Probando conexión a Supabase...');
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?select=id&limit=1',
+      { headers: sbHeaders() },
+      10000
+    );
+    if (res.ok) {
+      dbg('✅ Conexión a Supabase OK (HTTP ' + res.status + ')');
+      banner.className = 'conn-banner ok';
+      banner.textContent = '✅ Conectado';
+      return true;
+    } else {
+      const errText = await res.text();
+      dbg('❌ Supabase respondió HTTP ' + res.status + ': ' + errText);
+      banner.className = 'conn-banner error';
+      banner.textContent = '❌ Error de conexión con el servidor (HTTP ' + res.status + ')';
+      return false;
+    }
+  } catch (e) {
+    dbg('❌ No se pudo conectar: ' + e.message);
+    banner.className = 'conn-banner error';
+    banner.textContent = '❌ Sin conexión al servidor: ' + e.message;
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FUNCIONES DE ERROR
 // ══════════════════════════════════════════════════════════════
 
 function showError(title, message) {
@@ -1263,62 +1391,33 @@ function closeErrorPopup() {
 
 async function loadSoldOut() {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+      { headers: sbHeaders() },
+      10000
     );
     if (!res.ok) {
-      console.warn("⚠️ loadSoldOut HTTP " + res.status);
+      dbg('⚠️ loadSoldOut HTTP ' + res.status);
       return;
     }
     const data = await res.json();
     soldOutSet = new Set(data.map(r => r.id));
-    console.log("✅ Productos agotados cargados:", [...soldOutSet]);
+    dbg('✅ Productos agotados: ' + JSON.stringify([...soldOutSet]));
   } catch (e) {
-    console.warn("⚠️ loadSoldOut error:", e.message);
+    dbg('⚠️ loadSoldOut error: ' + e.message);
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// SUBSCRIBIR A CAMBIOS (con fallback a polling)
-// ══════════════════════════════════════════════════════════════
-
+// Polling para soldout (simple y confiable)
 let soldOutPoller = null;
-
-function subscribeSoldOut() {
-  try {
-    const channel = db.channel('products-changes');
-    channel
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-        const row = payload.new || payload.old;
-        if (!row) return;
-        if (row.sold_out) {
-          soldOutSet.add(row.id);
-        } else {
-          soldOutSet.delete(row.id);
-        }
-        renderMenu();
-        console.log("🔄 soldOut realtime:", row.id, row.sold_out);
-      })
-      .subscribe((status, err) => {
-        if (err || status === 'CHANNEL_ERROR') {
-          console.warn("⚠️ Realtime fallback a polling:", err);
-          startSoldOutPoller();
-        }
-      });
-  } catch (e) {
-    console.warn("⚠️ subscribeSoldOut threw, fallback a polling:", e.message);
-    startSoldOutPoller();
-  }
-}
-
 function startSoldOutPoller() {
   if (soldOutPoller) return;
   soldOutPoller = setInterval(async () => {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
-        { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+        { headers: sbHeaders() },
+        10000
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -1326,7 +1425,7 @@ function startSoldOutPoller() {
       if (newSet.size !== soldOutSet.size || [...newSet].some(id => !soldOutSet.has(id))) {
         soldOutSet = newSet;
         renderMenu();
-        console.log("🔄 soldOut polling actualizado:", [...soldOutSet]);
+        dbg('🔄 soldOut actualizado: ' + JSON.stringify([...soldOutSet]));
       }
     } catch (e) { /* silente */ }
   }, 30000);
@@ -1338,7 +1437,6 @@ function startSoldOutPoller() {
 
 function renderMenu() {
   const container = document.getElementById('menuSection');
-
   let html = '<h2 class="section-title">Menú</h2>';
 
   html += '<div class="category-title">MUNCHIES</div>';
@@ -1362,27 +1460,23 @@ function menuItemHTML(item) {
 
   let imgHTML = '';
   if (item.img) {
-    // Agregar onclick para abrir el popup (solo si no está agotado y no es extra)
     const isExtra = item.id.startsWith('extra_');
     const clickable = !isSoldOut && !isExtra;
     const clickEvent = clickable ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price}, '${item.img}')" style="cursor:pointer;"` : '';
     imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image" ${clickEvent}>`;
   }
 
-  let descHTML = '';
-  if (item.desc) {
-    descHTML = `<div class="item-description">${item.desc}</div>`;
-  }
+  let descHTML = item.desc ? `<div class="item-description">${item.desc}</div>` : '';
 
   const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
-
   const isExtra = item.id.startsWith('extra_');
+  
   const qtyHTML = (isSoldOut || isExtra) ? '' : `
-            ${currentQty > 0 ? `
-              <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
-              <span class="menu-qty-num">${currentQty}</span>
-            ` : ''}
-            <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
+    ${currentQty > 0 ? `
+      <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+      <span class="menu-qty-num">${currentQty}</span>
+    ` : ''}
+    <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
   return `
     <div class="menu-item${soldOutClass}" data-item-id="${item.id}">
@@ -1410,7 +1504,6 @@ function showNotesPopup(id, name, price, imageUrl = null) {
   document.getElementById('notesItemName').textContent = name;
   document.getElementById('notesTextarea').value = '';
   
-  // Mostrar u ocultar la imagen del producto
   const itemImage = document.getElementById('notesItemImage');
   if (imageUrl) {
     itemImage.src = imageUrl;
@@ -1510,16 +1603,12 @@ function menuQtyChange(itemId, delta) {
     const idx = order.findIndex(o => o.id === itemId && !o.notes) !== -1
       ? order.findIndex(o => o.id === itemId && !o.notes)
       : order.findIndex(o => o.id === itemId);
-    if (idx !== -1) {
-      order[idx].qty += 1;
-    }
+    if (idx !== -1) order[idx].qty += 1;
   } else {
     const idx = order.findIndex(o => o.id === itemId);
     if (idx !== -1) {
       order[idx].qty -= 1;
-      if (order[idx].qty <= 0) {
-        order.splice(idx, 1);
-      }
+      if (order[idx].qty <= 0) order.splice(idx, 1);
     }
   }
 
@@ -1529,10 +1618,10 @@ function menuQtyChange(itemId, delta) {
 function updateMenuQtyBadges() {
   const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
   allItems.forEach(item => {
-    if (soldOutSet.has(item.id)) { 
-      const w = document.getElementById("menuQty_" + item.id); 
-      if (w) w.innerHTML = ""; 
-      return; 
+    if (soldOutSet.has(item.id)) {
+      const w = document.getElementById("menuQty_" + item.id);
+      if (w) w.innerHTML = "";
+      return;
     }
     const wrap = document.getElementById('menuQty_' + item.id);
     if (!wrap) return;
@@ -1567,9 +1656,7 @@ function addItem(id, name, price, notes = null) {
 
 function changeQty(index, delta) {
   order[index].qty += delta;
-  if (order[index].qty <= 0) {
-    order.splice(index, 1);
-  }
+  if (order[index].qty <= 0) order.splice(index, 1);
   renderOrder();
 }
 
@@ -1590,7 +1677,7 @@ function renderOrder() {
     countBadge.style.display = 'none';
     placeOrderBtn.disabled = true;
     totalDiv.style.display = 'none';
-    orderReviewed = false; // Resetear cuando se vacía
+    orderReviewed = false;
     updateMenuQtyBadges();
     return;
   }
@@ -1599,7 +1686,6 @@ function renderOrder() {
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
   
-  // Resetear el estado de revisión y el texto del botón cuando cambia la orden
   orderReviewed = false;
   placeOrderBtn.textContent = "Ordenar Ahora";
 
@@ -1613,9 +1699,7 @@ function renderOrder() {
     const div = document.createElement("div");
     div.className = "order-item";
 
-    let notesHTML = item.notes
-      ? `<div class="order-item-notes">📝 ${item.notes}</div>`
-      : '';
+    let notesHTML = item.notes ? `<div class="order-item-notes">📝 ${item.notes}</div>` : '';
 
     div.innerHTML = `
       <div class="order-item-top">
@@ -1645,7 +1729,7 @@ function renderOrder() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PLACE ORDER (con mejor manejo de errores)
+// ★ PLACE ORDER — FIXED VERSION ★
 // ══════════════════════════════════════════════════════════════
 
 async function placeOrder() {
@@ -1653,17 +1737,13 @@ async function placeOrder() {
 
   const placeOrderBtn = document.getElementById("placeOrderBtn");
 
-  // PRIMER PASO: Scroll al total para que revisen la orden
+  // PRIMER PASO: Scroll al total para que revisen
   if (!orderReviewed) {
     const orderSummary = document.querySelector('.order-summary');
-    if (orderSummary) {
-      orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    
-    // Cambiar el botón a "Completar Orden"
+    if (orderSummary) orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
     placeOrderBtn.textContent = "Completar Orden";
     orderReviewed = true;
-    return; // Salir aquí, esperar a que presionen de nuevo
+    return;
   }
 
   // SEGUNDO PASO: Enviar la orden
@@ -1671,49 +1751,84 @@ async function placeOrder() {
   placeOrderBtn.textContent = "Procesando...";
 
   try {
+    // ★ FIX: Incluir "id" en cada item para que el dashboard pueda agrupar extras
     const itemsArray = order.map(item => ({
+      id: item.id,
       name: item.name,
       qty: item.qty,
       notes: item.notes || null
     }));
-    const itemsJSON = JSON.stringify(itemsArray);
+    
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
-    const body = JSON.stringify({
-      items: itemsJSON,
+    // ★ FIX: Enviar items como STRING en campo text, o como objeto si es jsonb
+    // Probamos enviando como string (compatible con columna text)
+    const orderPayload = {
+      items: JSON.stringify(itemsArray),
       total: total,
       status: 'pending'
-    });
+    };
 
-    const res = await fetch(
+    dbg('📤 Enviando orden: ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
+    dbg('📤 URL: ' + SUPABASE_URL + '/rest/v1/orders');
+
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders',
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          'Prefer': 'return=representation'
-        },
-        body: body
-      }
+        headers: sbHeaders({ 'Prefer': 'return=representation' }),
+        body: JSON.stringify(orderPayload)
+      },
+      15000
     );
+
+    dbg('📥 Response status: ' + res.status);
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("❌ Supabase POST /orders →", res.status, errText);
+      dbg('❌ Error body: ' + errText);
+      
+      // Si el error es por tipo de columna, intentar enviar items como objeto JSON directo
+      if (res.status === 400 && errText.includes('json')) {
+        dbg('🔄 Reintentando con items como array JSON directo...');
+        const retryPayload = {
+          items: itemsArray,  // Sin stringify — para columnas jsonb
+          total: total,
+          status: 'pending'
+        };
+        
+        const retryRes = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders',
+          {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(retryPayload)
+          },
+          15000
+        );
+        
+        dbg('📥 Retry status: ' + retryRes.status);
+        
+        if (!retryRes.ok) {
+          const retryErr = await retryRes.text();
+          dbg('❌ Retry error: ' + retryErr);
+          throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
+        }
+        
+        const retryData = await retryRes.json();
+        handleOrderSuccess(retryData);
+        return;
+      }
       
       let errorTitle = "Error al Enviar Orden";
-      let errorMessage = "No pudimos procesar tu orden en este momento. ";
+      let errorMessage = "No pudimos procesar tu orden. ";
       
-      if (res.status === 0 || res.status >= 500) {
-        errorMessage += "Parece que hay un problema con el servidor. Por favor intenta de nuevo en unos momentos.";
+      if (res.status >= 500) {
+        errorMessage += "El servidor tiene problemas. Intenta en unos momentos.";
       } else if (res.status === 401 || res.status === 403) {
-        errorMessage += "Hay un problema de autenticación. Por favor recarga la página y escanea el código QR nuevamente.";
-      } else if (res.status === 400) {
-        errorMessage += "Los datos de tu orden no son válidos. Por favor verifica tu orden e intenta nuevamente.";
+        errorMessage += "Problema de autenticación. Recarga la página.";
       } else {
-        errorMessage += "Error desconocido. Por favor intenta de nuevo.";
+        errorMessage += "Código: " + res.status + ". " + errText.substring(0, 100);
       }
       
       showError(errorTitle, errorMessage);
@@ -1723,37 +1838,38 @@ async function placeOrder() {
     }
 
     const data = await res.json();
-    const orderNumber = Array.isArray(data) ? data[0].id : data.id;
-    currentOrderId = orderNumber;
-    orderReadyNotified[orderNumber] = false; // Inicializar estado de esta orden específica
-
-    showSuccessMessage(orderNumber);
-
-    if (orderStatusChecker) clearInterval(orderStatusChecker);
-    orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
-    checkOrderStatus(orderNumber);
-
-    order = [];
-    renderOrder();
+    dbg('✅ Orden creada: ' + JSON.stringify(data).substring(0, 200));
+    handleOrderSuccess(data);
 
   } catch (err) {
-    console.error("❌ placeOrder error:", err);
+    dbg('❌ placeOrder exception: ' + err.message);
     
     let errorTitle = "Error de Conexión";
-    let errorMessage = "No pudimos conectar con el servidor. ";
-    
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      errorMessage += "Verifica tu conexión a internet e intenta nuevamente.";
-    } else if (err.name === 'AbortError') {
-      errorMessage += "La solicitud tardó demasiado. Por favor intenta de nuevo.";
-    } else {
-      errorMessage += "Error: " + err.message;
-    }
+    let errorMessage = err.message.includes('Timeout')
+      ? "El servidor tardó demasiado en responder. Verifica tu internet e intenta de nuevo."
+      : "No pudimos conectar con el servidor. Verifica tu conexión e intenta de nuevo.";
     
     showError(errorTitle, errorMessage);
     placeOrderBtn.disabled = false;
     placeOrderBtn.textContent = "Ordenar Ahora";
   }
+}
+
+function handleOrderSuccess(data) {
+  const orderNumber = Array.isArray(data) ? data[0].id : data.id;
+  currentOrderId = orderNumber;
+  orderReadyNotified[orderNumber] = false;
+
+  dbg('🎉 Orden #' + orderNumber + ' creada exitosamente');
+
+  showSuccessMessage(orderNumber);
+
+  if (orderStatusChecker) clearInterval(orderStatusChecker);
+  orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
+  checkOrderStatus(orderNumber);
+
+  order = [];
+  renderOrder();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1796,39 +1912,36 @@ document.getElementById("overlay").addEventListener("click", () => {
 
 async function checkOrderStatus(orderId) {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=status',
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+      { headers: sbHeaders() },
+      10000
     );
-    if (!res.ok) { console.error("checkOrderStatus HTTP", res.status); return; }
+    if (!res.ok) return;
     const rows = await res.json();
     if (!rows || rows.length === 0) return;
 
     const status = rows[0].status;
     const statusDiv = document.getElementById("orderStatus");
 
-    // Solo actualizar si el status es "accepted" o "ready"
     if (status === "accepted") {
       statusDiv.className = "status-checking";
       statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
     }
 
     if (status === "ready" && !orderReadyNotified[orderId]) {
-      orderReadyNotified[orderId] = true; // Marcar esta orden específica como notificada
-
+      orderReadyNotified[orderId] = true;
       statusDiv.className = "status-ready";
       statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
 
       if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
 
       showReadyBanner(orderId);
-      if (navigator.vibrate) { navigator.vibrate([500, 200, 500, 200, 500]); }
+      if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
       playReadySound();
       sendDesktopNotification(orderId);
     }
-  } catch (e) {
-    console.error("checkOrderStatus error:", e.message);
-  }
+  } catch (e) { /* silente */ }
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -1849,7 +1962,6 @@ window.addEventListener('focus', () => {
 
 function showReadyBanner(orderId) {
   if (document.getElementById('readyBanner')) return;
-
   const banner = document.createElement('div');
   banner.id = 'readyBanner';
   banner.className = 'ready-banner';
@@ -1866,12 +1978,8 @@ function showReadyBanner(orderId) {
 let audioCtx = null;
 
 function ensureAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 ['touchstart', 'click'].forEach(evt => {
@@ -1880,12 +1988,8 @@ function ensureAudioContext() {
 
 function playReadySound() {
   try {
-    if (!audioCtx) {
-      console.log("🔇 No hay AudioContext");
-      return;
-    }
+    if (!audioCtx) return;
     ensureAudioContext();
-
     const now = audioCtx.currentTime;
     [880, 1047, 1319].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
@@ -1899,9 +2003,7 @@ function playReadySound() {
       osc.start(now + i * 0.18);
       osc.stop(now + i * 0.18 + 0.16);
     });
-  } catch (e) {
-    console.warn("🔇 playReadySound error:", e.message);
-  }
+  } catch (e) { /* silente */ }
 }
 
 function sendDesktopNotification(orderId) {
@@ -1913,9 +2015,7 @@ function sendDesktopNotification(orderId) {
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
       });
     }
-  } catch (e) {
-    console.warn("Notification no disponible:", e.message);
-  }
+  } catch (e) { /* silente */ }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1924,7 +2024,7 @@ function sendDesktopNotification(orderId) {
 
 let autoMessageInterval;
 let currentMessageIndex = 0;
-let bubblePermanentlyClosed = false; // Variable para saber si el usuario cerró el bubble
+let bubblePermanentlyClosed = false;
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -1936,23 +2036,15 @@ const clippyMessages = [
 function hideBubble() {
   const bubble = document.getElementById('speechBubble');
   if (bubble) bubble.classList.remove('show');
-  
-  // Marcar como cerrado permanentemente y detener mensajes automáticos
   bubblePermanentlyClosed = true;
-  if (autoMessageInterval) {
-    clearInterval(autoMessageInterval);
-    autoMessageInterval = null;
-  }
+  if (autoMessageInterval) { clearInterval(autoMessageInterval); autoMessageInterval = null; }
 }
 
 function showBubble(text, emoji) {
-  // No mostrar si el usuario lo cerró permanentemente
   if (bubblePermanentlyClosed) return;
-  
   const bubble = document.getElementById('speechBubble');
   const bubbleText = document.getElementById('bubbleText');
   const bubbleEmoji = document.getElementById('bubbleEmoji');
-  
   if (bubble && bubbleText && bubbleEmoji) {
     bubbleText.textContent = text;
     bubbleEmoji.textContent = emoji;
@@ -1961,12 +2053,8 @@ function showBubble(text, emoji) {
 }
 
 function startAutoMessages() {
-  if (bubblePermanentlyClosed) return; // No iniciar si ya fue cerrado
-  
-  setTimeout(() => {
-    showBubble(clippyMessages[0].text, clippyMessages[0].emoji);
-  }, 2000);
-  
+  if (bubblePermanentlyClosed) return;
+  setTimeout(() => { showBubble(clippyMessages[0].text, clippyMessages[0].emoji); }, 2000);
   autoMessageInterval = setInterval(() => {
     currentMessageIndex = (currentMessageIndex + 1) % clippyMessages.length;
     const msg = clippyMessages[currentMessageIndex];
@@ -2010,7 +2098,6 @@ const pinzerMenu = {
 function openPinzer() {
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
-  
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'none';
 
@@ -2031,7 +2118,6 @@ function openPinzer() {
 
 function closePinzer() {
   document.getElementById('pinzer-modal').style.display = 'none';
-  
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
 }
@@ -2073,7 +2159,6 @@ function pinzerClearReplies() {
 function pinzerHandleReply(reply) {
   pinzerUserSay(reply);
   pinzerClearReplies();
-
   if (pinzerState === 'greeting') handleGreetingResponse(reply);
   else if (pinzerState === 'recommendation') handleRecommendationResponse(reply);
   else if (pinzerState === 'upsell') handleUpsellResponse(reply);
@@ -2088,14 +2173,12 @@ function handleGreetingResponse(reply) {
   } else if (reply === 'Tengo hambre') {
     const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('hungry'));
     item = hungryItems[0];
-  } else if (reply === 'Lo más popular') {
+  } else {
     const popularItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('popular'));
     item = popularItems[Math.floor(Math.random() * popularItems.length)];
   }
-
   pinzerRecommendation = item;
   pinzerState = 'recommendation';
-
   setTimeout(() => {
     pinzerSay(`¡Eso está brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
     setTimeout(() => {
@@ -2108,16 +2191,13 @@ function handleGreetingResponse(reply) {
 function handleRecommendationResponse(reply) {
   if (reply === 'Sí, dale') {
     addItem(pinzerRecommendation.id, pinzerRecommendation.name, pinzerRecommendation.price);
-
     setTimeout(() => {
       pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
-
       if (!pinzerHasUpsold) {
         pinzerState = 'upsell';
         const upsellItem = pinzerMenu.munchies[1];
         pinzerUpsellItem = upsellItem;
         pinzerHasUpsold = true;
-
         setTimeout(() => {
           pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Están de madre 🍟`);
           pinzerShowReplies(['Sí, dale','No, déjalo']);
@@ -2126,7 +2206,6 @@ function handleRecommendationResponse(reply) {
         goToCheckout();
       }
     }, 500);
-
   } else {
     setTimeout(() => {
       pinzerSay("Está bien, tranquilo. Mira el menú arriba 📋");
@@ -2173,10 +2252,28 @@ function handleCheckoutResponse(reply) {
 // ══════════════════════════════════════════════════════════════
 
 async function init() {
-  await loadSoldOut();
+  dbg('🚀 Iniciando Mr. Sandwich...');
+  
+  // Renderizar menú inmediatamente
   renderMenu();
-  subscribeSoldOut();
-  console.log("✅ Mr. Sandwich cargado (sin timeout de sesión)");
+  dbg('✅ Menú renderizado');
+  
+  // Probar conexión
+  const connected = await testConnection();
+  
+  if (connected) {
+    // Cargar soldOut
+    await loadSoldOut();
+    renderMenu();
+    dbg('✅ SoldOut actualizado');
+  } else {
+    dbg('⚠️ Sin conexión, menú cargado sin info de agotados');
+  }
+  
+  // Iniciar polling de soldout
+  startSoldOutPoller();
+  
+  dbg('✅ Mr. Sandwich listo');
 }
 
 init();
@@ -2184,6 +2281,7 @@ init();
 
 </body>
 </html>
+
 
 
 
