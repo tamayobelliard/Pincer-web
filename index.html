@@ -2169,24 +2169,14 @@ function handleCheckoutResponse(reply) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// INIT - VERSIÓN OPTIMIZADA CON RENDER INSTANTÁNEO
+// INIT
 // ══════════════════════════════════════════════════════════════
 
 async function init() {
-  // ✅ RENDERIZAR MENÚ INMEDIATAMENTE (sin esperar datos)
+  await loadSoldOut();
   renderMenu();
-  console.log("✅ Menú renderizado instantáneamente");
-  
-  // Cargar soldOut en paralelo (no bloquea)
-  loadSoldOut().then(() => {
-    renderMenu(); // Re-renderizar con productos agotados actualizados
-    console.log("✅ SoldOut actualizado");
-  }).catch(err => {
-    console.warn("⚠️ loadSoldOut falló, continuando sin esa info:", err.message);
-  });
-  
   subscribeSoldOut();
-  console.log("✅ Mr. Sandwich cargado (render instantáneo)");
+  console.log("✅ Mr. Sandwich cargado (sin timeout de sesión)");
 }
 
 init();
@@ -2194,6 +2184,7 @@ init();
 
 </body>
 </html>
+
 
 
 
