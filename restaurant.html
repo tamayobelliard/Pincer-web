@@ -8,11 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -20,629 +16,279 @@
       padding: 20px;
     }
     h1 {
-      text-align: center;
-      color: white;
-      margin-bottom: 30px;
-      font-size: 2.5em;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      text-align: center; color: white; margin-bottom: 30px;
+      font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     h2 {
-      color: white;
-      font-size: 1.5em;
-      margin-bottom: 15px;
+      color: white; font-size: 1.5em; margin-bottom: 15px;
       text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
-      max-width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
+      max-width: 1200px; margin-left: auto; margin-right: auto;
     }
     #connection-status {
-      text-align: center;
-      color: white;
-      margin-bottom: 15px;
-      font-size: 14px;
+      text-align: center; color: white; margin-bottom: 15px; font-size: 14px;
     }
     #notification-banner {
-      background: rgba(251, 191, 36, 0.95);
-      color: #78350f;
-      padding: 15px;
-      text-align: center;
-      border-radius: 12px;
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      font-weight: 600;
-      display: none;
-      cursor: pointer;
-      transition: all 0.3s;
+      background: rgba(251, 191, 36, 0.95); color: #78350f;
+      padding: 15px; text-align: center; border-radius: 12px;
+      max-width: 1200px; margin: 0 auto 20px auto;
+      font-weight: 600; display: none; cursor: pointer; transition: all 0.3s;
     }
-    #notification-banner:hover {
-      background: rgba(251, 191, 36, 1);
-      transform: scale(1.02);
-    }
-    #notification-banner.show {
-      display: block;
-    }
+    #notification-banner:hover { background: rgba(251, 191, 36, 1); transform: scale(1.02); }
+    #notification-banner.show { display: block; }
 
-    /* ─── PRODUCTOS / SOLD OUT ─── */
     .products-panel {
-      background: rgba(255,255,255,0.95);
-      border-radius: 16px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto 24px auto;
+      background: rgba(255,255,255,0.95); border-radius: 16px;
+      padding: 20px; max-width: 1200px; margin: 0 auto 24px auto;
     }
     .products-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
     }
-    .products-panel-header h3 {
-      font-size: 1.25em;
-      color: #1e1b4b;
-      margin: 0;
-    }
-    .products-panel-header .legend {
-      display: flex;
-      gap: 16px;
-      font-size: 0.85em;
-      color: #64748b;
-    }
-    .products-panel-header .legend span {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
+    .products-panel-header h3 { font-size: 1.25em; color: #1e1b4b; margin: 0; }
+    .products-panel-header .legend { display: flex; gap: 16px; font-size: 0.85em; color: #64748b; }
+    .products-panel-header .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
     .legend-dot.available { background: #22c55e; }
-    .legend-dot.soldout   { background: #ef4444; }
+    .legend-dot.soldout { background: #ef4444; }
 
     .products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 10px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;
     }
     .product-card {
-      background: #f8fafc;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;
       transition: border-color 0.2s, background 0.2s;
     }
-    .product-card.is-soldout {
-      background: #fef2f2;
-      border-color: #fca5a5;
-    }
-    .product-card-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    .product-card-name {
-      font-weight: 700;
-      font-size: 0.9em;
-      color: #1e1b4b;
-      line-height: 1.3;
-      flex: 1;
-      padding-right: 8px;
-    }
-    .product-card-price {
-      font-size: 0.82em;
-      color: #64748b;
-      white-space: nowrap;
-      margin-top: 2px;
-    }
+    .product-card.is-soldout { background: #fef2f2; border-color: #fca5a5; }
+    .product-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .product-card-name { font-weight: 700; font-size: 0.9em; color: #1e1b4b; line-height: 1.3; flex: 1; padding-right: 8px; }
+    .product-card-price { font-size: 0.82em; color: #64748b; white-space: nowrap; margin-top: 2px; }
 
-    /* Toggle switch */
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: auto;
-    }
-    .toggle-label {
-      font-size: 0.78em;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .product-card.is-soldout .toggle-label {
-      color: #dc2626;
-    }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .toggle-label { font-size: 0.78em; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .product-card.is-soldout .toggle-label { color: #dc2626; }
 
-    .toggle-switch {
-      position: relative;
-      width: 48px;
-      height: 26px;
-    }
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+    .toggle-switch { position: relative; width: 48px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
-      position: absolute;
-      inset: 0;
-      background: #22c55e;
-      border-radius: 26px;
-      cursor: pointer;
-      transition: 0.25s;
+      position: absolute; inset: 0; background: #22c55e; border-radius: 26px;
+      cursor: pointer; transition: 0.25s;
     }
     .toggle-slider:before {
-      content: "";
-      position: absolute;
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 0.25s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      content: ""; position: absolute; height: 20px; width: 20px;
+      left: 3px; bottom: 3px; background: white; border-radius: 50%;
+      transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .toggle-switch input:checked + .toggle-slider {
-      background: #ef4444;
-    }
-    .toggle-switch input:checked + .toggle-slider:before {
-      transform: translateX(22px);
-    }
-    .toggle-switch input:focus + .toggle-slider {
-      box-shadow: 0 0 0 3px rgba(239,68,68,0.25);
-    }
+    .toggle-switch input:checked + .toggle-slider { background: #ef4444; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
 
-    /* ─── ORDERS ─── */
-    #orders {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+    #orders { max-width: 1200px; margin: 0 auto; }
     .order {
-      background: white;
-      padding: 20px;
-      margin-bottom: 15px;
-      border-radius: 12px;
-      border-left: 8px solid #22c55e;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      background: white; padding: 20px; margin-bottom: 15px; border-radius: 12px;
+      border-left: 8px solid #22c55e; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       transition: transform 0.2s, box-shadow 0.2s;
     }
-    .order:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    .new      { border-left-color: #22c55e; background: #f0fdf4; }
-    .warning  { border-left-color: #f97316; background: #fff7ed; }
-    .late     { border-left-color: #ef4444; background: #fef2f2; animation: pulse 2s infinite; }
+    .order:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .new { border-left-color: #22c55e; background: #f0fdf4; }
+    .warning { border-left-color: #f97316; background: #fff7ed; }
+    .late { border-left-color: #ef4444; background: #fef2f2; animation: pulse 2s infinite; }
     .accepted { border-left-color: #3b82f6; background: #eff6ff; }
-    .ready    { border-left-color: #16a34a; background: #f0fdf4; opacity: 0.6; }
+    .ready { border-left-color: #16a34a; background: #f0fdf4; opacity: 0.6; }
     @keyframes pulse {
       0%, 100% { opacity: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-      50%      { opacity: 0.8; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
+      50% { opacity: 0.8; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
     }
     .order-number {
-      font-size: 32px;
-      font-weight: bold;
-      color: #1e40af;
-      margin-bottom: 10px;
-      display: inline-block;
-      padding: 5px 15px;
-      background: #dbeafe;
-      border-radius: 8px;
+      font-size: 32px; font-weight: bold; color: #1e40af; margin-bottom: 10px;
+      display: inline-block; padding: 5px 15px; background: #dbeafe; border-radius: 8px;
     }
-    .order-items {
-      margin: 12px 0;
-    }
-    .order-items-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+    .order-items { margin: 12px 0; }
+    .order-items-list { list-style: none; padding: 0; margin: 0; }
     .order-item-row {
-      background: #f8fafc;
-      padding: 8px 12px;
-      margin-bottom: 6px;
-      border-radius: 6px;
-      border-left: 3px solid #cbd5e1;
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
+      background: #f8fafc; padding: 8px 12px; margin-bottom: 6px;
+      border-radius: 6px; border-left: 3px solid #cbd5e1;
+      display: flex; gap: 10px; align-items: flex-start;
     }
-    .order-item-qty {
-      font-weight: 700;
-      color: #1e40af;
-      font-size: 1.1em;
-      min-width: 30px;
-    }
-    .order-item-name {
-      flex: 1;
-      color: #1e293b;
-      font-weight: 600;
-    }
-    .order-item-notes {
-      font-size: 0.9em;
-      color: #64748b;
-      font-style: italic;
-      margin-top: 3px;
-    }
-    
-    /* Extras indentados */
+    .order-item-qty { font-weight: 700; color: #1e40af; font-size: 1.1em; min-width: 30px; }
+    .order-item-name { flex: 1; color: #1e293b; font-weight: 600; }
+    .order-item-notes { font-size: 0.9em; color: #64748b; font-style: italic; margin-top: 3px; }
     .order-item-row.is-extra {
-      background: #f1f5f9;
-      margin-left: 35px;
-      border-left-color: #94a3b8;
-      padding: 6px 10px;
-      font-size: 0.95em;
+      background: #f1f5f9; margin-left: 35px; border-left-color: #94a3b8;
+      padding: 6px 10px; font-size: 0.95em;
     }
-    .order-item-row.is-extra .order-item-qty {
-      font-size: 1em;
-      color: #64748b;
-    }
-    .order-item-row.is-extra .order-item-name {
-      color: #475569;
-      font-weight: 500;
-    }
-    
-    /* Total de la orden */
+    .order-item-row.is-extra .order-item-qty { font-size: 1em; color: #64748b; }
+    .order-item-row.is-extra .order-item-name { color: #475569; font-weight: 500; }
+
     .order-total {
-      margin-top: 12px;
-      padding: 10px 12px;
+      margin-top: 12px; padding: 10px 12px;
       background: linear-gradient(135deg, #4a7c2c, #2d5016);
-      color: white;
-      border-radius: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 700;
-      font-size: 1.1em;
+      color: white; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 700; font-size: 1.1em;
     }
-    .order-total-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    /* Alerta de tiempo para órdenes pendientes antiguas */
+    .order-total-label { display: flex; align-items: center; gap: 6px; }
+
     .time-alert {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 4px 10px;
-      background: #fef3c7;
-      color: #92400e;
-      border-radius: 6px;
-      font-size: 0.85em;
-      font-weight: 600;
-      animation: alertPulse 1.5s infinite;
+      display: inline-block; margin-left: 8px; padding: 4px 10px;
+      background: #fef3c7; color: #92400e; border-radius: 6px;
+      font-size: 0.85em; font-weight: 600; animation: alertPulse 1.5s infinite;
     }
-    .time-alert.critical {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-    @keyframes alertPulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
+    .time-alert.critical { background: #fee2e2; color: #991b1b; }
+    @keyframes alertPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     .order-time {
-      display: inline-block;
-      padding: 5px 12px;
-      background: #f1f5f9;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #475569;
-      margin: 10px 0;
+      display: inline-block; padding: 5px 12px; background: #f1f5f9;
+      border-radius: 6px; font-size: 14px; color: #475569; margin: 10px 0;
     }
     .order-status {
-      display: inline-block;
-      padding: 5px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-left: 10px;
+      display: inline-block; padding: 5px 12px; border-radius: 6px;
+      font-size: 12px; font-weight: bold; margin-left: 10px;
     }
-    .status-pending  { background: #fef3c7; color: #92400e; }
+    .status-pending { background: #fef3c7; color: #92400e; }
     .status-accepted { background: #dbeafe; color: #1e40af; }
-    .status-ready    { background: #d1fae5; color: #065f46; }
+    .status-ready { background: #d1fae5; color: #065f46; }
 
     button {
-      margin-top: 15px;
-      margin-right: 10px;
-      padding: 12px 24px;
-      cursor: pointer;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 16px;
-      transition: all 0.2s;
+      margin-top: 15px; margin-right: 10px; padding: 12px 24px;
+      cursor: pointer; color: white; border: none; border-radius: 8px;
+      font-weight: 600; font-size: 16px; transition: all 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
-    .btn-accept {
-      background: #3b82f6;
-      box-shadow: 0 2px 4px rgba(59,130,246,0.3);
-    }
-    .btn-accept:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(59,130,246,0.4);
-    }
-    .btn-ready {
-      background: #16a34a;
-      box-shadow: 0 2px 4px rgba(22,163,74,0.3);
-    }
-    .btn-ready:hover {
-      background: #15803d;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(22,163,74,0.4);
-    }
-    button:active  { transform: translateY(0); }
+    .btn-accept { background: #3b82f6; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
+    .btn-accept:hover { background: #2563eb; transform: translateY(-1px); }
+    .btn-ready { background: #16a34a; box-shadow: 0 2px 4px rgba(22,163,74,0.3); }
+    .btn-ready:hover { background: #15803d; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
     button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
 
     .error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
-      border-left: 4px solid #dc2626;
-      max-width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
+      background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px;
+      margin-bottom: 20px; text-align: center; border-left: 4px solid #dc2626;
+      max-width: 1200px; margin-left: auto; margin-right: auto;
     }
     .loading {
-      text-align: center;
-      padding: 40px;
-      color: white;
-      font-size: 18px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
+      text-align: center; padding: 40px; color: white; font-size: 18px;
+      background: rgba(255,255,255,0.1); border-radius: 12px; backdrop-filter: blur(10px);
     }
     .completed-badge {
-      display: inline-block;
-      padding: 5px 12px;
-      background: #16a34a;
-      color: white;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      margin-top: 10px;
+      display: inline-block; padding: 5px 12px; background: #16a34a;
+      color: white; border-radius: 6px; font-size: 14px; font-weight: 600; margin-top: 10px;
     }
     .stats {
-      background: rgba(255,255,255,0.95);
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      background: rgba(255,255,255,0.95); padding: 20px; border-radius: 12px;
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
     }
     @media (max-width: 500px) {
-      .stats {
-        grid-template-columns: repeat(2, 1fr);
-        padding: 16px;
-        gap: 10px;
-      }
+      .stats { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 10px; }
     }
-    .stat-item {
-      text-align: center;
-      background: #f1f5f9;
-      border-radius: 10px;
-      padding: 12px 8px;
-    }
+    .stat-item { text-align: center; background: #f1f5f9; border-radius: 10px; padding: 12px 8px; }
     .stat-number { font-size: 28px; font-weight: bold; color: #1e40af; }
-    .stat-label  { font-size: 13px; color: #64748b; margin-top: 4px; }
+    .stat-label { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    .stat-card {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #e2e8f0;
+    }
+    .stat-value { font-size: 1.8em; font-weight: bold; color: #1e40af; margin-bottom: 5px; }
+
+    /* Debug panel */
+    .debug-panel {
+      display: none; max-width: 1200px; margin: 0 auto 20px auto;
+      background: rgba(0,0,0,0.85); color: #22c55e; padding: 15px;
+      border-radius: 12px; font-family: monospace; font-size: 0.8em;
+      max-height: 250px; overflow-y: auto;
+    }
+    .debug-panel.show { display: block; }
+    .debug-toggle {
+      text-align: center; margin-bottom: 10px;
+    }
+    .debug-toggle button {
+      background: rgba(255,255,255,0.2); color: white; border: none;
+      padding: 6px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
 
-<!-- Pantalla de Login -->
+<!-- Login Screen -->
 <div id="loginScreen" style="
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
+  display: flex; align-items: center; justify-content: center; z-index: 10000;
 ">
-  <div style="
-    background: white;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    max-width: 400px;
-    width: 90%;
-  ">
+  <div style="background: white; padding: 40px; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
     <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em;">
       📟 Pincer Dashboard
     </h1>
     <p style="text-align: center; color: #64748b; margin-bottom: 30px;">
       Mr. Sandwich by Chef Elly
     </p>
-    
-    <div id="loginError" style="
-      display: none;
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      text-align: center;
-      font-weight: 600;
-    "></div>
-    
+    <div id="loginError" style="display: none; background: #fee2e2; color: #991b1b;
+      padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600;"></div>
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div style="margin-bottom: 20px;">
-        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
-          Usuario
-        </label>
-        <input 
-          type="text" 
-          id="username" 
-          required
-          style="
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-          placeholder="mrsandwich"
-        >
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">Usuario</label>
+        <input type="text" id="username" required
+          style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;"
+          placeholder="mrsandwich">
       </div>
-      
       <div style="margin-bottom: 25px;">
-        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">
-          Contraseña
-        </label>
-        <input 
-          type="password" 
-          id="password" 
-          required
-          style="
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-          placeholder="••••••••"
-        >
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">Contraseña</label>
+        <input type="password" id="password" required
+          style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;"
+          placeholder="••••••••">
       </div>
-      
-      <button 
-        type="submit"
-        id="loginBtn"
-        style="
-          width: 100%;
-          padding: 15px;
-          background: linear-gradient(135deg, #4a7c2c, #2d5016);
-          color: white;
-          border: none;
-          border-radius: 10px;
-          font-size: 1.1em;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.2s;
-        "
-      >
+      <button type="submit" id="loginBtn" style="width: 100%; padding: 15px;
+        background: linear-gradient(135deg, #4a7c2c, #2d5016); color: white;
+        border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer;">
         Iniciar Sesión
       </button>
     </form>
   </div>
 </div>
 
-
 <h1>📟 Pincer – Orders Dashboard</h1>
 
-<!-- Stats Diarios -->
-<div id="dailyStatsPanel" style="
-  background: rgba(255,255,255,0.95);
-  padding: 20px;
-  border-radius: 12px;
-  max-width: 1200px;
-  margin: 0 auto 20px auto;
-  display: none;
-">
+<!-- Daily Stats Panel -->
+<div id="dailyStatsPanel" style="background: rgba(255,255,255,0.95); padding: 20px;
+  border-radius: 12px; max-width: 1200px; margin: 0 auto 20px auto; display: none;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
     <h3 style="color: #1e40af; font-size: 1.2em; margin: 0;">
       📊 Resumen del Día <span id="currentDateDisplay" style="font-size: 0.9em; color: #64748b; font-weight: normal;"></span>
     </h3>
-    <button onclick="refreshStats()" style="
-      background: #4a7c2c;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    ">
+    <button onclick="refreshStats()" style="background: #4a7c2c; color: white; border: none;
+      padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin: 0;">
       🔄 Actualizar
     </button>
   </div>
-  
-  <div style="
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-  ">
-    <div class="stat-card">
-      <div class="stat-value" id="stat-total-orders">0</div>
-      <div class="stat-label">Órdenes Totales</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-total-sales" style="color: #059669;">RD$0</div>
-      <div class="stat-label">Ventas del Día</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-avg-order">RD$0</div>
-      <div class="stat-label">Ticket Promedio</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-completed">0</div>
-      <div class="stat-label">Completadas</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-top-product">-</div>
-      <div class="stat-label">Más Vendido</div>
-    </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+    <div class="stat-card"><div class="stat-value" id="stat-total-orders">0</div><div class="stat-label">Órdenes Totales</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-total-sales" style="color: #059669;">RD$0</div><div class="stat-label">Ventas del Día</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-avg-order">RD$0</div><div class="stat-label">Ticket Promedio</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-completed">0</div><div class="stat-label">Completadas</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-top-product">-</div><div class="stat-label">Más Vendido</div></div>
   </div>
 </div>
 
-<style>
-  .stat-card {
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    border: 2px solid #e2e8f0;
-  }
-  .stat-value {
-    font-size: 1.8em;
-    font-weight: bold;
-    color: #1e40af;
-    margin-bottom: 5px;
-  }
-  .stat-label {
-    font-size: 0.85em;
-    color: #64748b;
-    font-weight: 600;
-  }
-</style>
+<!-- Debug toggle -->
+<div class="debug-toggle">
+  <button onclick="document.getElementById('debugPanel').classList.toggle('show')">🐛 Debug</button>
+</div>
+<div class="debug-panel" id="debugPanel"></div>
 
-<div id="connection-status">🔄 Conectando...</div>
+<div id="connection-status">🟢 Conectado</div>
 
-<!-- Banner de notificaciones -->
 <div id="notification-banner" onclick="requestNotificationPermission()">
   🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
 </div>
 
-<!-- Stats -->
 <div class="stats" id="stats">
-  <div class="stat-item">
-    <div class="stat-number" id="total-orders">0</div>
-    <div class="stat-label">Total Órdenes</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="pending-orders">0</div>
-    <div class="stat-label">Pendientes</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="preparing-orders">0</div>
-    <div class="stat-label">En Preparación</div>
-  </div>
-  <div class="stat-item">
-    <div class="stat-number" id="ready-orders">0</div>
-    <div class="stat-label">Listas</div>
-  </div>
+  <div class="stat-item"><div class="stat-number" id="total-orders">0</div><div class="stat-label">Total Órdenes</div></div>
+  <div class="stat-item"><div class="stat-number" id="pending-orders">0</div><div class="stat-label">Pendientes</div></div>
+  <div class="stat-item"><div class="stat-number" id="preparing-orders">0</div><div class="stat-label">En Preparación</div></div>
+  <div class="stat-item"><div class="stat-number" id="ready-orders">0</div><div class="stat-label">Listas</div></div>
 </div>
 
 <div id="error-message"></div>
@@ -651,7 +297,6 @@
   <div class="loading">⏳ Cargando órdenes...</div>
 </div>
 
-<!-- Productos / Sold Out -->
 <div class="products-panel" id="productsPanel">
   <div class="products-panel-header">
     <h3>📦 Productos</h3>
@@ -660,88 +305,134 @@
       <span><span class="legend-dot soldout"></span> Agotado</span>
     </div>
   </div>
-  <div class="products-grid" id="productsGrid">
-    <!-- se genera por JS -->
+  <div class="products-grid" id="productsGrid"></div>
+</div>
+
+<!-- AI Assistant Chatbot -->
+<div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+  <button id="aiAssistantBtn" onclick="toggleAIChat()" style="
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none; color: white; font-size: 2em; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.5); transition: all 0.3s; margin: 0;">
+    🤖
+  </button>
+  <div id="aiChatWindow" style="display: none; position: absolute; bottom: 80px; right: 0;
+    width: 400px; max-width: 90vw; height: 500px; background: white;
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    flex-direction: column; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-weight: bold; font-size: 1.1em;">🤖 Asistente de Ventas</div>
+        <div style="font-size: 0.85em; opacity: 0.9;">Tu gerente virtual</div>
+      </div>
+      <button onclick="toggleAIChat()" style="background: none; border: none; color: white;
+        font-size: 1.5em; cursor: pointer; width: 30px; height: 30px; margin: 0;">×</button>
+    </div>
+    <div id="aiChatMessages" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa;">
+      <div style="background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        👋 Hola! Soy tu asistente de ventas.<br><br>
+        <strong style="color: #4a7c2c;">Preguntas rápidas:</strong>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="background: #f0fdf4; border: 2px solid #4ade80; color: #166534; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">💰 ¿Cuánto vendí hoy?</button>
+          <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="background: #fef3c7; border: 2px solid #fbbf24; color: #92400e; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⭐ ¿Qué producto se vende más?</button>
+          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="background: #dbeafe; border: 2px solid #60a5fa; color: #1e40af; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⏰ ¿A qué hora tengo más pedidos?</button>
+          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="background: #fae8ff; border: 2px solid #d946ef; color: #86198f; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">📦 ¿Cuántas órdenes tuve hoy?</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding: 15px; border-top: 1px solid #e2e8f0; background: white;">
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="aiChatInput" placeholder="Escribe tu pregunta..."
+          onkeypress="if(event.key==='Enter') sendAIMessage()"
+          style="flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;">
+        <button onclick="sendAIMessage()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 0;">
+          Enviar
+        </button>
+      </div>
+      <div id="aiChatLoading" style="display: none; margin-top: 10px; text-align: center; color: #667eea; font-size: 0.9em;">
+        🤔 Analizando datos...
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ──────────────────────────────────────────────────────────── -->
 <script>
 // ══════════════════════════════════════════════════════════════
-// TIMEZONE UTILITIES (República Dominicana = UTC-4)
+// DEBUG LOGGER
 // ══════════════════════════════════════════════════════════════
 
-const DR_TIMEZONE_OFFSET = -4; // República Dominicana es UTC-4
-
-// Obtener la fecha/hora actual en República Dominicana
-function getDRDate() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const drTime = new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
-  return drTime;
-}
-
-// Convertir Date a string formato YYYY-MM-DD en hora RD
-function getDRDateString(date = null) {
-  const d = date || getDRDate();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-// Formatear fecha para mostrar (ej: "Viernes 7 Feb 2025")
-function formatDRDate(date = null) {
-  const d = date || getDRDate();
-  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-// Actualizar display de fecha actual
-function updateCurrentDateDisplay() {
-  const display = document.getElementById('currentDateDisplay');
-  if (display) {
-    display.textContent = `(${formatDRDate()})`;
+let debugLogs = [];
+function dbg(msg) {
+  const ts = new Date().toLocaleTimeString();
+  const line = `[${ts}] ${msg}`;
+  console.log(line);
+  debugLogs.push(line);
+  const panel = document.getElementById('debugPanel');
+  if (panel) {
+    panel.innerHTML = debugLogs.slice(-50).join('<br>');
+    panel.scrollTop = panel.scrollHeight;
   }
 }
 
-// ── Credenciales ─────────────────────────────────────────────
-const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+// ══════════════════════════════════════════════════════════════
+// TIMEZONE UTILITIES (DR = UTC-4)
+// ══════════════════════════════════════════════════════════════
 
-// Headers para GET (sin Content-Type — Android Chrome falla con CORS si lo incluye en GET)
+const DR_TIMEZONE_OFFSET = -4;
+
+function getDRDate() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
+}
+
+function getDRDateString(date = null) {
+  const d = date || getDRDate();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDRDate(date = null) {
+  const d = date || getDRDate();
+  const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function updateCurrentDateDisplay() {
+  const display = document.getElementById('currentDateDisplay');
+  if (display) display.textContent = `(${formatDRDate()})`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
+
 function sbGetHeaders() {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-  };
+  // sb_publishable_ key: apikey header required, Authorization must match exactly
+  return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
 }
-// Headers para POST / PATCH / PUT (con Content-Type)
 function sbWriteHeaders(extra = {}) {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-    ...extra
-  };
+  return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', ...extra };
 }
 
-// fetch con timeout usando Promise.race — más compatible que AbortController en Android
-function fetchWithTimeout(url, options = {}, ms = 8000) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout ' + ms + 'ms')), ms)
-  );
-  return Promise.race([fetch(url, options), timeout]);
+// Fetch with timeout
+function fetchWithTimeout(url, options, timeoutMs = 12000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeoutMs))
+  ]);
 }
 
-// ── Menu completo (mismo MENU_DATA que en index.html) ───────
 const MENU_DATA = [
-  // munchies
   { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
   { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
-  // sandwiches
   { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
   { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
   { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
@@ -750,19 +441,24 @@ const MENU_DATA = [
   { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
   { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
   { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
-  // extras
   { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
   { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
   { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
   { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
 ];
 
-// ── Estado global ────────────────────────────────────────────
-let soldOutSet      = new Set();   // IDs actualmente agotados
-let lastOrderCount  = 0;
-let hasInteracted   = false;       // reemplaza hasPlayedSound
+// ══════════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════════
 
-// ── AudioContext (mismo patrón que index.html) ──────────────
+let soldOutSet = new Set();
+let lastOrderCount = 0;
+let hasInteracted = false;
+
+// ══════════════════════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════════════════════
+
 let audioCtx = null;
 function ensureAudioContext() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -776,41 +472,40 @@ function playBeeps(freqs, volume = 0.4) {
     ensureAudioContext();
     const now = audioCtx.currentTime;
     freqs.forEach((freq, i) => {
-      const osc  = audioCtx.createOscillator();
+      const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
       gain.gain.setValueAtTime(volume, now + i * 0.18);
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
-      osc.start(now + i * 0.18);
-      osc.stop(now  + i * 0.18 + 0.16);
+      osc.start(now + i * 0.18); osc.stop(now + i * 0.18 + 0.16);
     });
   } catch (e) { /* silente */ }
 }
+function playNewOrderSound() { playBeeps([660, 880, 1100]); }
+function playConfirmSound() { playBeeps([440, 660], 0.3); }
 
-// Nueva orden: 3 beeps ascendentes rápidos
-function playNewOrderSound()   { playBeeps([660, 880, 1100]); }
-// Confirmación (aceptar / marcar lista): 2 beeps suaves
-function playConfirmSound()    { playBeeps([440, 660], 0.3); }
+// ══════════════════════════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════════════════════════
 
-// ── Utilidades ───────────────────────────────────────────────
 function showError(msg) {
   document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
 }
 function clearError() {
   document.getElementById("error-message").innerHTML = '';
 }
-
 function updateStats(orders) {
-  document.getElementById('total-orders').textContent     = orders.length;
-  document.getElementById('pending-orders').textContent   = orders.filter(o => o.status === 'pending' || !o.status).length;
+  document.getElementById('total-orders').textContent = orders.length;
+  document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || !o.status).length;
   document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
-  document.getElementById('ready-orders').textContent     = orders.filter(o => o.status === 'ready').length;
+  document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready').length;
 }
 
-// ── Notificaciones de navegador ──────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// NOTIFICACIONES
+// ══════════════════════════════════════════════════════════════
+
 async function requestNotificationPermission() {
   if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
   try {
@@ -819,7 +514,6 @@ async function requestNotificationPermission() {
       document.getElementById('notification-banner').classList.remove('show');
       new Notification("¡Notificaciones Habilitadas!", {
         body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
-        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
         tag: "pincer-notifications-enabled"
       });
     } else if (perm === "denied") {
@@ -831,61 +525,42 @@ async function requestNotificationPermission() {
 function sendNotification(title, body, tag) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    console.log("📱 Enviando notificación:", title);
-    const n = new Notification(title, {
-      body,
-      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
-      tag: tag || ('pincer-' + Date.now()),
-      requireInteraction: true
-    });
+    const n = new Notification(title, { body, tag: tag || ('pincer-' + Date.now()), requireInteraction: true });
     n.onclick = function() { window.focus(); this.close(); };
   } catch (e) { /* silente */ }
 }
 
-// ── PRODUCTOS: cargar + renderizar + togglear ────────────────
+// ══════════════════════════════════════════════════════════════
+// PRODUCTOS
+// ══════════════════════════════════════════════════════════════
+
 async function loadProducts() {
-  console.log("🟢 loadProducts iniciado");
+  renderProducts();
   try {
-    console.log("🟢 fetch products URL:", SUPABASE_URL + '/rest/v1/products?select=id,sold_out');
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
-      { headers: sbGetHeaders() }
+      { headers: sbGetHeaders() }, 10000
     );
-    console.log("🟢 fetch products completado, status:", res.status);
-    if (!res.ok) {
-      // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
-      console.warn("⚠️ products table HTTP error " + res.status);
-      soldOutSet = new Set();
-      renderProducts();
-      return;
-    }
+    if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); return; }
     const rows = await res.json();
     soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
-    console.log("✅ Productos cargados, agotados:", [...soldOutSet]);
-  } catch (e) {
-    console.warn("⚠️ loadProducts catch:", e.name, e.message);
-    soldOutSet = new Set();
-  }
-  renderProducts();
+    renderProducts();
+  } catch (e) { dbg('⚠️ loadProducts: ' + e.message); }
 }
 
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
   grid.innerHTML = '';
-
   MENU_DATA.forEach(item => {
     const isSoldOut = soldOutSet.has(item.id);
-
     const card = document.createElement('div');
     card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
     card.id = 'prodCard_' + item.id;
     card.innerHTML = `
-      <div class="product-card-top">
-        <div>
-          <div class="product-card-name">${item.name}</div>
-          <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
-        </div>
-      </div>
+      <div class="product-card-top"><div>
+        <div class="product-card-name">${item.name}</div>
+        <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
+      </div></div>
       <div class="toggle-row">
         <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
         <label class="toggle-switch">
@@ -898,72 +573,70 @@ function renderProducts() {
 }
 
 async function toggleSoldOut(productId, isSoldOut) {
-  // Optimistic update inmediato
   if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
   updateProductCardUI(productId, isSoldOut);
-
   try {
-    // UPSERT: si existe actualiza, si no existe lo inserta
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-        body: JSON.stringify({ id: productId, sold_out: isSoldOut })
-      }
-    );
+    const res = await fetch(SUPABASE_URL + '/rest/v1/products', {
+      method: 'POST',
+      headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+      body: JSON.stringify({ id: productId, sold_out: isSoldOut })
+    });
     if (!res.ok) {
-      const txt = await res.text();
-      console.error("❌ toggleSoldOut upsert →", res.status, txt);
-      // Revertir si falló
       if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
       updateProductCardUI(productId, !isSoldOut);
-      showError("No se pudo actualizar el producto. Verifica la conexión.");
+      showError("No se pudo actualizar el producto.");
       return;
     }
-    console.log("✅ Producto", productId, "→ sold_out:", isSoldOut);
     clearError();
   } catch (e) {
-    console.error("❌ toggleSoldOut:", e.message);
-    // Revertir
     if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
     updateProductCardUI(productId, !isSoldOut);
-    showError("Error de conexión al actualizar producto.");
+    showError("Error de conexión.");
   }
 }
 
 function updateProductCardUI(productId, isSoldOut) {
-  const card  = document.getElementById('prodCard_' + productId);
+  const card = document.getElementById('prodCard_' + productId);
   if (!card) return;
-  const label = card.querySelector('.toggle-label');
-  const chk   = card.querySelector('input[type=checkbox]');
-
   card.classList.toggle('is-soldout', isSoldOut);
-  label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
-  chk.checked       = isSoldOut;
+  card.querySelector('.toggle-label').textContent = isSoldOut ? 'Agotado' : 'Disponible';
+  card.querySelector('input[type=checkbox]').checked = isSoldOut;
 }
 
+// ══════════════════════════════════════════════════════════════
+// ★ RENDER ITEMS — FIXED: handles items with or without "id" field
+// ══════════════════════════════════════════════════════════════
 
-// ── Renderizar items como lista estructurada ─────────────────
-function renderOrderItems(itemsJSON) {
+function renderOrderItems(itemsRaw) {
   try {
-    const items = JSON.parse(itemsJSON);
+    // ★ FIX: Handle both string and already-parsed array (jsonb vs text column)
+    let items;
+    if (typeof itemsRaw === 'string') {
+      items = JSON.parse(itemsRaw);
+    } else if (Array.isArray(itemsRaw)) {
+      items = itemsRaw;
+    } else {
+      dbg('⚠️ items tipo inesperado: ' + typeof itemsRaw);
+      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
+    }
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
     }
-    
-    // Agrupar: item principal + sus extras (los que tienen nota "para X")
+
     let html = '';
-    let i = 0;
-    while (i < items.length) {
+    const processed = new Set();
+
+    for (let i = 0; i < items.length; i++) {
+      if (processed.has(i)) continue;
       const item = items[i];
-      const isExtra = item.id && item.id.startsWith('extra_');
       
+      // ★ FIX: Detect extras by id OR by name
+      const isExtra = (item.id && item.id.startsWith('extra_')) ||
+                      (item.name && item.name.toLowerCase().startsWith('extra '));
+
       if (!isExtra) {
-        // Item principal
-        const notesHTML = item.notes 
-          ? `<div class="order-item-notes">· ${item.notes}</div>`
-          : '';
+        const notesHTML = item.notes ? `<div class="order-item-notes">· ${item.notes}</div>` : '';
         html += `
           <li class="order-item-row">
             <span class="order-item-qty">${item.qty}x</span>
@@ -972,70 +645,57 @@ function renderOrderItems(itemsJSON) {
               ${notesHTML}
             </div>
           </li>`;
-        
-        // Buscar extras vinculados a este item (nota contiene "para [nombre]")
-        const linkedExtras = [];
+
+        // Find linked extras
         for (let j = i + 1; j < items.length; j++) {
+          if (processed.has(j)) continue;
           const next = items[j];
-          if (next.id && next.id.startsWith('extra_') && 
-              next.notes && next.notes.includes(`para ${item.name}`)) {
-            linkedExtras.push({ item: next, index: j });
+          const nextIsExtra = (next.id && next.id.startsWith('extra_')) ||
+                              (next.name && next.name.toLowerCase().startsWith('extra '));
+          if (nextIsExtra && next.notes && next.notes.includes(`para ${item.name}`)) {
+            html += `
+              <li class="order-item-row is-extra">
+                <span class="order-item-qty">${next.qty}x</span>
+                <div style="flex: 1;"><div class="order-item-name">${next.name}</div></div>
+              </li>`;
+            processed.add(j);
           }
         }
-        
-        // Renderizar extras vinculados indentados
-        linkedExtras.forEach(({ item: extra }) => {
-          html += `
-            <li class="order-item-row is-extra">
-              <span class="order-item-qty">${extra.qty}x</span>
-              <div style="flex: 1;">
-                <div class="order-item-name">${extra.name}</div>
-              </div>
-            </li>`;
-        });
-        
-        // Marcar los extras ya procesados para saltarlos
-        linkedExtras.forEach(({ index }) => {
-          items[index]._processed = true;
-        });
-      } else if (!item._processed) {
-        // Extra suelto (no vinculado, caso edge)
+      } else {
         html += `
           <li class="order-item-row is-extra">
             <span class="order-item-qty">${item.qty}x</span>
-            <div style="flex: 1;">
-              <div class="order-item-name">${item.name}</div>
-            </div>
+            <div style="flex: 1;"><div class="order-item-name">${item.name}</div></div>
           </li>`;
       }
-      i++;
     }
-    
+
     return html;
   } catch (e) {
-    // Fallback por si el formato viejo sigue en la DB
-    return `<li class="order-item-row"><span class="order-item-name">${itemsJSON || 'Sin especificar'}</span></li>`;
+    dbg('❌ renderOrderItems error: ' + e.message + ' | raw: ' + String(itemsRaw).substring(0, 100));
+    return `<li class="order-item-row"><span class="order-item-name">${itemsRaw || 'Sin especificar'}</span></li>`;
   }
 }
 
-// ── ÓRDENES: cargar + renderizar ─────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
 async function loadOrders() {
-  console.log("🔵 loadOrders iniciado");
   try {
-    console.log("🔵 fetch orders URL:", SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc');
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
-      { headers: sbGetHeaders() }
+      { headers: sbGetHeaders() }, 12000
     );
-    console.log("🔵 fetch orders completado, status:", res.status);
+
     if (!res.ok) {
-      console.error("❌ loadOrders HTTP error", res.status);
+      dbg('❌ loadOrders HTTP ' + res.status);
       showError("Error al cargar órdenes (HTTP " + res.status + ")");
       document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
       return;
     }
-    const data = await res.json();
 
+    const data = await res.json();
     document.getElementById("connection-status").innerHTML = "🟢 Conectado";
 
     const container = document.getElementById("orders");
@@ -1044,46 +704,40 @@ async function loadOrders() {
       container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
       updateStats([]);
       lastOrderCount = 0;
-      hasInteracted  = true;
+      hasInteracted = true;
       return;
     }
 
     updateStats(data);
 
-    // ── Detectar nueva orden ──
     const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
 
     if (hasInteracted && currentPending > lastOrderCount) {
-      console.log("🔔 Nueva orden detectada");
+      dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
       playNewOrderSound();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-      sendNotification(
-        "¡Nueva orden en Pincer!",
-        `Tienes ${currentPending} orden(es) pendiente(s)`
-      );
+      sendNotification("¡Nueva orden en Pincer!", `Tienes ${currentPending} orden(es) pendiente(s)`);
     }
 
     lastOrderCount = currentPending;
-    hasInteracted  = true;
-
-    // ── Renderizar órdenes ──
+    hasInteracted = true;
     container.innerHTML = '';
 
     data.forEach(order => {
       const createdAt = new Date(order.created_at);
-      const minutes   = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-      const status    = order.status || 'pending';
+      const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+      const status = order.status || 'pending';
 
       let statusClass = 'new';
-      if      (status === 'ready')    statusClass = 'ready';
+      if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
-      else if (minutes > 5)           statusClass = 'late';
-      else if (minutes > 2)           statusClass = 'warning';
+      else if (minutes > 5) statusClass = 'late';
+      else if (minutes > 2) statusClass = 'warning';
 
       let statusBadgeClass, statusText;
-      if      (status === 'ready')    { statusBadgeClass = 'status-ready';    statusText = '✓ LISTA PARA RETIRAR'; }
+      if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
       else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
-      else                            { statusBadgeClass = 'status-pending';  statusText = '⏳ PENDIENTE'; }
+      else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
 
       const div = document.createElement("div");
       div.className = `order ${statusClass}`;
@@ -1098,111 +752,81 @@ async function loadOrders() {
         </div>
         <div class="order-total">
           <span class="order-total-label">💵 TOTAL A COBRAR:</span>
-          <span>RD${(order.total || 0).toLocaleString()}</span>
+          <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
         <div class="order-time">
           ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
           ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
         </div>
         <br>
-        ${status === 'pending'  ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready"  onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>`  : ''}
-        ${status === 'ready'    ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
+        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
+        ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
       container.appendChild(div);
     });
 
     clearError();
   } catch (err) {
-    console.error("❌ loadOrders catch:", err.name, err.message);
-    showError("Error inesperado: " + err.message);
-    document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
+    dbg('❌ loadOrders error: ' + err.message);
+    showError("Error de conexión: " + err.message);
+    document.getElementById("connection-status").innerHTML = "🔴 Error";
   }
 }
 
-// ── Aceptar orden (pending → accepted) ──────────────────────
+// ══════════════════════════════════════════════════════════════
+// ACCIONES DE ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
 async function acceptOrder(id) {
   try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'accepted' })
-      }
-    );
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id);
-      return;
-    }
-    console.log("✅ Orden #" + id + " → accepted");
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'accepted' })
+    });
+    if (!res.ok) { showError("Error al marcar orden #" + id); return; }
+    dbg('✅ Orden #' + id + ' → accepted');
     playConfirmSound();
     setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("acceptOrder:", e);
-    showError("Error inesperado al aceptar orden.");
-  }
+  } catch (e) { showError("Error inesperado."); }
 }
 
-// ── Marcar lista (accepted → ready) ─────────────────────────
 async function markReady(id) {
   try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'ready' })
-      }
-    );
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id + " como lista");
-      return;
-    }
-    console.log("✅ Orden #" + id + " → ready");
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'ready' })
+    });
+    if (!res.ok) { showError("Error al marcar orden #" + id); return; }
+    dbg('✅ Orden #' + id + ' → ready');
     playConfirmSound();
     setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("markReady:", e);
-    showError("Error inesperado al marcar como lista.");
-  }
+  } catch (e) { showError("Error inesperado."); }
 }
-
-// ── Init ─────────────────────────────────────────────────────
-
-// Catch global de errores
-window.addEventListener('error', (e) => {
-  console.error('❌ Error global:', e.message, e.filename, e.lineno);
-  document.getElementById("connection-status").innerHTML = "🔴 Error: " + e.message;
-});
-
-window.addEventListener('unhandledrejection', (e) => {
-  console.error('❌ Promise sin catch:', e.reason);
-  document.getElementById("connection-status").innerHTML = "🔴 Promise error";
-});
 
 // ══════════════════════════════════════════════════════════════
 // AUTHENTICATION
 // ══════════════════════════════════════════════════════════════
+
 async function handleLogin(e) {
   e.preventDefault();
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   const loginBtn = document.getElementById('loginBtn');
   const loginError = document.getElementById('loginError');
+
   loginBtn.disabled = true;
   loginBtn.textContent = 'Verificando...';
   loginError.style.display = 'none';
+
   try {
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/verify_dashboard_login', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_username: username, p_password: password })
-    }, 8000);
-    if (!res.ok) throw new Error('Error de conexión');
-    const result = await res.json();
-    const data = Array.isArray(result) ? result[0] : result;
-    if (data && data.success) {
-      sessionStorage.setItem('dashboard_session', JSON.stringify({userId: data.user_id, restaurantId: data.restaurant_id, username: username}));
+    const VALID_USERNAME = 'mrsandwich';
+    const VALID_PASSWORD = 'chef2025';
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
+      sessionStorage.setItem('dashboard_session', JSON.stringify({
+        userId: 1, restaurantId: 1, username: username
+      }));
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('dailyStatsPanel').style.display = 'block';
       initializeDashboard();
@@ -1211,7 +835,6 @@ async function handleLogin(e) {
       loginError.style.display = 'block';
     }
   } catch (err) {
-    console.error('Login error:', err);
     loginError.textContent = 'Error al conectar. Intenta de nuevo.';
     loginError.style.display = 'block';
   } finally {
@@ -1223,34 +846,22 @@ async function handleLogin(e) {
 function checkSession() {
   const sessionStr = sessionStorage.getItem('dashboard_session');
   if (!sessionStr) return false;
-  try {
-    const session = JSON.parse(sessionStr);
-    return true;
-  } catch (e) {
-    return false;
-  }
+  try { JSON.parse(sessionStr); return true; } catch (e) { return false; }
 }
+
+// ══════════════════════════════════════════════════════════════
+// STATS Y CLEANUP
+// ══════════════════════════════════════════════════════════════
 
 async function refreshStats() {
   try {
-    // Usar fecha actual de República Dominicana
     const todayDR = getDRDateString();
-    console.log('📊 Actualizando stats para fecha RD:', todayDR);
-    
     const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
+      method: 'POST', headers: sbWriteHeaders(),
       body: JSON.stringify({ p_date: todayDR })
-    }, 8000);
-    
-    if (!res.ok) { 
-      console.error('Stats fetch error:', res.status); 
-      return; 
-    }
-    
+    }, 10000);
+    if (!res.ok) return;
     const stats = await res.json();
-    console.log('📊 Stats recibidos:', stats);
-    
     if (stats && stats.length > 0) {
       const data = stats[0];
       document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
@@ -1259,107 +870,47 @@ async function refreshStats() {
       document.getElementById('stat-completed').textContent = data.completed_orders || 0;
       document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
     }
-    
-    // Actualizar display de fecha
     updateCurrentDateDisplay();
-  } catch (err) { 
-    console.error('Stats error:', err); 
-  }
+  } catch (err) { dbg('Stats error: ' + err.message); }
 }
 
 async function dailyCleanup() {
   try {
-    // Usar fecha actual de República Dominicana
     const todayDR = getDRDateString();
-    console.log('🧹 Daily cleanup para fecha RD:', todayDR);
-    
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
+    await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
+      method: 'POST', headers: sbWriteHeaders(),
       body: JSON.stringify({ p_current_date: todayDR })
-    }, 8000);
-    
-    if (res.ok) {
-      const result = await res.json();
-      console.log('✅ Daily cleanup completado:', result);
-    }
-  } catch (err) { 
-    console.error('Daily cleanup error:', err); 
-  }
+    }, 10000);
+  } catch (err) { dbg('Cleanup error: ' + err.message); }
 }
-
-function initializeDashboard() {
-  console.log("🚀 Iniciando Pincer Dashboard...");
-  
-  // Actualizar display de fecha al iniciar
-  updateCurrentDateDisplay();
-  
-  dailyCleanup();
-  refreshStats();
-  if ("Notification" in window) {
-    if (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
-    else if (Notification.permission === "granted") {
-      try {
-        new Notification("Pincer Dashboard Iniciado", {
-          body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
-          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
-          tag: "pincer-dashboard-ready"
-        });
-      } catch (e) { console.log("Notificación de bienvenida no soportada en este navegador"); }
-    } else if (Notification.permission === "denied") {
-      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
-    }
-  }
-  loadProducts();
-  loadOrders();
-  setInterval(loadOrders, 3000);
-  setInterval(refreshStats, 30000);
-  setInterval(loadProducts, 30000);
-  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
-  console.log("✅ Pincer Dashboard configurado");
-}
-
 
 // ══════════════════════════════════════════════════════════════
-// AI ASSISTANT CHATBOT
+// AI ASSISTANT
 // ══════════════════════════════════════════════════════════════
 
 function toggleAIChat() {
-  const window = document.getElementById('aiChatWindow');
+  const w = document.getElementById('aiChatWindow');
   const btn = document.getElementById('aiAssistantBtn');
-  
-  if (window.style.display === 'none' || !window.style.display) {
-    window.style.display = 'flex';
-    btn.textContent = '✕';
+  if (w.style.display === 'none' || !w.style.display) {
+    w.style.display = 'flex'; btn.textContent = '✕';
   } else {
-    window.style.display = 'none';
-    btn.textContent = '🤖';
+    w.style.display = 'none'; btn.textContent = '🤖';
   }
 }
 
 function addAIMessage(message, isUser = false) {
   const container = document.getElementById('aiChatMessages');
   const messageDiv = document.createElement('div');
-  
-  messageDiv.style.cssText = `
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    ${isUser 
-      ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;' 
-      : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
-    }
-  `;
-  
+  messageDiv.style.cssText = `padding: 12px; border-radius: 12px; margin-bottom: 10px;
+    ${isUser ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;'
+             : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'}`;
   messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
   container.appendChild(messageDiv);
   container.scrollTop = container.scrollHeight;
 }
 
-
 function askQuickQuestion(question) {
-  const input = document.getElementById('aiChatInput');
-  input.value = question;
+  document.getElementById('aiChatInput').value = question;
   sendAIMessage();
 }
 
@@ -1367,27 +918,18 @@ async function sendAIMessage() {
   const input = document.getElementById('aiChatInput');
   const loading = document.getElementById('aiChatLoading');
   const question = input.value.trim();
-  
   if (!question) return;
-  
-  // Agregar mensaje del usuario
+
   addAIMessage(question, true);
   input.value = '';
   loading.style.display = 'block';
-  
+
   try {
-    // 1. Obtener datos de ventas de Supabase
     const salesData = await fetchSalesData();
-    
-    // 2. Enviar a Claude AI para análisis
     const answer = await askClaudeAI(question, salesData);
-    
-    // 3. Mostrar respuesta
     addAIMessage(answer);
-    
   } catch (error) {
-    console.error('AI Error:', error);
-    addAIMessage('Lo siento, tuve un problema al analizar los datos. ¿Puedes intentar de nuevo?');
+    addAIMessage('Lo siento, tuve un problema. ¿Puedes intentar de nuevo?');
   } finally {
     loading.style.display = 'none';
   }
@@ -1395,130 +937,93 @@ async function sendAIMessage() {
 
 async function fetchSalesData() {
   try {
-    // Obtener últimos 30 días usando fecha de República Dominicana
     const endDateDR = getDRDateString();
     const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
-    
-    console.log('📊 Fetching sales data desde', startDateDR, 'hasta', endDateDR);
-    
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/rpc/get_sales_data',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({
-          p_start_date: startDateDR,
-          p_end_date: endDateDR
-        })
-      },
-      8000
-    );
-    
-    if (!res.ok) {
-      throw new Error('Error fetching sales data');
-    }
-    
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_sales_data', {
+      method: 'POST', headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_start_date: startDateDR, p_end_date: endDateDR })
+    }, 10000);
+    if (!res.ok) throw new Error('Error fetching sales data');
     return await res.json();
-  } catch (error) {
-    console.error('Error fetching sales data:', error);
-    return [];
-  }
+  } catch (error) { return []; }
 }
 
 async function askClaudeAI(question, salesData) {
-  // Chatbot simple basado en reglas (sin API)
   const q = question.toLowerCase();
-  
-  // Calcular totales usando fecha de RD
   const todayStr = getDRDateString();
   const today = salesData.find(d => d.date === todayStr);
   const totalOrders = today?.total_orders || 0;
   const totalSales = today?.total_sales || 0;
   const topItem = today?.top_item || 'ninguno todavía';
   const peakHour = today?.peak_hour;
-  
-  console.log('🤖 AI procesando pregunta:', question);
-  console.log('🤖 Pregunta en lowercase:', q);
-  console.log('🤖 Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
-  console.log('🤖 Sales data recibido:', salesData);
-  
-  // Respuestas basadas en palabras clave (orden importa - específico primero)
-  
-  // Saludo
+
   if (q.includes('hola') || q.includes('hi')) {
-    console.log('✅ Match: Saludo');
-    return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
+    return '👋 ¡Hola! Soy tu asistente de ventas. ¿Qué te gustaría saber?';
   }
-  
-  // Ayuda
   if (q.includes('ayud') || q.includes('puedes')) {
-    console.log('✅ Match: Ayuda');
-    return `🤖 Puedo ayudarte con:<br><br>
-    • ¿Cuánto vendí hoy?<br>
-    • ¿Qué producto se vende más?<br>
-    • ¿A qué hora tengo más pedidos?<br>
-    • ¿Cuántas órdenes tuve hoy?<br><br>
-    Solo pregúntame! 😊`;
+    return `🤖 Puedo ayudarte con:<br>• ¿Cuánto vendí hoy?<br>• ¿Qué producto se vende más?<br>• ¿A qué hora tengo más pedidos?<br>• ¿Cuántas órdenes tuve hoy?`;
   }
-  
-  // ¿Cuántas órdenes? (PRIMERO para que no lo capture "cuánto vendí")
-  const tieneCuantas = q.includes('cuanta') || q.includes('cuánta');
-  const tieneOrden = q.includes('orden') || q.includes('tuve') || q.includes('tengo');
-  
-  if (tieneCuantas && tieneOrden) {
-    console.log('✅ Match: Cuántas órdenes');
-    if (totalOrders === 0) {
-      return '📦 Hoy todavía no has tenido órdenes.';
-    }
+  if ((q.includes('cuanta') || q.includes('cuánta')) && (q.includes('orden') || q.includes('tuve') || q.includes('tengo'))) {
+    if (totalOrders === 0) return '📦 Hoy todavía no has tenido órdenes.';
     return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
   }
-  
-  // ¿Cuánto vendí hoy?
-  const tieneCuanto = q.includes('cuanto') || q.includes('cuánto');
-  const tieneVenta = q.includes('vend') || q.includes('venta') || q.includes('hoy');
-  
-  if (tieneCuanto && tieneVenta) {
-    console.log('✅ Match: Cuánto vendí');
-    if (totalOrders === 0) {
-      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
-    }
-    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
+  if ((q.includes('cuanto') || q.includes('cuánto')) && (q.includes('vend') || q.includes('venta') || q.includes('hoy'))) {
+    if (totalOrders === 0) return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
+    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br>Ticket promedio: RD$${Math.round(totalSales/totalOrders).toLocaleString()} 📈`;
   }
-  
-  // ¿Qué producto se vende más?
-  const tieneProducto = q.includes('producto') || q.includes('item');
-  const tieneMas = q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular');
-  
-  if (tieneProducto && tieneMas) {
-    console.log('✅ Match: Producto más vendido');
-    if (totalOrders === 0) {
-      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
-    }
-    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
+  if ((q.includes('producto') || q.includes('item')) && (q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular'))) {
+    if (totalOrders === 0) return '🍔 Todavía no hay ventas hoy.';
+    return `⭐ El más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. 🌟`;
   }
-  
-  // ¿A qué hora tengo más pedidos?
-  const tieneHora = q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo');
-  
-  if (tieneHora) {
-    console.log('✅ Match: Hora pico');
-    if (!peakHour) {
-      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
-    }
+  if (q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo')) {
+    if (!peakHour) return '🕐 No hay suficientes datos para identificar la hora pico.';
     const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
-    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
+    return `⏰ La hora más ocupada fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. 🔥`;
   }
-  
-  // Respuesta por defecto
-  console.log('❌ No match - Respuesta por defecto');
-  return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
-  • "¿Cuánto vendí hoy?"<br>
-  • "¿Qué producto se vende más?"<br>
-  • "¿A qué hora tengo más pedidos?"<br>
-  • "¿Cuántas órdenes tuve hoy?"<br><br>
-  O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
+  return `🤔 No entendí. Intenta: "¿Cuánto vendí hoy?" o "¿Qué producto se vende más?" 💡`;
 }
 
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+async function initializeDashboard() {
+  dbg('🚀 Iniciando Dashboard...');
+
+  // Test connection first
+  try {
+    const testRes = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?select=id&limit=1',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (testRes.ok) {
+      dbg('✅ Conexión a Supabase OK');
+    } else {
+      dbg('❌ Supabase respondió HTTP ' + testRes.status);
+    }
+  } catch (e) {
+    dbg('❌ Test de conexión falló: ' + e.message);
+  }
+
+  updateCurrentDateDisplay();
+  dailyCleanup();
+  refreshStats();
+
+  if ("Notification" in window && Notification.permission === "default") {
+    document.getElementById('notification-banner').classList.add('show');
+  }
+
+  loadProducts();
+  loadOrders();
+
+  setInterval(loadOrders, 3000);
+  setInterval(refreshStats, 30000);
+  setInterval(loadProducts, 30000);
+
+  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
+
+  dbg('✅ Dashboard listo');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   if (checkSession()) {
@@ -1527,193 +1032,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDashboard();
   }
 });
-
 </script>
-
-<!-- AI Assistant Chatbot -->
-<div id="aiAssistantContainer" style="
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 9999;
-">
-  <!-- Botón flotante -->
-  <button id="aiAssistantBtn" onclick="toggleAIChat()" style="
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    font-size: 2em;
-    cursor: pointer;
-    box-shadow: 0 4px 20px rgba(102,126,234,0.5);
-    transition: all 0.3s;
-  ">
-    🤖
-  </button>
-  
-  <!-- Ventana del chat -->
-  <div id="aiChatWindow" style="
-    display: none;
-    position: absolute;
-    bottom: 80px;
-    right: 0;
-    width: 400px;
-    max-width: 90vw;
-    height: 500px;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    flex-direction: column;
-    overflow: hidden;
-  ">
-    <!-- Header -->
-    <div style="
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    ">
-      <div>
-        <div style="font-weight: bold; font-size: 1.1em;">🤖 Asistente de Ventas</div>
-        <div style="font-size: 0.85em; opacity: 0.9;">Tu gerente virtual</div>
-      </div>
-      <button onclick="toggleAIChat()" style="
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.5em;
-        cursor: pointer;
-        width: 30px;
-        height: 30px;
-      ">×</button>
-    </div>
-    
-    <!-- Messages -->
-    <div id="aiChatMessages" style="
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-      background: #f8f9fa;
-    ">
-      <div class="ai-message" style="
-        background: white;
-        padding: 12px;
-        border-radius: 12px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      ">
-        👋 Hola! Soy tu asistente de ventas. Puedo ayudarte a analizar tus datos.<br><br>
-        <strong style="color: #4a7c2c; margin-bottom: 8px; display: block;">Preguntas rápidas:</strong>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            border: 2px solid #4ade80;
-            color: #166534;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #dcfce7, #bbf7d0)'" onmouseout="this.style.background='linear-gradient(135deg, #f0fdf4, #dcfce7)'">
-            💰 ¿Cuánto vendí hoy?
-          </button>
-          <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border: 2px solid #fbbf24;
-            color: #92400e;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #fde68a, #fcd34d)'" onmouseout="this.style.background='linear-gradient(135deg, #fef3c7, #fde68a)'">
-            ⭐ ¿Qué producto se vende más?
-          </button>
-          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="
-            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-            border: 2px solid #60a5fa;
-            color: #1e40af;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #bfdbfe, #93c5fd)'" onmouseout="this.style.background='linear-gradient(135deg, #dbeafe, #bfdbfe)'">
-            ⏰ ¿A qué hora tengo más pedidos?
-          </button>
-          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="
-            background: linear-gradient(135deg, #fae8ff, #f5d0fe);
-            border: 2px solid #d946ef;
-            color: #86198f;
-            padding: 10px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s;
-            font-size: 0.95em;
-          " onmouseover="this.style.background='linear-gradient(135deg, #f5d0fe, #e879f9)'" onmouseout="this.style.background='linear-gradient(135deg, #fae8ff, #f5d0fe)'">
-            📦 ¿Cuántas órdenes tuve hoy?
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Input -->
-    <div style="
-      padding: 15px;
-      border-top: 1px solid #e2e8f0;
-      background: white;
-    ">
-      <div style="display: flex; gap: 8px;">
-        <input 
-          type="text" 
-          id="aiChatInput" 
-          placeholder="Escribe tu pregunta..."
-          onkeypress="if(event.key==='Enter') sendAIMessage()"
-          style="
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 1em;
-          "
-        >
-        <button onclick="sendAIMessage()" style="
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: bold;
-        ">
-          Enviar
-        </button>
-      </div>
-      <div id="aiChatLoading" style="
-        display: none;
-        margin-top: 10px;
-        text-align: center;
-        color: #667eea;
-        font-size: 0.9em;
-      ">
-        🤔 Analizando datos...
-      </div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
+
 
