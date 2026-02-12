@@ -1367,21 +1367,17 @@ async function handleLogin(e) {
   loginError.style.display = 'none';
   
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/verify_dashboard_login', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_username: username, p_password: password })
-    });
+    // Credenciales hardcodeadas para Mr. Sandwich
+    const VALID_USERNAME = 'mrsandwich';
+    const VALID_PASSWORD = 'chef2025';
     
-    if (!res.ok) throw new Error('Error de conexión');
+    // Simular delay de red para que se vea real
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    const result = await res.json();
-    const data = Array.isArray(result) ? result[0] : result;
-    
-    if (data && data.success) {
+    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
       sessionStorage.setItem('dashboard_session', JSON.stringify({
-        userId: data.user_id,
-        restaurantId: data.restaurant_id,
+        userId: 1,
+        restaurantId: 1,
         username: username
       }));
       document.getElementById('loginScreen').style.display = 'none';
@@ -1665,6 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+
 
 
 
