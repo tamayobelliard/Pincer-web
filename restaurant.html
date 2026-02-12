@@ -618,7 +618,7 @@
   }
 </style>
 
-<div id="connection-status">🟢 Conectado</div>
+<div id="connection-status">🔄 Conectando...</div>
 
 <!-- Banner de notificaciones -->
 <div id="notification-banner" onclick="requestNotificationPermission()">
@@ -664,6 +664,871 @@
     <!-- se genera por JS -->
   </div>
 </div>
+
+<!-- ──────────────────────────────────────────────────────────── -->
+<script>
+// ══════════════════════════════════════════════════════════════
+// TIMEZONE UTILITIES (República Dominicana = UTC-4)
+// ══════════════════════════════════════════════════════════════
+
+const DR_TIMEZONE_OFFSET = -4; // República Dominicana es UTC-4
+
+// Obtener la fecha/hora actual en República Dominicana
+function getDRDate() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const drTime = new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
+  return drTime;
+}
+
+// Convertir Date a string formato YYYY-MM-DD en hora RD
+function getDRDateString(date = null) {
+  const d = date || getDRDate();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Formatear fecha para mostrar (ej: "Viernes 7 Feb 2025")
+function formatDRDate(date = null) {
+  const d = date || getDRDate();
+  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Actualizar display de fecha actual
+function updateCurrentDateDisplay() {
+  const display = document.getElementById('currentDateDisplay');
+  if (display) {
+    display.textContent = `(${formatDRDate()})`;
+  }
+}
+
+// ── Credenciales ─────────────────────────────────────────────
+const SUPABASE_URL     = "https://wtkqpfswpkfgztozgwzl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
+
+// Headers para GET (sin Content-Type — Android Chrome falla con CORS si lo incluye en GET)
+function sbGetHeaders() {
+  return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+  };
+}
+// Headers para POST / PATCH / PUT (con Content-Type)
+function sbWriteHeaders(extra = {}) {
+  return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    ...extra
+  };
+}
+
+// fetch con timeout usando Promise.race — más compatible que AbortController en Android
+function fetchWithTimeout(url, options = {}, ms = 8000) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout ' + ms + 'ms')), ms)
+  );
+  return Promise.race([fetch(url, options), timeout]);
+}
+
+// ── Menu completo (mismo MENU_DATA que en index.html) ───────
+const MENU_DATA = [
+  // munchies
+  { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
+  { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
+  // sandwiches
+  { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
+  { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
+  { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
+  { id:'smash',           name:'Ellys Classic Smashburger',      price:850,  cat:'Sándwiches' },
+  { id:'pierna',          name:'Sanguche de Pierna',             price:700,  cat:'Sándwiches' },
+  { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
+  { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
+  { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
+  // extras
+  { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
+  { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
+  { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
+  { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
+];
+
+// ── Estado global ────────────────────────────────────────────
+let soldOutSet      = new Set();   // IDs actualmente agotados
+let lastOrderCount  = 0;
+let hasInteracted   = false;       // reemplaza hasPlayedSound
+
+// ── AudioContext (mismo patrón que index.html) ──────────────
+let audioCtx = null;
+function ensureAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
+
+function playBeeps(freqs, volume = 0.4) {
+  try {
+    if (!audioCtx) return;
+    ensureAudioContext();
+    const now = audioCtx.currentTime;
+    freqs.forEach((freq, i) => {
+      const osc  = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
+      osc.start(now + i * 0.18);
+      osc.stop(now  + i * 0.18 + 0.16);
+    });
+  } catch (e) { /* silente */ }
+}
+
+// Nueva orden: 3 beeps ascendentes rápidos
+function playNewOrderSound()   { playBeeps([660, 880, 1100]); }
+// Confirmación (aceptar / marcar lista): 2 beeps suaves
+function playConfirmSound()    { playBeeps([440, 660], 0.3); }
+
+// ── Utilidades ───────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
+}
+function clearError() {
+  document.getElementById("error-message").innerHTML = '';
+}
+
+function updateStats(orders) {
+  document.getElementById('total-orders').textContent     = orders.length;
+  document.getElementById('pending-orders').textContent   = orders.filter(o => o.status === 'pending' || !o.status).length;
+  document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
+  document.getElementById('ready-orders').textContent     = orders.filter(o => o.status === 'ready').length;
+}
+
+// ── Notificaciones de navegador ──────────────────────────────
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      document.getElementById('notification-banner').classList.remove('show');
+      new Notification("¡Notificaciones Habilitadas!", {
+        body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
+        tag: "pincer-notifications-enabled"
+      });
+    } else if (perm === "denied") {
+      alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
+    }
+  } catch (e) { console.error("requestNotificationPermission:", e); }
+}
+
+function sendNotification(title, body, tag) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    console.log("📱 Enviando notificación:", title);
+    const n = new Notification(title, {
+      body,
+      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
+      tag: tag || ('pincer-' + Date.now()),
+      requireInteraction: true
+    });
+    n.onclick = function() { window.focus(); this.close(); };
+  } catch (e) { /* silente */ }
+}
+
+// ── PRODUCTOS: cargar + renderizar + togglear ────────────────
+async function loadProducts() {
+  console.log("🟢 loadProducts iniciado");
+  try {
+    console.log("🟢 fetch products URL:", SUPABASE_URL + '/rest/v1/products?select=id,sold_out');
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
+      { headers: sbGetHeaders() }
+    );
+    console.log("🟢 fetch products completado, status:", res.status);
+    if (!res.ok) {
+      // Tabla puede no existir aún → no es error fatal, renderizar todo disponible
+      console.warn("⚠️ products table HTTP error " + res.status);
+      soldOutSet = new Set();
+      renderProducts();
+      return;
+    }
+    const rows = await res.json();
+    soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
+    console.log("✅ Productos cargados, agotados:", [...soldOutSet]);
+  } catch (e) {
+    console.warn("⚠️ loadProducts catch:", e.name, e.message);
+    soldOutSet = new Set();
+  }
+  renderProducts();
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '';
+
+  MENU_DATA.forEach(item => {
+    const isSoldOut = soldOutSet.has(item.id);
+
+    const card = document.createElement('div');
+    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
+    card.id = 'prodCard_' + item.id;
+    card.innerHTML = `
+      <div class="product-card-top">
+        <div>
+          <div class="product-card-name">${item.name}</div>
+          <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
+        <label class="toggle-switch">
+          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function toggleSoldOut(productId, isSoldOut) {
+  // Optimistic update inmediato
+  if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
+  updateProductCardUI(productId, isSoldOut);
+
+  try {
+    // UPSERT: si existe actualiza, si no existe lo inserta
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products',
+      {
+        method: 'POST',
+        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify({ id: productId, sold_out: isSoldOut })
+      }
+    );
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("❌ toggleSoldOut upsert →", res.status, txt);
+      // Revertir si falló
+      if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+      updateProductCardUI(productId, !isSoldOut);
+      showError("No se pudo actualizar el producto. Verifica la conexión.");
+      return;
+    }
+    console.log("✅ Producto", productId, "→ sold_out:", isSoldOut);
+    clearError();
+  } catch (e) {
+    console.error("❌ toggleSoldOut:", e.message);
+    // Revertir
+    if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+    updateProductCardUI(productId, !isSoldOut);
+    showError("Error de conexión al actualizar producto.");
+  }
+}
+
+function updateProductCardUI(productId, isSoldOut) {
+  const card  = document.getElementById('prodCard_' + productId);
+  if (!card) return;
+  const label = card.querySelector('.toggle-label');
+  const chk   = card.querySelector('input[type=checkbox]');
+
+  card.classList.toggle('is-soldout', isSoldOut);
+  label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
+  chk.checked       = isSoldOut;
+}
+
+
+// ── Renderizar items como lista estructurada ─────────────────
+function renderOrderItems(itemsJSON) {
+  try {
+    const items = JSON.parse(itemsJSON);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
+    }
+    
+    // Agrupar: item principal + sus extras (los que tienen nota "para X")
+    let html = '';
+    let i = 0;
+    while (i < items.length) {
+      const item = items[i];
+      const isExtra = item.id && item.id.startsWith('extra_');
+      
+      if (!isExtra) {
+        // Item principal
+        const notesHTML = item.notes 
+          ? `<div class="order-item-notes">· ${item.notes}</div>`
+          : '';
+        html += `
+          <li class="order-item-row">
+            <span class="order-item-qty">${item.qty}x</span>
+            <div style="flex: 1;">
+              <div class="order-item-name">${item.name}</div>
+              ${notesHTML}
+            </div>
+          </li>`;
+        
+        // Buscar extras vinculados a este item (nota contiene "para [nombre]")
+        const linkedExtras = [];
+        for (let j = i + 1; j < items.length; j++) {
+          const next = items[j];
+          if (next.id && next.id.startsWith('extra_') && 
+              next.notes && next.notes.includes(`para ${item.name}`)) {
+            linkedExtras.push({ item: next, index: j });
+          }
+        }
+        
+        // Renderizar extras vinculados indentados
+        linkedExtras.forEach(({ item: extra }) => {
+          html += `
+            <li class="order-item-row is-extra">
+              <span class="order-item-qty">${extra.qty}x</span>
+              <div style="flex: 1;">
+                <div class="order-item-name">${extra.name}</div>
+              </div>
+            </li>`;
+        });
+        
+        // Marcar los extras ya procesados para saltarlos
+        linkedExtras.forEach(({ index }) => {
+          items[index]._processed = true;
+        });
+      } else if (!item._processed) {
+        // Extra suelto (no vinculado, caso edge)
+        html += `
+          <li class="order-item-row is-extra">
+            <span class="order-item-qty">${item.qty}x</span>
+            <div style="flex: 1;">
+              <div class="order-item-name">${item.name}</div>
+            </div>
+          </li>`;
+      }
+      i++;
+    }
+    
+    return html;
+  } catch (e) {
+    // Fallback por si el formato viejo sigue en la DB
+    return `<li class="order-item-row"><span class="order-item-name">${itemsJSON || 'Sin especificar'}</span></li>`;
+  }
+}
+
+// ── ÓRDENES: cargar + renderizar ─────────────────────────────
+async function loadOrders() {
+  console.log("🔵 loadOrders iniciado");
+  try {
+    console.log("🔵 fetch orders URL:", SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc');
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
+      { headers: sbGetHeaders() }
+    );
+    console.log("🔵 fetch orders completado, status:", res.status);
+    if (!res.ok) {
+      console.error("❌ loadOrders HTTP error", res.status);
+      showError("Error al cargar órdenes (HTTP " + res.status + ")");
+      document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
+      return;
+    }
+    const data = await res.json();
+
+    document.getElementById("connection-status").innerHTML = "🟢 Conectado";
+
+    const container = document.getElementById("orders");
+
+    if (!data || data.length === 0) {
+      container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
+      updateStats([]);
+      lastOrderCount = 0;
+      hasInteracted  = true;
+      return;
+    }
+
+    updateStats(data);
+
+    // ── Detectar nueva orden ──
+    const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
+
+    if (hasInteracted && currentPending > lastOrderCount) {
+      console.log("🔔 Nueva orden detectada");
+      playNewOrderSound();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+      sendNotification(
+        "¡Nueva orden en Pincer!",
+        `Tienes ${currentPending} orden(es) pendiente(s)`
+      );
+    }
+
+    lastOrderCount = currentPending;
+    hasInteracted  = true;
+
+    // ── Renderizar órdenes ──
+    container.innerHTML = '';
+
+    data.forEach(order => {
+      const createdAt = new Date(order.created_at);
+      const minutes   = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+      const status    = order.status || 'pending';
+
+      let statusClass = 'new';
+      if      (status === 'ready')    statusClass = 'ready';
+      else if (status === 'accepted') statusClass = 'accepted';
+      else if (minutes > 5)           statusClass = 'late';
+      else if (minutes > 2)           statusClass = 'warning';
+
+      let statusBadgeClass, statusText;
+      if      (status === 'ready')    { statusBadgeClass = 'status-ready';    statusText = '✓ LISTA PARA RETIRAR'; }
+      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
+      else                            { statusBadgeClass = 'status-pending';  statusText = '⏳ PENDIENTE'; }
+
+      const div = document.createElement("div");
+      div.className = `order ${statusClass}`;
+      div.innerHTML = `
+        <div class="order-number">#${order.id}</div>
+        <span class="order-status ${statusBadgeClass}">${statusText}</span>
+        <div class="order-items">
+          <strong style="color: #1e40af; font-size: 0.95em;">📋 ITEMS:</strong>
+          <ul class="order-items-list">
+            ${renderOrderItems(order.items)}
+          </ul>
+        </div>
+        <div class="order-total">
+          <span class="order-total-label">💵 TOTAL A COBRAR:</span>
+          <span>RD${(order.total || 0).toLocaleString()}</span>
+        </div>
+        <div class="order-time">
+          ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
+          ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
+        </div>
+        <br>
+        ${status === 'pending'  ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready"  onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>`  : ''}
+        ${status === 'ready'    ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
+      container.appendChild(div);
+    });
+
+    clearError();
+  } catch (err) {
+    console.error("❌ loadOrders catch:", err.name, err.message);
+    showError("Error inesperado: " + err.message);
+    document.getElementById("connection-status").innerHTML = "🔴 Error de conexión";
+  }
+}
+
+// ── Aceptar orden (pending → accepted) ──────────────────────
+async function acceptOrder(id) {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
+      {
+        method: 'PATCH',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({ status: 'accepted' })
+      }
+    );
+    if (!res.ok) {
+      showError("Error al marcar orden #" + id);
+      return;
+    }
+    console.log("✅ Orden #" + id + " → accepted");
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) {
+    console.error("acceptOrder:", e);
+    showError("Error inesperado al aceptar orden.");
+  }
+}
+
+// ── Marcar lista (accepted → ready) ─────────────────────────
+async function markReady(id) {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
+      {
+        method: 'PATCH',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({ status: 'ready' })
+      }
+    );
+    if (!res.ok) {
+      showError("Error al marcar orden #" + id + " como lista");
+      return;
+    }
+    console.log("✅ Orden #" + id + " → ready");
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) {
+    console.error("markReady:", e);
+    showError("Error inesperado al marcar como lista.");
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+
+// Catch global de errores
+window.addEventListener('error', (e) => {
+  console.error('❌ Error global:', e.message, e.filename, e.lineno);
+  document.getElementById("connection-status").innerHTML = "🔴 Error: " + e.message;
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('❌ Promise sin catch:', e.reason);
+  document.getElementById("connection-status").innerHTML = "🔴 Promise error";
+});
+
+// ══════════════════════════════════════════════════════════════
+// AUTHENTICATION
+// ══════════════════════════════════════════════════════════════
+async function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Verificando...';
+  loginError.style.display = 'none';
+  try {
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/verify_dashboard_login', {
+      method: 'POST',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_username: username, p_password: password })
+    }, 8000);
+    if (!res.ok) throw new Error('Error de conexión');
+    const result = await res.json();
+    const data = Array.isArray(result) ? result[0] : result;
+    if (data && data.success) {
+      sessionStorage.setItem('dashboard_session', JSON.stringify({userId: data.user_id, restaurantId: data.restaurant_id, username: username}));
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dailyStatsPanel').style.display = 'block';
+      initializeDashboard();
+    } else {
+      loginError.textContent = 'Usuario o contraseña incorrectos';
+      loginError.style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
+    loginError.style.display = 'block';
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Iniciar Sesión';
+  }
+}
+
+function checkSession() {
+  const sessionStr = sessionStorage.getItem('dashboard_session');
+  if (!sessionStr) return false;
+  try {
+    const session = JSON.parse(sessionStr);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function refreshStats() {
+  try {
+    // Usar fecha actual de República Dominicana
+    const todayDR = getDRDateString();
+    console.log('📊 Actualizando stats para fecha RD:', todayDR);
+    
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
+      method: 'POST',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_date: todayDR })
+    }, 8000);
+    
+    if (!res.ok) { 
+      console.error('Stats fetch error:', res.status); 
+      return; 
+    }
+    
+    const stats = await res.json();
+    console.log('📊 Stats recibidos:', stats);
+    
+    if (stats && stats.length > 0) {
+      const data = stats[0];
+      document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
+      document.getElementById('stat-total-sales').textContent = 'RD$' + (data.total_sales || 0).toLocaleString();
+      document.getElementById('stat-avg-order').textContent = 'RD$' + Math.round(data.avg_order_value || 0).toLocaleString();
+      document.getElementById('stat-completed').textContent = data.completed_orders || 0;
+      document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
+    }
+    
+    // Actualizar display de fecha
+    updateCurrentDateDisplay();
+  } catch (err) { 
+    console.error('Stats error:', err); 
+  }
+}
+
+async function dailyCleanup() {
+  try {
+    // Usar fecha actual de República Dominicana
+    const todayDR = getDRDateString();
+    console.log('🧹 Daily cleanup para fecha RD:', todayDR);
+    
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
+      method: 'POST',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_current_date: todayDR })
+    }, 8000);
+    
+    if (res.ok) {
+      const result = await res.json();
+      console.log('✅ Daily cleanup completado:', result);
+    }
+  } catch (err) { 
+    console.error('Daily cleanup error:', err); 
+  }
+}
+
+function initializeDashboard() {
+  console.log("🚀 Iniciando Pincer Dashboard...");
+  
+  // Actualizar display de fecha al iniciar
+  updateCurrentDateDisplay();
+  
+  dailyCleanup();
+  refreshStats();
+  if ("Notification" in window) {
+    if (Notification.permission === "default") document.getElementById('notification-banner').classList.add('show');
+    else if (Notification.permission === "granted") {
+      try {
+        new Notification("Pincer Dashboard Iniciado", {
+          body: "Dashboard activo. Te notificaremos de nuevas órdenes.",
+          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>📟</text></svg>",
+          tag: "pincer-dashboard-ready"
+        });
+      } catch (e) { console.log("Notificación de bienvenida no soportada en este navegador"); }
+    } else if (Notification.permission === "denied") {
+      showError("Las notificaciones están bloqueadas. Click en el candado 🔒 para habilitarlas.");
+    }
+  }
+  loadProducts();
+  loadOrders();
+  setInterval(loadOrders, 3000);
+  setInterval(refreshStats, 30000);
+  setInterval(loadProducts, 30000);
+  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
+  console.log("✅ Pincer Dashboard configurado");
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// AI ASSISTANT CHATBOT
+// ══════════════════════════════════════════════════════════════
+
+function toggleAIChat() {
+  const window = document.getElementById('aiChatWindow');
+  const btn = document.getElementById('aiAssistantBtn');
+  
+  if (window.style.display === 'none' || !window.style.display) {
+    window.style.display = 'flex';
+    btn.textContent = '✕';
+  } else {
+    window.style.display = 'none';
+    btn.textContent = '🤖';
+  }
+}
+
+function addAIMessage(message, isUser = false) {
+  const container = document.getElementById('aiChatMessages');
+  const messageDiv = document.createElement('div');
+  
+  messageDiv.style.cssText = `
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    ${isUser 
+      ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;' 
+      : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
+    }
+  `;
+  
+  messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
+  container.appendChild(messageDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+
+function askQuickQuestion(question) {
+  const input = document.getElementById('aiChatInput');
+  input.value = question;
+  sendAIMessage();
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('aiChatInput');
+  const loading = document.getElementById('aiChatLoading');
+  const question = input.value.trim();
+  
+  if (!question) return;
+  
+  // Agregar mensaje del usuario
+  addAIMessage(question, true);
+  input.value = '';
+  loading.style.display = 'block';
+  
+  try {
+    // 1. Obtener datos de ventas de Supabase
+    const salesData = await fetchSalesData();
+    
+    // 2. Enviar a Claude AI para análisis
+    const answer = await askClaudeAI(question, salesData);
+    
+    // 3. Mostrar respuesta
+    addAIMessage(answer);
+    
+  } catch (error) {
+    console.error('AI Error:', error);
+    addAIMessage('Lo siento, tuve un problema al analizar los datos. ¿Puedes intentar de nuevo?');
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+async function fetchSalesData() {
+  try {
+    // Obtener últimos 30 días usando fecha de República Dominicana
+    const endDateDR = getDRDateString();
+    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
+    
+    console.log('📊 Fetching sales data desde', startDateDR, 'hasta', endDateDR);
+    
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/rpc/get_sales_data',
+      {
+        method: 'POST',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({
+          p_start_date: startDateDR,
+          p_end_date: endDateDR
+        })
+      },
+      8000
+    );
+    
+    if (!res.ok) {
+      throw new Error('Error fetching sales data');
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error('Error fetching sales data:', error);
+    return [];
+  }
+}
+
+async function askClaudeAI(question, salesData) {
+  // Chatbot simple basado en reglas (sin API)
+  const q = question.toLowerCase();
+  
+  // Calcular totales usando fecha de RD
+  const todayStr = getDRDateString();
+  const today = salesData.find(d => d.date === todayStr);
+  const totalOrders = today?.total_orders || 0;
+  const totalSales = today?.total_sales || 0;
+  const topItem = today?.top_item || 'ninguno todavía';
+  const peakHour = today?.peak_hour;
+  
+  console.log('🤖 AI procesando pregunta:', question);
+  console.log('🤖 Pregunta en lowercase:', q);
+  console.log('🤖 Stats de hoy:', { todayStr, totalOrders, totalSales, topItem });
+  console.log('🤖 Sales data recibido:', salesData);
+  
+  // Respuestas basadas en palabras clave (orden importa - específico primero)
+  
+  // Saludo
+  if (q.includes('hola') || q.includes('hi')) {
+    console.log('✅ Match: Saludo');
+    return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
+  }
+  
+  // Ayuda
+  if (q.includes('ayud') || q.includes('puedes')) {
+    console.log('✅ Match: Ayuda');
+    return `🤖 Puedo ayudarte con:<br><br>
+    • ¿Cuánto vendí hoy?<br>
+    • ¿Qué producto se vende más?<br>
+    • ¿A qué hora tengo más pedidos?<br>
+    • ¿Cuántas órdenes tuve hoy?<br><br>
+    Solo pregúntame! 😊`;
+  }
+  
+  // ¿Cuántas órdenes? (PRIMERO para que no lo capture "cuánto vendí")
+  const tieneCuantas = q.includes('cuanta') || q.includes('cuánta');
+  const tieneOrden = q.includes('orden') || q.includes('tuve') || q.includes('tengo');
+  
+  if (tieneCuantas && tieneOrden) {
+    console.log('✅ Match: Cuántas órdenes');
+    if (totalOrders === 0) {
+      return '📦 Hoy todavía no has tenido órdenes.';
+    }
+    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
+  }
+  
+  // ¿Cuánto vendí hoy?
+  const tieneCuanto = q.includes('cuanto') || q.includes('cuánto');
+  const tieneVenta = q.includes('vend') || q.includes('venta') || q.includes('hoy');
+  
+  if (tieneCuanto && tieneVenta) {
+    console.log('✅ Match: Cuánto vendí');
+    if (totalOrders === 0) {
+      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
+    }
+    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
+  }
+  
+  // ¿Qué producto se vende más?
+  const tieneProducto = q.includes('producto') || q.includes('item');
+  const tieneMas = q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular');
+  
+  if (tieneProducto && tieneMas) {
+    console.log('✅ Match: Producto más vendido');
+    if (totalOrders === 0) {
+      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
+    }
+    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
+  }
+  
+  // ¿A qué hora tengo más pedidos?
+  const tieneHora = q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo');
+  
+  if (tieneHora) {
+    console.log('✅ Match: Hora pico');
+    if (!peakHour) {
+      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
+    }
+    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
+    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
+  }
+  
+  // Respuesta por defecto
+  console.log('❌ No match - Respuesta por defecto');
+  return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
+  • "¿Cuánto vendí hoy?"<br>
+  • "¿Qué producto se vende más?"<br>
+  • "¿A qué hora tengo más pedidos?"<br>
+  • "¿Cuántas órdenes tuve hoy?"<br><br>
+  O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (checkSession()) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dailyStatsPanel').style.display = 'block';
+    initializeDashboard();
+  }
+});
+
+</script>
 
 <!-- AI Assistant Chatbot -->
 <div id="aiAssistantContainer" style="
@@ -849,819 +1714,6 @@
   </div>
 </div>
 
-<script>
-// ══════════════════════════════════════════════════════════════
-// TIMEZONE UTILITIES (República Dominicana = UTC-4)
-// ══════════════════════════════════════════════════════════════
-
-const DR_TIMEZONE_OFFSET = -4;
-
-function getDRDate() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const drTime = new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
-  return drTime;
-}
-
-function getDRDateString(date = null) {
-  const d = date || getDRDate();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatDRDate(date = null) {
-  const d = date || getDRDate();
-  const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  
-  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function updateCurrentDateDisplay() {
-  const display = document.getElementById('currentDateDisplay');
-  if (display) {
-    display.textContent = `(${formatDRDate()})`;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// CONFIGURACIÓN
-// ══════════════════════════════════════════════════════════════
-
-const SUPABASE_URL = "https://wtkqpfswpkfgztozgwzl.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0a3FwZnN3cGtmZ3p0b3pnd3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1Mzk1ODQsImV4cCI6MjA4NTExNTU4NH0.g2r56f22VJXmMCs_M1Of-qInsQyPHI5FoRpb9LqB9bI";
-
-function sbGetHeaders() {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-  };
-}
-
-function sbWriteHeaders(extra = {}) {
-  return {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json',
-    ...extra
-  };
-}
-
-const MENU_DATA = [
-  { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
-  { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
-  { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
-  { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
-  { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
-  { id:'smash',           name:'Ellys Classic Smashburger',      price:850,  cat:'Sándwiches' },
-  { id:'pierna',          name:'Sanguche de Pierna',             price:700,  cat:'Sándwiches' },
-  { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
-  { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
-  { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
-  { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
-  { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
-  { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
-  { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
-];
-
-// ══════════════════════════════════════════════════════════════
-// ESTADO GLOBAL
-// ══════════════════════════════════════════════════════════════
-
-let soldOutSet = new Set();
-let lastOrderCount = 0;
-let hasInteracted = false;
-
-// ══════════════════════════════════════════════════════════════
-// AUDIO
-// ══════════════════════════════════════════════════════════════
-
-let audioCtx = null;
-function ensureAudioContext() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
-
-function playBeeps(freqs, volume = 0.4) {
-  try {
-    if (!audioCtx) return;
-    ensureAudioContext();
-    const now = audioCtx.currentTime;
-    freqs.forEach((freq, i) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(volume, now + i * 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
-      osc.start(now + i * 0.18);
-      osc.stop(now + i * 0.18 + 0.16);
-    });
-  } catch (e) { /* silente */ }
-}
-
-function playNewOrderSound() { playBeeps([660, 880, 1100]); }
-function playConfirmSound() { playBeeps([440, 660], 0.3); }
-
-// ══════════════════════════════════════════════════════════════
-// UTILIDADES
-// ══════════════════════════════════════════════════════════════
-
-function showError(msg) {
-  document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
-}
-
-function clearError() {
-  document.getElementById("error-message").innerHTML = '';
-}
-
-function updateStats(orders) {
-  document.getElementById('total-orders').textContent = orders.length;
-  document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || !o.status).length;
-  document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
-  document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready').length;
-}
-
-// ══════════════════════════════════════════════════════════════
-// NOTIFICACIONES
-// ══════════════════════════════════════════════════════════════
-
-async function requestNotificationPermission() {
-  if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm === "granted") {
-      document.getElementById('notification-banner').classList.remove('show');
-      new Notification("¡Notificaciones Habilitadas!", {
-        body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
-        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🔔</text></svg>",
-        tag: "pincer-notifications-enabled"
-      });
-    } else if (perm === "denied") {
-      alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
-    }
-  } catch (e) { console.error("requestNotificationPermission:", e); }
-}
-
-function sendNotification(title, body, tag) {
-  try {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    console.log("📱 Enviando notificación:", title);
-    const n = new Notification(title, {
-      body,
-      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🍔</text></svg>",
-      tag: tag || ('pincer-' + Date.now()),
-      requireInteraction: true
-    });
-    n.onclick = function() { window.focus(); this.close(); };
-  } catch (e) { /* silente */ }
-}
-
-// ══════════════════════════════════════════════════════════════
-// PRODUCTOS - CARGA OPTIMIZADA
-// ══════════════════════════════════════════════════════════════
-
-async function loadProducts() {
-  console.log("🟢 loadProducts iniciado");
-  
-  // Renderizar inmediatamente (sin esperar fetch)
-  renderProducts();
-  
-  // Cargar en paralelo (no bloquea)
-  try {
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
-      { headers: sbGetHeaders() }
-    );
-    
-    if (!res.ok) {
-      console.warn("⚠️ products table HTTP error " + res.status);
-      return;
-    }
-    
-    const rows = await res.json();
-    soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
-    console.log("✅ Productos actualizados, agotados:", [...soldOutSet]);
-    
-    // Re-renderizar con datos actualizados
-    renderProducts();
-  } catch (e) {
-    console.warn("⚠️ loadProducts error:", e.message);
-  }
-}
-
-function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = '';
-
-  MENU_DATA.forEach(item => {
-    const isSoldOut = soldOutSet.has(item.id);
-
-    const card = document.createElement('div');
-    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
-    card.id = 'prodCard_' + item.id;
-    card.innerHTML = `
-      <div class="product-card-top">
-        <div>
-          <div class="product-card-name">${item.name}</div>
-          <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="toggle-row">
-        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
-        <label class="toggle-switch">
-          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>`;
-    grid.appendChild(card);
-  });
-}
-
-async function toggleSoldOut(productId, isSoldOut) {
-  if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
-  updateProductCardUI(productId, isSoldOut);
-
-  try {
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/products',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-        body: JSON.stringify({ id: productId, sold_out: isSoldOut })
-      }
-    );
-    
-    if (!res.ok) {
-      if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
-      updateProductCardUI(productId, !isSoldOut);
-      showError("No se pudo actualizar el producto.");
-      return;
-    }
-    
-    console.log("✅ Producto", productId, "→ sold_out:", isSoldOut);
-    clearError();
-  } catch (e) {
-    console.error("❌ toggleSoldOut:", e.message);
-    if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
-    updateProductCardUI(productId, !isSoldOut);
-    showError("Error de conexión.");
-  }
-}
-
-function updateProductCardUI(productId, isSoldOut) {
-  const card = document.getElementById('prodCard_' + productId);
-  if (!card) return;
-  const label = card.querySelector('.toggle-label');
-  const chk = card.querySelector('input[type=checkbox]');
-
-  card.classList.toggle('is-soldout', isSoldOut);
-  label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
-  chk.checked = isSoldOut;
-}
-
-// ══════════════════════════════════════════════════════════════
-// RENDER ITEMS
-// ══════════════════════════════════════════════════════════════
-
-function renderOrderItems(itemsJSON) {
-  try {
-    const items = JSON.parse(itemsJSON);
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
-    }
-    
-    let html = '';
-    let i = 0;
-    while (i < items.length) {
-      const item = items[i];
-      const isExtra = item.id && item.id.startsWith('extra_');
-      
-      if (!isExtra) {
-        const notesHTML = item.notes 
-          ? `<div class="order-item-notes">· ${item.notes}</div>`
-          : '';
-        html += `
-          <li class="order-item-row">
-            <span class="order-item-qty">${item.qty}x</span>
-            <div style="flex: 1;">
-              <div class="order-item-name">${item.name}</div>
-              ${notesHTML}
-            </div>
-          </li>`;
-        
-        const linkedExtras = [];
-        for (let j = i + 1; j < items.length; j++) {
-          const next = items[j];
-          if (next.id && next.id.startsWith('extra_') && 
-              next.notes && next.notes.includes(`para ${item.name}`)) {
-            linkedExtras.push({ item: next, index: j });
-          }
-        }
-        
-        linkedExtras.forEach(({ item: extra }) => {
-          html += `
-            <li class="order-item-row is-extra">
-              <span class="order-item-qty">${extra.qty}x</span>
-              <div style="flex: 1;">
-                <div class="order-item-name">${extra.name}</div>
-              </div>
-            </li>`;
-        });
-        
-        linkedExtras.forEach(({ index }) => {
-          items[index]._processed = true;
-        });
-      } else if (!item._processed) {
-        html += `
-          <li class="order-item-row is-extra">
-            <span class="order-item-qty">${item.qty}x</span>
-            <div style="flex: 1;">
-              <div class="order-item-name">${item.name}</div>
-            </div>
-          </li>`;
-      }
-      i++;
-    }
-    
-    return html;
-  } catch (e) {
-    return `<li class="order-item-row"><span class="order-item-name">${itemsJSON || 'Sin especificar'}</span></li>`;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// ÓRDENES - CARGA OPTIMIZADA
-// ══════════════════════════════════════════════════════════════
-
-async function loadOrders() {
-  console.log("🔵 loadOrders iniciado");
-  
-  try {
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
-      { headers: sbGetHeaders() }
-    );
-    
-    if (!res.ok) {
-      console.error("❌ loadOrders HTTP error", res.status);
-      showError("Error al cargar órdenes (HTTP " + res.status + ")");
-      document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
-      return;
-    }
-    
-    const data = await res.json();
-    document.getElementById("connection-status").innerHTML = "🟢 Conectado";
-
-    const container = document.getElementById("orders");
-
-    if (!data || data.length === 0) {
-      container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
-      updateStats([]);
-      lastOrderCount = 0;
-      hasInteracted = true;
-      return;
-    }
-
-    updateStats(data);
-
-    const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
-
-    if (hasInteracted && currentPending > lastOrderCount) {
-      console.log("🔔 Nueva orden detectada");
-      playNewOrderSound();
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-      sendNotification(
-        "¡Nueva orden en Pincer!",
-        `Tienes ${currentPending} orden(es) pendiente(s)`
-      );
-    }
-
-    lastOrderCount = currentPending;
-    hasInteracted = true;
-
-    container.innerHTML = '';
-
-    data.forEach(order => {
-      const createdAt = new Date(order.created_at);
-      const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-      const status = order.status || 'pending';
-
-      let statusClass = 'new';
-      if (status === 'ready') statusClass = 'ready';
-      else if (status === 'accepted') statusClass = 'accepted';
-      else if (minutes > 5) statusClass = 'late';
-      else if (minutes > 2) statusClass = 'warning';
-
-      let statusBadgeClass, statusText;
-      if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
-      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
-      else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
-
-      const div = document.createElement("div");
-      div.className = `order ${statusClass}`;
-      div.innerHTML = `
-        <div class="order-number">#${order.id}</div>
-        <span class="order-status ${statusBadgeClass}">${statusText}</span>
-        <div class="order-items">
-          <strong style="color: #1e40af; font-size: 0.95em;">📋 ITEMS:</strong>
-          <ul class="order-items-list">
-            ${renderOrderItems(order.items)}
-          </ul>
-        </div>
-        <div class="order-total">
-          <span class="order-total-label">💵 TOTAL A COBRAR:</span>
-          <span>RD$${(order.total || 0).toLocaleString()}</span>
-        </div>
-        <div class="order-time">
-          ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
-          ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
-        </div>
-        <br>
-        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
-      container.appendChild(div);
-    });
-
-    clearError();
-  } catch (err) {
-    console.error("❌ loadOrders error:", err.message);
-    showError("Error de conexión: " + err.message);
-    document.getElementById("connection-status").innerHTML = "🔴 Error";
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// ACCIONES DE ÓRDENES
-// ══════════════════════════════════════════════════════════════
-
-async function acceptOrder(id) {
-  try {
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'accepted' })
-      }
-    );
-    
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id);
-      return;
-    }
-    
-    console.log("✅ Orden #" + id + " → accepted");
-    playConfirmSound();
-    setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("acceptOrder:", e);
-    showError("Error inesperado.");
-  }
-}
-
-async function markReady(id) {
-  try {
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + id,
-      {
-        method: 'PATCH',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({ status: 'ready' })
-      }
-    );
-    
-    if (!res.ok) {
-      showError("Error al marcar orden #" + id);
-      return;
-    }
-    
-    console.log("✅ Orden #" + id + " → ready");
-    playConfirmSound();
-    setTimeout(loadOrders, 150);
-  } catch (e) {
-    console.error("markReady:", e);
-    showError("Error inesperado.");
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// AUTHENTICATION
-// ══════════════════════════════════════════════════════════════
-
-async function handleLogin(e) {
-  e.preventDefault();
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  const loginBtn = document.getElementById('loginBtn');
-  const loginError = document.getElementById('loginError');
-  
-  loginBtn.disabled = true;
-  loginBtn.textContent = 'Verificando...';
-  loginError.style.display = 'none';
-  
-  try {
-    // Credenciales hardcodeadas para Mr. Sandwich
-    const VALID_USERNAME = 'mrsandwich';
-    const VALID_PASSWORD = 'chef2025';
-    
-    // Simular delay de red para que se vea real
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      sessionStorage.setItem('dashboard_session', JSON.stringify({
-        userId: 1,
-        restaurantId: 1,
-        username: username
-      }));
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('dailyStatsPanel').style.display = 'block';
-      initializeDashboard();
-    } else {
-      loginError.textContent = 'Usuario o contraseña incorrectos';
-      loginError.style.display = 'block';
-    }
-  } catch (err) {
-    console.error('Login error:', err);
-    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
-    loginError.style.display = 'block';
-  } finally {
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Iniciar Sesión';
-  }
-}
-
-function checkSession() {
-  const sessionStr = sessionStorage.getItem('dashboard_session');
-  if (!sessionStr) return false;
-  try {
-    JSON.parse(sessionStr);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// STATS Y CLEANUP
-// ══════════════════════════════════════════════════════════════
-
-async function refreshStats() {
-  try {
-    const todayDR = getDRDateString();
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_date: todayDR })
-    });
-    
-    if (!res.ok) return;
-    
-    const stats = await res.json();
-    if (stats && stats.length > 0) {
-      const data = stats[0];
-      document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
-      document.getElementById('stat-total-sales').textContent = 'RD$' + (data.total_sales || 0).toLocaleString();
-      document.getElementById('stat-avg-order').textContent = 'RD$' + Math.round(data.avg_order_value || 0).toLocaleString();
-      document.getElementById('stat-completed').textContent = data.completed_orders || 0;
-      document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
-    }
-    
-    updateCurrentDateDisplay();
-  } catch (err) {
-    console.error('Stats error:', err);
-  }
-}
-
-async function dailyCleanup() {
-  try {
-    const todayDR = getDRDateString();
-    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
-      method: 'POST',
-      headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_current_date: todayDR })
-    });
-    
-    if (res.ok) {
-      console.log('✅ Daily cleanup completado');
-    }
-  } catch (err) {
-    console.error('Daily cleanup error:', err);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-// AI ASSISTANT
-// ══════════════════════════════════════════════════════════════
-
-function toggleAIChat() {
-  const window = document.getElementById('aiChatWindow');
-  const btn = document.getElementById('aiAssistantBtn');
-  
-  if (window.style.display === 'none' || !window.style.display) {
-    window.style.display = 'flex';
-    btn.textContent = '✕';
-  } else {
-    window.style.display = 'none';
-    btn.textContent = '🤖';
-  }
-}
-
-function addAIMessage(message, isUser = false) {
-  const container = document.getElementById('aiChatMessages');
-  const messageDiv = document.createElement('div');
-  
-  messageDiv.style.cssText = `
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    ${isUser 
-      ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;' 
-      : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
-    }
-  `;
-  
-  messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
-  container.appendChild(messageDiv);
-  container.scrollTop = container.scrollHeight;
-}
-
-function askQuickQuestion(question) {
-  const input = document.getElementById('aiChatInput');
-  input.value = question;
-  sendAIMessage();
-}
-
-async function sendAIMessage() {
-  const input = document.getElementById('aiChatInput');
-  const loading = document.getElementById('aiChatLoading');
-  const question = input.value.trim();
-  
-  if (!question) return;
-  
-  addAIMessage(question, true);
-  input.value = '';
-  loading.style.display = 'block';
-  
-  try {
-    const salesData = await fetchSalesData();
-    const answer = await askClaudeAI(question, salesData);
-    addAIMessage(answer);
-  } catch (error) {
-    console.error('AI Error:', error);
-    addAIMessage('Lo siento, tuve un problema. ¿Puedes intentar de nuevo?');
-  } finally {
-    loading.style.display = 'none';
-  }
-}
-
-async function fetchSalesData() {
-  try {
-    const endDateDR = getDRDateString();
-    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
-    
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/rpc/get_sales_data',
-      {
-        method: 'POST',
-        headers: sbWriteHeaders(),
-        body: JSON.stringify({
-          p_start_date: startDateDR,
-          p_end_date: endDateDR
-        })
-      }
-    );
-    
-    if (!res.ok) throw new Error('Error fetching sales data');
-    return await res.json();
-  } catch (error) {
-    console.error('Error fetching sales data:', error);
-    return [];
-  }
-}
-
-async function askClaudeAI(question, salesData) {
-  const q = question.toLowerCase();
-  const todayStr = getDRDateString();
-  const today = salesData.find(d => d.date === todayStr);
-  const totalOrders = today?.total_orders || 0;
-  const totalSales = today?.total_sales || 0;
-  const topItem = today?.top_item || 'ninguno todavía';
-  const peakHour = today?.peak_hour;
-  
-  if (q.includes('hola') || q.includes('hi')) {
-    return '👋 ¡Hola! Soy tu asistente de ventas. Puedo ayudarte con información sobre tus ventas de hoy. ¿Qué te gustaría saber?';
-  }
-  
-  if (q.includes('ayud') || q.includes('puedes')) {
-    return `🤖 Puedo ayudarte con:<br><br>
-    • ¿Cuánto vendí hoy?<br>
-    • ¿Qué producto se vende más?<br>
-    • ¿A qué hora tengo más pedidos?<br>
-    • ¿Cuántas órdenes tuve hoy?<br><br>
-    Solo pregúntame! 😊`;
-  }
-  
-  const tieneCuantas = q.includes('cuanta') || q.includes('cuánta');
-  const tieneOrden = q.includes('orden') || q.includes('tuve') || q.includes('tengo');
-  
-  if (tieneCuantas && tieneOrden) {
-    if (totalOrders === 0) {
-      return '📦 Hoy todavía no has tenido órdenes.';
-    }
-    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
-  }
-  
-  const tieneCuanto = q.includes('cuanto') || q.includes('cuánto');
-  const tieneVenta = q.includes('vend') || q.includes('venta') || q.includes('hoy');
-  
-  if (tieneCuanto && tieneVenta) {
-    if (totalOrders === 0) {
-      return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
-    }
-    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br><br>Tu ticket promedio es de RD$${Math.round(totalSales/totalOrders).toLocaleString()}. ${totalOrders > 5 ? '¡Excelente!' : 'Sigue así!'} 📈`;
-  }
-  
-  const tieneProducto = q.includes('producto') || q.includes('item');
-  const tieneMas = q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular');
-  
-  if (tieneProducto && tieneMas) {
-    if (totalOrders === 0) {
-      return '🍔 Todavía no hay ventas hoy para mostrarte el producto estrella.';
-    }
-    return `⭐ El producto más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. ¡Es tu estrella del día! 🌟`;
-  }
-  
-  const tieneHora = q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo');
-  
-  if (tieneHora) {
-    if (!peakHour) {
-      return '🕐 Todavía no hay suficientes datos para identificar la hora pico de hoy.';
-    }
-    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
-    return `⏰ La hora más ocupada hoy fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. Esa es tu hora pico! 🔥`;
-  }
-  
-  return `🤔 Hmm, no estoy seguro de entender esa pregunta. Intenta preguntar:<br><br>
-  • "¿Cuánto vendí hoy?"<br>
-  • "¿Qué producto se vende más?"<br>
-  • "¿A qué hora tengo más pedidos?"<br>
-  • "¿Cuántas órdenes tuve hoy?"<br><br>
-  O escribe "ayuda" para ver todo lo que puedo hacer. 💡`;
-}
-
-// ══════════════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════════════
-
-function initializeDashboard() {
-  console.log("🚀 Iniciando Pincer Dashboard (optimizado)");
-  
-  updateCurrentDateDisplay();
-  dailyCleanup();
-  refreshStats();
-  
-  if ("Notification" in window) {
-    if (Notification.permission === "default") {
-      document.getElementById('notification-banner').classList.add('show');
-    }
-  }
-  
-  // Cargar inmediatamente
-  loadProducts();
-  loadOrders();
-  
-  // Polling
-  setInterval(loadOrders, 3000);
-  setInterval(refreshStats, 30000);
-  setInterval(loadProducts, 30000);
-  
-  document.addEventListener('click', () => { 
-    hasInteracted = true; 
-    ensureAudioContext(); 
-  }, { once: true });
-  
-  console.log("✅ Dashboard listo");
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (checkSession()) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dailyStatsPanel').style.display = 'block';
-    initializeDashboard();
-  }
-});
-</script>
-
 </body>
 </html>
-
-
-
 
