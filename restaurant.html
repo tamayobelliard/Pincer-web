@@ -147,6 +147,24 @@
     .status-accepted { background: #dbeafe; color: #1e40af; }
     .status-ready { background: #d1fae5; color: #065f46; }
 
+    .order-phone {
+      margin: 12px 0; padding: 10px 12px;
+      background: #f0f9ff; border-radius: 8px; border-left: 3px solid #0ea5e9;
+      font-size: 0.95em; color: #0c4a6e; font-weight: 600;
+    }
+
+    .wa-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #25D366; color: white;
+      padding: 14px 24px; border-radius: 12px;
+      text-decoration: none; font-weight: 700; font-size: 1.1em;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+      transition: all 0.2s; margin-top: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wa-btn:hover { background: #20BA5A; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5); }
+    .wa-btn:active { transform: translateY(0); }
+
     button {
       margin-top: 15px; margin-right: 10px; padding: 12px 24px;
       cursor: pointer; color: white; border: none; border-radius: 8px;
@@ -754,6 +772,7 @@ async function loadOrders() {
           <span class="order-total-label">💵 TOTAL A COBRAR:</span>
           <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
+        ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
         <div class="order-time">
           ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
           ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
@@ -761,7 +780,8 @@ async function loadOrders() {
         <br>
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA - Cliente notificado</span>` : ''}`;
+        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${order.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}" target="_blank">💬 Notificar por WhatsApp</a>` : ''}
+        ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
       container.appendChild(div);
     });
 

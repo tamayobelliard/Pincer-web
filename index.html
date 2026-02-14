@@ -1158,6 +1158,52 @@
       color: #2d5016;
       font-size: 1.05em;
     }
+
+    /* Phone field in order summary */
+    .phone-field {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f0f9ff;
+      border-radius: 10px;
+      border: 2px solid #bae6fd;
+    }
+    .phone-field label {
+      display: block;
+      font-weight: 700;
+      color: #0c4a6e;
+      margin-bottom: 6px;
+      font-size: 0.95em;
+    }
+    .phone-field input[type="tel"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+    }
+    .phone-field input[type="tel"]:focus {
+      outline: none;
+      border-color: #4a7c2c;
+    }
+    .phone-field input[type="tel"].invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+    .phone-field .phone-hint {
+      font-size: 0.8em;
+      color: #64748b;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .phone-field .phone-error {
+      font-size: 0.8em;
+      color: #dc2626;
+      font-weight: 600;
+      margin-top: 6px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -1193,6 +1239,13 @@
       </div>
     </div>
     <div id="orderTotal" style="display: none;"></div>
+    <div class="phone-field" id="phoneField" style="display: none;">
+      <label for="phoneInput">📱 Tu número de WhatsApp</label>
+      <input type="tel" id="phoneInput" placeholder="809-123-4567" maxlength="15"
+             oninput="onPhoneInput(this)">
+      <div class="phone-hint">Te notificaremos por WhatsApp cuando tu orden esté lista</div>
+      <div class="phone-error" id="phoneError">Número inválido. Usa formato: 809-123-4567</div>
+    </div>
   </div>
 
   <div class="order-summary" id="misOrdenesSection" style="display: none;">
@@ -1411,6 +1464,7 @@ let pendingItem = null;
 let orderReadyNotified = {};
 let orderReviewed = false;
 let sessionOrders = [];
+let customerPhone = '';
 
 // ══════════════════════════════════════════════════════════════
 // CONNECTION TEST
@@ -1520,6 +1574,26 @@ function startSoldOutPoller() {
       }
     } catch (e) { /* silente */ }
   }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PHONE VALIDATION
+// ══════════════════════════════════════════════════════════════
+
+function isValidDRPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return /^(809|829|849)\d{7}$/.test(digits);
+}
+
+function formatPhoneForWhatsApp(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return '1' + digits;
+}
+
+function onPhoneInput(input) {
+  customerPhone = input.value.trim();
+  input.classList.remove('invalid');
+  document.getElementById('phoneError').style.display = 'none';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1762,11 +1836,14 @@ function renderOrder() {
 
   const totalQty = order.reduce((s, i) => s + i.qty, 0);
 
+  const phoneField = document.getElementById('phoneField');
+
   if (order.length === 0) {
     list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
     countBadge.style.display = 'none';
     placeOrderBtn.disabled = true;
     totalDiv.style.display = 'none';
+    phoneField.style.display = 'none';
     orderReviewed = false;
     updateMenuQtyBadges();
     return;
@@ -1775,6 +1852,10 @@ function renderOrder() {
   countBadge.textContent = totalQty;
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
+  phoneField.style.display = 'block';
+  // Preserve phone value across re-renders
+  const phoneInput = document.getElementById('phoneInput');
+  if (customerPhone && !phoneInput.value) phoneInput.value = customerPhone;
   
   orderReviewed = false;
   placeOrderBtn.textContent = "Ordenar Ahora";
@@ -1836,27 +1917,41 @@ async function placeOrder() {
     return;
   }
 
-  // SEGUNDO PASO: Enviar la orden
+  // SEGUNDO PASO: Validar teléfono y enviar la orden
+  customerPhone = (document.getElementById('phoneInput').value || '').trim();
+  if (!customerPhone) {
+    document.getElementById('phoneInput').classList.add('invalid');
+    document.getElementById('phoneError').textContent = 'Por favor ingresa tu número de WhatsApp';
+    document.getElementById('phoneError').style.display = 'block';
+    document.getElementById('phoneInput').focus();
+    return;
+  }
+  if (!isValidDRPhone(customerPhone)) {
+    document.getElementById('phoneInput').classList.add('invalid');
+    document.getElementById('phoneError').textContent = 'Número inválido. Usa formato: 809-123-4567';
+    document.getElementById('phoneError').style.display = 'block';
+    document.getElementById('phoneInput').focus();
+    return;
+  }
+
   placeOrderBtn.disabled = true;
   placeOrderBtn.textContent = "Procesando...";
 
   try {
-    // ★ FIX: Incluir "id" en cada item para que el dashboard pueda agrupar extras
     const itemsArray = order.map(item => ({
       id: item.id,
       name: item.name,
       qty: item.qty,
       notes: item.notes || null
     }));
-    
+
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
-    // ★ FIX: Enviar items como STRING en campo text, o como objeto si es jsonb
-    // Probamos enviando como string (compatible con columna text)
     const orderPayload = {
       items: JSON.stringify(itemsArray),
       total: total,
-      status: 'pending'
+      status: 'pending',
+      phone: customerPhone
     };
 
     dbg('📤 Enviando orden: ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
@@ -1882,9 +1977,10 @@ async function placeOrder() {
       if (res.status === 400 && errText.includes('json')) {
         dbg('🔄 Reintentando con items como array JSON directo...');
         const retryPayload = {
-          items: itemsArray,  // Sin stringify — para columnas jsonb
+          items: itemsArray,
           total: total,
-          status: 'pending'
+          status: 'pending',
+          phone: customerPhone
         };
         
         const retryRes = await fetchWithTimeout(
@@ -1957,7 +2053,8 @@ function handleOrderSuccess(data) {
     orderId: orderNumber,
     items: order.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
     total: order.reduce((s, i) => s + i.price * i.qty, 0),
-    status: 'pending'
+    status: 'pending',
+    phone: customerPhone
   });
   saveSessionOrders();
   renderMisOrdenes();
@@ -1967,6 +2064,8 @@ function handleOrderSuccess(data) {
   startSessionOrdersPoller();
 
   order = [];
+  customerPhone = '';
+  document.getElementById('phoneInput').value = '';
   renderOrder();
 }
 
