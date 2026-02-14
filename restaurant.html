@@ -7,6 +7,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#764ba2">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -399,6 +401,10 @@
   </div>
 </div>
 
+<!-- Firebase SDKs (compat for non-module usage) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+
 <script>
 // ══════════════════════════════════════════════════════════════
 // DEBUG LOGGER
@@ -527,6 +533,112 @@ function playNewOrderSound() { playBeeps([660, 880, 1100]); }
 function playConfirmSound() { playBeeps([440, 660], 0.3); }
 
 // ══════════════════════════════════════════════════════════════
+// FIREBASE CLOUD MESSAGING (FCM)
+// ══════════════════════════════════════════════════════════════
+
+// ⚠️ REPLACE with your Firebase project config from Firebase Console
+const FIREBASE_CONFIG = {
+  apiKey: "REPLACE_WITH_YOUR_FIREBASE_API_KEY",
+  authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId: "REPLACE_WITH_YOUR_APP_ID"
+};
+
+// ⚠️ REPLACE with your VAPID key from Firebase Console > Cloud Messaging > Web Push certificates
+const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+
+let fcmMessaging = null;
+
+async function initFCM() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      dbg('⚠️ FCM: Browser does not support push notifications');
+      return;
+    }
+
+    const app = firebase.initializeApp(FIREBASE_CONFIG);
+    fcmMessaging = firebase.messaging();
+
+    const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    dbg('✅ Service Worker registered: ' + swRegistration.scope);
+
+    await navigator.serviceWorker.ready;
+
+    if (Notification.permission === 'granted') {
+      await getAndStoreFCMToken(swRegistration);
+    } else if (Notification.permission === 'default') {
+      document.getElementById('notification-banner').classList.add('show');
+    }
+
+    // Handle foreground messages (tab is open)
+    fcmMessaging.onMessage(function(payload) {
+      dbg('🔔 FCM foreground message: ' + JSON.stringify(payload.data));
+      const data = payload.data || {};
+
+      playNewOrderSound();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+
+      if (Notification.permission === 'granted') {
+        const n = new Notification(data.title || 'Nueva Orden', {
+          body: data.body || '',
+          tag: 'pincer-order-' + (data.orderId || Date.now()),
+          requireInteraction: true,
+        });
+        n.onclick = function() { window.focus(); this.close(); };
+      }
+
+      loadOrders();
+    });
+
+  } catch (err) {
+    dbg('❌ FCM init error: ' + err.message);
+  }
+}
+
+async function getAndStoreFCMToken(swRegistration) {
+  try {
+    const currentToken = await fcmMessaging.getToken({
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: swRegistration,
+    });
+
+    if (currentToken) {
+      dbg('✅ FCM Token: ' + currentToken.substring(0, 20) + '...');
+      await saveFCMToken(currentToken);
+    } else {
+      dbg('⚠️ No FCM token available');
+    }
+  } catch (err) {
+    dbg('❌ FCM token error: ' + err.message);
+  }
+}
+
+async function saveFCMToken(token) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+      method: 'POST',
+      headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+      body: JSON.stringify({
+        token: token,
+        device_info: navigator.userAgent.substring(0, 200),
+        active: true,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
+    if (res.ok) {
+      dbg('✅ FCM token saved to Supabase');
+    } else {
+      dbg('⚠️ Failed to save FCM token: HTTP ' + res.status);
+    }
+  } catch (err) {
+    dbg('❌ saveFCMToken error: ' + err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // UTILIDADES
 // ══════════════════════════════════════════════════════════════
 
@@ -557,6 +669,11 @@ async function requestNotificationPermission() {
         body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
         tag: "pincer-notifications-enabled"
       });
+      // Register FCM token now that we have permission
+      if (fcmMessaging) {
+        const swReg = await navigator.serviceWorker.ready;
+        await getAndStoreFCMToken(swReg);
+      }
     } else if (perm === "denied") {
       alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
     }
@@ -1071,6 +1188,7 @@ async function initializeDashboard() {
 
   loadProducts();
   loadOrders();
+  initFCM();
 
   setInterval(loadOrders, 3000);
   setInterval(refreshStats, 30000);

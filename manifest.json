@@ -1,0 +1,23 @@
+{
+  "name": "Pincer - Restaurant Dashboard",
+  "short_name": "Pincer",
+  "description": "Panel de ordenes para Mr. Sandwich by Chef Elly",
+  "start_url": "/restaurant.html",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#764ba2",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "gcm_sender_id": "103953800507"
+}
