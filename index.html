@@ -1434,8 +1434,6 @@ const MENU_DATA = {
       desc:'Media baguette, carne molida angus, queso cheddar, queso provolone, tocineta, lechuga, tomate, cebolla, chicharrón ahumado y Elly\'s mayo' },
     { id:'phillie',  name:'Mr. Phillie Cheese Steak', price:950, img:'https://i.imgur.com/gD4tBQZ.jpeg',
       desc:'Pan hoagie roll, filete de res angus, cebollas caramelizadas, hongos asados, queso provolone y fondue de queso velveeta' },
-    { id:'smash',    name:'Ellys Classic Smashburger', price:850, img:'https://i.imgur.com/RJntO70.jpeg',
-      desc:'Pan de papa, doble carne angus smash de 4 oz c/u, cebolla blanca, doble queso cheddar, tocineta caramelizada y Elly\'s Mayo' },
     { id:'pierna',   name:'Sanguche de Pierna', price:700, img:'https://i.imgur.com/P1Z3xJE.jpeg',
       desc:'Pan cubano, cerdo asado en mojo verde, tomate, repollo, cebolla, queso gouda y mayoketchup' },
     { id:'cubano',   name:'Cubano',          price:700,  img:'https://i.imgur.com/zpJOUwE.jpeg',
@@ -1443,7 +1441,15 @@ const MENU_DATA = {
     { id:'club',     name:'Club Sandwich',   price:700,  img:'https://i.imgur.com/0R9hwrT.jpeg',
       desc:'Pan brioche de molde, pechuga de pollo al grill, queso philadelphia, tocineta, queso cheddar, queso suizo, jamón ahumado, lechuga, tomate, cebolla y Elly\'s mayo' },
     { id:'chimi',    name:'El Chimichurri',  price:650,  img:'https://i.imgur.com/PMeJVl3.jpeg',
-      desc:'Pan ciabatta, carne de chimí elaborada con carne de res y cerdo, queso provolone, salsa chimichurri, tomate, repollo, cebolla encurtida, mayonesa, ketchup y mostaza' }
+      desc:'Pan ciabatta, carne de chimí elaborada con carne de res y cerdo, queso provolone, salsa chimichurri, tomate, repollo, cebolla encurtida, mayonesa, ketchup y mostaza' },
+    { id:'media_noche', name:'Media Noche',  price:800,  img:null,
+      desc:'Pan de mantequilla dulce, cerdo asado en mojo verde, jamón ahumado, queso suizo, pepinillo y aderezo cubano' }
+  ],
+  burgers: [
+    { id:'ellys_classic_smash', name:'Elly\'s Classic Smash', price:850, img:'https://i.imgur.com/RJntO70.jpeg',
+      desc:'Pan de papa, doble carne angus smash de 4oz c/u, cebolla blanca, doble queso cheddar, tocineta caramelizada y Elly\'s Mayo' },
+    { id:'satisfier_trufado', name:'Satisfier Trufado', price:1100, img:null,
+      desc:'Pan de papa, doble carne angus smash, cebolla blanca, alioli, doble queso provolone, crema de hongos portobello trufada, tocineta, puerrito y chips de cebolla frita' }
   ],
   extras: [
     { id:'extra_tocineta',  name:'Extra Tocineta',                price:100, img:null, desc:null },
@@ -1613,6 +1619,9 @@ function renderMenu() {
 
   html += `<div class="note-papas">TODOS NUESTROS SÁNDWICHES SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>`;
 
+  html += '<div class="category-title">BURGERS</div>';
+  MENU_DATA.burgers.forEach(item => { html += menuItemHTML(item); });
+
   html += '<div class="category-title">EXTRAS</div>';
   MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
 
@@ -1751,7 +1760,7 @@ function closeSoldOutPopup() {
 function menuQtyChange(itemId, delta) {
   if (itemId.startsWith('extra_')) return;
 
-  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.burgers, ...MENU_DATA.extras];
   const menuItem = allItems.find(i => i.id === itemId);
   if (!menuItem) return;
 
@@ -1781,7 +1790,7 @@ function menuQtyChange(itemId, delta) {
 }
 
 function updateMenuQtyBadges() {
-  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.extras];
+  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.burgers, ...MENU_DATA.extras];
   allItems.forEach(item => {
     if (soldOutSet.has(item.id)) {
       const w = document.getElementById("menuQty_" + item.id);
