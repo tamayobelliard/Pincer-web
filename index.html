@@ -2082,7 +2082,7 @@ function loadSessionOrders() {
     const saved = sessionStorage.getItem('mr_sandwich_orders');
     if (saved) {
       sessionOrders = JSON.parse(saved);
-      sessionOrders.forEach(o => { orderReadyNotified[o.orderId] = (o.status === 'ready'); });
+      sessionOrders.forEach(o => { orderReadyNotified[o.orderId] = (o.status === 'ready' || o.status === 'notified'); });
       renderMisOrdenes();
       startSessionOrdersPoller();
     }
@@ -2103,8 +2103,8 @@ function renderMisOrdenes() {
   list.innerHTML = '';
 
   sessionOrders.slice().reverse().forEach(o => {
-    const statusClass = o.status === 'ready' ? 'ready' : o.status === 'accepted' ? 'accepted' : 'pending';
-    const statusText = o.status === 'ready' ? '✅ Lista' : o.status === 'accepted' ? '👨‍🍳 Preparando' : '⏳ Pendiente';
+    const statusClass = (o.status === 'ready' || o.status === 'notified') ? 'ready' : o.status === 'accepted' ? 'accepted' : 'pending';
+    const statusText = (o.status === 'ready' || o.status === 'notified') ? '✅ Lista' : o.status === 'accepted' ? '👨‍🍳 Preparando' : '⏳ Pendiente';
 
     const itemsHTML = o.items.map(i => {
       const notesHTML = i.notes ? `<span class="mo-item-notes">· ${i.notes}</span>` : '';
@@ -2131,7 +2131,7 @@ let sessionOrdersPoller = null;
 function startSessionOrdersPoller() {
   if (sessionOrdersPoller) return;
   sessionOrdersPoller = setInterval(async () => {
-    const pendingOrders = sessionOrders.filter(o => o.status !== 'ready');
+    const pendingOrders = sessionOrders.filter(o => o.status !== 'ready' && o.status !== 'notified');
     if (pendingOrders.length === 0) {
       clearInterval(sessionOrdersPoller);
       sessionOrdersPoller = null;
@@ -2217,7 +2217,7 @@ async function checkOrderStatus(orderId) {
       statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
     }
 
-    if (status === "ready" && !orderReadyNotified[orderId]) {
+    if ((status === "ready" || status === "notified") && !orderReadyNotified[orderId]) {
       orderReadyNotified[orderId] = true;
       statusDiv.className = "status-ready";
       statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";

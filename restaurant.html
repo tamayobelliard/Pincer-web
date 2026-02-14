@@ -92,8 +92,22 @@
     .new { border-left-color: #22c55e; background: #f0fdf4; }
     .warning { border-left-color: #f59e0b; background: #fefce8; animation: pulseWarning 1.5s infinite; }
     .late { border-left-color: #ef4444; background: #fef2f2; animation: pulseLate 0.8s infinite; }
-    .accepted { border-left-color: #7c3aed; background: #f5f3ff; }
-    .ready { border-left-color: #16a34a; background: #ecfdf5; }
+    .accepted { border-left-color: #1d4ed8; background: #3b82f6; }
+    .ready { border-left-color: #15803d; background: #bbf7d0; }
+    .notified { border-left-color: #6d28d9; background: #7c3aed; }
+    /* White text overrides for dark-background cards */
+    .accepted, .notified { color: white; }
+    .accepted .order-number, .notified .order-number { color: white; background: rgba(255,255,255,0.2); }
+    .accepted .order-status, .notified .order-status { background: rgba(255,255,255,0.25); color: white; }
+    .accepted .order-items-label, .notified .order-items-label { color: rgba(255,255,255,0.9); }
+    .accepted .order-item-row, .notified .order-item-row { background: rgba(255,255,255,0.1); border-left-color: rgba(255,255,255,0.3); }
+    .accepted .order-item-qty, .notified .order-item-qty,
+    .accepted .order-item-name, .notified .order-item-name { color: white; }
+    .accepted .order-item-notes, .notified .order-item-notes { color: rgba(255,255,255,0.8); }
+    .accepted .order-total, .notified .order-total { background: rgba(0,0,0,0.2); }
+    .accepted .order-phone, .notified .order-phone { background: rgba(255,255,255,0.15); color: white; border-left-color: rgba(255,255,255,0.3); }
+    .accepted .order-time, .notified .order-time { background: rgba(255,255,255,0.15); color: white; }
+    .accepted .completed-badge, .notified .completed-badge { background: rgba(255,255,255,0.25); }
     @keyframes pulseWarning {
       0%, 100% { background: #fefce8; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
       50% { background: #fef08a; box-shadow: 0 0 20px rgba(245,158,11,0.4); }
@@ -107,6 +121,7 @@
       display: inline-block; padding: 5px 15px; background: #dbeafe; border-radius: 8px;
     }
     .order-items { margin: 12px 0; }
+    .order-items-label { color: #1e40af; }
     .order-items-list { list-style: none; padding: 0; margin: 0; }
     .order-item-row {
       background: #f8fafc; padding: 8px 12px; margin-bottom: 6px;
@@ -148,8 +163,9 @@
       font-size: 12px; font-weight: bold; margin-left: 10px;
     }
     .status-pending { background: #fef3c7; color: #92400e; }
-    .status-accepted { background: #ede9fe; color: #6d28d9; }
+    .status-accepted { background: rgba(255,255,255,0.25); color: white; }
     .status-ready { background: #d1fae5; color: #065f46; }
+    .status-notified { background: rgba(255,255,255,0.25); color: white; }
 
     .order-phone {
       margin: 12px 0; padding: 10px 12px;
@@ -162,6 +178,7 @@
       background: #25D366; color: white;
       padding: 14px 24px; border-radius: 12px;
       text-decoration: none; font-weight: 700; font-size: 1.1em;
+      font-family: inherit; border: none; cursor: pointer;
       box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
       transition: all 0.2s; margin-top: 12px;
       -webkit-tap-highlight-color: transparent;
@@ -521,7 +538,7 @@ function updateStats(orders) {
   document.getElementById('total-orders').textContent = orders.length;
   document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || !o.status).length;
   document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
-  document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready').length;
+  document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready' || o.status === 'notified').length;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -751,13 +768,15 @@ async function loadOrders() {
       const status = order.status || 'pending';
 
       let statusClass = 'new';
-      if (status === 'ready') statusClass = 'ready';
+      if (status === 'notified') statusClass = 'notified';
+      else if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
       else if (minutes >= 2) statusClass = 'late';
       else if (minutes >= 1) statusClass = 'warning';
 
       let statusBadgeClass, statusText;
-      if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
+      if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
+      else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
       else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
       else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
 
@@ -767,7 +786,7 @@ async function loadOrders() {
         <div class="order-number">#${order.id}</div>
         <span class="order-status ${statusBadgeClass}">${statusText}</span>
         <div class="order-items">
-          <strong style="color: #1e40af; font-size: 0.95em;">📋 ITEMS:</strong>
+          <strong class="order-items-label" style="font-size: 0.95em;">📋 ITEMS:</strong>
           <ul class="order-items-list">
             ${renderOrderItems(order.items)}
           </ul>
@@ -784,8 +803,8 @@ async function loadOrders() {
         <br>
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="#" onclick="event.preventDefault(); window.open('https://wa.me/1${order.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}', 'whatsapp_pincer');">💬 Notificar por WhatsApp</a>` : ''}
-        ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
+        ${status === 'ready' && order.phone ? `<button class="wa-btn" onclick="notifyWhatsApp(${order.id}, '${(order.phone || '').replace(/'/g, "\\'")}')">💬 Notificar por WhatsApp</button>` : ''}
+        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
       container.appendChild(div);
     });
 
@@ -825,6 +844,20 @@ async function markReady(id) {
     playConfirmSound();
     setTimeout(loadOrders, 150);
   } catch (e) { showError("Error inesperado."); }
+}
+
+async function notifyWhatsApp(orderId, phone) {
+  const digits = phone.replace(/[^0-9]/g, '');
+  const msg = encodeURIComponent('Hola! Tu orden #' + orderId + ' en Mr. Sandwich está lista. Pasa a recogerla!');
+  window.open('https://wa.me/1' + digits + '?text=' + msg, 'pincer_whatsapp');
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'notified' })
+    });
+    dbg('✅ Orden #' + orderId + ' → notified');
+    setTimeout(loadOrders, 300);
+  } catch (e) { dbg('⚠️ notifyWhatsApp error: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════════════
