@@ -1088,6 +1088,76 @@
     .debug-panel.show {
       display: block;
     }
+
+    /* Mis Órdenes section */
+    .mis-ordenes-item {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-left: 5px solid #94a3b8;
+    }
+    .mis-ordenes-item.mo-pending { border-left-color: #f59e0b; }
+    .mis-ordenes-item.mo-accepted { border-left-color: #3b82f6; }
+    .mis-ordenes-item.mo-ready { border-left-color: #16a34a; }
+
+    .mo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .mo-order-number {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: #1e40af;
+      background: #dbeafe;
+      padding: 3px 12px;
+      border-radius: 6px;
+    }
+    .mo-status {
+      font-size: 0.8em;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .mo-status.pending { background: #fef3c7; color: #92400e; }
+    .mo-status.accepted { background: #dbeafe; color: #1e40af; }
+    .mo-status.ready { background: #d1fae5; color: #065f46; }
+
+    .mo-items-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 10px 0;
+    }
+    .mo-items-list li {
+      padding: 4px 0;
+      font-size: 0.9em;
+      color: #334155;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .mo-items-list li:last-child { border-bottom: none; }
+    .mo-items-list .mo-item-qty { font-weight: 700; color: #1e40af; }
+    .mo-items-list .mo-item-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      margin-left: 8px;
+    }
+
+    .mo-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f4e4c1;
+      border-radius: 6px;
+      font-weight: 700;
+      color: #2d5016;
+      font-size: 1.05em;
+    }
   </style>
 </head>
 <body>
@@ -1123,6 +1193,11 @@
       </div>
     </div>
     <div id="orderTotal" style="display: none;"></div>
+  </div>
+
+  <div class="order-summary" id="misOrdenesSection" style="display: none;">
+    <h2 class="section-title">Mis Órdenes</h2>
+    <div id="misOrdenesList"></div>
   </div>
 </div>
 
@@ -1335,6 +1410,7 @@ let orderStatusChecker = null;
 let pendingItem = null;
 let orderReadyNotified = {};
 let orderReviewed = false;
+let sessionOrders = [];
 
 // ══════════════════════════════════════════════════════════════
 // CONNECTION TEST
@@ -1876,14 +1952,113 @@ function handleOrderSuccess(data) {
 
   dbg('🎉 Orden #' + orderNumber + ' creada exitosamente');
 
+  // Save order to session history before clearing cart
+  sessionOrders.push({
+    orderId: orderNumber,
+    items: order.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
+    total: order.reduce((s, i) => s + i.price * i.qty, 0),
+    status: 'pending'
+  });
+  saveSessionOrders();
+  renderMisOrdenes();
+
   showSuccessMessage(orderNumber);
 
-  if (orderStatusChecker) clearInterval(orderStatusChecker);
-  orderStatusChecker = setInterval(() => checkOrderStatus(orderNumber), 3000);
-  checkOrderStatus(orderNumber);
+  startSessionOrdersPoller();
 
   order = [];
   renderOrder();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MIS ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
+function saveSessionOrders() {
+  try { sessionStorage.setItem('mr_sandwich_orders', JSON.stringify(sessionOrders)); } catch (e) { /* silente */ }
+}
+
+function loadSessionOrders() {
+  try {
+    const saved = sessionStorage.getItem('mr_sandwich_orders');
+    if (saved) {
+      sessionOrders = JSON.parse(saved);
+      sessionOrders.forEach(o => { orderReadyNotified[o.orderId] = (o.status === 'ready'); });
+      renderMisOrdenes();
+      startSessionOrdersPoller();
+    }
+  } catch (e) { /* silente */ }
+}
+
+function renderMisOrdenes() {
+  const section = document.getElementById('misOrdenesSection');
+  const list = document.getElementById('misOrdenesList');
+  if (!section || !list) return;
+
+  if (sessionOrders.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  list.innerHTML = '';
+
+  sessionOrders.slice().reverse().forEach(o => {
+    const statusClass = o.status === 'ready' ? 'ready' : o.status === 'accepted' ? 'accepted' : 'pending';
+    const statusText = o.status === 'ready' ? '✅ Lista' : o.status === 'accepted' ? '👨‍🍳 Preparando' : '⏳ Pendiente';
+
+    const itemsHTML = o.items.map(i => {
+      const notesHTML = i.notes ? `<span class="mo-item-notes">· ${i.notes}</span>` : '';
+      return `<li><span class="mo-item-qty">${i.qty}x</span> ${i.name}${notesHTML}</li>`;
+    }).join('');
+
+    const div = document.createElement('div');
+    div.className = 'mis-ordenes-item mo-' + statusClass;
+    div.innerHTML = `
+      <div class="mo-header">
+        <span class="mo-order-number">#${o.orderId}</span>
+        <span class="mo-status ${statusClass}">${statusText}</span>
+      </div>
+      <ul class="mo-items-list">${itemsHTML}</ul>
+      <div class="mo-total">
+        <span>Total:</span>
+        <span>RD$${o.total.toLocaleString()}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+let sessionOrdersPoller = null;
+function startSessionOrdersPoller() {
+  if (sessionOrdersPoller) return;
+  sessionOrdersPoller = setInterval(async () => {
+    const pendingOrders = sessionOrders.filter(o => o.status !== 'ready');
+    if (pendingOrders.length === 0) {
+      clearInterval(sessionOrdersPoller);
+      sessionOrdersPoller = null;
+      return;
+    }
+    let changed = false;
+    for (const o of pendingOrders) {
+      try {
+        const res = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders?id=eq.' + o.orderId + '&select=status',
+          { headers: sbHeaders(), cache: 'no-store' },
+          10000
+        );
+        if (!res.ok) continue;
+        const rows = await res.json();
+        if (rows && rows.length > 0 && rows[0].status !== o.status) {
+          o.status = rows[0].status;
+          changed = true;
+        }
+      } catch (e) { /* silente */ }
+    }
+    if (changed) {
+      saveSessionOrders();
+      renderMisOrdenes();
+    }
+  }, 5000);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2267,7 +2442,10 @@ function handleCheckoutResponse(reply) {
 
 async function init() {
   dbg('🚀 Iniciando Mr. Sandwich...');
-  
+
+  // Cargar órdenes de la sesión
+  loadSessionOrders();
+
   // Renderizar menú inmediatamente
   renderMenu();
   dbg('✅ Menú renderizado');
