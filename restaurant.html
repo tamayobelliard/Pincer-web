@@ -90,13 +90,17 @@
     }
     .order:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
     .new { border-left-color: #22c55e; background: #f0fdf4; }
-    .warning { border-left-color: #f97316; background: #fff7ed; }
-    .late { border-left-color: #ef4444; background: #fef2f2; animation: pulse 2s infinite; }
-    .accepted { border-left-color: #3b82f6; background: #eff6ff; }
-    .ready { border-left-color: #16a34a; background: #f0fdf4; opacity: 0.6; }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-      50% { opacity: 0.8; box-shadow: 0 0 20px rgba(239,68,68,0.5); }
+    .warning { border-left-color: #f59e0b; background: #fefce8; animation: pulseWarning 1.5s infinite; }
+    .late { border-left-color: #ef4444; background: #fef2f2; animation: pulseLate 0.8s infinite; }
+    .accepted { border-left-color: #7c3aed; background: #f5f3ff; }
+    .ready { border-left-color: #16a34a; background: #ecfdf5; }
+    @keyframes pulseWarning {
+      0%, 100% { background: #fefce8; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      50% { background: #fef08a; box-shadow: 0 0 20px rgba(245,158,11,0.4); }
+    }
+    @keyframes pulseLate {
+      0%, 100% { background: #fef2f2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      50% { background: #fecaca; box-shadow: 0 0 24px rgba(239,68,68,0.5); }
     }
     .order-number {
       font-size: 32px; font-weight: bold; color: #1e40af; margin-bottom: 10px;
@@ -144,7 +148,7 @@
       font-size: 12px; font-weight: bold; margin-left: 10px;
     }
     .status-pending { background: #fef3c7; color: #92400e; }
-    .status-accepted { background: #dbeafe; color: #1e40af; }
+    .status-accepted { background: #ede9fe; color: #6d28d9; }
     .status-ready { background: #d1fae5; color: #065f46; }
 
     .order-phone {
@@ -749,8 +753,8 @@ async function loadOrders() {
       let statusClass = 'new';
       if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
-      else if (minutes > 5) statusClass = 'late';
-      else if (minutes > 2) statusClass = 'warning';
+      else if (minutes >= 2) statusClass = 'late';
+      else if (minutes >= 1) statusClass = 'warning';
 
       let statusBadgeClass, statusText;
       if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
@@ -775,12 +779,12 @@ async function loadOrders() {
         ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
         <div class="order-time">
           ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
-          ${status === 'pending' && minutes >= 2 ? `<span class="time-alert ${minutes >= 3 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
+          ${status === 'pending' && minutes >= 1 ? `<span class="time-alert ${minutes >= 2 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
         </div>
         <br>
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${order.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}" target="_blank">💬 Notificar por WhatsApp</a>` : ''}
+        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="#" onclick="event.preventDefault(); window.open('https://wa.me/1${order.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}', 'whatsapp_pincer');">💬 Notificar por WhatsApp</a>` : ''}
         ${status === 'ready' ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
       container.appendChild(div);
     });
