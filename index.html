@@ -1393,7 +1393,7 @@ async function loadSoldOut() {
   try {
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
-      { headers: sbHeaders() },
+      { headers: sbHeaders(), cache: 'no-store' },
       10000
     );
     if (!res.ok) {
@@ -1416,19 +1416,34 @@ function startSoldOutPoller() {
     try {
       const res = await fetchWithTimeout(
         SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
-        { headers: sbHeaders() },
+        { headers: sbHeaders(), cache: 'no-store' },
         10000
       );
       if (!res.ok) return;
       const data = await res.json();
       const newSet = new Set(data.map(r => r.id));
-      if (newSet.size !== soldOutSet.size || [...newSet].some(id => !soldOutSet.has(id))) {
+      const oldSet = soldOutSet;
+      if (newSet.size !== oldSet.size || [...newSet].some(id => !oldSet.has(id)) || [...oldSet].some(id => !newSet.has(id))) {
         soldOutSet = newSet;
         renderMenu();
         dbg('🔄 soldOut actualizado: ' + JSON.stringify([...soldOutSet]));
+
+        // Remove sold-out items from the customer's cart and notify
+        const removedItems = [];
+        for (let i = order.length - 1; i >= 0; i--) {
+          if (soldOutSet.has(order[i].id)) {
+            removedItems.push(order[i].name);
+            order.splice(i, 1);
+          }
+        }
+        if (removedItems.length > 0) {
+          renderOrder();
+          const uniqueNames = [...new Set(removedItems)];
+          showSoldOutPopup(uniqueNames.join(', '));
+        }
       }
     } catch (e) { /* silente */ }
-  }, 30000);
+  }, 5000);
 }
 
 // ══════════════════════════════════════════════════════════════
