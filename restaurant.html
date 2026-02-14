@@ -803,7 +803,7 @@ async function loadOrders() {
         <br>
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' && order.phone ? `<button class="wa-btn" onclick="notifyWhatsApp(${order.id}, '${(order.phone || '').replace(/'/g, "\\'")}')">💬 Notificar por WhatsApp</button>` : ''}
+        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
       container.appendChild(div);
     });
@@ -846,18 +846,15 @@ async function markReady(id) {
   } catch (e) { showError("Error inesperado."); }
 }
 
-async function notifyWhatsApp(orderId, phone) {
-  const digits = phone.replace(/[^0-9]/g, '');
-  const msg = encodeURIComponent('Hola! Tu orden #' + orderId + ' en Mr. Sandwich está lista. Pasa a recogerla!');
-  window.open('https://wa.me/1' + digits + '?text=' + msg, 'pincer_whatsapp');
+async function markAsNotified(orderId) {
   try {
     await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'notified' })
     });
     dbg('✅ Orden #' + orderId + ' → notified');
-    setTimeout(loadOrders, 300);
-  } catch (e) { dbg('⚠️ notifyWhatsApp error: ' + e.message); }
+    setTimeout(loadOrders, 500);
+  } catch (e) { dbg('⚠️ markAsNotified error: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════════════
