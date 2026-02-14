@@ -1242,7 +1242,8 @@
     <div class="phone-field" id="phoneField" style="display: none;">
       <label for="phoneInput">📱 Tu número de WhatsApp</label>
       <input type="tel" id="phoneInput" placeholder="809-123-4567" maxlength="15"
-             oninput="onPhoneInput(this)">
+             oninput="onPhoneInput(this)"
+             onkeydown="if(event.key==='Enter'){this.blur();document.getElementById('placeOrderBtn').scrollIntoView({behavior:'smooth',block:'center'});}">
       <div class="phone-hint">Te notificaremos por WhatsApp cuando tu orden esté lista</div>
       <div class="phone-error" id="phoneError">Número inválido. Usa formato: 809-123-4567</div>
     </div>
