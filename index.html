@@ -1472,29 +1472,28 @@ function menuItemHTML(item) {
   const isSoldOut = soldOutSet.has(item.id);
   const soldOutClass = isSoldOut ? ' sold-out' : '';
   const soldOutBadge = isSoldOut ? '<span class="sold-out-badge">Agotado</span>' : '';
+  const isExtra = item.id.startsWith('extra_');
 
   let imgHTML = '';
   if (item.img) {
-    const isExtra = item.id.startsWith('extra_');
-    const clickable = !isSoldOut && !isExtra;
-    const clickEvent = clickable ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price}, '${item.img}')" style="cursor:pointer;"` : '';
-    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image" ${clickEvent}>`;
+    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image">`;
   }
 
   let descHTML = item.desc ? `<div class="item-description">${item.desc}</div>` : '';
 
   const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
-  const isExtra = item.id.startsWith('extra_');
-  
+
   const qtyHTML = (isSoldOut || isExtra) ? '' : `
     ${currentQty > 0 ? `
-      <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+      <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', -1)">−</button>
       <span class="menu-qty-num">${currentQty}</span>
     ` : ''}
-    <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
+    <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
+
+  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${item.id}', '${item.name}', ${item.price}, '${item.img || ''}')" style="cursor:pointer;"` : '';
 
   return `
-    <div class="menu-item${soldOutClass}" data-item-id="${item.id}">
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
       ${soldOutBadge}
       ${imgHTML}
       <div class="item-info">
@@ -1644,11 +1643,11 @@ function updateMenuQtyBadges() {
 
     if (currentQty > 0) {
       wrap.innerHTML = `
-        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', -1)">−</button>
+        <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', -1)">−</button>
         <span class="menu-qty-num">${currentQty}</span>
-        <button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)">+</button>`;
+        <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', 1)">+</button>`;
     } else {
-      wrap.innerHTML = `<button class="menu-qty-btn" onclick="menuQtyChange('${item.id}', 1)" style="border-radius:8px;">+</button>`;
+      wrap.innerHTML = `<button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', 1)" style="border-radius:8px;">+</button>`;
     }
   });
 }
