@@ -4,12 +4,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // ⚠️ REPLACE with your Firebase project config from Firebase Console
 firebase.initializeApp({
-  apiKey: "REPLACE_WITH_YOUR_FIREBASE_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID"
+  apiKey: "AIzaSyAPwrRs7JqNJXC0M9OMyecd-TvahI9r8Og",
+  authDomain: "pincer-app-deda6.firebaseapp.com",
+  projectId: "pincer-app-deda6",
+  storageBucket: "pincer-app-deda6.appspot.com",
+  messagingSenderId: "1025818715545",
+  appId: "1:1025818715545:web:d149b23af22f151c85df08"
 });
 
 const messaging = firebase.messaging();
