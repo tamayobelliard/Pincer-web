@@ -2,7 +2,6 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// ⚠️ REPLACE with your Firebase project config from Firebase Console
 firebase.initializeApp({
   apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",
   authDomain: "pincer-app-deda6.firebaseapp.com",
@@ -12,33 +11,57 @@ firebase.initializeApp({
   appId: "1:1025818715545:web:d149b23af22f151c85df08"
 });
 
-const messaging = firebase.messaging();
+// Initialize messaging (needed for token management)
+firebase.messaging();
 
-// Handle background messages (tab closed or browser in background)
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[Pincer SW] Background message:', payload);
+// ═══════════════════════════════════════════════════════════
+// RAW PUSH EVENT — most reliable way to show notifications
+// on Android even with screen off / Chrome closed
+// ═══════════════════════════════════════════════════════════
+self.addEventListener('push', function(event) {
+  console.log('[Pincer SW] Push received:', event);
 
-  const data = payload.data || {};
+  let data = {};
+  try {
+    if (event.data) {
+      const json = event.data.json();
+      // FCM wraps data-only messages inside json.data
+      data = json.data || json;
+    }
+  } catch (e) {
+    console.error('[Pincer SW] Error parsing push data:', e);
+  }
+
   const title = data.title || 'Nueva Orden en Pincer';
   const body = data.body || 'Tienes una nueva orden pendiente';
   const orderId = data.orderId || '';
 
-  return self.registration.showNotification(title, {
+  const options = {
     body: body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: 'pincer-order-' + orderId,
     renotify: true,
     requireInteraction: true,
-    vibrate: [300, 100, 300, 100, 300],
+    vibrate: [300, 100, 300, 100, 300, 100, 300],
+    actions: [
+      { action: 'open', title: 'Ver orden' }
+    ],
     data: {
       url: '/restaurant.html',
       orderId: orderId
     }
-  });
+  };
+
+  // waitUntil keeps the SW alive until showNotification resolves
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
 });
 
-// Handle notification click — open or focus the dashboard
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION CLICK — open or focus the dashboard
+// ═══════════════════════════════════════════════════════════
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
