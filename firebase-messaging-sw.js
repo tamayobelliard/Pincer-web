@@ -4,7 +4,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 
 // ⚠️ REPLACE with your Firebase project config from Firebase Console
 firebase.initializeApp({
-  apiKey: "AIzaSyAPwrRs7JqNJXC0M9OMyecd-TvahI9r8Og",
+  apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",
   authDomain: "pincer-app-deda6.firebaseapp.com",
   projectId: "pincer-app-deda6",
   storageBucket: "pincer-app-deda6.appspot.com",
