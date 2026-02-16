@@ -2176,6 +2176,10 @@ function startSessionOrdersPoller() {
 
 function showSuccessMessage(orderNumber) {
   document.getElementById("orderNumberDisplay").textContent = `#${orderNumber}`;
+  // Reset status message to initial state for the new order
+  const statusDiv = document.getElementById("orderStatus");
+  statusDiv.className = "status-checking";
+  statusDiv.innerHTML = "⏳ Tu orden ha sido recibida<br><small>En cualquier momento comenzarán a prepararla</small>";
   closeNotesPopup();
   document.getElementById('overlay').classList.add("show");
   document.getElementById('successMessage').classList.add("show");
