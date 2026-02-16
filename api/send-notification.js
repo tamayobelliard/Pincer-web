@@ -1,12 +1,25 @@
 import admin from 'firebase-admin';
 
+// Parse the private key — handles multiple formats from env vars
+function parsePrivateKey(raw) {
+  if (!raw) throw new Error('FIREBASE_PRIVATE_KEY is not set');
+  // If wrapped in quotes (JSON-stringified), unwrap it
+  let key = raw;
+  if (key.startsWith('"') && key.endsWith('"')) {
+    try { key = JSON.parse(key); } catch (e) { /* use as-is */ }
+  }
+  // Replace literal two-char sequence \n with actual newlines
+  key = key.replace(/\\n/g, '\n');
+  return key;
+}
+
 // Initialize Firebase Admin SDK (once per cold start)
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').split(String.raw`\n`).join('\n'),
+      privateKey: parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
     }),
   });
 }
