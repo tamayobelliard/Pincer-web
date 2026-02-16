@@ -1622,6 +1622,8 @@ function renderMenu() {
   html += '<div class="category-title">BURGERS</div>';
   MENU_DATA.burgers.forEach(item => { html += menuItemHTML(item); });
 
+  html += `<div class="note-papas">TODAS NUESTRAS BURGERS SALEN ACOMPAÑADAS DE PAPAS FRITAS</div>`;
+
   html += '<div class="category-title">EXTRAS</div>';
   MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
 
