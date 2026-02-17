@@ -144,11 +144,15 @@
       max-width: 1280px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 60px;
       align-items: center;
       position: relative;
       z-index: 2;
+    }
+
+    .hero-content {
+      text-align: center;
     }
 
     .hero-content h1 {
@@ -171,6 +175,8 @@
       line-height: 1.6;
       margin-bottom: 48px;
       max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
       animation: slideInUp 0.6s ease-out 0.2s both;
     }
 
@@ -178,6 +184,7 @@
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
+      justify-content: center;
       animation: slideInUp 0.6s ease-out 0.3s both;
       margin-bottom: 40px;
     }
@@ -226,336 +233,8 @@
     .hero-meta {
       font-size: 13px;
       color: var(--text-secondary);
+      text-align: center;
       animation: slideInUp 0.6s ease-out 0.4s both;
-    }
-
-    .hero-visual {
-      position: relative;
-      animation: slideInRight 0.6s ease-out 0.2s both;
-      display: flex;
-      align-items: flex-end;
-      gap: 16px;
-      justify-content: center;
-    }
-
-    /* Phone Mockup */
-    .phone-mockup {
-      width: 200px;
-      flex-shrink: 0;
-      background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
-      border-radius: 28px;
-      padding: 10px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .phone-notch {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100px;
-      height: 20px;
-      background: #000;
-      border-radius: 0 0 14px 14px;
-      z-index: 10;
-    }
-
-    .phone-screen {
-      background: var(--bg);
-      border-radius: 20px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    /* Tablet Mockup */
-    .tablet-mockup {
-      width: 360px;
-      flex-shrink: 0;
-      background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
-      border-radius: 20px;
-      padding: 10px;
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .tablet-screen {
-      background: #6366f1;
-      border-radius: 14px;
-      overflow: hidden;
-      padding: 20px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .tablet-header {
-      text-align: center;
-      margin-bottom: 12px;
-    }
-
-    .tablet-header h3 {
-      font-size: 12px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .tablet-header p {
-      font-size: 9px;
-      color: rgba(255,255,255,0.7);
-    }
-
-    .tablet-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .tablet-stat {
-      background: white;
-      border-radius: 8px;
-      padding: 10px 8px;
-      text-align: center;
-    }
-
-    .tablet-stat .num {
-      font-size: 16px;
-      font-weight: 800;
-      color: #1e3a5f;
-      line-height: 1;
-    }
-
-    .tablet-stat .num.green {
-      color: #16a34a;
-    }
-
-    .tablet-stat .lbl {
-      font-size: 8px;
-      color: #64748B;
-      font-weight: 500;
-      margin-top: 2px;
-    }
-
-    .tablet-order {
-      background: #60a5fa;
-      border-radius: 10px;
-      padding: 10px 12px;
-    }
-
-    .tablet-order-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .tablet-order-num {
-      background: rgba(255,255,255,0.2);
-      color: white;
-      padding: 3px 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .tablet-order-status {
-      background: rgba(255,255,255,0.2);
-      color: white;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 8px;
-      font-weight: 600;
-    }
-
-    .tablet-order-item {
-      background: rgba(255,255,255,0.12);
-      border-radius: 6px;
-      padding: 8px 10px;
-      margin-bottom: 6px;
-    }
-
-    .tablet-order-item h4 {
-      font-size: 11px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .tablet-order-item p {
-      font-size: 9px;
-      color: rgba(255,255,255,0.7);
-      font-style: italic;
-    }
-
-    .tablet-order-total {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(0,0,0,0.15);
-      padding: 8px 10px;
-      border-radius: 6px;
-      margin-top: 6px;
-    }
-
-    .tablet-order-total span {
-      font-size: 10px;
-      font-weight: 700;
-      color: white;
-    }
-
-    .tablet-order-btn {
-      display: block;
-      width: 100%;
-      background: #22c55e;
-      color: white;
-      border: none;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 700;
-      font-family: inherit;
-      margin-top: 8px;
-      cursor: default;
-    }
-
-    .phone-header {
-      padding: 50px 20px 20px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg-light);
-    }
-
-    .phone-header-brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .phone-header-brand img {
-      width: 20px;
-      height: 20px;
-    }
-
-    .phone-header-brand span {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-
-    .phone-header h3 {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 4px;
-    }
-
-    .phone-header p {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    .phone-content {
-      padding: 20px;
-      flex: 1;
-    }
-
-    .menu-item {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .menu-item:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .menu-image {
-      width: 70px;
-      height: 70px;
-      border-radius: 8px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      line-height: 1;
-    }
-    .menu-image.burger { background: linear-gradient(135deg, #fef3c7, #fde68a); }
-    .menu-image.fries  { background: linear-gradient(135deg, #ffedd5, #fed7aa); }
-    .menu-image.drink  { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
-
-    .menu-info {
-      flex: 1;
-    }
-
-    .menu-info h4 {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 4px;
-    }
-
-    .menu-info p {
-      font-size: 11px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-
-    .menu-price {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 8px;
-    }
-
-    .menu-btn {
-      background: var(--bg-light);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .menu-btn:hover {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    .phone-footer {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-      background: var(--bg-light);
-    }
-
-    .phone-footer button {
-      width: 100%;
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .phone-footer button:hover {
-      background: var(--primary-dark);
     }
 
     /* ══════════════════════════════
@@ -1034,11 +713,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(30px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-
     /* ══════════════════════════════
        MOBILE
        ══════════════════════════════ */
@@ -1075,20 +749,6 @@
 
       .benefits-grid {
         grid-template-columns: 1fr;
-      }
-
-      .hero-visual {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .phone-mockup {
-        width: 200px;
-      }
-
-      .tablet-mockup {
-        width: 260px;
-        margin-top: 16px;
       }
 
       .transform-grid {
@@ -1142,78 +802,6 @@
       </div>
       <div class="hero-meta">
         Food trucks · food courts · restaurantes · cafeterías
-      </div>
-    </div>
-    <div class="hero-visual">
-      <div class="phone-mockup">
-        <div class="phone-notch"></div>
-        <div class="phone-screen">
-          <div class="phone-header">
-            <div class="phone-header-brand">
-              <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer">
-              <span>Powered by Pincer</span>
-            </div>
-            <h3>Mr. Sandwich</h3>
-            <p>Menú digital</p>
-          </div>
-          <div class="phone-content">
-            <div class="menu-item">
-              <div class="menu-image burger">🥪</div>
-              <div class="menu-info">
-                <h4>Mr. Phillie Cheese</h4>
-                <p>Steak, queso, cebolla</p>
-                <div class="menu-price">RD$ 1,100</div>
-              </div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-image fries">🍟</div>
-              <div class="menu-info">
-                <h4>Yukita Cubana</h4>
-                <p>Cerdo, mojo verde</p>
-                <div class="menu-price">RD$ 600</div>
-              </div>
-            </div>
-            <div class="menu-item">
-              <div class="menu-image drink">🥤</div>
-              <div class="menu-info">
-                <h4>Limonada Casera</h4>
-                <p>Fresca y natural</p>
-                <div class="menu-price">RD$ 150</div>
-              </div>
-            </div>
-          </div>
-          <div class="phone-footer">
-            <button>Ordenar Ahora — RD$ 1,850</button>
-          </div>
-        </div>
-      </div>
-      <div class="tablet-mockup">
-        <div class="tablet-screen">
-          <div class="tablet-header">
-            <h3>📊 Pincer — Dashboard</h3>
-            <p>Resumen del Día</p>
-          </div>
-          <div class="tablet-stats">
-            <div class="tablet-stat"><div class="num">8</div><div class="lbl">Órdenes Totales</div></div>
-            <div class="tablet-stat"><div class="num green">RD$10,700</div><div class="lbl">Ventas del Día</div></div>
-            <div class="tablet-stat"><div class="num">RD$1,338</div><div class="lbl">Ticket Promedio</div></div>
-            <div class="tablet-stat"><div class="num">0</div><div class="lbl">Pendientes</div></div>
-          </div>
-          <div class="tablet-order">
-            <div class="tablet-order-header">
-              <span class="tablet-order-num">#50</span>
-              <span class="tablet-order-status">🍳 EN PREPARACIÓN</span>
-            </div>
-            <div class="tablet-order-item">
-              <h4>1x Chopped Cheese</h4>
-              <p>· Agregar mermelada de ají morrón</p>
-            </div>
-            <div class="tablet-order-total">
-              <span>💰 TOTAL: RD$1,100</span>
-            </div>
-            <button class="tablet-order-btn">🎉 Marcar como LISTA</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
