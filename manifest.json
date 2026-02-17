@@ -2,7 +2,7 @@
   "name": "Pincer - Restaurant Dashboard",
   "short_name": "Pincer",
   "description": "Panel de ordenes para Mr. Sandwich by Chef Elly",
-  "start_url": "/restaurant.html",
+  "start_url": "/mrsandwich/dashboard/",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#764ba2",

@@ -1,35 +1,25 @@
 {
+  "rewrites": [
+    { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
+    { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" }
+  ],
   "redirects": [
-    {
-      "source": "/restaurant",
-      "destination": "/restaurant.html"
-    }
+    { "source": "/restaurant", "destination": "/mrsandwich/dashboard", "statusCode": 301 },
+    { "source": "/restaurant.html", "destination": "/mrsandwich/dashboard", "statusCode": 301 }
   ],
   "headers": [
     {
       "source": "/firebase-messaging-sw.js",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Service-Worker-Allowed", "value": "/" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     }
   ]

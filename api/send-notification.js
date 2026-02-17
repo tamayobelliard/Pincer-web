@@ -113,7 +113,7 @@ export default async function handler(req, res) {
           Urgency: 'high',
         },
         fcmOptions: {
-          link: '/restaurant.html',
+          link: '/mrsandwich/dashboard/',
         },
       },
     };

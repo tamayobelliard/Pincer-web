@@ -48,7 +48,7 @@ self.addEventListener('push', function(event) {
       { action: 'open', title: 'Ver orden' }
     ],
     data: {
-      url: '/restaurant.html',
+      url: '/mrsandwich/dashboard/',
       orderId: orderId
     }
   };
@@ -65,7 +65,7 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/restaurant.html';
+  const urlToOpen = event.notification.data?.url || '/mrsandwich/dashboard/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
