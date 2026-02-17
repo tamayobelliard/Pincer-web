@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pincer — Sistema de pedidos QR para restaurantes</title>
   <meta name="description" content="Pincer es el sistema de pedidos por QR para food trucks, food parks y restaurantes en República Dominicana. Tus clientes escanean, eligen y pagan desde su celular.">
-  
+
   <!-- Open Graph / WhatsApp -->
   <meta property="og:title" content="Pincer — El servicio premium que tu negocio merece">
   <meta property="og:description" content="Sistema de pedidos por QR para food trucks y restaurantes. Tus clientes escanean, eligen y pagan desde su celular.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://i.imgur.com/FaOdU4D.png">
-  
+
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+
   <style>
     :root {
       --primary: #DC2626;
@@ -233,7 +233,7 @@
       position: relative;
       animation: slideInRight 0.6s ease-out 0.2s both;
       display: flex;
-      align-items: flex-start;
+      align-items: stretch;
       gap: 16px;
       justify-content: center;
     }
@@ -247,6 +247,8 @@
       padding: 10px;
       box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .phone-notch {
@@ -267,6 +269,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      flex: 1;
     }
 
     /* Tablet Mockup */
@@ -277,7 +280,8 @@
       border-radius: 20px;
       padding: 10px;
       box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
-      margin-top: 40px;
+      display: flex;
+      flex-direction: column;
     }
 
     .tablet-screen {
@@ -285,6 +289,9 @@
       border-radius: 14px;
       overflow: hidden;
       padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .tablet-header {
@@ -614,6 +621,76 @@
       max-width: 700px;
       margin-left: auto;
       margin-right: auto;
+    }
+
+    /* ══════════════════════════════
+       CLIENTS
+       ══════════════════════════════ */
+    .clients-section {
+      background: var(--bg);
+      padding: 80px 24px;
+    }
+
+    .clients-grid {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .client-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-light);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 28px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.3s ease;
+      min-width: 320px;
+    }
+
+    .client-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.1);
+    }
+
+    .client-logo {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .client-info {
+      flex: 1;
+    }
+
+    .client-info h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+
+    .client-info p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .client-arrow {
+      font-size: 20px;
+      color: var(--primary);
+      font-weight: 700;
+      transition: transform 0.2s;
+    }
+
+    .client-card:hover .client-arrow {
+      transform: translateX(4px);
     }
 
     /* ══════════════════════════════
@@ -1151,6 +1228,26 @@
       <h2 class="section-subtitle">Escanean, eligen y pagan.</h2>
       <h1 class="section-title">Menú digital + chatbot IA + dashboard + analíticas. Todo en uno.</h1>
 
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     NUESTROS CLIENTES
+     ═══════════════════════════════ -->
+<section class="section clients-section" id="clientes">
+  <div class="section-container">
+    <h1 class="section-title reveal" style="text-align: center; margin-bottom: 16px;">Negocios que ya confían en Pincer</h1>
+    <p class="section-description reveal" style="text-align: center; margin: 0 auto 50px; max-width: 500px;">Restaurantes y food trucks que ya están elevando su servicio con pedidos por QR.</p>
+    <div class="clients-grid reveal">
+      <a href="/mrsandwich" class="client-card">
+        <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Mr. Sandwich by Chef Elly" class="client-logo">
+        <div class="client-info">
+          <h3>Mr. Sandwich</h3>
+          <p>by Chef Elly · Santiago, RD</p>
+        </div>
+        <div class="client-arrow">→</div>
+      </a>
     </div>
   </div>
 </section>
