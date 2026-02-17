@@ -4,6 +4,7 @@
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" }
   ],
   "redirects": [
+    { "source": "/", "destination": "/mrsandwich", "statusCode": 302, "has": [{ "type": "host", "value": "pincer-web.vercel.app" }] },
     { "source": "/restaurant", "destination": "/mrsandwich/dashboard", "statusCode": 301 },
     { "source": "/restaurant.html", "destination": "/mrsandwich/dashboard", "statusCode": 301 }
   ],
