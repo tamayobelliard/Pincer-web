@@ -4,7 +4,7 @@ import path from 'path';
 
 // Read PEM certificates from project files
 function getSSLAgent() {
-  const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-cert.pem'));
+  const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-chain.pem'));
   const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
 
   return new https.Agent({
