@@ -12,6 +12,39 @@ function getSSLAgent() {
   });
 }
 
+// Call Azul API using native https.request (fetch doesn't support mTLS agent)
+function callAzul(url, headers, body, agent) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      agent,
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('Invalid JSON response: ' + data));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
 // Azul API base URL
 function getBaseUrl() {
   const isDev = process.env.AZUL_ENV === 'development';
@@ -75,18 +108,15 @@ export default async function handler(req, res) {
     // Call Azul API with mTLS
     const agent = getSSLAgent();
 
-    const azulResponse = await fetch(getBaseUrl(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const result = await callAzul(
+      getBaseUrl(),
+      {
         'Auth1': process.env.AZUL_AUTH1,
         'Auth2': process.env.AZUL_AUTH2,
       },
-      body: JSON.stringify(azulRequest),
-      agent,
-    });
-
-    const result = await azulResponse.json();
+      azulRequest,
+      agent
+    );
 
     // Check response
     if (result.IsoCode === '00') {
