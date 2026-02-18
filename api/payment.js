@@ -1,9 +1,11 @@
 import https from 'https';
+import fs from 'fs';
+import path from 'path';
 
-// Decode base64 certificates from env vars
+// Read PEM certificates from project files
 function getSSLAgent() {
-  const cert = Buffer.from(process.env.AZUL_CERT_B64, 'base64').toString('utf-8');
-  const key = Buffer.from(process.env.AZUL_PRIVATE_KEY_B64, 'base64').toString('utf-8');
+  const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-cert.pem'));
+  const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
 
   return new https.Agent({
     cert,
