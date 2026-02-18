@@ -1204,6 +1204,223 @@
       margin-top: 6px;
       display: none;
     }
+
+    /* ── Checkout Modal ── */
+    .checkout-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 1100;
+    }
+    .checkout-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .checkout-modal {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      max-height: 90vh;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.25);
+      z-index: 1101;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      padding: 12px 20px 30px 20px;
+    }
+    .checkout-modal.show {
+      transform: translateY(0);
+    }
+
+    .checkout-handle {
+      width: 40px;
+      height: 5px;
+      background: #cbd5e1;
+      border-radius: 3px;
+      margin: 0 auto 15px auto;
+      cursor: pointer;
+    }
+
+    .checkout-modal h3 {
+      text-align: center;
+      color: #2d5016;
+      font-size: 1.4em;
+      margin-bottom: 15px;
+    }
+
+    .checkout-summary {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+
+    .checkout-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95em;
+      color: #334155;
+    }
+    .checkout-item:last-child { border-bottom: none; }
+    .checkout-item-name { flex: 1; }
+    .checkout-item-qty {
+      font-weight: 700;
+      color: #1e40af;
+      margin: 0 12px;
+      white-space: nowrap;
+    }
+    .checkout-item-price {
+      font-weight: 600;
+      color: #2d5016;
+      white-space: nowrap;
+    }
+
+    .checkout-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: #f4e4c1;
+      border-radius: 8px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #2d5016;
+      margin-bottom: 15px;
+    }
+
+    .checkout-field {
+      margin-bottom: 12px;
+    }
+    .checkout-field label {
+      display: block;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+    .checkout-field input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+    }
+    .checkout-field input:focus {
+      outline: none;
+      border-color: #4a7c2c;
+    }
+    .checkout-field input.invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+
+    .checkout-methods-title {
+      font-weight: 700;
+      color: #334155;
+      font-size: 0.95em;
+      margin-bottom: 8px;
+    }
+    .checkout-methods {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .checkout-method {
+      flex: 1;
+      padding: 10px 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      font-weight: 600;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      color: #64748b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checkout-method.active {
+      border-color: #4a7c2c;
+      color: #2d5016;
+      background: #f0fdf4;
+    }
+
+    .checkout-card-fields {
+      margin-bottom: 15px;
+    }
+    .checkout-card-fields input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+    .checkout-card-fields input:focus {
+      outline: none;
+      border-color: #4a7c2c;
+    }
+    .checkout-card-fields input.invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+    .checkout-card-row {
+      display: flex;
+      gap: 8px;
+    }
+    .checkout-card-row input {
+      flex: 1;
+    }
+
+    .checkout-pay-btn {
+      width: 100%;
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 1.2em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+      transition: all 0.3s;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checkout-pay-btn:hover {
+      background: #b91c1c;
+      box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
+    }
+    .checkout-pay-btn:active {
+      transform: scale(0.98);
+    }
+    .checkout-pay-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .checkout-error {
+      color: #dc2626;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -1306,6 +1523,37 @@
   <button onclick="closeErrorPopup()">Entendido</button>
 </div>
 
+<div class="checkout-overlay" id="checkoutOverlay" onclick="closeCheckoutModal()"></div>
+<div class="checkout-modal" id="checkoutModal">
+  <div class="checkout-handle" onclick="closeCheckoutModal()"></div>
+  <h3>Checkout</h3>
+  <div class="checkout-summary" id="checkoutSummary"></div>
+  <div class="checkout-total" id="checkoutTotal"></div>
+  <div class="checkout-field">
+    <label>Nombre</label>
+    <input type="text" id="checkoutName" placeholder="Tu nombre">
+  </div>
+  <div class="checkout-field">
+    <label>Teléfono</label>
+    <input type="tel" id="checkoutPhone" placeholder="809-123-4567" maxlength="15">
+  </div>
+  <div class="checkout-methods-title">Método de Pago</div>
+  <div class="checkout-methods">
+    <button class="checkout-method active" data-method="card" onclick="selectPayMethod('card')">Tarjeta</button>
+    <button class="checkout-method" data-method="apple" onclick="selectPayMethod('apple')">Apple Pay</button>
+    <button class="checkout-method" data-method="google" onclick="selectPayMethod('google')">Google Pay</button>
+  </div>
+  <div class="checkout-card-fields" id="checkoutCardFields">
+    <input type="text" id="cardNumber" placeholder="Número de tarjeta" maxlength="19" inputmode="numeric" oninput="formatCardNumber(this)">
+    <div class="checkout-card-row">
+      <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5" inputmode="numeric" oninput="formatExpiry(this)">
+      <input type="text" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric">
+    </div>
+  </div>
+  <div class="checkout-error" id="checkoutError"></div>
+  <button class="checkout-pay-btn" id="checkoutPayBtn" onclick="processPayment()">Pagar RD$0</button>
+</div>
+
 <div class="chef-clippy" id="chefClippy">
   <div class="clippy-container">
     <div class="speech-bubble" id="speechBubble">
@@ -1366,6 +1614,9 @@
 
 const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
+
+// ── Payment toggle (set to true when Azul is active) ──
+const PAYMENT_ENABLED = false;
 
 // ── Debug logger ──
 let debugLogs = [];
@@ -1944,6 +2195,12 @@ async function placeOrder() {
     return;
   }
 
+  // If payment is enabled, open checkout modal instead of direct submit
+  if (PAYMENT_ENABLED) {
+    openCheckoutModal();
+    return;
+  }
+
   placeOrderBtn.disabled = true;
   placeOrderBtn.textContent = "Procesando...";
 
@@ -2077,6 +2334,267 @@ function handleOrderSuccess(data) {
   customerPhone = '';
   document.getElementById('phoneInput').value = '';
   renderOrder();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHECKOUT MODAL
+// ══════════════════════════════════════════════════════════════
+
+let selectedPayMethod = 'card';
+
+function openCheckoutModal() {
+  const summaryDiv = document.getElementById('checkoutSummary');
+  const totalDiv = document.getElementById('checkoutTotal');
+  const payBtn = document.getElementById('checkoutPayBtn');
+  const errorDiv = document.getElementById('checkoutError');
+
+  // Clear previous state
+  errorDiv.style.display = 'none';
+  errorDiv.textContent = '';
+  document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
+
+  // Render items
+  let html = '';
+  let total = 0;
+  order.forEach(item => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+    html += `<div class="checkout-item">
+      <span class="checkout-item-name">${item.name}</span>
+      <span class="checkout-item-qty">x${item.qty}</span>
+      <span class="checkout-item-price">RD$${subtotal.toLocaleString()}</span>
+    </div>`;
+  });
+  summaryDiv.innerHTML = html;
+  totalDiv.innerHTML = `<span>TOTAL</span><span>RD$${total.toLocaleString()}</span>`;
+  payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  payBtn.disabled = false;
+
+  // Pre-fill phone from existing field
+  const existingPhone = (document.getElementById('phoneInput').value || '').trim();
+  document.getElementById('checkoutPhone').value = existingPhone;
+  document.getElementById('checkoutName').value = '';
+
+  // Reset payment method to card
+  selectPayMethod('card');
+
+  // Clear card fields
+  document.getElementById('cardNumber').value = '';
+  document.getElementById('cardExpiry').value = '';
+  document.getElementById('cardCvv').value = '';
+
+  // Show modal
+  document.getElementById('checkoutOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('checkoutModal').classList.add('show'), 10);
+}
+
+function closeCheckoutModal() {
+  document.getElementById('checkoutModal').classList.remove('show');
+  setTimeout(() => document.getElementById('checkoutOverlay').classList.remove('show'), 350);
+}
+
+function selectPayMethod(method) {
+  selectedPayMethod = method;
+  document.querySelectorAll('.checkout-method').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.method === method);
+  });
+  document.getElementById('checkoutCardFields').style.display = method === 'card' ? 'block' : 'none';
+}
+
+function formatCardNumber(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 16);
+  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+}
+
+function formatExpiry(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 4);
+  if (v.length >= 3) {
+    v = v.substring(0, 2) + '/' + v.substring(2);
+  }
+  input.value = v;
+}
+
+async function processPayment() {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  // Clear previous errors
+  errorDiv.style.display = 'none';
+  document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
+
+  // Validate name
+  const name = document.getElementById('checkoutName').value.trim();
+  if (!name) {
+    document.getElementById('checkoutName').classList.add('invalid');
+    errorDiv.textContent = 'Por favor ingresa tu nombre';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutName').focus();
+    return;
+  }
+
+  // Validate phone
+  const phone = document.getElementById('checkoutPhone').value.trim();
+  if (!phone || !isValidDRPhone(phone)) {
+    document.getElementById('checkoutPhone').classList.add('invalid');
+    errorDiv.textContent = 'Número inválido. Usa formato: 809-123-4567';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutPhone').focus();
+    return;
+  }
+
+  // Validate card fields if card method
+  if (selectedPayMethod === 'card') {
+    const cardNum = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const expiry = document.getElementById('cardExpiry').value;
+    const cvv = document.getElementById('cardCvv').value;
+
+    if (!cardNum || cardNum.length < 13) {
+      document.getElementById('cardNumber').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa un número de tarjeta válido';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardNumber').focus();
+      return;
+    }
+    if (!expiry || expiry.length < 5) {
+      document.getElementById('cardExpiry').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa la fecha de expiración (MM/AA)';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardExpiry').focus();
+      return;
+    }
+    if (!cvv || cvv.length < 3) {
+      document.getElementById('cardCvv').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa el código CVV';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardCvv').focus();
+      return;
+    }
+
+    // Convert expiry MM/AA to YYYYMM
+    const parts = expiry.split('/');
+    const expirationFormatted = '20' + parts[1] + parts[0];
+
+    // Amount in cents (no decimals)
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const amountCents = Math.round(total * 100).toString();
+
+    // Generate custom order ID
+    const customOrderId = 'MRS-' + Date.now();
+
+    payBtn.disabled = true;
+    payBtn.textContent = 'Procesando pago...';
+
+    try {
+      dbg('💳 Enviando pago a /api/payment...');
+      const payRes = await fetchWithTimeout('/api/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardNumber: cardNum,
+          expiration: expirationFormatted,
+          cvc: cvv,
+          amount: amountCents,
+          itbis: '000',
+          customOrderId: customOrderId
+        })
+      }, 30000);
+
+      const payData = await payRes.json();
+      dbg('💳 Respuesta pago: ' + JSON.stringify(payData).substring(0, 200));
+
+      if (payData.approved) {
+        dbg('✅ Pago aprobado, enviando orden a Supabase...');
+        customerPhone = phone;
+        await submitOrderToSupabase('paid', payData.azulOrderId || customOrderId, name);
+      } else {
+        errorDiv.textContent = payData.message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
+        errorDiv.style.display = 'block';
+        payBtn.disabled = false;
+        payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+      }
+    } catch (err) {
+      dbg('❌ Error de pago: ' + err.message);
+      errorDiv.textContent = 'Error de conexión al procesar el pago. Intenta de nuevo.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+    }
+  }
+}
+
+async function submitOrderToSupabase(status, azulOrderId, customerName) {
+  try {
+    const itemsArray = order.map(item => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      notes: item.notes || null
+    }));
+
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const orderPayload = {
+      items: JSON.stringify(itemsArray),
+      total: total,
+      status: status,
+      phone: customerPhone
+    };
+
+    if (azulOrderId) orderPayload.azul_order_id = azulOrderId;
+    if (customerName) orderPayload.customer_name = customerName;
+
+    dbg('📤 Enviando orden (paid): ' + JSON.stringify(orderPayload).substring(0, 200));
+
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'return=representation' }),
+        body: JSON.stringify(orderPayload)
+      },
+      15000
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ Supabase error: ' + errText);
+
+      // Retry with items as JSON array if needed
+      if (res.status === 400 && errText.includes('json')) {
+        orderPayload.items = itemsArray;
+        const retryRes = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders',
+          {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(orderPayload)
+          },
+          15000
+        );
+        if (!retryRes.ok) throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
+        const retryData = await retryRes.json();
+        closeCheckoutModal();
+        handleOrderSuccess(retryData);
+        return;
+      }
+
+      throw new Error('Error al guardar la orden (HTTP ' + res.status + ')');
+    }
+
+    const data = await res.json();
+    dbg('✅ Orden pagada creada: ' + JSON.stringify(data).substring(0, 200));
+    closeCheckoutModal();
+    handleOrderSuccess(data);
+
+  } catch (err) {
+    dbg('❌ submitOrderToSupabase error: ' + err.message);
+    const errorDiv = document.getElementById('checkoutError');
+    errorDiv.textContent = 'Pago exitoso pero hubo un error guardando la orden. Contacta al restaurante.';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutPayBtn').disabled = false;
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    document.getElementById('checkoutPayBtn').textContent = `Reintentar`;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
