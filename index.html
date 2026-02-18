@@ -523,15 +523,57 @@
       text-align: center;
     }
 
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 60px;
+      align-items: start;
+    }
+
     .pricing-card {
-      background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg) 100%);
+      background: var(--bg);
       border: 2px solid var(--border);
       border-radius: 16px;
-      padding: 60px 40px;
-      margin-top: 60px;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
+      padding: 36px 28px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .pricing-card:hover {
+      border-color: #D4D4D8;
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+    }
+
+    .pricing-card.featured {
+      border-color: #DC2626;
+      background: linear-gradient(135deg, #FFF 0%, #FEF2F2 100%);
+      transform: scale(1.04);
+      box-shadow: 0 12px 32px rgba(220,38,38,0.12);
+    }
+
+    .pricing-card.featured:hover {
+      transform: scale(1.04) translateY(-4px);
+    }
+
+    .pricing-badge {
+      display: inline-flex;
+      padding: 4px 12px;
+      background: rgba(220,38,38,0.08);
+      color: #DC2626;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 100px;
+      margin-bottom: 16px;
+    }
+
+    .pricing-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 8px;
     }
 
     .pricing-amount {
@@ -755,12 +797,16 @@
         grid-template-columns: 1fr;
       }
 
-      .pricing-features {
+      .pricing-grid {
         grid-template-columns: 1fr;
       }
 
-      .pricing-card {
-        padding: 40px 24px;
+      .pricing-card.featured {
+        transform: none;
+      }
+
+      .pricing-card.featured:hover {
+        transform: translateY(-4px);
       }
     }
   </style>
@@ -956,25 +1002,64 @@
      ═══════════════════════════════ -->
 <section class="section pricing-section" id="pricing">
   <div class="section-container">
-    <h1 class="section-title reveal" style="text-align: center;">Servicio premium. Precio accesible.</h1>
-    <div class="pricing-card reveal">
-      <div style="display:inline-flex;padding:5px 14px;background:rgba(220,38,38,0.08);color:#DC2626;font-size:13px;font-weight:700;border-radius:100px;margin-bottom:20px;">✦ Primer mes gratis</div>
-      <div class="pricing-amount">US$ 50</div>
-      <div class="pricing-period">/ mes</div>
-      <p class="pricing-description">Todo incluido para llevar tu servicio al siguiente nivel. Sin comisiones, sin sorpresas.</p>
-      <ul class="pricing-features">
-        <li>Menú digital ilimitado</li>
-        <li>QR code personalizado</li>
-        <li>Dashboard en tiempo real</li>
-        <li>Analíticas de ventas</li>
-        <li>Mesero virtual con IA</li>
-        <li>Asistente de ventas IA</li>
-        <li>Pagos con Azul</li>
-        <li>Notificaciones WhatsApp</li>
-        <li>Tu marca personalizada</li>
-        <li>Setup en 24 horas</li>
-      </ul>
-      <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20Pincer%20gratis" target="_blank" rel="noopener">Try out for free</a>
+    <h1 class="section-title reveal" style="text-align: center;">Un plan para cada negocio.</h1>
+    <p style="text-align: center; color: #64748B; font-size: 16px; margin-bottom: 0;">Prueba el plan Premium gratis por 30 días. Sin compromiso.</p>
+    <div class="pricing-grid">
+
+      <!-- STARTER -->
+      <div class="pricing-card reveal">
+        <div class="pricing-name">Starter</div>
+        <div class="pricing-amount" style="font-size: 42px;">US$ 30</div>
+        <div class="pricing-period">/ mes</div>
+        <p class="pricing-description">Lo esencial para digitalizar tu negocio.</p>
+        <ul class="pricing-features" style="grid-template-columns: 1fr;">
+          <li>Menú digital con QR (hasta 15 items)</li>
+          <li>Pagos con Azul (tarjeta, Apple Pay, Google Pay)</li>
+          <li>Dashboard de órdenes en tiempo real</li>
+          <li>Notificaciones WhatsApp</li>
+          <li>Soporte por email</li>
+        </ul>
+        <a class="pricing-btn" style="background: #0F172A;" href="https://wa.me/18295481236?text=Hola%2C%20me%20interesa%20el%20plan%20Starter%20de%20Pincer" target="_blank" rel="noopener">Empezar</a>
+      </div>
+
+      <!-- PREMIUM -->
+      <div class="pricing-card featured reveal">
+        <div class="pricing-badge">✦ Recomendado — 1er mes gratis</div>
+        <div class="pricing-name">Premium</div>
+        <div class="pricing-amount" style="font-size: 42px;">US$ 50</div>
+        <div class="pricing-period">/ mes</div>
+        <p class="pricing-description">La experiencia completa para tu negocio.</p>
+        <ul class="pricing-features" style="grid-template-columns: 1fr;">
+          <li>Todo lo de Starter</li>
+          <li>Items ilimitados en el menú</li>
+          <li>Mesero virtual con IA</li>
+          <li>Asistente de ventas con analíticas</li>
+          <li>Integración con impresora térmica</li>
+          <li>Personalización completa de marca</li>
+          <li>Soporte prioritario por WhatsApp</li>
+        </ul>
+        <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20el%20plan%20Premium%20gratis" target="_blank" rel="noopener">Try out for free</a>
+      </div>
+
+      <!-- ENTERPRISE -->
+      <div class="pricing-card reveal">
+        <div class="pricing-name">Enterprise</div>
+        <div class="pricing-amount" style="font-size: 42px;">US$ 150</div>
+        <div class="pricing-period">/ mes + fee de integración</div>
+        <p class="pricing-description">Para operaciones multi-sucursal.</p>
+        <ul class="pricing-features" style="grid-template-columns: 1fr;">
+          <li>Todo lo de Premium</li>
+          <li>Hasta 3 sucursales incluidas</li>
+          <li>$30/mes por sucursal adicional</li>
+          <li>Reportes semanales automáticos</li>
+          <li>Menú por horarios</li>
+          <li>Acceso API</li>
+          <li>Onboarding y capacitación dedicada</li>
+        </ul>
+        <a class="pricing-btn" style="background: #0F172A;" href="https://wa.me/18295481236?text=Hola%2C%20me%20interesa%20el%20plan%20Enterprise%20de%20Pincer" target="_blank" rel="noopener">Contactar ventas</a>
+        <p style="font-size: 11px; color: #94A3B8; margin-top: 12px;">Fee de integración: US$300–$500 según complejidad</p>
+      </div>
+
     </div>
   </div>
 </section>
