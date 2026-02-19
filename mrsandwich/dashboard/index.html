@@ -54,21 +54,142 @@
     .legend-dot.soldout { background: #ef4444; }
 
     .products-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
     }
+    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    @media (min-width: 900px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1200px) { .products-grid { grid-template-columns: repeat(4, 1fr); } }
+
     .product-card {
       background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
       padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;
-      transition: border-color 0.2s, background 0.2s;
+      transition: border-color 0.2s, background 0.2s; position: relative;
     }
     .product-card.is-soldout { background: #fef2f2; border-color: #fca5a5; }
-    .product-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
-    .product-card-name { font-weight: 700; font-size: 0.9em; color: #1e1b4b; line-height: 1.3; flex: 1; padding-right: 8px; }
+    .product-card.is-inactive { background: #f1f5f9; border-color: #cbd5e1; opacity: 0.6; }
+    .product-card-top { display: flex; gap: 10px; align-items: flex-start; }
+    .product-card-thumb {
+      width: 60px; height: 60px; border-radius: 8px; object-fit: cover;
+      background: #e2e8f0; flex-shrink: 0;
+    }
+    .product-card-thumb-placeholder {
+      width: 60px; height: 60px; border-radius: 8px; background: #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5em; color: #94a3b8; flex-shrink: 0;
+    }
+    .product-card-info { flex: 1; min-width: 0; }
+    .product-card-name { font-weight: 700; font-size: 0.9em; color: #1e1b4b; line-height: 1.3; }
     .product-card-price { font-size: 0.82em; color: #64748b; white-space: nowrap; margin-top: 2px; }
+    .product-card-cat {
+      display: inline-block; font-size: 0.7em; font-weight: 700; padding: 2px 8px;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
+    }
+    .cat-munchies { background: #fff7ed; color: #c2410c; }
+    .cat-sandwiches { background: #f0fdf4; color: #15803d; }
+    .cat-burgers { background: #fef2f2; color: #dc2626; }
+    .cat-extras { background: #f1f5f9; color: #64748b; }
 
-    .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
-    .toggle-label { font-size: 0.78em; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .product-card-actions {
+      display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 8px;
+    }
+
+    .toggle-row { display: flex; align-items: center; gap: 6px; }
+    .toggle-label { font-size: 0.72em; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
     .product-card.is-soldout .toggle-label { color: #dc2626; }
+
+    .btn-edit-product {
+      background: #667eea; color: white; border: none; padding: 6px 14px;
+      border-radius: 6px; font-size: 0.78em; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; margin: 0; font-family: inherit;
+    }
+    .btn-edit-product:hover { background: #5a67d8; }
+
+    .btn-add-product {
+      background: #4a7c2c; color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95em;
+      transition: all 0.2s; margin: 0; font-family: inherit;
+    }
+    .btn-add-product:hover { background: #3d6b23; }
+
+    /* Product Edit Modal */
+    .product-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); opacity: 0; visibility: hidden;
+      transition: all 0.3s; z-index: 5000;
+    }
+    .product-modal-overlay.show { opacity: 1; visibility: visible; }
+
+    .product-modal {
+      position: fixed; z-index: 5001; background: white;
+      overflow-y: auto; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @media (max-width: 600px) {
+      .product-modal {
+        bottom: 0; left: 0; width: 100%; max-height: 90vh;
+        border-radius: 20px 20px 0 0; transform: translateY(100%);
+        padding: 15px 20px 30px 20px;
+      }
+      .product-modal.show { transform: translateY(0); }
+    }
+    @media (min-width: 601px) {
+      .product-modal {
+        top: 50%; left: 50%; width: 500px; max-width: 90vw; max-height: 85vh;
+        border-radius: 16px; transform: translate(-50%, -50%) scale(0);
+        padding: 25px 30px 30px 30px;
+      }
+      .product-modal.show { transform: translate(-50%, -50%) scale(1); }
+    }
+
+    .product-modal-handle {
+      width: 40px; height: 5px; background: #cbd5e1; border-radius: 3px;
+      margin: 0 auto 15px auto; cursor: pointer;
+    }
+    @media (min-width: 601px) { .product-modal-handle { display: none; } }
+
+    .product-modal h3 {
+      text-align: center; color: #1e1b4b; font-size: 1.3em; margin-bottom: 20px;
+    }
+    .product-modal-field { margin-bottom: 14px; }
+    .product-modal-field label {
+      display: block; font-weight: 600; color: #475569; margin-bottom: 5px; font-size: 0.88em;
+    }
+    .product-modal-field input,
+    .product-modal-field textarea,
+    .product-modal-field select {
+      width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.95em; font-family: inherit; transition: border-color 0.2s;
+    }
+    .product-modal-field input:focus,
+    .product-modal-field textarea:focus,
+    .product-modal-field select:focus { outline: none; border-color: #667eea; }
+    .product-modal-field textarea { min-height: 70px; resize: vertical; }
+    .product-modal-field .field-row { display: flex; gap: 10px; }
+    .product-modal-field .field-row > * { flex: 1; }
+
+    .product-modal-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; margin-bottom: 10px;
+    }
+    .product-modal-toggle span { font-weight: 600; color: #475569; font-size: 0.88em; }
+
+    .product-modal-buttons {
+      display: flex; gap: 10px; margin-top: 20px;
+    }
+    .product-modal-buttons button { flex: 1; margin: 0; }
+    .btn-modal-cancel {
+      background: #e2e8f0; color: #64748b; border: none; padding: 12px;
+      border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-modal-save {
+      background: #4a7c2c; color: white; border: none; padding: 12px;
+      border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-modal-save:hover { background: #3d6b23; }
+    .btn-modal-save:disabled { background: #94a3b8; cursor: not-allowed; }
+    .product-modal-error {
+      color: #dc2626; font-size: 0.85em; font-weight: 600; text-align: center;
+      margin-bottom: 10px; display: none;
+    }
 
     .toggle-switch { position: relative; width: 48px; height: 26px; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -341,12 +462,67 @@
 <div class="products-panel" id="productsPanel">
   <div class="products-panel-header">
     <h3>📦 Productos</h3>
-    <div class="legend">
-      <span><span class="legend-dot available"></span> Disponible</span>
-      <span><span class="legend-dot soldout"></span> Agotado</span>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <div class="legend">
+        <span><span class="legend-dot available"></span> Disponible</span>
+        <span><span class="legend-dot soldout"></span> Agotado</span>
+      </div>
+      <button class="btn-add-product" onclick="openProductModal()">+ Agregar Item</button>
     </div>
   </div>
   <div class="products-grid" id="productsGrid"></div>
+</div>
+
+<div class="product-modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
+<div class="product-modal" id="productModal">
+  <div class="product-modal-handle" onclick="closeProductModal()"></div>
+  <h3 id="productModalTitle">Agregar Producto</h3>
+  <input type="hidden" id="pmEditId">
+  <div class="product-modal-field">
+    <label>Nombre</label>
+    <input type="text" id="pmName" placeholder="Nombre del producto">
+  </div>
+  <div class="product-modal-field">
+    <div class="field-row">
+      <div>
+        <label>Precio (RD$)</label>
+        <input type="number" id="pmPrice" placeholder="0" min="0">
+      </div>
+      <div>
+        <label>Orden</label>
+        <input type="number" id="pmOrder" placeholder="1" min="0">
+      </div>
+    </div>
+  </div>
+  <div class="product-modal-field">
+    <label>Categoría</label>
+    <select id="pmCategory">
+      <option value="munchies">Munchies</option>
+      <option value="sandwiches">Sandwiches</option>
+      <option value="burgers">Burgers</option>
+      <option value="extras">Extras</option>
+    </select>
+  </div>
+  <div class="product-modal-field">
+    <label>Descripción</label>
+    <textarea id="pmDescription" placeholder="Ingredientes, descripción..."></textarea>
+  </div>
+  <div class="product-modal-field">
+    <label>URL de imagen</label>
+    <input type="text" id="pmImgUrl" placeholder="https://i.imgur.com/...">
+  </div>
+  <div class="product-modal-toggle">
+    <span>Activo</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="pmActive" checked>
+      <span class="toggle-slider" style="background: #22c55e;"></span>
+    </label>
+  </div>
+  <div class="product-modal-error" id="pmError"></div>
+  <div class="product-modal-buttons">
+    <button class="btn-modal-cancel" onclick="closeProductModal()">Cancelar</button>
+    <button class="btn-modal-save" id="pmSaveBtn" onclick="saveProduct()">Guardar</button>
+  </div>
 </div>
 
 <!-- AI Assistant Chatbot -->
@@ -475,24 +651,8 @@ function fetchWithTimeout(url, options, timeoutMs = 12000) {
   ]);
 }
 
-const MENU_DATA = [
-  { id:'yukita',          name:'Yukita Cubana',                   price:600,  cat:'Munchies' },
-  { id:'fries',           name:'Mr. Fries',                      price:650,  cat:'Munchies' },
-  { id:'pastrami',        name:'Mr. Pastrami',                   price:1900, cat:'Sándwiches' },
-  { id:'chopped',         name:'Chopped Cheese',                 price:1100, cat:'Sándwiches' },
-  { id:'phillie',         name:'Mr. Phillie Cheese Steak',       price:950,  cat:'Sándwiches' },
-  { id:'pierna',          name:'Sanguche de Pierna',             price:700,  cat:'Sándwiches' },
-  { id:'cubano',          name:'Cubano',                         price:700,  cat:'Sándwiches' },
-  { id:'club',            name:'Club Sandwich',                  price:700,  cat:'Sándwiches' },
-  { id:'chimi',           name:'El Chimichurri',                 price:650,  cat:'Sándwiches' },
-  { id:'media_noche',     name:'Media Noche',                    price:800,  cat:'Sándwiches' },
-  { id:'ellys_classic_smash', name:'Elly\'s Classic Smash',      price:850,  cat:'Burgers' },
-  { id:'satisfier_trufado',  name:'Satisfier Trufado',           price:1100, cat:'Burgers' },
-  { id:'extra_tocineta',  name:'Extra Tocineta',                 price:100,  cat:'Extras' },
-  { id:'extra_fondue',    name:'Extra Fondue de Queso Velveeta', price:100,  cat:'Extras' },
-  { id:'extra_salsita',   name:'Extra Salsita de Ajo y Perejil', price:50,   cat:'Extras' },
-  { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,   cat:'Extras' }
-];
+// Products loaded from Supabase (replaces hardcoded MENU_DATA)
+let productsData = [];
 
 // ══════════════════════════════════════════════════════════════
 // ESTADO GLOBAL
@@ -693,38 +853,65 @@ function sendNotification(title, body, tag) {
 // ══════════════════════════════════════════════════════════════
 
 async function loadProducts() {
-  renderProducts();
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
+      SUPABASE_URL + '/rest/v1/products?order=display_order.asc&select=*',
       { headers: sbGetHeaders() }, 10000
     );
-    if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); return; }
-    const rows = await res.json();
-    soldOutSet = new Set(rows.filter(r => r.sold_out).map(r => r.id));
+    if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); renderProducts(); return; }
+    productsData = await res.json();
+    soldOutSet = new Set(productsData.filter(r => r.sold_out).map(r => r.id));
+    dbg('✅ Productos cargados: ' + productsData.length);
     renderProducts();
-  } catch (e) { dbg('⚠️ loadProducts: ' + e.message); }
+  } catch (e) { dbg('⚠️ loadProducts: ' + e.message); renderProducts(); }
+}
+
+function getCatClass(cat) {
+  const c = (cat || '').toLowerCase();
+  if (c === 'munchies') return 'cat-munchies';
+  if (c === 'sandwiches') return 'cat-sandwiches';
+  if (c === 'burgers') return 'cat-burgers';
+  return 'cat-extras';
 }
 
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
   grid.innerHTML = '';
-  MENU_DATA.forEach(item => {
+  if (!productsData.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:20px;">No hay productos. Haz click en "+ Agregar Item" para comenzar.</div>';
+    return;
+  }
+  productsData.forEach(item => {
     const isSoldOut = soldOutSet.has(item.id);
+    const isInactive = item.active === false;
     const card = document.createElement('div');
-    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '');
+    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '') + (isInactive ? ' is-inactive' : '');
     card.id = 'prodCard_' + item.id;
+
+    const thumbHTML = item.img_url
+      ? `<img class="product-card-thumb" src="${item.img_url}" alt="${item.name}">`
+      : `<div class="product-card-thumb-placeholder">🍽</div>`;
+
+    const catLabel = (item.category || 'extras').charAt(0).toUpperCase() + (item.category || 'extras').slice(1);
+
     card.innerHTML = `
-      <div class="product-card-top"><div>
-        <div class="product-card-name">${item.name}</div>
-        <div class="product-card-price">RD$${item.price.toLocaleString()}</div>
-      </div></div>
-      <div class="toggle-row">
-        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
-        <label class="toggle-switch">
-          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
-          <span class="toggle-slider"></span>
-        </label>
+      <div class="product-card-top">
+        ${thumbHTML}
+        <div class="product-card-info">
+          <div class="product-card-name">${item.name}</div>
+          <div class="product-card-price">RD$${(item.price || 0).toLocaleString()}</div>
+          <span class="product-card-cat ${getCatClass(item.category)}">${catLabel}</span>
+        </div>
+      </div>
+      <div class="product-card-actions">
+        <div class="toggle-row">
+          <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
+          <label class="toggle-switch">
+            <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <button class="btn-edit-product" onclick="openProductModal('${item.id}')">Editar</button>
       </div>`;
     grid.appendChild(card);
   });
@@ -734,17 +921,19 @@ async function toggleSoldOut(productId, isSoldOut) {
   if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
   updateProductCardUI(productId, isSoldOut);
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/products', {
-      method: 'POST',
-      headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-      body: JSON.stringify({ id: productId, sold_out: isSoldOut })
-    });
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId),
+      { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify({ sold_out: isSoldOut }) }
+    );
     if (!res.ok) {
       if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
       updateProductCardUI(productId, !isSoldOut);
       showError("No se pudo actualizar el producto.");
       return;
     }
+    // Update local data
+    const p = productsData.find(p => p.id === productId);
+    if (p) p.sold_out = isSoldOut;
     clearError();
   } catch (e) {
     if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
@@ -757,8 +946,135 @@ function updateProductCardUI(productId, isSoldOut) {
   const card = document.getElementById('prodCard_' + productId);
   if (!card) return;
   card.classList.toggle('is-soldout', isSoldOut);
-  card.querySelector('.toggle-label').textContent = isSoldOut ? 'Agotado' : 'Disponible';
-  card.querySelector('input[type=checkbox]').checked = isSoldOut;
+  const label = card.querySelector('.toggle-label');
+  if (label) label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
+  const cb = card.querySelector('input[type=checkbox]');
+  if (cb) cb.checked = isSoldOut;
+}
+
+// ══════════════════════════════════════════════════════════════
+// PRODUCT MODAL (CRUD)
+// ══════════════════════════════════════════════════════════════
+
+function slugify(text) {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').substring(0, 40);
+}
+
+function openProductModal(editId) {
+  const modal = document.getElementById('productModal');
+  const overlay = document.getElementById('productModalOverlay');
+  const errDiv = document.getElementById('pmError');
+  errDiv.style.display = 'none';
+
+  if (editId) {
+    const p = productsData.find(x => x.id === editId);
+    if (!p) return;
+    document.getElementById('productModalTitle').textContent = 'Editar Producto';
+    document.getElementById('pmEditId').value = p.id;
+    document.getElementById('pmName').value = p.name || '';
+    document.getElementById('pmPrice').value = p.price || 0;
+    document.getElementById('pmOrder').value = p.display_order != null ? p.display_order : 0;
+    document.getElementById('pmCategory').value = p.category || 'extras';
+    document.getElementById('pmDescription').value = p.description || '';
+    document.getElementById('pmImgUrl').value = p.img_url || '';
+    document.getElementById('pmActive').checked = p.active !== false;
+  } else {
+    document.getElementById('productModalTitle').textContent = 'Agregar Producto';
+    document.getElementById('pmEditId').value = '';
+    document.getElementById('pmName').value = '';
+    document.getElementById('pmPrice').value = '';
+    document.getElementById('pmOrder').value = productsData.length + 1;
+    document.getElementById('pmCategory').value = 'sandwiches';
+    document.getElementById('pmDescription').value = '';
+    document.getElementById('pmImgUrl').value = '';
+    document.getElementById('pmActive').checked = true;
+  }
+
+  overlay.classList.add('show');
+  setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeProductModal() {
+  document.getElementById('productModal').classList.remove('show');
+  setTimeout(() => document.getElementById('productModalOverlay').classList.remove('show'), 350);
+}
+
+async function saveProduct() {
+  const errDiv = document.getElementById('pmError');
+  const saveBtn = document.getElementById('pmSaveBtn');
+  errDiv.style.display = 'none';
+
+  const editId = document.getElementById('pmEditId').value;
+  const name = document.getElementById('pmName').value.trim();
+  const price = parseInt(document.getElementById('pmPrice').value) || 0;
+  const displayOrder = parseInt(document.getElementById('pmOrder').value) || 0;
+  const category = document.getElementById('pmCategory').value;
+  const description = document.getElementById('pmDescription').value.trim() || null;
+  const imgUrl = document.getElementById('pmImgUrl').value.trim() || null;
+  const active = document.getElementById('pmActive').checked;
+
+  if (!name) {
+    errDiv.textContent = 'El nombre es requerido';
+    errDiv.style.display = 'block';
+    return;
+  }
+  if (price <= 0) {
+    errDiv.textContent = 'El precio debe ser mayor a 0';
+    errDiv.style.display = 'block';
+    return;
+  }
+
+  const payload = { name, price, description, category, img_url: imgUrl, display_order: displayOrder, active };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Guardando...';
+
+  try {
+    let res;
+    if (editId) {
+      // PATCH existing
+      res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId),
+        { method: 'PATCH', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
+        10000
+      );
+    } else {
+      // POST new
+      const newId = slugify(name);
+      payload.id = newId;
+      payload.sold_out = false;
+      res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products',
+        { method: 'POST', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
+        10000
+      );
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ saveProduct error: ' + errText);
+      errDiv.textContent = editId ? 'Error al actualizar el producto' : 'Error al crear el producto';
+      if (errText.includes('duplicate') || errText.includes('unique')) {
+        errDiv.textContent = 'Ya existe un producto con ese ID. Cambia el nombre.';
+      }
+      errDiv.style.display = 'block';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Guardar';
+      return;
+    }
+
+    dbg('✅ Producto ' + (editId ? 'actualizado' : 'creado'));
+    closeProductModal();
+    await loadProducts();
+  } catch (e) {
+    dbg('❌ saveProduct exception: ' + e.message);
+    errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    errDiv.style.display = 'block';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
