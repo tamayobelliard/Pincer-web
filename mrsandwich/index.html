@@ -1010,6 +1010,89 @@
       background: #f8f9fa;
     }
     
+    .pinzer-typing {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 14px;
+      background: #f4e4c1;
+      border-radius: 12px;
+      max-width: 60%;
+      align-self: flex-start;
+      margin-bottom: 12px;
+      animation: slideInMsg 0.3s ease-out;
+    }
+
+    .pinzer-typing span {
+      width: 8px;
+      height: 8px;
+      background: #4a7c2c;
+      border-radius: 50%;
+      animation: typingDot 1.4s infinite;
+    }
+
+    .pinzer-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .pinzer-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+      30% { opacity: 1; transform: scale(1); }
+    }
+
+    .pinzer-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .pinzer-input-bar input {
+      flex: 1;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .pinzer-input-bar input:focus {
+      border-color: #4a7c2c;
+    }
+
+    .pinzer-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #4a7c2c;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .pinzer-send-btn:hover {
+      background: #2d5016;
+    }
+
+    .clippy-avatar.pulse-hint {
+      animation: pulseHint 2s ease-in-out 3;
+    }
+
+    @keyframes pulseHint {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
     @media (max-width: 768px) {
       .clippy-avatar {
         width: 80px;
@@ -1648,6 +1731,10 @@
     flex-wrap: wrap;
     gap: 8px;
   "></div>
+  <div class="pinzer-input-bar">
+    <input type="text" id="pinzerInput" placeholder="Escríbele a Chef Elly..." onkeydown="if(event.key==='Enter')sendPinzerMessage()">
+    <button class="pinzer-send-btn" onclick="sendPinzerMessage()">➤</button>
+  </div>
 </div>
 
 <script>
@@ -2943,12 +3030,15 @@ function sendDesktopNotification(orderId) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// CHEF CLIPPY / PINZER CHATBOT
+// CHEF ELLY AI CHATBOT
 // ══════════════════════════════════════════════════════════════
 
 let autoMessageInterval;
 let currentMessageIndex = 0;
 let bubblePermanentlyClosed = false;
+let chatHistory = []; // { role: 'user'|'assistant', content: string }
+let chatOpen = false;
+let welcomeShown = false;
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -2965,7 +3055,7 @@ function hideBubble() {
 }
 
 function showBubble(text, emoji) {
-  if (bubblePermanentlyClosed) return;
+  if (bubblePermanentlyClosed || chatOpen) return;
   const bubble = document.getElementById('speechBubble');
   const bubbleText = document.getElementById('bubbleText');
   const bubbleEmoji = document.getElementById('bubbleEmoji');
@@ -2986,64 +3076,68 @@ function startAutoMessages() {
   }, 10000);
 }
 
-setTimeout(() => {
-  const badge = document.getElementById('notificationBadge');
-  if (badge) badge.style.display = 'flex';
-}, 5000);
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', startAutoMessages);
-} else {
-  startAutoMessages();
+function buildMenuData() {
+  const lines = [];
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const catTitle = (CATEGORY_CONFIG[cat] && CATEGORY_CONFIG[cat].title) || cat;
+    for (const item of items) {
+      const soldOut = soldOutSet.has(item.id) ? ' [AGOTADO]' : '';
+      lines.push(`${catTitle}: ${item.name} - RD$${item.price} - ${item.desc || ''}${soldOut}`);
+    }
+  }
+  return lines.join('\n');
 }
-
-let pinzerState = 'idle';
-let pinzerRecommendation = null;
-let pinzerUpsellItem = null;
-let pinzerHasUpsold = false;
-
-const pinzerMenu = {
-  sandwiches: [
-    { id:'pastrami', name:'Mr. Pastrami', price:1900, tags:['premium','hungry'] },
-    { id:'chopped', name:'Chopped Cheese', price:1100, tags:['hungry','popular'] },
-    { id:'phillie', name:'Mr. Phillie Cheese Steak', price:950, tags:['hungry'] },
-    { id:'smash', name:'Ellys Classic Smashburger', price:850, tags:['hungry','quick','popular'] },
-    { id:'pierna', name:'Sanguche de Pierna', price:700, tags:['quick','local'] },
-    { id:'cubano', name:'Cubano', price:700, tags:['quick','popular'] },
-    { id:'club', name:'Club Sandwich', price:700, tags:['quick'] },
-    { id:'chimi', name:'El Chimichurri', price:650, tags:['quick','local'] }
-  ],
-  munchies: [
-    { id:'yukita', name:'Yukita Cubana', price:600 },
-    { id:'fries', name:'Mr. Fries', price:650 }
-  ]
-};
 
 function openPinzer() {
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
+  chatOpen = true;
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'none';
+  // Hide speech bubble when chat opens
+  const bubble = document.getElementById('speechBubble');
+  if (bubble) bubble.classList.remove('show');
+  // Focus input
+  setTimeout(() => {
+    const input = document.getElementById('pinzerInput');
+    if (input) input.focus();
+  }, 300);
 
-  if (pinzerState === 'idle') {
-    pinzerState = 'greeting';
-    setTimeout(() => {
-      pinzerSay("¡Klk manito! Bienvenido a Mr. Sandwich 👋");
-      setTimeout(() => {
-        pinzerSay("Soy Chef Elly y estoy aquí para ayudarte.");
-        setTimeout(() => {
-          pinzerSay("¿Qué quieres comer hoy, tigre?");
-          pinzerShowReplies(['Algo rápido','Tengo hambre','Lo más popular']);
-        }, 800);
-      }, 800);
-    }, 300);
+  // Show welcome on first open
+  if (!welcomeShown) {
+    welcomeShown = true;
+    sessionStorage.setItem('chefEllyWelcomed', 'true');
+    showWelcomeMessages();
   }
 }
 
 function closePinzer() {
   document.getElementById('pinzer-modal').style.display = 'none';
+  chatOpen = false;
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
+}
+
+function showWelcomeMessages() {
+  const msgs = [
+    { text: '¡Klk manito! Bienvenido a Mr. Sandwich 👋', delay: 500 },
+    { text: 'Soy Chef Elly, tu mesero virtual 🧑‍🍳', delay: 1500 },
+    { text: '¿En qué te puedo ayudar?', delay: 2500 }
+  ];
+
+  msgs.forEach(m => {
+    setTimeout(() => pinzerSay(m.text), m.delay);
+  });
+
+  // Show quick replies after last message
+  setTimeout(() => {
+    pinzerShowReplies([
+      { label: '🍽️ Ver el Menú', big: true },
+      { label: '🔥 Recomiéndame algo' },
+      { label: '⭐ Lo más popular' },
+      { label: '❓ Tengo una pregunta' }
+    ]);
+  }, 3200);
 }
 
 function pinzerSay(message) {
@@ -3067,11 +3161,12 @@ function pinzerUserSay(message) {
 function pinzerShowReplies(replies) {
   const container = document.getElementById('pinzer-replies');
   container.innerHTML = '';
-  replies.forEach(reply => {
+  replies.forEach(r => {
     const btn = document.createElement('button');
     btn.className = 'pinzer-reply-btn';
-    btn.textContent = reply;
-    btn.onclick = () => pinzerHandleReply(reply);
+    if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
+    btn.textContent = r.label;
+    btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
   });
 }
@@ -3080,94 +3175,108 @@ function pinzerClearReplies() {
   document.getElementById('pinzer-replies').innerHTML = '';
 }
 
-function pinzerHandleReply(reply) {
-  pinzerUserSay(reply);
+function handleQuickReply(label) {
   pinzerClearReplies();
-  if (pinzerState === 'greeting') handleGreetingResponse(reply);
-  else if (pinzerState === 'recommendation') handleRecommendationResponse(reply);
-  else if (pinzerState === 'upsell') handleUpsellResponse(reply);
-  else if (pinzerState === 'checkout') handleCheckoutResponse(reply);
-}
 
-function handleGreetingResponse(reply) {
-  let item;
-  if (reply === 'Algo rápido') {
-    const quickItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('quick'));
-    item = quickItems[Math.floor(Math.random() * quickItems.length)];
-  } else if (reply === 'Tengo hambre') {
-    const hungryItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('hungry'));
-    item = hungryItems[0];
-  } else {
-    const popularItems = pinzerMenu.sandwiches.filter(i => i.tags.includes('popular'));
-    item = popularItems[Math.floor(Math.random() * popularItems.length)];
-  }
-  pinzerRecommendation = item;
-  pinzerState = 'recommendation';
-  setTimeout(() => {
-    pinzerSay(`¡Eso está brutal! Te recomiendo el ${item.name} por RD$${item.price} 🔥`);
-    setTimeout(() => {
-      pinzerSay("¿Lo añadimos a tu orden?");
-      pinzerShowReplies(['Sí, dale','No, déjalo']);
-    }, 800);
-  }, 500);
-}
-
-function handleRecommendationResponse(reply) {
-  if (reply === 'Sí, dale') {
-    addItem(pinzerRecommendation.id, pinzerRecommendation.name, pinzerRecommendation.price);
-    setTimeout(() => {
-      pinzerSay(`¡Wepa! Añadí el ${pinzerRecommendation.name} ✅`);
-      if (!pinzerHasUpsold) {
-        pinzerState = 'upsell';
-        const upsellItem = pinzerMenu.munchies[1];
-        pinzerUpsellItem = upsellItem;
-        pinzerHasUpsold = true;
-        setTimeout(() => {
-          pinzerSay(`¿Y qué tal unas ${upsellItem.name} por solo RD$${upsellItem.price}? Están de madre 🍟`);
-          pinzerShowReplies(['Sí, dale','No, déjalo']);
-        }, 800);
-      } else {
-        goToCheckout();
-      }
-    }, 500);
-  } else {
-    setTimeout(() => {
-      pinzerSay("Está bien, tranquilo. Mira el menú arriba 📋");
-      pinzerSay("¡Cualquier cosa me dices!");
-      pinzerState = 'done';
-      setTimeout(() => closePinzer(), 2000);
-    }, 500);
-  }
-}
-
-function handleUpsellResponse(reply) {
-  if (reply === 'Sí, dale') {
-    addItem(pinzerUpsellItem.id, pinzerUpsellItem.name, pinzerUpsellItem.price);
-    setTimeout(() => {
-      pinzerSay(`¡Listo, papo! Añadí las ${pinzerUpsellItem.name} ✅`);
-      goToCheckout();
-    }, 500);
-  } else {
-    goToCheckout();
-  }
-}
-
-function goToCheckout() {
-  pinzerState = 'checkout';
-  setTimeout(() => {
-    pinzerSay("¡Tu orden está lista, tigre! Revísala arriba y dale click para ordenar 🛒");
-    pinzerShowReplies(['Ordenar ahora']);
-  }, 800);
-}
-
-function handleCheckoutResponse(reply) {
-  if (reply === 'Ordenar ahora') {
-    pinzerState = 'done';
-    pinzerSay("¡Que lo disfrutes, mi hermano! 😊");
+  if (label === '🍽️ Ver el Menú') {
+    pinzerUserSay(label);
+    pinzerSay('¡Dale! Aquí tienes el menú completo. Si necesitas ayuda, solo toca mi botón abajo a la derecha 👇');
     setTimeout(() => {
       closePinzer();
-      document.querySelector('.order-summary').scrollIntoView({ behavior:'smooth' });
+      // Pulse the avatar
+      const avatar = document.querySelector('.clippy-avatar');
+      if (avatar) {
+        avatar.classList.add('pulse-hint');
+        setTimeout(() => avatar.classList.remove('pulse-hint'), 6000);
+      }
     }, 1500);
+    return;
+  }
+
+  // Map quick reply to AI message
+  const messageMap = {
+    '🔥 Recomiéndame algo': 'Recomiéndame algo bueno para comer',
+    '⭐ Lo más popular': '¿Qué es lo más popular del menú?',
+    '❓ Tengo una pregunta': 'Tengo una pregunta sobre el menú'
+  };
+
+  const aiMessage = messageMap[label] || label;
+  pinzerUserSay(label);
+  sendToAI(aiMessage);
+}
+
+function sendPinzerMessage() {
+  const input = document.getElementById('pinzerInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  pinzerClearReplies();
+  pinzerUserSay(text);
+  sendToAI(text);
+}
+
+function showTypingIndicator() {
+  const container = document.getElementById('pinzer-messages');
+  const typing = document.createElement('div');
+  typing.className = 'pinzer-typing';
+  typing.id = 'pinzerTyping';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTypingIndicator() {
+  const typing = document.getElementById('pinzerTyping');
+  if (typing) typing.remove();
+}
+
+async function sendToAI(userMessage) {
+  chatHistory.push({ role: 'user', content: userMessage });
+  showTypingIndicator();
+
+  try {
+    const res = await fetch('/api/waiter-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory,
+        menuData: buildMenuData()
+      })
+    });
+
+    hideTypingIndicator();
+
+    if (res.ok) {
+      const data = await res.json();
+      const answer = data.answer || '¡Diablo, se me fue la señal! 😅';
+      chatHistory.push({ role: 'assistant', content: answer });
+      pinzerSay(answer);
+    } else {
+      pinzerSay('¡Ay, algo falló! 😅 Intenta de nuevo en un momento.');
+    }
+  } catch (e) {
+    hideTypingIndicator();
+    pinzerSay('¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.');
+  }
+}
+
+// Auto-open chat on first visit
+function initChatbot() {
+  const alreadyWelcomed = sessionStorage.getItem('chefEllyWelcomed');
+
+  if (!alreadyWelcomed) {
+    // First visit: auto-open after a short delay
+    setTimeout(() => {
+      openPinzer();
+    }, 1500);
+  } else {
+    // Returning visit: just show bubble messages
+    welcomeShown = true;
+    startAutoMessages();
+    setTimeout(() => {
+      const badge = document.getElementById('notificationBadge');
+      if (badge) badge.style.display = 'flex';
+    }, 5000);
   }
 }
 
@@ -3243,6 +3352,9 @@ async function init() {
 
   // Iniciar polling de soldout
   startSoldOutPoller();
+
+  // Iniciar chatbot
+  initChatbot();
 
   dbg('✅ Mr. Sandwich listo');
 }
