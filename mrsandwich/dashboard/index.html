@@ -190,6 +190,12 @@
       color: #dc2626; font-size: 0.85em; font-weight: 600; text-align: center;
       margin-bottom: 10px; display: none;
     }
+    .btn-modal-delete {
+      width: 100%; background: none; color: #dc2626; border: 2px solid #fca5a5;
+      padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;
+      font-family: inherit; margin-top: 12px; transition: all 0.2s;
+    }
+    .btn-modal-delete:hover { background: #fef2f2; border-color: #dc2626; }
 
     .toggle-switch { position: relative; width: 48px; height: 26px; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -523,6 +529,7 @@
     <button class="btn-modal-cancel" onclick="closeProductModal()">Cancelar</button>
     <button class="btn-modal-save" id="pmSaveBtn" onclick="saveProduct()">Guardar</button>
   </div>
+  <button class="btn-modal-delete" id="pmDeleteBtn" onclick="deleteProduct()" style="display:none;">Eliminar producto</button>
 </div>
 
 <!-- AI Assistant Chatbot -->
@@ -979,6 +986,7 @@ function openProductModal(editId) {
     document.getElementById('pmDescription').value = p.description || '';
     document.getElementById('pmImgUrl').value = p.img_url || '';
     document.getElementById('pmActive').checked = p.active !== false;
+    document.getElementById('pmDeleteBtn').style.display = 'block';
   } else {
     document.getElementById('productModalTitle').textContent = 'Agregar Producto';
     document.getElementById('pmEditId').value = '';
@@ -989,6 +997,7 @@ function openProductModal(editId) {
     document.getElementById('pmDescription').value = '';
     document.getElementById('pmImgUrl').value = '';
     document.getElementById('pmActive').checked = true;
+    document.getElementById('pmDeleteBtn').style.display = 'none';
   }
 
   overlay.classList.add('show');
@@ -1074,6 +1083,33 @@ async function saveProduct() {
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Guardar';
+  }
+}
+
+async function deleteProduct() {
+  const editId = document.getElementById('pmEditId').value;
+  if (!editId) return;
+  const p = productsData.find(x => x.id === editId);
+  const name = p ? p.name : editId;
+  if (!confirm('¿Seguro que deseas eliminar "' + name + '"?')) return;
+
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId),
+      { method: 'DELETE', headers: sbWriteHeaders() }, 10000
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ deleteProduct error: ' + errText);
+      showError('No se pudo eliminar el producto.');
+      return;
+    }
+    dbg('🗑️ Producto eliminado: ' + editId);
+    closeProductModal();
+    await loadProducts();
+  } catch (e) {
+    dbg('❌ deleteProduct exception: ' + e.message);
+    showError('Error de conexión al eliminar.');
   }
 }
 
