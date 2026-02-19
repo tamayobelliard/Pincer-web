@@ -1671,7 +1671,8 @@ function fetchWithTimeout(url, options, timeoutMs = 15000) {
   ]);
 }
 
-const MENU_DATA = {
+// Fallback menu data in case Supabase is unavailable
+const MENU_DATA_FALLBACK = {
   munchies: [
     { id:'yukita',   name:'Yukita Cubana',  price:600,  img:'https://i.imgur.com/7L5Pv7T.jpeg',
       desc:'Yukita frita, cerdo asado en mojo verde, salsita verde de ajo y perejil y queso fresco' },
@@ -1688,7 +1689,7 @@ const MENU_DATA = {
     { id:'pierna',   name:'Sanguche de Pierna', price:700, img:'https://i.imgur.com/P1Z3xJE.jpeg',
       desc:'Pan cubano, cerdo asado en mojo verde, tomate, repollo, cebolla, queso gouda y mayoketchup' },
     { id:'cubano',   name:'Cubano',          price:700,  img:'https://i.imgur.com/zpJOUwE.jpeg',
-      desc:'Pan cubano, cerzo asado en mojo verde, queso suizo, jamón ahumado Caserío, pepinillo y aderezo cubano' },
+      desc:'Pan cubano, cerdo asado en mojo verde, queso suizo, jamón ahumado Caserío, pepinillo y aderezo cubano' },
     { id:'club',     name:'Club Sandwich',   price:700,  img:'https://i.imgur.com/0R9hwrT.jpeg',
       desc:'Pan brioche de molde, pechuga de pollo al grill, queso philadelphia, tocineta, queso cheddar, queso suizo, jamón ahumado, lechuga, tomate, cebolla y Elly\'s mayo' },
     { id:'chimi',    name:'El Chimichurri',  price:650,  img:'https://i.imgur.com/PMeJVl3.jpeg',
@@ -1709,6 +1710,58 @@ const MENU_DATA = {
     { id:'extra_mayo',      name:'Extra Ellys Mayo',              price:50,  img:null, desc:null }
   ]
 };
+
+// Active menu data (loaded from DB or fallback)
+let MENU_DATA = MENU_DATA_FALLBACK;
+
+// Category display names and order
+const CATEGORY_CONFIG = {
+  munchies:   { title: 'MUNCHIES' },
+  sandwiches: { title: 'SÁNDWICHES' },
+  burgers:    { title: 'BURGERS', afterNote: 'TODOS NUESTROS SÁNDWICHES Y BURGERS SALEN ACOMPAÑADOS DE PAPAS FRITAS' },
+  extras:     { title: 'EXTRAS' }
+};
+
+async function loadMenuFromDB() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?active=eq.true&order=display_order.asc&select=*',
+      { headers: sbHeaders(), cache: 'no-store' },
+      10000
+    );
+    if (!res.ok) {
+      dbg('⚠️ loadMenuFromDB HTTP ' + res.status);
+      return false;
+    }
+    const products = await res.json();
+    if (!products.length) {
+      dbg('⚠️ loadMenuFromDB: no products returned');
+      return false;
+    }
+
+    const menuData = {};
+    products.forEach(p => {
+      if (!menuData[p.category]) menuData[p.category] = [];
+      menuData[p.category].push({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        img: p.img_url || null,
+        desc: p.description || null
+      });
+      // Update sold-out set from the same query
+      if (p.sold_out) soldOutSet.add(p.id);
+      else soldOutSet.delete(p.id);
+    });
+
+    MENU_DATA = menuData;
+    dbg('✅ Menú cargado desde DB: ' + products.length + ' productos');
+    return true;
+  } catch (e) {
+    dbg('⚠️ loadMenuFromDB error: ' + e.message);
+    return false;
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // VARIABLES DE ESTADO
@@ -1862,19 +1915,26 @@ function renderMenu() {
   const container = document.getElementById('menuSection');
   let html = '<h2 class="section-title">Menú</h2>';
 
-  html += '<div class="category-title">MUNCHIES</div>';
-  MENU_DATA.munchies.forEach(item => { html += menuItemHTML(item); });
+  const categoryOrder = Object.keys(CATEGORY_CONFIG);
+  categoryOrder.forEach(cat => {
+    const items = MENU_DATA[cat];
+    if (!items || !items.length) return;
+    const config = CATEGORY_CONFIG[cat];
+    html += `<div class="category-title">${config.title}</div>`;
+    items.forEach(item => { html += menuItemHTML(item); });
+    if (config.afterNote) {
+      html += `<div class="note-papas">${config.afterNote}</div>`;
+    }
+  });
 
-  html += '<div class="category-title">SÁNDWICHES</div>';
-  MENU_DATA.sandwiches.forEach(item => { html += menuItemHTML(item); });
-
-  html += '<div class="category-title">BURGERS</div>';
-  MENU_DATA.burgers.forEach(item => { html += menuItemHTML(item); });
-
-  html += `<div class="note-papas">TODOS NUESTROS SÁNDWICHES Y BURGERS SALEN ACOMPAÑADOS DE PAPAS FRITAS</div>`;
-
-  html += '<div class="category-title">EXTRAS</div>';
-  MENU_DATA.extras.forEach(item => { html += menuItemHTML(item); });
+  // Render any DB categories not in CATEGORY_CONFIG
+  Object.keys(MENU_DATA).forEach(cat => {
+    if (CATEGORY_CONFIG[cat]) return;
+    const items = MENU_DATA[cat];
+    if (!items || !items.length) return;
+    html += `<div class="category-title">${cat.toUpperCase()}</div>`;
+    items.forEach(item => { html += menuItemHTML(item); });
+  });
 
   container.innerHTML = html;
 }
@@ -1939,7 +1999,7 @@ function showNotesPopup(id, name, price, imageUrl = null) {
   }
   
   const extrasList = document.getElementById('extrasList');
-  extrasList.innerHTML = MENU_DATA.extras.map(extra => {
+  extrasList.innerHTML = (MENU_DATA.extras || []).map(extra => {
     const isSoldOut = soldOutSet.has(extra.id);
     const disabled = isSoldOut ? 'disabled' : '';
     const label = isSoldOut ? extra.name + ' (Agotado)' : extra.name;
@@ -2011,7 +2071,7 @@ function closeSoldOutPopup() {
 function menuQtyChange(itemId, delta) {
   if (itemId.startsWith('extra_')) return;
 
-  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.burgers, ...MENU_DATA.extras];
+  const allItems = Object.values(MENU_DATA).flat();
   const menuItem = allItems.find(i => i.id === itemId);
   if (!menuItem) return;
 
@@ -2041,7 +2101,7 @@ function menuQtyChange(itemId, delta) {
 }
 
 function updateMenuQtyBadges() {
-  const allItems = [...MENU_DATA.munchies, ...MENU_DATA.sandwiches, ...MENU_DATA.burgers, ...MENU_DATA.extras];
+  const allItems = Object.values(MENU_DATA).flat();
   allItems.forEach(item => {
     if (soldOutSet.has(item.id)) {
       const w = document.getElementById("menuQty_" + item.id);
@@ -3077,25 +3137,32 @@ async function init() {
   // Cargar órdenes de la sesión
   loadSessionOrders();
 
-  // Renderizar menú inmediatamente
+  // Renderizar menú inmediatamente con fallback
   renderMenu();
-  dbg('✅ Menú renderizado');
-  
+  dbg('✅ Menú renderizado (fallback)');
+
   // Probar conexión
   const connected = await testConnection();
-  
+
   if (connected) {
-    // Cargar soldOut
-    await loadSoldOut();
-    renderMenu();
-    dbg('✅ SoldOut actualizado');
+    // Load menu from DB (also updates soldOutSet)
+    const loaded = await loadMenuFromDB();
+    if (loaded) {
+      renderMenu();
+      dbg('✅ Menú actualizado desde DB');
+    } else {
+      // DB load failed, at least load sold-out
+      await loadSoldOut();
+      renderMenu();
+      dbg('✅ SoldOut actualizado (menú fallback)');
+    }
   } else {
     dbg('⚠️ Sin conexión, menú cargado sin info de agotados');
   }
-  
+
   // Iniciar polling de soldout
   startSoldOutPoller();
-  
+
   dbg('✅ Mr. Sandwich listo');
 }
 
