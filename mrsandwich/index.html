@@ -3116,9 +3116,8 @@ function closePinzer() {
 function showWelcomeMessages() {
   const msgs = [
     { text: '¡Klk! Bienvenido a Mr. Sandwich 👋', delay: 500 },
-    { text: 'Soy Chef Elly, tu mesero. Estoy aquí pa\' servirte 🧑‍🍳', delay: 1500 },
-    { text: '¿Ya sabes lo que vas a ordenar? ¿Deseas ver el menú? ¿Quieres que te recomiende algo?', delay: 2500 },
-    { text: 'Cualquier cosa que necesites, solo toca el botón del chat y aquí estaré 💪', delay: 3500 }
+    { text: 'Soy Chef Elly, tu mesero 🧑‍🍳', delay: 1500 },
+    { text: '¿Ya sabes lo que vas a ordenar?', delay: 2500 }
   ];
 
   msgs.forEach(m => {
@@ -3128,12 +3127,11 @@ function showWelcomeMessages() {
   // Show quick replies after last message
   setTimeout(() => {
     pinzerShowReplies([
-      { label: '🍽️ Ver el Menú', big: true },
-      { label: '✅ Ya sé lo que quiero' },
-      { label: '🔥 Recomiéndame algo' },
-      { label: '❓ Tengo otra pregunta' }
+      { label: '✅ Sí, ya sé' },
+      { label: '🍽️ Ver el Menú' },
+      { label: '🔥 Recomiéndame algo' }
     ]);
-  }, 4200);
+  }, 3200);
 }
 
 function pinzerSay(message) {
@@ -3174,10 +3172,10 @@ function pinzerClearReplies() {
 function handleQuickReply(label) {
   pinzerClearReplies();
 
-  // Replies that close the chat
+  // Replies that close the chat and show farewell bubble
   const closeReplies = {
-    '🍽️ Ver el Menú': '¡Dale! Aquí tienes el menú completo 👇',
-    '✅ Ya sé lo que quiero': '¡Eso me gusta, manito! Toca lo que quieres en el menú para agregarlo y cuando estés listo dale a Ordenar Ahora 👇'
+    '✅ Sí, ya sé': '¡Eso me gusta! Toca lo que quieres en el menú y dale a Ordenar Ahora 👇',
+    '🍽️ Ver el Menú': '¡Dale! Aquí lo tienes 👇'
   };
 
   if (closeReplies[label]) {
@@ -3185,19 +3183,25 @@ function handleQuickReply(label) {
     pinzerSay(closeReplies[label]);
     setTimeout(() => {
       closePinzer();
+      // Pulse avatar and show farewell bubble
       const avatar = document.querySelector('.clippy-avatar');
       if (avatar) {
         avatar.classList.add('pulse-hint');
         setTimeout(() => avatar.classList.remove('pulse-hint'), 6000);
       }
+      bubblePermanentlyClosed = false;
+      showBubble('Si necesitas algo, estoy aquí 💪', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
     }, 1500);
     return;
   }
 
   // Replies that send to AI
   const messageMap = {
-    '🔥 Recomiéndame algo': 'Recomiéndame algo bueno para comer',
-    '❓ Tengo otra pregunta': 'Tengo una pregunta sobre el menú'
+    '🔥 Recomiéndame algo': 'Recomiéndame algo bueno para comer'
   };
 
   const aiMessage = messageMap[label] || label;
