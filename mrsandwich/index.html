@@ -2580,9 +2580,47 @@ function openCheckoutModal() {
 }
 
 function closeCheckoutModal() {
-  document.getElementById('checkoutModal').classList.remove('show');
+  const modal = document.getElementById('checkoutModal');
+  modal.style.transform = '';
+  modal.classList.remove('show');
   setTimeout(() => document.getElementById('checkoutOverlay').classList.remove('show'), 350);
 }
+
+// Swipe-down to close checkout modal
+(function() {
+  let startY = 0, currentY = 0, dragging = false;
+  const modal = document.getElementById('checkoutModal');
+
+  modal.addEventListener('touchstart', function(e) {
+    // Only start drag if at top of scroll or touching the handle
+    if (modal.scrollTop > 0 && !e.target.closest('.checkout-handle')) return;
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    dragging = true;
+    modal.style.transition = 'none';
+  }, { passive: true });
+
+  modal.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const dy = currentY - startY;
+    if (dy > 0) {
+      modal.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  modal.addEventListener('touchend', function() {
+    if (!dragging) return;
+    dragging = false;
+    modal.style.transition = '';
+    const dy = currentY - startY;
+    if (dy > 100) {
+      closeCheckoutModal();
+    } else {
+      modal.style.transform = 'translateY(0)';
+    }
+  });
+})();
 
 function selectPayMethod(method) {
   selectedPayMethod = method;
