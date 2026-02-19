@@ -375,6 +375,61 @@
       padding: 6px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;
       margin: 0;
     }
+
+    /* Store Open/Close */
+    .store-toggle-bar {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;
+    }
+    .btn-store-toggle {
+      padding: 14px 28px; border: none; border-radius: 12px; font-weight: 700;
+      font-size: 1.1em; cursor: pointer; transition: all 0.3s; font-family: inherit;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); margin: 0;
+    }
+    .btn-store-open { background: #16a34a; color: white; }
+    .btn-store-open:hover { background: #15803d; transform: translateY(-2px); }
+    .btn-store-close { background: #dc2626; color: white; }
+    .btn-store-close:hover { background: #b91c1c; transform: translateY(-2px); }
+    .store-opened-info { color: rgba(255,255,255,0.9); font-size: 0.9em; font-weight: 500; }
+
+    /* Time Filter Pills */
+    .time-filters {
+      max-width: 1200px; margin: 0 auto 16px auto;
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .time-pill {
+      padding: 8px 16px; border: 2px solid rgba(255,255,255,0.4); border-radius: 20px;
+      background: transparent; color: white; font-weight: 600; font-size: 0.85em;
+      cursor: pointer; transition: all 0.2s; font-family: inherit; margin: 0;
+    }
+    .time-pill:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.1); }
+    .time-pill.active { background: rgba(255,255,255,0.95); color: #764ba2; border-color: transparent; }
+
+    /* Analytics Stats */
+    .analytics-stats {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    @media (max-width: 600px) { .analytics-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    .analytics-card {
+      background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; text-align: center;
+    }
+    .analytics-value { font-size: 1.6em; font-weight: 700; color: #1e1b4b; margin-bottom: 4px; }
+    .analytics-value.money { color: #059669; }
+    .analytics-label { font-size: 0.8em; color: #64748b; font-weight: 500; }
+
+    /* Section headers */
+    .section-header {
+      max-width: 1200px; margin: 0 auto 12px auto;
+      color: white; font-size: 1.2em; font-weight: 700;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    }
+    .closed-notice {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      background: rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 30px; text-align: center; color: rgba(255,255,255,0.8);
+      font-size: 1.1em; backdrop-filter: blur(5px);
+    }
   </style>
 </head>
 <body>
@@ -419,25 +474,30 @@
 
 <h1>📟 Pincer – Orders Dashboard</h1>
 
-<!-- Daily Stats Panel -->
-<div id="dailyStatsPanel" style="background: rgba(255,255,255,0.95); padding: 20px;
-  border-radius: 12px; max-width: 1200px; margin: 0 auto 20px auto; display: none;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <h3 style="color: #1e40af; font-size: 1.2em; margin: 0;">
-      📊 Resumen del Día <span id="currentDateDisplay" style="font-size: 0.9em; color: #64748b; font-weight: normal;"></span>
-    </h3>
-    <button onclick="refreshStats()" style="background: #4a7c2c; color: white; border: none;
-      padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin: 0;">
-      🔄 Actualizar
-    </button>
-  </div>
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-    <div class="stat-card"><div class="stat-value" id="stat-total-orders">0</div><div class="stat-label">Órdenes Totales</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-total-sales" style="color: #059669;">RD$0</div><div class="stat-label">Ventas del Día</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-avg-order">RD$0</div><div class="stat-label">Ticket Promedio</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-completed">0</div><div class="stat-label">Completadas</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-top-product">-</div><div class="stat-label">Más Vendido</div></div>
-  </div>
+<!-- Store Open/Close -->
+<div class="store-toggle-bar" id="storeToggleBar">
+  <button class="btn-store-toggle btn-store-open" id="storeToggleBtn" onclick="toggleStore()">Abrir Negocio 🟢</button>
+  <span class="store-opened-info" id="storeOpenedInfo"></span>
+</div>
+
+<!-- Time Filters -->
+<div class="time-filters" id="timeFilters">
+  <button class="time-pill active" data-range="today" onclick="selectTimeFilter('today')">Hoy</button>
+  <button class="time-pill" data-range="yesterday" onclick="selectTimeFilter('yesterday')">Ayer</button>
+  <button class="time-pill" data-range="3d" onclick="selectTimeFilter('3d')">3D</button>
+  <button class="time-pill" data-range="1w" onclick="selectTimeFilter('1w')">1S</button>
+  <button class="time-pill" data-range="1m" onclick="selectTimeFilter('1m')">1M</button>
+  <button class="time-pill" data-range="3m" onclick="selectTimeFilter('3m')">3M</button>
+  <button class="time-pill" data-range="6m" onclick="selectTimeFilter('6m')">6M</button>
+  <button class="time-pill" data-range="1y" onclick="selectTimeFilter('1y')">1A</button>
+</div>
+
+<!-- Analytics Stats -->
+<div class="analytics-stats" id="analyticsStats">
+  <div class="analytics-card"><div class="analytics-value money" id="analytics-sales">RD$0</div><div class="analytics-label">Total Ventas</div></div>
+  <div class="analytics-card"><div class="analytics-value" id="analytics-orders">0</div><div class="analytics-label"># Órdenes</div></div>
+  <div class="analytics-card"><div class="analytics-value money" id="analytics-avg">RD$0</div><div class="analytics-label">Ticket Promedio</div></div>
+  <div class="analytics-card"><div class="analytics-value" id="analytics-top" style="font-size:1em;">-</div><div class="analytics-label">Más Vendido</div></div>
 </div>
 
 <!-- Debug toggle -->
@@ -461,6 +521,7 @@
 
 <div id="error-message"></div>
 
+<div class="section-header" id="liveOrdersHeader">📋 Órdenes en Vivo</div>
 <div id="orders">
   <div class="loading">⏳ Cargando órdenes...</div>
 </div>
@@ -668,6 +729,9 @@ let productsData = [];
 let soldOutSet = new Set();
 let lastOrderCount = 0;
 let hasInteracted = false;
+let storeIsOpen = false;
+let storeOpenedAt = null;
+let activeTimeFilter = 'today';
 
 // ══════════════════════════════════════════════════════════════
 // AUDIO
@@ -1114,6 +1178,191 @@ async function deleteProduct() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// STORE OPEN/CLOSE
+// ══════════════════════════════════════════════════════════════
+
+async function loadStoreStatus() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.mrsandwich&select=is_open,opened_at,closed_at,opens_at',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (!res.ok) { dbg('⚠️ store_settings HTTP ' + res.status); return; }
+    const data = await res.json();
+    if (data.length > 0) {
+      storeIsOpen = data[0].is_open === true;
+      storeOpenedAt = data[0].opened_at || null;
+      updateStoreUI();
+      dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA'));
+    }
+  } catch (e) { dbg('⚠️ loadStoreStatus: ' + e.message); }
+}
+
+function updateStoreUI() {
+  const btn = document.getElementById('storeToggleBtn');
+  const info = document.getElementById('storeOpenedInfo');
+  const ordersContainer = document.getElementById('orders');
+  const liveHeader = document.getElementById('liveOrdersHeader');
+
+  if (storeIsOpen) {
+    btn.className = 'btn-store-toggle btn-store-close';
+    btn.textContent = 'Cerrar Negocio 🔴';
+    if (storeOpenedAt) {
+      const opened = new Date(storeOpenedAt);
+      info.textContent = 'Abierto desde las ' + opened.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      info.textContent = '';
+    }
+    liveHeader.style.display = 'block';
+  } else {
+    btn.className = 'btn-store-toggle btn-store-open';
+    btn.textContent = 'Abrir Negocio 🟢';
+    info.textContent = '';
+    liveHeader.style.display = 'block';
+    ordersContainer.innerHTML = '<div class="closed-notice">🔒 El negocio está cerrado. Abre el negocio para ver órdenes en vivo.</div>';
+  }
+}
+
+async function toggleStore() {
+  const btn = document.getElementById('storeToggleBtn');
+  const newState = !storeIsOpen;
+  btn.disabled = true;
+
+  const payload = { is_open: newState };
+  if (newState) {
+    payload.opened_at = new Date().toISOString();
+  } else {
+    payload.closed_at = new Date().toISOString();
+  }
+
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.mrsandwich',
+      { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload) }, 10000
+    );
+    if (!res.ok) {
+      showError('No se pudo actualizar el estado del negocio.');
+      btn.disabled = false;
+      return;
+    }
+    storeIsOpen = newState;
+    storeOpenedAt = newState ? payload.opened_at : storeOpenedAt;
+    updateStoreUI();
+    if (newState) loadOrders();
+    dbg(newState ? '🟢 Negocio ABIERTO' : '🔴 Negocio CERRADO');
+  } catch (e) {
+    showError('Error de conexión.');
+    dbg('❌ toggleStore: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TIME FILTERS & ANALYTICS
+// ══════════════════════════════════════════════════════════════
+
+function getFilterDateRange(range) {
+  const now = getDRDate();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let start, end;
+
+  switch (range) {
+    case 'today':
+      start = todayStart;
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case 'yesterday':
+      start = new Date(todayStart.getTime() - 86400000);
+      end = todayStart;
+      break;
+    case '3d':
+      start = new Date(todayStart.getTime() - 3 * 86400000);
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1w':
+      start = new Date(todayStart.getTime() - 7 * 86400000);
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1m':
+      start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '3m':
+      start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '6m':
+      start = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1y':
+      start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    default:
+      start = todayStart;
+      end = new Date(todayStart.getTime() + 86400000);
+  }
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  };
+}
+
+function selectTimeFilter(range) {
+  activeTimeFilter = range;
+  document.querySelectorAll('.time-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.range === range);
+  });
+  loadAnalytics();
+}
+
+async function loadAnalytics() {
+  const { start, end } = getFilterDateRange(activeTimeFilter);
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?created_at=gte.' + encodeURIComponent(start) + '&created_at=lte.' + encodeURIComponent(end) + '&select=*',
+      { headers: sbGetHeaders() }, 12000
+    );
+    if (!res.ok) { dbg('⚠️ analytics HTTP ' + res.status); return; }
+    const orders = await res.json();
+    renderAnalytics(orders);
+  } catch (e) { dbg('⚠️ loadAnalytics: ' + e.message); }
+}
+
+function renderAnalytics(orders) {
+  const count = orders.length;
+  const totalSales = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const avg = count > 0 ? Math.round(totalSales / count) : 0;
+
+  // Find top product
+  const itemCounts = {};
+  orders.forEach(o => {
+    try {
+      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (Array.isArray(o.items) ? o.items : []);
+      items.forEach(item => {
+        const name = item.name || item.id || 'Desconocido';
+        if (!name.startsWith('Extra ')) {
+          itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+        }
+      });
+    } catch (e) { /* skip unparseable */ }
+  });
+  let topProduct = '-';
+  let topCount = 0;
+  Object.entries(itemCounts).forEach(([name, cnt]) => {
+    if (cnt > topCount) { topProduct = name; topCount = cnt; }
+  });
+
+  document.getElementById('analytics-sales').textContent = 'RD$' + totalSales.toLocaleString();
+  document.getElementById('analytics-orders').textContent = count;
+  document.getElementById('analytics-avg').textContent = 'RD$' + avg.toLocaleString();
+  document.getElementById('analytics-top').textContent = topProduct;
+}
+
+// ══════════════════════════════════════════════════════════════
 // ★ RENDER ITEMS — FIXED: handles items with or without "id" field
 // ══════════════════════════════════════════════════════════════
 
@@ -1192,11 +1441,16 @@ function renderOrderItems(itemsRaw) {
 // ══════════════════════════════════════════════════════════════
 
 async function loadOrders() {
+  // Don't load live orders if store is closed
+  if (!storeIsOpen) return;
+
   try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc',
-      { headers: sbGetHeaders() }, 12000
-    );
+    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc';
+    // Filter by session: only orders since store opened
+    if (storeOpenedAt) {
+      ordersUrl += '&created_at=gte.' + encodeURIComponent(storeOpenedAt);
+    }
+    const res = await fetchWithTimeout(ordersUrl, { headers: sbGetHeaders() }, 12000);
 
     if (!res.ok) {
       dbg('❌ loadOrders HTTP ' + res.status);
@@ -1353,7 +1607,6 @@ async function handleLogin(e) {
         userId: 1, restaurantId: 1, username: username
       }));
       document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('dailyStatsPanel').style.display = 'block';
       initializeDashboard();
     } else {
       loginError.textContent = 'Usuario o contraseña incorrectos';
@@ -1532,18 +1785,22 @@ async function initializeDashboard() {
 
   updateCurrentDateDisplay();
   dailyCleanup();
-  refreshStats();
+
+  // Load store status first (determines if we load live orders)
+  await loadStoreStatus();
+
+  // Load analytics for default filter
+  loadAnalytics();
 
   if ("Notification" in window && Notification.permission === "default") {
     document.getElementById('notification-banner').classList.add('show');
   }
 
   loadProducts();
-  loadOrders();
+  if (storeIsOpen) loadOrders();
   initFCM();
 
-  setInterval(loadOrders, 3000);
-  setInterval(refreshStats, 30000);
+  setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
   setInterval(loadProducts, 30000);
 
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
@@ -1554,7 +1811,6 @@ async function initializeDashboard() {
 document.addEventListener('DOMContentLoaded', () => {
   if (checkSession()) {
     document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dailyStatsPanel').style.display = 'block';
     initializeDashboard();
   }
 });

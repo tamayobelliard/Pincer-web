@@ -1421,9 +1421,52 @@
       margin-bottom: 10px;
       display: none;
     }
+
+    /* Closed overlay */
+    .closed-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(45, 80, 22, 0.92);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      color: white;
+      padding: 30px;
+    }
+    .closed-overlay-logo {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: white; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      overflow: hidden; border: 5px solid #f4e4c1;
+    }
+    .closed-overlay-logo img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .closed-overlay h2 {
+      font-size: 2em; margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .closed-overlay .closed-hours {
+      font-size: 1.3em; margin-bottom: 15px; color: #f4e4c1;
+    }
+    .closed-overlay .closed-msg {
+      font-size: 1.1em; opacity: 0.9;
+    }
   </style>
 </head>
 <body>
+
+<div class="closed-overlay" id="closedOverlay" style="display:none;">
+  <div class="closed-overlay-logo">
+    <img src="https://i.imgur.com/mqzDXK4.jpeg" alt="Mr. Sandwich">
+  </div>
+  <h2>Estamos cerrados</h2>
+  <div class="closed-hours" id="closedHours"></div>
+  <div class="closed-msg">¡Te esperamos!</div>
+</div>
 
 <div class="container">
   <div class="header">
@@ -2128,6 +2171,7 @@ function updateMenuQtyBadges() {
 // ══════════════════════════════════════════════════════════════
 
 function addItem(id, name, price, notes = null) {
+  if (storeClosed) return;
   if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
 
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
@@ -3131,6 +3175,36 @@ function handleCheckoutResponse(reply) {
 // INIT
 // ══════════════════════════════════════════════════════════════
 
+let storeClosed = false;
+
+async function checkStoreOpen() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.mrsandwich&select=is_open,opens_at',
+      { headers: sbHeaders() }, 10000
+    );
+    if (!res.ok) return true; // Default open on error
+    const data = await res.json();
+    if (data.length > 0 && data[0].is_open === false) {
+      storeClosed = true;
+      const overlay = document.getElementById('closedOverlay');
+      const hoursDiv = document.getElementById('closedHours');
+      if (data[0].opens_at) {
+        hoursDiv.textContent = 'Abrimos a las ' + data[0].opens_at + ' 🕐';
+      } else {
+        hoursDiv.textContent = '';
+      }
+      overlay.style.display = 'flex';
+      dbg('🔒 Tienda cerrada');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    dbg('⚠️ checkStoreOpen error: ' + e.message);
+    return true; // Default open on error
+  }
+}
+
 async function init() {
   dbg('🚀 Iniciando Mr. Sandwich...');
 
@@ -3145,6 +3219,13 @@ async function init() {
   const connected = await testConnection();
 
   if (connected) {
+    // Check if store is open
+    const isOpen = await checkStoreOpen();
+    if (!isOpen) {
+      dbg('🔒 Menú bloqueado - tienda cerrada');
+      return;
+    }
+
     // Load menu from DB (also updates soldOutSet)
     const loaded = await loadMenuFromDB();
     if (loaded) {
