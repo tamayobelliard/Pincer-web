@@ -1,13 +1,22 @@
 export default async function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // Solo permitir POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { messages, menuData } = req.body;
 
   try {
-    const { messages, menuData } = req.body;
-
     const systemPrompt = `Eres Chef Elly AI, el mesero virtual de Mr. Sandwich en Santiago, República Dominicana.
 
 PERSONALIDAD:
@@ -47,14 +56,19 @@ REGLAS:
 
     const data = await response.json();
 
-    if (data.content && data.content[0]) {
-      return res.status(200).json({ answer: data.content[0].text });
-    } else {
-      return res.status(200).json({ answer: '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.' });
+    if (!response.ok) {
+      console.error('Claude API error:', data);
+      return res.status(200).json({
+        answer: '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.'
+      });
     }
+
+    const answer = data.content.find(c => c.type === 'text')?.text || '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.';
+
+    res.status(200).json({ answer });
 
   } catch (error) {
     console.error('waiter-chat error:', error);
-    return res.status(500).json({ answer: '¡Ay, algo falló! 😅 Intenta de nuevo en un momento.' });
+    res.status(500).json({ answer: '¡Ay, algo falló! 😅 Intenta de nuevo en un momento.' });
   }
 }

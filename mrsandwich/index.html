@@ -3097,11 +3097,6 @@ function openPinzer() {
   // Hide speech bubble when chat opens
   const bubble = document.getElementById('speechBubble');
   if (bubble) bubble.classList.remove('show');
-  // Focus input
-  setTimeout(() => {
-    const input = document.getElementById('pinzerInput');
-    if (input) input.focus();
-  }, 300);
 
   // Show welcome on first open
   if (!welcomeShown) {
@@ -3120,9 +3115,10 @@ function closePinzer() {
 
 function showWelcomeMessages() {
   const msgs = [
-    { text: '¡Klk manito! Bienvenido a Mr. Sandwich 👋', delay: 500 },
-    { text: 'Soy Chef Elly, tu mesero virtual 🧑‍🍳', delay: 1500 },
-    { text: '¿En qué te puedo ayudar?', delay: 2500 }
+    { text: '¡Klk! Bienvenido a Mr. Sandwich 👋', delay: 500 },
+    { text: 'Soy Chef Elly, tu mesero. Estoy aquí pa\' servirte 🧑‍🍳', delay: 1500 },
+    { text: '¿Ya sabes lo que vas a ordenar? ¿Deseas ver el menú? ¿Quieres que te recomiende algo?', delay: 2500 },
+    { text: 'Cualquier cosa que necesites, solo toca el botón del chat y aquí estaré 💪', delay: 3500 }
   ];
 
   msgs.forEach(m => {
@@ -3133,11 +3129,11 @@ function showWelcomeMessages() {
   setTimeout(() => {
     pinzerShowReplies([
       { label: '🍽️ Ver el Menú', big: true },
+      { label: '✅ Ya sé lo que quiero' },
       { label: '🔥 Recomiéndame algo' },
-      { label: '⭐ Lo más popular' },
-      { label: '❓ Tengo una pregunta' }
+      { label: '❓ Tengo otra pregunta' }
     ]);
-  }, 3200);
+  }, 4200);
 }
 
 function pinzerSay(message) {
@@ -3178,12 +3174,17 @@ function pinzerClearReplies() {
 function handleQuickReply(label) {
   pinzerClearReplies();
 
-  if (label === '🍽️ Ver el Menú') {
+  // Replies that close the chat
+  const closeReplies = {
+    '🍽️ Ver el Menú': '¡Dale! Aquí tienes el menú completo 👇',
+    '✅ Ya sé lo que quiero': '¡Eso me gusta, manito! Toca lo que quieres en el menú para agregarlo y cuando estés listo dale a Ordenar Ahora 👇'
+  };
+
+  if (closeReplies[label]) {
     pinzerUserSay(label);
-    pinzerSay('¡Dale! Aquí tienes el menú completo. Si necesitas ayuda, solo toca mi botón abajo a la derecha 👇');
+    pinzerSay(closeReplies[label]);
     setTimeout(() => {
       closePinzer();
-      // Pulse the avatar
       const avatar = document.querySelector('.clippy-avatar');
       if (avatar) {
         avatar.classList.add('pulse-hint');
@@ -3193,11 +3194,10 @@ function handleQuickReply(label) {
     return;
   }
 
-  // Map quick reply to AI message
+  // Replies that send to AI
   const messageMap = {
     '🔥 Recomiéndame algo': 'Recomiéndame algo bueno para comer',
-    '⭐ Lo más popular': '¿Qué es lo más popular del menú?',
-    '❓ Tengo una pregunta': 'Tengo una pregunta sobre el menú'
+    '❓ Tengo otra pregunta': 'Tengo una pregunta sobre el menú'
   };
 
   const aiMessage = messageMap[label] || label;
