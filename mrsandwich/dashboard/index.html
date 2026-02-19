@@ -292,6 +292,7 @@
       font-size: 12px; font-weight: bold; margin-left: 10px;
     }
     .status-pending { background: #fef3c7; color: #92400e; }
+    .status-paid { background: #d1fae5; color: #065f46; font-weight: 700; }
     .status-accepted { background: rgba(255,255,255,0.25); color: white; }
     .status-ready { background: #d1fae5; color: #065f46; }
     .status-notified { background: rgba(255,255,255,0.25); color: white; }
@@ -881,7 +882,7 @@ function clearError() {
 }
 function updateStats(orders) {
   document.getElementById('total-orders').textContent = orders.length;
-  document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || !o.status).length;
+  document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
   document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
   document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready' || o.status === 'notified').length;
 }
@@ -1474,7 +1475,7 @@ async function loadOrders() {
 
     updateStats(data);
 
-    const currentPending = data.filter(o => o.status === 'pending' || !o.status).length;
+    const currentPending = data.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
 
     if (hasInteracted && currentPending > lastOrderCount) {
       dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
@@ -1491,6 +1492,7 @@ async function loadOrders() {
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
       const status = order.status || 'pending';
+      const isPaid = status === 'paid' || !!order.azul_order_id;
 
       let statusClass = 'new';
       if (status === 'notified') statusClass = 'notified';
@@ -1503,7 +1505,13 @@ async function loadOrders() {
       if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
       else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
       else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
+      else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '💳 PAGADO'; }
       else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
+
+      const totalLabel = isPaid ? '💳 Total pagado:' : '💵 TOTAL A COBRAR:';
+      const waMsg = isPaid
+        ? `Hola! Tu orden #${order.id} en Mr. Sandwich está lista! Ya está pagada, solo pasa a recogerla.`
+        : `Hola! Tu orden #${order.id} en Mr. Sandwich está lista! Pasa por la caja a pagar y recogerla.`;
 
       const div = document.createElement("div");
       div.className = `order ${statusClass}`;
@@ -1517,18 +1525,19 @@ async function loadOrders() {
           </ul>
         </div>
         <div class="order-total">
-          <span class="order-total-label">💵 TOTAL A COBRAR:</span>
+          <span class="order-total-label">${totalLabel}</span>
           <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
         ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
         <div class="order-time">
           ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
-          ${status === 'pending' && minutes >= 1 ? `<span class="time-alert ${minutes >= 2 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
+          ${(status === 'pending' || status === 'paid') && minutes >= 1 ? `<span class="time-alert ${minutes >= 2 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
         </div>
         <br>
+        ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
-        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hola! Tu orden #' + order.id + ' en Mr. Sandwich está lista. Pasa a recogerla!')}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
+        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waMsg)}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
       container.appendChild(div);
     });
