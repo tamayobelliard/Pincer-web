@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mr. Sandwich by Chef Elly</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <style>
     * {
       margin: 0;
@@ -449,79 +450,223 @@
       margin-left: 8px;
     }
     
-    .success-message {
+    .receipt-overlay {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      background: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      text-align: center;
-      z-index: 1000;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      opacity: 0; visibility: hidden;
       transition: all 0.3s;
-      max-width: 90%;
-      width: 90%;
+      z-index: 1200;
     }
-    
-    .success-message.show {
-      transform: translate(-50%, -50%) scale(1);
-    }
-    
-    .success-icon {
-      font-size: 4em;
-      margin-bottom: 20px;
-    }
-    
-    .success-text {
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #4a7c2c;
-      margin-bottom: 10px;
-    }
-    
-    .success-subtext {
-      color: #64748b;
-      font-size: 1.1em;
-      margin-bottom: 20px;
-    }
+    .receipt-overlay.show { opacity: 1; visibility: visible; }
 
-    .order-number-display {
-      font-size: 4em;
-      font-weight: bold;
+    .receipt-modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 92%; max-width: 400px; max-height: 90vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      z-index: 1201;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .receipt-modal.show { transform: translate(-50%, -50%) scale(1); }
+
+    .receipt-content {
+      padding: 28px 24px 20px;
+    }
+    .receipt-header {
+      text-align: center;
+      padding-bottom: 16px;
+      border-bottom: 2px dashed #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .receipt-logo {
+      font-size: 1.25em;
+      font-weight: 800;
       color: #2d5016;
-      background: #f4e4c1;
-      padding: 20px;
-      border-radius: 12px;
-      margin: 20px 0;
     }
-
-    .status-checking {
-      margin-top: 20px;
-      padding: 15px;
-      background: #fff3cd;
-      border-radius: 8px;
-      color: #856404;
+    .receipt-title {
+      font-size: 0.85em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 6px;
       font-weight: 600;
     }
-
-    .status-ready {
-      margin-top: 20px;
-      padding: 18px;
-      background: #d4edda;
-      border-radius: 8px;
-      color: #155724;
-      font-weight: bold;
-      font-size: 1.2em;
-      animation: pulse-ready 1s infinite;
+    .receipt-check {
+      width: 48px; height: 48px;
+      background: #dcfce7;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px;
+      font-size: 1.5em;
+    }
+    .receipt-order-number {
+      text-align: center;
+      margin: 16px 0;
+      padding: 14px;
+      background: #f0fdf4;
+      border-radius: 12px;
+      border: 2px solid #bbf7d0;
+    }
+    .receipt-order-label {
+      font-size: 0.75em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .receipt-order-id {
+      font-size: 2.2em;
+      font-weight: 800;
+      color: #166534;
+      line-height: 1.1;
+    }
+    .receipt-datetime {
+      text-align: center;
+      font-size: 0.8em;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .receipt-section {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+    .receipt-section-title {
+      font-size: 0.7em;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .receipt-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 0.88em;
+      color: #334155;
+    }
+    .receipt-item-name {
+      flex: 1;
+      margin-right: 8px;
+    }
+    .receipt-item-qty {
+      color: #94a3b8;
+      margin-right: 8px;
+      font-size: 0.85em;
+    }
+    .receipt-item-price {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .receipt-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 2px solid #0f172a;
+      font-weight: 800;
+      font-size: 1.1em;
+      color: #0f172a;
+    }
+    .receipt-payment-info {
+      font-size: 0.82em;
+      color: #475569;
+      line-height: 1.7;
+    }
+    .receipt-payment-info .label {
+      color: #94a3b8;
+      font-size: 0.92em;
+    }
+    .receipt-azul-badge {
+      text-align: center;
+      margin-top: 16px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .receipt-azul-text {
+      font-size: 0.72em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .receipt-azul-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .receipt-azul-logos img {
+      height: 28px;
+      object-fit: contain;
+    }
+    .receipt-restaurant-info {
+      text-align: center;
+      font-size: 0.75em;
+      color: #94a3b8;
+      margin-top: 14px;
       line-height: 1.6;
     }
-
-    @keyframes pulse-ready {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+    .receipt-status {
+      text-align: center;
+      margin-top: 14px;
+      padding: 12px;
+      background: #fff7ed;
+      border-radius: 8px;
+      color: #9a3412;
+      font-weight: 600;
+      font-size: 0.85em;
     }
+    .receipt-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px 24px 24px;
+      border-top: 1px solid #f1f5f9;
+      background: #fafafa;
+      border-radius: 0 0 16px 16px;
+    }
+    .receipt-btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.92em;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .receipt-btn-download {
+      background: #2d5016;
+      color: white;
+    }
+    .receipt-btn-download:active { transform: scale(0.98); background: #1a3a0a; }
+    .receipt-btn-whatsapp {
+      background: #25d366;
+      color: white;
+    }
+    .receipt-btn-whatsapp:active { transform: scale(0.98); background: #1da851; }
+    .receipt-btn-close {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+    }
+    .receipt-btn-close:active { background: #f1f5f9; }
     
     .overlay {
       position: fixed;
@@ -1634,14 +1779,56 @@
 </button>
 
 <div class="overlay" id="overlay"></div>
-<div class="success-message" id="successMessage">
-  <div class="success-icon">✅</div>
-  <div class="success-text">¡Orden Recibida!</div>
-  <div class="success-subtext">Guarda tu número de orden</div>
-  <div class="order-number-display" id="orderNumberDisplay">#0000</div>
-  <div id="orderStatus" class="status-checking">
-    ⏳ Tu orden ha sido recibida<br>
-    <small>En cualquier momento comenzarán a prepararla</small>
+<div class="receipt-overlay" id="receiptOverlay"></div>
+<div class="receipt-modal" id="receiptModal">
+  <div class="receipt-content" id="receiptCapture">
+    <div class="receipt-header">
+      <div class="receipt-check">✓</div>
+      <div class="receipt-logo">Mr. Sandwich by Chef Elly</div>
+      <div class="receipt-title">Comprobante de Pago</div>
+    </div>
+    <div class="receipt-order-number">
+      <div class="receipt-order-label">Número de Orden</div>
+      <div class="receipt-order-id" id="receiptOrderId">#0000</div>
+    </div>
+    <div class="receipt-datetime" id="receiptDatetime"></div>
+    <div class="receipt-section">
+      <div class="receipt-section-title">Detalle del pedido</div>
+      <div id="receiptItems"></div>
+      <div class="receipt-total-row">
+        <span>Total</span>
+        <span id="receiptTotal">RD$0</span>
+      </div>
+    </div>
+    <div class="receipt-section" id="receiptPaymentSection">
+      <div class="receipt-section-title">Información de pago</div>
+      <div class="receipt-payment-info">
+        <div><span class="label">Método:</span> Tarjeta de crédito/débito</div>
+        <div><span class="label">Tarjeta:</span> **** **** **** <span id="receiptCardLast4">0000</span></div>
+        <div><span class="label">Código de autorización:</span> <span id="receiptAuthCode">—</span></div>
+        <div><span class="label">Referencia Azul:</span> <span id="receiptAzulRef">—</span></div>
+      </div>
+    </div>
+    <div class="receipt-azul-badge" id="receiptAzulBadge">
+      <div class="receipt-azul-text">Procesado por Azul · Protegido con 3D Secure</div>
+      <div class="receipt-azul-logos">
+        <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+        <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+      </div>
+    </div>
+    <div class="receipt-restaurant-info">
+      Mr. Sandwich by Chef Elly<br>
+      Plaza Tobogán, Santiago de los Caballeros<br>
+      Tel: +1 (829) 548-1236
+    </div>
+    <div class="receipt-status" id="receiptStatus">
+      ⏳ Tu orden ha sido recibida — en cualquier momento comenzarán a prepararla
+    </div>
+  </div>
+  <div class="receipt-buttons">
+    <button class="receipt-btn receipt-btn-download" onclick="downloadReceipt()">📥 Descargar recibo</button>
+    <button class="receipt-btn receipt-btn-whatsapp" onclick="shareReceiptWhatsApp()">📲 Enviar por WhatsApp</button>
+    <button class="receipt-btn receipt-btn-close" onclick="closeReceipt()">Cerrar</button>
   </div>
 </div>
 
@@ -1959,6 +2146,7 @@ let orderReadyNotified = {};
 let orderReviewed = false;
 let sessionOrders = [];
 let customerPhone = '';
+let lastPaymentInfo = null;
 
 // ══════════════════════════════════════════════════════════════
 // CONNECTION TEST
@@ -2559,18 +2747,22 @@ function handleOrderSuccess(data) {
 
   dbg('🎉 Orden #' + orderNumber + ' creada exitosamente');
 
+  // Capture order items and total BEFORE clearing the cart
+  const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
+  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+
   // Save order to session history before clearing cart
   sessionOrders.push({
     orderId: orderNumber,
     items: order.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
-    total: order.reduce((s, i) => s + i.price * i.qty, 0),
+    total: receiptTotal,
     status: 'pending',
     phone: customerPhone
   });
   saveSessionOrders();
   renderMisOrdenes();
 
-  showSuccessMessage(orderNumber);
+  showReceipt(orderNumber, receiptItems, receiptTotal, lastPaymentInfo);
 
   startSessionOrdersPoller();
 
@@ -2807,6 +2999,11 @@ async function processPayment() {
         // Direct approval (frictionless)
         dbg('✅ Pago aprobado directo, enviando orden a Supabase...');
         customerPhone = phone;
+        lastPaymentInfo = {
+          authorizationCode: payData.authorizationCode || '',
+          azulOrderId: payData.azulOrderId || customOrderId,
+          cardLast4: cardNum.slice(-4),
+        };
         await submitOrderToSupabase('paid', payData.azulOrderId || customOrderId, name);
         return;
       }
@@ -2896,6 +3093,11 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
     if (continueData.approved) {
       hide3DSOverlay();
       customerPhone = phone;
+      lastPaymentInfo = {
+        authorizationCode: continueData.authorizationCode || '',
+        azulOrderId: continueData.azulOrderId || customOrderId,
+        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+      };
       await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
       return;
     }
@@ -2998,6 +3200,11 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
 
     if (result.approved) {
       customerPhone = phone;
+      lastPaymentInfo = {
+        authorizationCode: result.result?.authorizationCode || '',
+        azulOrderId: result.result?.azulOrderId || customOrderId,
+        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+      };
       await submitOrderToSupabase('paid', result.result?.azulOrderId || customOrderId, customerName);
     } else {
       errorDiv.textContent = result.result?.message || 'Pago rechazado por el banco.';
@@ -3196,22 +3403,122 @@ function startSessionOrdersPoller() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// SUCCESS MESSAGE
+// PAYMENT RECEIPT
 // ══════════════════════════════════════════════════════════════
 
-function showSuccessMessage(orderNumber) {
-  document.getElementById("orderNumberDisplay").textContent = `#${orderNumber}`;
-  // Reset status message to initial state for the new order
-  const statusDiv = document.getElementById("orderStatus");
-  statusDiv.className = "status-checking";
-  statusDiv.innerHTML = "⏳ Tu orden ha sido recibida<br><small>En cualquier momento comenzarán a prepararla</small>";
-  closeNotesPopup();
-  document.getElementById('overlay').classList.add("show");
-  document.getElementById('successMessage').classList.add("show");
+let lastReceiptData = null;
 
-  if (typeof Notification !== 'undefined' && Notification.permission === "default") {
+function showReceipt(orderNumber, items, total, paymentInfo) {
+  const pi = paymentInfo || {};
+
+  // Store for WhatsApp sharing
+  lastReceiptData = { orderNumber, items, total, paymentInfo: pi };
+
+  // Order number
+  document.getElementById('receiptOrderId').textContent = `#${orderNumber}`;
+
+  // Date & time
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('receiptDatetime').textContent = `${dateStr} — ${timeStr}`;
+
+  // Items
+  let itemsHtml = '';
+  items.forEach(item => {
+    const subtotal = item.price * item.qty;
+    itemsHtml += `<div class="receipt-item">
+      <span class="receipt-item-name">${item.name}</span>
+      <span class="receipt-item-qty">x${item.qty}</span>
+      <span class="receipt-item-price">RD$${subtotal.toLocaleString()}</span>
+    </div>`;
+  });
+  document.getElementById('receiptItems').innerHTML = itemsHtml;
+
+  // Total
+  document.getElementById('receiptTotal').textContent = `RD$${total.toLocaleString()}`;
+
+  // Payment info (hide section for non-card orders)
+  const hasPayment = pi.cardLast4 || pi.authorizationCode;
+  document.getElementById('receiptPaymentSection').style.display = hasPayment ? '' : 'none';
+  document.getElementById('receiptAzulBadge').style.display = hasPayment ? '' : 'none';
+  if (hasPayment) {
+    document.getElementById('receiptCardLast4').textContent = pi.cardLast4 || '****';
+    document.getElementById('receiptAuthCode').textContent = pi.authorizationCode || '—';
+    document.getElementById('receiptAzulRef').textContent = pi.azulOrderId || '—';
+  }
+
+  // Reset status
+  const statusEl = document.getElementById('receiptStatus');
+  statusEl.style.background = '#fff7ed';
+  statusEl.style.color = '#9a3412';
+  statusEl.innerHTML = '⏳ Tu orden ha sido recibida — en cualquier momento comenzarán a prepararla';
+
+  // Show
+  closeNotesPopup();
+  document.getElementById('receiptOverlay').classList.add('show');
+  document.getElementById('receiptModal').classList.add('show');
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});
   }
+}
+
+function closeReceipt() {
+  document.getElementById('receiptOverlay').classList.remove('show');
+  document.getElementById('receiptModal').classList.remove('show');
+  lastPaymentInfo = null;
+}
+
+async function downloadReceipt() {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+  try {
+    const el = document.getElementById('receiptCapture');
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+    });
+    const link = document.createElement('a');
+    link.download = `recibo-orden-${lastReceiptData?.orderNumber || 'pincer'}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    dbg('❌ Error generando recibo: ' + err.message);
+    alert('No se pudo generar la imagen. Toma una captura de pantalla.');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '📥 Descargar recibo';
+}
+
+function shareReceiptWhatsApp() {
+  if (!lastReceiptData) return;
+  const d = lastReceiptData;
+  const pi = d.paymentInfo || {};
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  let msg = `🧾 *Comprobante de Pago*\n`;
+  msg += `*Mr. Sandwich by Chef Elly*\n\n`;
+  msg += `📋 *Orden #${d.orderNumber}*\n`;
+  msg += `📅 ${dateStr} — ${timeStr}\n\n`;
+  msg += `*Detalle:*\n`;
+  d.items.forEach(item => {
+    msg += `• ${item.name} x${item.qty} — RD$${(item.price * item.qty).toLocaleString()}\n`;
+  });
+  msg += `\n💰 *Total: RD$${d.total.toLocaleString()}*\n`;
+  if (pi.cardLast4 || pi.authorizationCode) {
+    msg += `\n💳 Tarjeta: **** ${pi.cardLast4 || '****'}\n`;
+    if (pi.authorizationCode) msg += `✅ Autorización: ${pi.authorizationCode}\n`;
+    if (pi.azulOrderId) msg += `🔖 Ref. Azul: ${pi.azulOrderId}\n`;
+    msg += `\n🔒 Procesado por Azul · 3D Secure`;
+  }
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3219,18 +3526,18 @@ function showSuccessMessage(orderNumber) {
 // ══════════════════════════════════════════════════════════════
 
 document.getElementById("overlay").addEventListener("click", () => {
-  const successMessage = document.getElementById("successMessage");
   const notesPopup = document.getElementById("notesPopup");
   const errorPopup = document.getElementById("errorPopup");
 
-  if (successMessage.classList.contains('show')) {
-    document.getElementById("overlay").classList.remove("show");
-    successMessage.classList.remove("show");
-  } else if (notesPopup.classList.contains('show')) {
+  if (notesPopup.classList.contains('show')) {
     closeNotesPopup();
   } else if (errorPopup.classList.contains('show')) {
     closeErrorPopup();
   }
+});
+
+document.getElementById("receiptOverlay").addEventListener("click", () => {
+  closeReceipt();
 });
 
 // ══════════════════════════════════════════════════════════════
@@ -3249,17 +3556,21 @@ async function checkOrderStatus(orderId) {
     if (!rows || rows.length === 0) return;
 
     const status = rows[0].status;
-    const statusDiv = document.getElementById("orderStatus");
+    const statusDiv = document.getElementById("receiptStatus");
 
-    if (status === "accepted") {
-      statusDiv.className = "status-checking";
-      statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...<br><small>Te avisamos cuando esté lista para que pases a pagar</small>";
+    if (status === "accepted" && statusDiv) {
+      statusDiv.style.background = '#fff7ed';
+      statusDiv.style.color = '#9a3412';
+      statusDiv.innerHTML = "👨‍🍳 Chef Elly está cocinando tu orden...";
     }
 
     if ((status === "ready" || status === "notified") && !orderReadyNotified[orderId]) {
       orderReadyNotified[orderId] = true;
-      statusDiv.className = "status-ready";
-      statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!<br><br>📍 <strong>Pasa a la caja a pagar</strong><br>👉 Luego retira tu orden<br><br>¡Que lo disfrutes!";
+      if (statusDiv) {
+        statusDiv.style.background = '#dcfce7';
+        statusDiv.style.color = '#166534';
+        statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA! — Pasa a recogerla";
+      }
 
       if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
 
