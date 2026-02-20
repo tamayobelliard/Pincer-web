@@ -25,7 +25,8 @@ export default async function handler(req, res) {
         console.error('Supabase GET error:', err);
         return res.status(r.status).json({ error: 'Failed to load restaurants' });
       }
-      const data = await r.json();
+      const raw = await r.json();
+      const data = raw.map(({ password_hash, ...rest }) => rest);
       return res.status(200).json(data);
     } catch (error) {
       console.error('restaurants GET error:', error);
