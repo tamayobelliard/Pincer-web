@@ -525,10 +525,13 @@
 
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
       margin-top: 60px;
       align-items: start;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .pricing-card {
@@ -614,9 +617,13 @@
     }
     .pricing-features li::before {
       content: '✓';
-      color: var(--primary);
+      color: #16a34a;
       font-weight: 700;
       flex-shrink: 0;
+    }
+    .pricing-features.kit li::before {
+      content: '→';
+      color: #ea580c;
     }
 
     .pricing-btn {
@@ -826,7 +833,7 @@
       <a href="#product">Producto</a>
       <a href="#how-it-works">Cómo funciona</a>
       <a href="#benefits">Beneficios</a>
-      <a href="#pricing">Precio</a>
+      <a href="#pricing">Pricing</a>
     </div>
     <div class="nav-right">
       <a class="btn-nav" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20Pincer%20gratis" target="_blank" rel="noopener">Try out for free</a>
@@ -1002,62 +1009,44 @@
      ═══════════════════════════════ -->
 <section class="section pricing-section" id="pricing">
   <div class="section-container">
-    <h1 class="section-title reveal" style="text-align: center;">Un plan para cada negocio.</h1>
-    <p style="text-align: center; color: #64748B; font-size: 16px; margin-bottom: 0;">Prueba el plan Premium gratis por 30 días. Sin compromiso.</p>
+    <h1 class="section-title reveal" style="text-align: center;">Transparente y simple.</h1>
+    <p style="text-align: center; color: #64748B; font-size: 16px; margin-bottom: 0;">El software es gratis. Solo inviertes una vez en el equipo.</p>
     <div class="pricing-grid">
 
-      <!-- STARTER -->
-      <div class="pricing-card reveal">
-        <div class="pricing-name">Starter</div>
-        <div class="pricing-amount" style="font-size: 42px;">US$ 30</div>
-        <div class="pricing-period">/ mes</div>
-        <p class="pricing-description">Lo esencial para digitalizar tu negocio.</p>
-        <ul class="pricing-features" style="grid-template-columns: 1fr;">
-          <li>Menú digital con QR (hasta 15 items)</li>
-          <li>Pagos con Azul (tarjeta, Apple Pay, Google Pay)</li>
-          <li>Dashboard de órdenes en tiempo real</li>
-          <li>Notificaciones WhatsApp</li>
-          <li>Soporte por email</li>
-        </ul>
-        <a class="pricing-btn" style="background: #0F172A;" href="https://wa.me/18295481236?text=Hola%2C%20me%20interesa%20el%20plan%20Starter%20de%20Pincer" target="_blank" rel="noopener">Empezar</a>
-      </div>
-
-      <!-- PREMIUM -->
+      <!-- SOFTWARE PINCER -->
       <div class="pricing-card featured reveal">
-        <div class="pricing-badge">✦ Recomendado — 1er mes gratis</div>
-        <div class="pricing-name">Premium</div>
-        <div class="pricing-amount" style="font-size: 42px;">US$ 50</div>
+        <div class="pricing-badge">Gratis para siempre</div>
+        <div class="pricing-name">Software Pincer</div>
+        <div class="pricing-amount" style="font-size: 42px;">$0</div>
         <div class="pricing-period">/ mes</div>
-        <p class="pricing-description">La experiencia completa para tu negocio.</p>
+        <p class="pricing-description">Sin límite de órdenes</p>
         <ul class="pricing-features" style="grid-template-columns: 1fr;">
-          <li>Todo lo de Starter</li>
-          <li>Items ilimitados en el menú</li>
+          <li>Menú digital con QR (items ilimitados)</li>
+          <li>Pagos con tarjeta (Azul)</li>
+          <li>Dashboard de órdenes en tiempo real</li>
+          <li>Notificaciones push</li>
+          <li>Notificaciones WhatsApp</li>
           <li>Mesero virtual con IA</li>
-          <li>Asistente de ventas con analíticas</li>
-          <li>Integración con impresora térmica</li>
-          <li>Personalización completa de marca</li>
-          <li>Soporte prioritario por WhatsApp</li>
+          <li>Personalización de marca</li>
+          <li>Soporte incluido</li>
         </ul>
-        <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20el%20plan%20Premium%20gratis" target="_blank" rel="noopener">Try out for free</a>
+        <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20activar%20Pincer%20gratis" target="_blank" rel="noopener">Activar gratis</a>
       </div>
 
-      <!-- ENTERPRISE -->
+      <!-- KIT DE INICIO -->
       <div class="pricing-card reveal">
-        <div class="pricing-name">Enterprise</div>
-        <div class="pricing-amount" style="font-size: 42px;">US$ 150</div>
-        <div class="pricing-period">/ mes + fee de integración</div>
-        <p class="pricing-description">Para operaciones multi-sucursal.</p>
-        <ul class="pricing-features" style="grid-template-columns: 1fr;">
-          <li>Todo lo de Premium</li>
-          <li>Hasta 3 sucursales incluidas</li>
-          <li>$30/mes por sucursal adicional</li>
-          <li>Reportes semanales automáticos</li>
-          <li>Menú por horarios</li>
-          <li>Acceso API</li>
-          <li>Onboarding y capacitación dedicada</li>
+        <div class="pricing-name">Kit de Inicio</div>
+        <div class="pricing-amount" style="font-size: 42px;">~RD$9,000</div>
+        <div class="pricing-period">Inversión única</div>
+        <p class="pricing-description">Todo lo que necesitas para arrancar.</p>
+        <ul class="pricing-features kit" style="grid-template-columns: 1fr;">
+          <li>Tablet 8" para recibir órdenes</li>
+          <li>Impresora térmica de tickets</li>
+          <li>Configuración e instalación</li>
+          <li>Capacitación para tu equipo</li>
         </ul>
-        <a class="pricing-btn" style="background: #0F172A;" href="https://wa.me/18295481236?text=Hola%2C%20me%20interesa%20el%20plan%20Enterprise%20de%20Pincer" target="_blank" rel="noopener">Contactar ventas</a>
-        <p style="font-size: 11px; color: #94A3B8; margin-top: 12px;">Fee de integración: US$300–$500 según complejidad</p>
+        <a class="pricing-btn" style="background: #0F172A;" href="https://wa.me/18295481236?text=Hola%2C%20me%20interesa%20el%20Kit%20de%20Inicio%20de%20Pincer" target="_blank" rel="noopener">Contactar ventas</a>
+        <p style="font-size: 12px; color: #64748B; margin-top: 14px; line-height: 1.4;">Se recupera en la primera semana. Sin mensualidades.</p>
       </div>
 
     </div>
