@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
     const agent = getSSLAgent();
 
-    // Second call to Azul after 3DS Method completed
+    // ProcessThreeDSMethod: only Channel, Store, AzulOrderId
     const result = await callAzul(
       getBaseUrl(),
       { 'Auth1': auth1, 'Auth2': auth2 },
@@ -72,8 +72,6 @@ export default async function handler(req, res) {
         Channel: "EC",
         Store: process.env.AZUL_MERCHANT_ID,
         AzulOrderId: azulOrderId,
-        TermUrl: `${baseUrl}/api/3ds/callback?session=${sessionId}`,
-        TrxType: "Sale",
       },
       agent
     );
