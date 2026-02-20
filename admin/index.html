@@ -286,22 +286,11 @@ function showAdmin() {
 // LOAD RESTAURANTS
 // ══════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjd3Vqc2xpYm9wemZ5dWZoanNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3NTg2MDksImV4cCI6MjA1MzMzNDYwOX0.eBBKgh3T3wHSmZSdfMqyAnyGaxGY1B_jDN1VkSjN8xk';
-
 let restaurants = [];
 
 async function loadRestaurants() {
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/restaurant_users?role=eq.restaurant&select=*&order=created_at.desc`,
-      {
-        headers: {
-          'apikey': SUPABASE_ANON,
-          'Authorization': `Bearer ${SUPABASE_ANON}`,
-        },
-      }
-    );
+    const res = await fetch('/api/admin/restaurants');
     if (!res.ok) throw new Error('Failed to load');
     restaurants = await res.json();
     renderRestaurants();
@@ -360,18 +349,11 @@ function escapeHtml(str) {
 async function toggleStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
   try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/restaurant_users?id=eq.${id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_ANON,
-          'Authorization': `Bearer ${SUPABASE_ANON}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      }
-    );
+    const res = await fetch('/api/admin/restaurants', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: newStatus }),
+    });
     if (res.ok) {
       loadRestaurants();
     }
