@@ -14,7 +14,7 @@ function getSSLAgent() {
 }
 
 // Call Azul API using native https.request (fetch doesn't support mTLS agent)
-function callAzul(url, headers, body, agent, timeoutMs = 8000) {
+function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {

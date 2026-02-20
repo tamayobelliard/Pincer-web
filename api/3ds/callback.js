@@ -12,7 +12,7 @@ function getSSLAgent() {
   return cachedAgent;
 }
 
-function callAzul(url, headers, body, agent, timeoutMs = 8000) {
+function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {
