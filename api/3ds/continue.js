@@ -2,13 +2,17 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 
+// Cache SSL agent at module level (reused across warm invocations)
+let cachedAgent = null;
 function getSSLAgent() {
+  if (cachedAgent) return cachedAgent;
   const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-chain.pem'));
   const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
-  return new https.Agent({ cert, key, rejectUnauthorized: true });
+  cachedAgent = new https.Agent({ cert, key, rejectUnauthorized: true, keepAlive: true });
+  return cachedAgent;
 }
 
-function callAzul(url, headers, body, agent) {
+function callAzul(url, headers, body, agent, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {
@@ -17,15 +21,17 @@ function callAzul(url, headers, body, agent) {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       agent,
+      timeout: timeoutMs,
     };
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Invalid JSON: ' + data)); }
+        catch (e) { reject(new Error('Invalid JSON: ' + data.substring(0, 200))); }
       });
     });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Azul timeout')); });
     req.on('error', reject);
     req.write(JSON.stringify(body));
     req.end();
@@ -33,8 +39,22 @@ function callAzul(url, headers, body, agent) {
 }
 
 // TEMP: hardcoded to pruebas for 3DS testing
-function getBaseUrl() {
-  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+const AZUL_URL = 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+
+// Fire-and-forget Supabase PATCH (don't block response)
+function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
+  fetch(
+    `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+    }
+  ).catch(e => console.error('Session patch error:', e.message));
 }
 
 export default async function handler(req, res) {
@@ -53,26 +73,26 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
 
   try {
     // TEMP: hardcoded for 3DS testing
     const auth1 = '3dsecure';
     const auth2 = '3dsecure';
 
-    const agent = getSSLAgent();
-
-    // Check if method notification was received
-    const sessRes = await fetch(
+    // Parallel: get SSL agent + check method notification
+    const agentPromise = Promise.resolve(getSSLAgent());
+    const sessPromise = fetch(
       `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
       {
         headers: {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
         },
+        signal: AbortSignal.timeout(3000),
       }
-    );
-    const sessRows = await sessRes.json();
+    ).then(r => r.json()).catch(() => []);
+
+    const [agent, sessRows] = await Promise.all([agentPromise, sessPromise]);
     const methodReceived = sessRows[0]?.method_notification_received === true;
 
     const requestBody = {
@@ -84,34 +104,13 @@ export default async function handler(req, res) {
 
     console.log('AZUL ProcessThreeDSMethod REQUEST:', JSON.stringify(requestBody));
 
-    // ProcessThreeDSMethod
-    const result = await callAzul(
-      getBaseUrl(),
-      { 'Auth1': auth1, 'Auth2': auth2 },
-      requestBody,
-      agent
-    );
+    const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
 
     console.log('AZUL ProcessThreeDSMethod RESPONSE:', JSON.stringify(result));
 
     // CASE 1: Approved (frictionless after method)
     if (result.IsoCode === '00') {
-      await fetch(
-        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'approved',
-            final_response: result,
-            updated_at: new Date().toISOString(),
-          }),
-        }
-      );
+      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'approved', final_response: result });
 
       return res.status(200).json({
         approved: true,
@@ -126,21 +125,7 @@ export default async function handler(req, res) {
 
     // CASE 2: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
-      await fetch(
-        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: 'challenge',
-            updated_at: new Date().toISOString(),
-          }),
-        }
-      );
+      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
 
       return res.status(200).json({
         approved: false,
@@ -153,22 +138,10 @@ export default async function handler(req, res) {
     }
 
     // CASE 3: Declined or error
-    await fetch(
-      `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: result.ResponseCode === 'Error' ? 'error' : 'declined',
-          final_response: result,
-          updated_at: new Date().toISOString(),
-        }),
-      }
-    );
+    patchSession(supabaseUrl, supabaseKey, sessionId, {
+      status: result.ResponseCode === 'Error' ? 'error' : 'declined',
+      final_response: result,
+    });
 
     return res.status(200).json({
       approved: false,

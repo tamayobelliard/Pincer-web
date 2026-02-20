@@ -3,88 +3,81 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-// Read PEM certificates from project files
+// Cache SSL agent at module level (reused across warm invocations)
+let cachedAgent = null;
 function getSSLAgent() {
+  if (cachedAgent) return cachedAgent;
   const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-chain.pem'));
   const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
-
-  return new https.Agent({
-    cert,
-    key,
-    rejectUnauthorized: true
-  });
+  cachedAgent = new https.Agent({ cert, key, rejectUnauthorized: true, keepAlive: true });
+  return cachedAgent;
 }
 
 // Call Azul API using native https.request (fetch doesn't support mTLS agent)
-function callAzul(url, headers, body, agent) {
+function callAzul(url, headers, body, agent, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {
       hostname: urlObj.hostname,
       path: urlObj.pathname + urlObj.search,
       method: 'POST',
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json',
-      },
+      headers: { ...headers, 'Content-Type': 'application/json' },
       agent,
+      timeout: timeoutMs,
     };
-
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Invalid JSON response: ' + data));
-        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('Invalid JSON: ' + data.substring(0, 200))); }
       });
     });
-
+    req.on('timeout', () => { req.destroy(); reject(new Error('Azul timeout')); });
     req.on('error', reject);
     req.write(JSON.stringify(body));
     req.end();
   });
 }
 
-// Azul API base URL
 // TEMP: hardcoded to pruebas for 3DS testing
-function getBaseUrl() {
-  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
+const AZUL_URL = 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
+
+// Fire-and-forget Supabase helpers (don't block response to client)
+const sbUrl = () => process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+const sbKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY;
+const sbHeaders = (key) => ({ 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' });
+
+function supabasePostFire(table, data) {
+  const key = sbKey();
+  fetch(`${sbUrl()}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...sbHeaders(key), 'Prefer': 'return=representation' },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout(4000),
+  }).catch(e => console.error(`supabase POST ${table} error:`, e.message));
 }
 
-// Supabase helper
-async function supabasePost(table, data) {
-  const url = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const r = await fetch(`${url}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
-    },
+function supabasePatchFire(table, matchCol, matchVal, data) {
+  const key = sbKey();
+  fetch(`${sbUrl()}/rest/v1/${table}?${matchCol}=eq.${encodeURIComponent(matchVal)}`, {
+    method: 'PATCH',
+    headers: sbHeaders(key),
     body: JSON.stringify(data),
+    signal: AbortSignal.timeout(4000),
+  }).catch(e => console.error(`supabase PATCH ${table} error:`, e.message));
+}
+
+// Awaited version only when we need the result before responding
+async function supabasePostAwait(table, data) {
+  const key = sbKey();
+  const r = await fetch(`${sbUrl()}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...sbHeaders(key), 'Prefer': 'return=representation' },
+    body: JSON.stringify(data),
+    signal: AbortSignal.timeout(4000),
   });
   if (!r.ok) console.error(`supabase POST ${table} error:`, await r.text());
-  return r;
-}
-
-async function supabasePatch(table, matchCol, matchVal, data) {
-  const url = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const r = await fetch(`${url}/rest/v1/${table}?${matchCol}=eq.${encodeURIComponent(matchVal)}`, {
-    method: 'PATCH',
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-  if (!r.ok) console.error(`supabase PATCH ${table} error:`, await r.text());
   return r;
 }
 
@@ -118,10 +111,10 @@ export default async function handler(req, res) {
     // Generate unique session ID for 3DS tracking
     const sessionId = crypto.randomUUID();
 
-    // Cleanup: delete stale sessions older than 15 minutes (fire and forget)
+    // Cleanup stale sessions (fire and forget)
     const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = sbUrl();
+    const supabaseKey = sbKey();
     fetch(`${supabaseUrl}/rest/v1/sessions_3ds?created_at=lt.${cutoff}&status=neq.approved`, {
       method: 'DELETE',
       headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
@@ -181,22 +174,16 @@ export default async function handler(req, res) {
     const auth1 = '3dsecure';
     const auth2 = '3dsecure';
 
-    // Call Azul API with mTLS
     const agent = getSSLAgent();
 
     console.log('AZUL REQUEST:', JSON.stringify(azulRequest));
 
-    const result = await callAzul(
-      getBaseUrl(),
-      { 'Auth1': auth1, 'Auth2': auth2 },
-      azulRequest,
-      agent
-    );
+    const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, azulRequest, agent);
 
     console.log('AZUL RAW RESPONSE:', JSON.stringify(result));
 
-    // Save 3DS session in Supabase
-    await supabasePost('sessions_3ds', {
+    // Save 3DS session (awaited — we need it created before continue/callback reference it)
+    await supabasePostAwait('sessions_3ds', {
       session_id: sessionId,
       azul_order_id: result.AzulOrderId || null,
       custom_order_id: customOrderId || null,
@@ -205,9 +192,9 @@ export default async function handler(req, res) {
       final_response: result,
     });
 
-    // CASE 1: Direct approval (frictionless, no further action)
+    // CASE 1: Direct approval (frictionless)
     if (result.IsoCode === '00') {
-      await supabasePatch('sessions_3ds', 'session_id', sessionId, {
+      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: 'approved',
         final_response: result,
       });
@@ -225,7 +212,7 @@ export default async function handler(req, res) {
 
     // CASE 2: 3DS Method required (hidden iframe)
     if (result.ResponseMessage === '3D_SECURE_2_METHOD') {
-      await supabasePatch('sessions_3ds', 'session_id', sessionId, {
+      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: '3ds_method',
         azul_order_id: result.AzulOrderId,
       });
@@ -239,9 +226,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // CASE 3: Challenge required (user must authenticate with bank)
+    // CASE 3: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
-      await supabasePatch('sessions_3ds', 'session_id', sessionId, {
+      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: 'challenge',
         azul_order_id: result.AzulOrderId,
       });
@@ -257,11 +244,13 @@ export default async function handler(req, res) {
     }
 
     // CASE 4: Error or declined
+    const status = result.ResponseCode === 'Error' ? 'error' : 'declined';
+    supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
+      status,
+      final_response: result,
+    });
+
     if (result.ResponseCode === 'Error') {
-      await supabasePatch('sessions_3ds', 'session_id', sessionId, {
-        status: 'error',
-        final_response: result,
-      });
       return res.status(200).json({
         success: false,
         approved: false,
@@ -270,11 +259,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Declined
-    await supabasePatch('sessions_3ds', 'session_id', sessionId, {
-      status: 'declined',
-      final_response: result,
-    });
     return res.status(200).json({
       success: false,
       approved: false,
