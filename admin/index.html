@@ -100,9 +100,32 @@
     }
     .modal h2 { margin-bottom: 20px; color: #4338ca; }
     .modal label { display: block; color: #475569; font-weight: 600; margin-bottom: 6px; font-size: 0.9em; }
-    .modal input, .modal textarea {
+    .modal input, .modal textarea, .modal select {
       width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;
-      font-size: 0.95em; margin-bottom: 14px; font-family: inherit;
+      font-size: 0.95em; margin-bottom: 14px; font-family: inherit; background: white;
+    }
+
+    /* Schedule builder */
+    .schedule-builder { margin-bottom: 14px; }
+    .day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .day-chip {
+      padding: 6px 12px; border-radius: 20px; border: 2px solid #e2e8f0;
+      font-size: 0.8em; font-weight: 700; cursor: pointer; user-select: none;
+      background: white; color: #64748b; transition: all 0.15s;
+    }
+    .day-chip.active { background: #4338ca; color: white; border-color: #4338ca; }
+    .time-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .time-row select { width: auto; flex: 1; margin-bottom: 0; padding: 8px; font-size: 0.85em; }
+    .time-row span { color: #64748b; font-size: 0.85em; font-weight: 600; white-space: nowrap; }
+    .btn-apply-all {
+      background: #f0f0ff; border: 1px solid #c7d2fe; color: #4338ca;
+      padding: 6px 14px; border-radius: 6px; font-size: 0.8em; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-apply-all:hover { background: #e0e7ff; }
+    .schedule-preview {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 10px 14px; font-size: 0.85em; color: #475569; min-height: 20px;
     }
     .modal textarea { resize: vertical; min-height: 60px; }
     .modal-buttons { display: flex; gap: 12px; margin-top: 10px; }
@@ -187,7 +210,16 @@
       <label>Nombre del negocio *</label>
       <input type="text" id="fieldName" placeholder="Ej: La Cocina de María">
       <label>Tipo de negocio</label>
-      <input type="text" id="fieldType" placeholder="Ej: Restaurante, Cafetería, Food Truck">
+      <select id="fieldType">
+        <option value="">Seleccionar...</option>
+        <option value="Restaurante">Restaurante</option>
+        <option value="Cafetería">Cafetería</option>
+        <option value="Bar">Bar</option>
+        <option value="Food Truck">Food Truck</option>
+        <option value="Food Court">Food Court</option>
+        <option value="Panadería">Panadería</option>
+        <option value="Otro">Otro</option>
+      </select>
       <label>Dirección</label>
       <input type="text" id="fieldAddress" placeholder="Calle, sector, ciudad">
       <label>Teléfono</label>
@@ -197,7 +229,17 @@
       <label>Email</label>
       <input type="text" id="fieldEmail" placeholder="correo@ejemplo.com">
       <label>Horario</label>
-      <input type="text" id="fieldHours" placeholder="Ej: Lun-Sáb 11am-10pm">
+      <div class="schedule-builder">
+        <div class="day-chips" id="dayChips"></div>
+        <div class="time-row">
+          <span>Abre</span>
+          <select id="timeOpen"></select>
+          <span>Cierra</span>
+          <select id="timeClose"></select>
+          <button type="button" class="btn-apply-all" onclick="applyToSelected()">Aplicar</button>
+        </div>
+        <div class="schedule-preview" id="schedulePreview">Selecciona días y horario</div>
+      </div>
       <label>Website / Instagram</label>
       <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
       <label>Notas</label>
@@ -366,13 +408,121 @@ async function toggleStatus(id, currentStatus) {
 // NEW RESTAURANT MODAL
 // ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+// SCHEDULE BUILDER
+// ══════════════════════════════════════════════════════════════
+
+const DAYS = [
+  { key: 'lun', label: 'Lun' }, { key: 'mar', label: 'Mar' }, { key: 'mie', label: 'Mié' },
+  { key: 'jue', label: 'Jue' }, { key: 'vie', label: 'Vie' }, { key: 'sab', label: 'Sáb' },
+  { key: 'dom', label: 'Dom' },
+];
+const schedule = {}; // { lun: { open, close }, mar: ... }
+
+function buildTimeOptions() {
+  const opts = [];
+  for (let h = 6; h <= 23; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const label = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+      opts.push({ value: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`, label });
+    }
+  }
+  // Add 12:00 AM (midnight) as closing option
+  opts.push({ value: '24:00', label: '12:00 AM' });
+  return opts;
+}
+
+function initScheduleBuilder() {
+  const chipsEl = document.getElementById('dayChips');
+  chipsEl.innerHTML = DAYS.map(d =>
+    `<div class="day-chip" data-day="${d.key}" onclick="toggleDay('${d.key}')">${d.label}</div>`
+  ).join('');
+
+  const timeOpts = buildTimeOptions();
+  const openSel = document.getElementById('timeOpen');
+  const closeSel = document.getElementById('timeClose');
+  openSel.innerHTML = timeOpts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  closeSel.innerHTML = timeOpts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  // Defaults: 11:00 AM open, 10:00 PM close
+  openSel.value = '11:00';
+  closeSel.value = '22:00';
+}
+
+function toggleDay(day) {
+  const chip = document.querySelector(`.day-chip[data-day="${day}"]`);
+  chip.classList.toggle('active');
+}
+
+function applyToSelected() {
+  const openVal = document.getElementById('timeOpen').value;
+  const closeVal = document.getElementById('timeClose').value;
+  const openLabel = document.getElementById('timeOpen').selectedOptions[0].text;
+  const closeLabel = document.getElementById('timeClose').selectedOptions[0].text;
+
+  document.querySelectorAll('.day-chip.active').forEach(chip => {
+    const day = chip.dataset.day;
+    schedule[day] = { open: openVal, close: closeVal, openLabel, closeLabel };
+  });
+  updatePreview();
+}
+
+function updatePreview() {
+  const el = document.getElementById('schedulePreview');
+  const assigned = DAYS.filter(d => schedule[d.key]);
+  if (assigned.length === 0) { el.textContent = 'Selecciona días y horario'; return; }
+
+  // Group consecutive days with same hours
+  const groups = [];
+  let current = null;
+  for (const d of DAYS) {
+    const s = schedule[d.key];
+    if (!s) { current = null; continue; }
+    const sig = s.open + '-' + s.close;
+    if (current && current.sig === sig && current.endIdx === DAYS.indexOf(d) - 1) {
+      current.endIdx = DAYS.indexOf(d);
+      current.days.push(d);
+    } else {
+      current = { sig, days: [d], endIdx: DAYS.indexOf(d), open: s.openLabel, close: s.closeLabel };
+      groups.push(current);
+    }
+  }
+
+  el.textContent = groups.map(g => {
+    const dayStr = g.days.length === 1 ? g.days[0].label :
+      g.days[0].label + '-' + g.days[g.days.length - 1].label;
+    return `${dayStr} ${g.open} - ${g.close}`;
+  }).join(', ');
+}
+
+function getScheduleText() {
+  updatePreview();
+  return document.getElementById('schedulePreview').textContent;
+}
+
+function resetSchedule() {
+  Object.keys(schedule).forEach(k => delete schedule[k]);
+  document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('timeOpen').value = '11:00';
+  document.getElementById('timeClose').value = '22:00';
+  document.getElementById('schedulePreview').textContent = 'Selecciona días y horario';
+}
+
+initScheduleBuilder();
+
+// ══════════════════════════════════════════════════════════════
+// NEW RESTAURANT MODAL
+// ══════════════════════════════════════════════════════════════
+
 function openNewModal() {
   document.getElementById('modalForm').style.display = 'block';
   document.getElementById('modalResult').style.display = 'none';
   document.getElementById('newModal').classList.add('active');
-  // Clear fields
-  ['fieldName','fieldType','fieldAddress','fieldPhone','fieldContact','fieldEmail','fieldHours','fieldWebsite','fieldNotes']
+  ['fieldName','fieldAddress','fieldPhone','fieldContact','fieldEmail','fieldWebsite','fieldNotes']
     .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('fieldType').value = '';
+  resetSchedule();
 }
 
 function closeModal() {
@@ -398,7 +548,7 @@ async function createRestaurant() {
         phone: document.getElementById('fieldPhone').value.trim(),
         contact_name: document.getElementById('fieldContact').value.trim(),
         email: document.getElementById('fieldEmail').value.trim(),
-        hours: document.getElementById('fieldHours').value.trim(),
+        hours: getScheduleText(),
         website: document.getElementById('fieldWebsite').value.trim(),
         notes: document.getElementById('fieldNotes').value.trim(),
       }),
