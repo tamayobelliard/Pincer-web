@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
-      AZULOrderId: azulOrderId,
+      AzulOrderId: azulOrderId,
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };
 

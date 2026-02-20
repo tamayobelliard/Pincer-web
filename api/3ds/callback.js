@@ -90,7 +90,7 @@ export default async function handler(req, res) {
       {
         Channel: "EC",
         Store: process.env.AZUL_MERCHANT_ID,
-        AZULOrderId: azulOrderId,
+        AzulOrderId: azulOrderId,
         CRes: cRes,
       },
       agent
