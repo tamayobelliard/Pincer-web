@@ -118,6 +118,15 @@ export default async function handler(req, res) {
     // Generate unique session ID for 3DS tracking
     const sessionId = crypto.randomUUID();
 
+    // Cleanup: delete stale sessions older than 15 minutes (fire and forget)
+    const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    fetch(`${supabaseUrl}/rest/v1/sessions_3ds?created_at=lt.${cutoff}&status=neq.approved`, {
+      method: 'DELETE',
+      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+    }).catch(() => {});
+
     // Base URL for callbacks
     const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
 
