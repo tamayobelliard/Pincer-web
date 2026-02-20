@@ -130,6 +130,25 @@
       box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
     }
 
+    .btn-nav-outline {
+      color: var(--text-main);
+      border: 1.5px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      background: transparent;
+    }
+
+    .btn-nav-outline:hover {
+      border-color: var(--text-main);
+      transform: translateY(-2px);
+    }
+
     /* ══════════════════════════════
        HERO
        ══════════════════════════════ */
@@ -830,6 +849,7 @@
       <a href="#pricing">Precio</a>
     </div>
     <div class="nav-right">
+      <a class="btn-nav-outline" href="/login">Login</a>
       <a class="btn-nav" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20Pincer%20gratis" target="_blank" rel="noopener">Try out for free</a>
     </div>
   </div>

@@ -2,7 +2,8 @@
   "rewrites": [
     { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
-    { "source": "/admin", "destination": "/admin/index.html" }
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/login", "destination": "/login/index.html" }
   ],
   "redirects": [
     { "source": "/", "destination": "/mrsandwich", "statusCode": 302, "has": [{ "type": "host", "value": "pincer-web.vercel.app" }] },
