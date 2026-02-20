@@ -1607,18 +1607,30 @@ async function handleLogin(e) {
   loginError.style.display = 'none';
 
   try {
-    const VALID_USERNAME = 'mrsandwich';
-    const VALID_PASSWORD = 'chef2025';
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
 
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
+    const data = await response.json();
+
+    if (data.success) {
+      if (data.role === 'admin') {
+        sessionStorage.setItem('dashboard_session', JSON.stringify({
+          role: data.role, username: data.username, display_name: data.display_name
+        }));
+        window.location.href = '/admin';
+        return;
+      }
       sessionStorage.setItem('dashboard_session', JSON.stringify({
-        userId: 1, restaurantId: 1, username: username
+        role: data.role, restaurant_slug: data.restaurant_slug,
+        display_name: data.display_name, username: data.username
       }));
       document.getElementById('loginScreen').style.display = 'none';
       initializeDashboard();
     } else {
-      loginError.textContent = 'Usuario o contraseña incorrectos';
+      loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
       loginError.style.display = 'block';
     }
   } catch (err) {

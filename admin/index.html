@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pincer Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1e293b; }
+
+    /* Login */
+    .login-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex; align-items: center; justify-content: center; z-index: 10000;
+    }
+    .login-card {
+      background: white; padding: 40px; border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%;
+    }
+    .login-card h1 { text-align: center; color: #4338ca; margin-bottom: 10px; font-size: 2em; }
+    .login-card p { text-align: center; color: #64748b; margin-bottom: 30px; }
+    .login-error {
+      display: none; background: #fee2e2; color: #991b1b;
+      padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600;
+    }
+    .login-card label { display: block; color: #475569; font-weight: 600; margin-bottom: 8px; }
+    .login-card input[type="text"], .login-card input[type="password"] {
+      width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em; margin-bottom: 20px;
+    }
+    .login-card button {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #4338ca, #6366f1); color: white;
+      border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer;
+    }
+    .login-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #4338ca, #6366f1);
+      color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.5em; }
+    .header button {
+      background: rgba(255,255,255,0.2); color: white; border: none;
+      padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
+    }
+
+    /* Main */
+    .main { max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 30px; }
+    .stat-card {
+      background: white; border-radius: 14px; padding: 20px; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .stat-card .number { font-size: 2.2em; font-weight: 800; color: #4338ca; }
+    .stat-card .label { color: #64748b; font-size: 0.9em; margin-top: 4px; }
+
+    /* Section header */
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .section-header h2 { font-size: 1.3em; }
+    .btn-primary {
+      background: linear-gradient(135deg, #4338ca, #6366f1); color: white;
+      border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95em;
+    }
+
+    /* Restaurant cards */
+    .restaurant-list { display: flex; flex-direction: column; gap: 14px; }
+    .restaurant-card {
+      background: white; border-radius: 14px; padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .restaurant-info h3 { font-size: 1.1em; margin-bottom: 4px; }
+    .restaurant-info .meta { color: #64748b; font-size: 0.85em; }
+    .restaurant-actions { display: flex; gap: 10px; align-items: center; }
+    .badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-size: 0.8em; font-weight: 700; text-transform: uppercase;
+    }
+    .badge-active { background: #dcfce7; color: #166534; }
+    .badge-pending { background: #fef9c3; color: #854d0e; }
+    .badge-disabled { background: #fee2e2; color: #991b1b; }
+    .btn-toggle {
+      background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 0.85em; font-weight: 600;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 9999; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white; border-radius: 20px; padding: 30px; max-width: 500px; width: 90%;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 20px; color: #4338ca; }
+    .modal label { display: block; color: #475569; font-weight: 600; margin-bottom: 6px; font-size: 0.9em; }
+    .modal input, .modal textarea {
+      width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.95em; margin-bottom: 14px; font-family: inherit;
+    }
+    .modal textarea { resize: vertical; min-height: 60px; }
+    .modal-buttons { display: flex; gap: 12px; margin-top: 10px; }
+    .modal-buttons button { flex: 1; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95em; }
+    .btn-cancel { background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; }
+    .btn-submit { background: linear-gradient(135deg, #4338ca, #6366f1); color: white; border: none; }
+
+    /* Credentials result */
+    .credentials-box {
+      background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px;
+      padding: 20px; margin-top: 16px; text-align: center;
+    }
+    .credentials-box h3 { color: #166534; margin-bottom: 12px; }
+    .credentials-box .cred { font-family: monospace; font-size: 1.1em; background: white; padding: 8px 16px; border-radius: 8px; display: inline-block; margin: 4px; }
+
+    .empty-state { text-align: center; padding: 40px; color: #94a3b8; }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .restaurant-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+      .restaurant-actions { width: 100%; justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>🔒 Pincer Admin</h1>
+    <p>Panel de administración</p>
+    <div class="login-error" id="loginError"></div>
+    <form id="loginForm">
+      <label>Usuario</label>
+      <input type="text" id="username" required placeholder="admin">
+      <label>Contraseña</label>
+      <input type="password" id="password" required placeholder="••••••••">
+      <button type="submit" id="loginBtn">Iniciar Sesión</button>
+    </form>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" style="display:none;">
+  <div class="header">
+    <h1>🔒 Pincer Admin</h1>
+    <button onclick="logout()">Cerrar Sesión</button>
+  </div>
+
+  <div class="main">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="number" id="statTotal">-</div>
+        <div class="label">Total Restaurantes</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="statActive">-</div>
+        <div class="label">Activos</div>
+      </div>
+      <div class="stat-card">
+        <div class="number" id="statPending">-</div>
+        <div class="label">Pendientes</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h2>Restaurantes</h2>
+      <button class="btn-primary" onclick="openNewModal()">+ Nuevo Cliente</button>
+    </div>
+
+    <div class="restaurant-list" id="restaurantList">
+      <div class="empty-state">Cargando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- New Restaurant Modal -->
+<div class="modal-overlay" id="newModal">
+  <div class="modal">
+    <h2>Nuevo Cliente</h2>
+    <div id="modalForm">
+      <label>Nombre del negocio *</label>
+      <input type="text" id="fieldName" placeholder="Ej: La Cocina de María">
+      <label>Tipo de negocio</label>
+      <input type="text" id="fieldType" placeholder="Ej: Restaurante, Cafetería, Food Truck">
+      <label>Dirección</label>
+      <input type="text" id="fieldAddress" placeholder="Calle, sector, ciudad">
+      <label>Teléfono</label>
+      <input type="text" id="fieldPhone" placeholder="809-000-0000">
+      <label>Persona de contacto</label>
+      <input type="text" id="fieldContact" placeholder="Nombre del dueño/encargado">
+      <label>Email</label>
+      <input type="text" id="fieldEmail" placeholder="correo@ejemplo.com">
+      <label>Horario</label>
+      <input type="text" id="fieldHours" placeholder="Ej: Lun-Sáb 11am-10pm">
+      <label>Website / Instagram</label>
+      <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
+      <label>Notas</label>
+      <textarea id="fieldNotes" placeholder="Notas adicionales..."></textarea>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-submit" id="submitBtn" onclick="createRestaurant()">Crear Cliente</button>
+      </div>
+    </div>
+    <div id="modalResult" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════
+
+function getSession() {
+  try {
+    const s = sessionStorage.getItem('dashboard_session');
+    return s ? JSON.parse(s) : null;
+  } catch { return null; }
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Verificando...';
+  loginError.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (data.success && data.role === 'admin') {
+      sessionStorage.setItem('dashboard_session', JSON.stringify({
+        role: data.role, username: data.username, display_name: data.display_name
+      }));
+      showAdmin();
+    } else if (data.success) {
+      loginError.textContent = 'Acceso denegado. Solo administradores.';
+      loginError.style.display = 'block';
+    } else {
+      loginError.textContent = data.error || 'Credenciales incorrectas';
+      loginError.style.display = 'block';
+    }
+  } catch (err) {
+    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
+    loginError.style.display = 'block';
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Iniciar Sesión';
+  }
+});
+
+function logout() {
+  sessionStorage.removeItem('dashboard_session');
+  location.reload();
+}
+
+function showAdmin() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  loadRestaurants();
+}
+
+// Check existing session on load
+(function() {
+  const session = getSession();
+  if (session && session.role === 'admin') {
+    showAdmin();
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════
+// LOAD RESTAURANTS
+// ══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjd3Vqc2xpYm9wemZ5dWZoanNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3NTg2MDksImV4cCI6MjA1MzMzNDYwOX0.eBBKgh3T3wHSmZSdfMqyAnyGaxGY1B_jDN1VkSjN8xk';
+
+let restaurants = [];
+
+async function loadRestaurants() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/restaurant_users?role=eq.restaurant&select=*&order=created_at.desc`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+        },
+      }
+    );
+    if (!res.ok) throw new Error('Failed to load');
+    restaurants = await res.json();
+    renderRestaurants();
+  } catch (err) {
+    document.getElementById('restaurantList').innerHTML = '<div class="empty-state">Error al cargar restaurantes</div>';
+  }
+}
+
+function renderRestaurants() {
+  const list = document.getElementById('restaurantList');
+
+  // Stats
+  const total = restaurants.length;
+  const active = restaurants.filter(r => r.status === 'active').length;
+  const pending = restaurants.filter(r => r.status === 'pending').length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statActive').textContent = active;
+  document.getElementById('statPending').textContent = pending;
+
+  if (total === 0) {
+    list.innerHTML = '<div class="empty-state">No hay restaurantes registrados</div>';
+    return;
+  }
+
+  list.innerHTML = restaurants.map(r => {
+    const badgeClass = r.status === 'active' ? 'badge-active' : r.status === 'pending' ? 'badge-pending' : 'badge-disabled';
+    const statusText = r.status === 'active' ? 'Activo' : r.status === 'pending' ? 'Pendiente' : 'Desactivado';
+    const toggleText = r.status === 'active' ? 'Desactivar' : 'Activar';
+    const date = new Date(r.created_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    return `
+      <div class="restaurant-card">
+        <div class="restaurant-info">
+          <h3>${escapeHtml(r.display_name)}</h3>
+          <div class="meta">@${escapeHtml(r.username)} · /${escapeHtml(r.restaurant_slug || '')} · ${date}</div>
+        </div>
+        <div class="restaurant-actions">
+          <span class="badge ${badgeClass}">${statusText}</span>
+          <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOGGLE STATUS
+// ══════════════════════════════════════════════════════════════
+
+async function toggleStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/restaurant_users?id=eq.${id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      }
+    );
+    if (res.ok) {
+      loadRestaurants();
+    }
+  } catch (err) {
+    alert('Error al cambiar estado');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// NEW RESTAURANT MODAL
+// ══════════════════════════════════════════════════════════════
+
+function openNewModal() {
+  document.getElementById('modalForm').style.display = 'block';
+  document.getElementById('modalResult').style.display = 'none';
+  document.getElementById('newModal').classList.add('active');
+  // Clear fields
+  ['fieldName','fieldType','fieldAddress','fieldPhone','fieldContact','fieldEmail','fieldHours','fieldWebsite','fieldNotes']
+    .forEach(id => { document.getElementById(id).value = ''; });
+}
+
+function closeModal() {
+  document.getElementById('newModal').classList.remove('active');
+}
+
+async function createRestaurant() {
+  const name = document.getElementById('fieldName').value.trim();
+  if (!name) { alert('El nombre es requerido'); return; }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Creando...';
+
+  try {
+    const res = await fetch('/api/create-restaurant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        business_type: document.getElementById('fieldType').value.trim(),
+        address: document.getElementById('fieldAddress').value.trim(),
+        phone: document.getElementById('fieldPhone').value.trim(),
+        contact_name: document.getElementById('fieldContact').value.trim(),
+        email: document.getElementById('fieldEmail').value.trim(),
+        hours: document.getElementById('fieldHours').value.trim(),
+        website: document.getElementById('fieldWebsite').value.trim(),
+        notes: document.getElementById('fieldNotes').value.trim(),
+      }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('modalForm').style.display = 'none';
+      document.getElementById('modalResult').style.display = 'block';
+      document.getElementById('modalResult').innerHTML = `
+        <div class="credentials-box">
+          <h3>Cliente creado exitosamente</h3>
+          <p style="margin-bottom:12px;color:#475569;">Comparte estas credenciales con el cliente:</p>
+          <div><strong>Usuario:</strong> <span class="cred">${escapeHtml(data.username)}</span></div>
+          <div style="margin-top:8px;"><strong>Contraseña:</strong> <span class="cred">${escapeHtml(data.temp_password)}</span></div>
+          <p style="margin-top:16px;color:#64748b;font-size:0.85em;">El cliente puede iniciar sesión en /mrsandwich/dashboard</p>
+        </div>
+        <div class="modal-buttons" style="margin-top:16px;">
+          <button class="btn-primary" onclick="closeModal()" style="width:100%;">Cerrar</button>
+        </div>
+      `;
+      loadRestaurants();
+    } else {
+      alert(data.error || 'Error al crear cliente');
+    }
+  } catch (err) {
+    alert('Error de conexión');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Crear Cliente';
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('newModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+</script>
+</body>
+</html>
