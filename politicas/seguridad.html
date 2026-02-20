@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Seguridad — Pincer</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #DC2626; --primary-dark: #991B1B; --bg: #FFFFFF; --bg-light: #F9FAFB; --text-main: #0F172A; --text-secondary: #64748B; --border: #E2E8F0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg); color: var(--text-main); }
+    .top-bar { background: var(--text-main); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    .top-bar a { color: white; text-decoration: none; font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+    .top-bar img { height: 28px; }
+    .content { max-width: 720px; margin: 0 auto; padding: 60px 24px 80px; }
+    h1 { font-size: 2em; font-weight: 800; margin-bottom: 8px; }
+    .updated { color: var(--text-secondary); font-size: 0.9em; margin-bottom: 40px; }
+    h2 { font-size: 1.2em; font-weight: 700; margin-top: 32px; margin-bottom: 12px; color: var(--text-main); }
+    p, li { font-size: 0.95em; color: var(--text-secondary); line-height: 1.8; margin-bottom: 12px; }
+    ul { padding-left: 24px; margin-bottom: 16px; }
+    .security-badges { display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; margin: 40px 0; padding: 30px; background: var(--bg-light); border-radius: 12px; border: 1px solid var(--border); }
+    .security-badges img { height: 48px; object-fit: contain; }
+    .back { display: inline-block; margin-top: 40px; color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9em; }
+    .back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="top-bar"><a href="/"><img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">Pincer</a></div>
+<div class="content">
+  <h1>Política de Seguridad</h1>
+  <p class="updated">Última actualización: 20 de febrero de 2026</p>
+
+  <h2>1. Transmisión segura de datos</h2>
+  <p>Toda la comunicación entre tu dispositivo y nuestros servidores está protegida mediante cifrado <strong>SSL/TLS</strong> (Secure Socket Layer / Transport Layer Security), el mismo estándar utilizado por bancos e instituciones financieras.</p>
+
+  <h2>2. Procesamiento de pagos</h2>
+  <p>Los datos de tu tarjeta de crédito o débito son transmitidos directamente al procesador de pagos <strong>Azul</strong> mediante una conexión <strong>mTLS (mutual TLS)</strong>, que garantiza autenticación mutua entre nuestro servidor y el de Azul.</p>
+  <ul>
+    <li><strong>Nunca almacenamos</strong> números de tarjeta, fechas de expiración ni códigos CVV en nuestros servidores.</li>
+    <li>Los datos de tarjeta viajan cifrados de extremo a extremo directamente al procesador de pagos.</li>
+    <li>No tenemos acceso a los datos completos de tu tarjeta en ningún momento.</li>
+  </ul>
+
+  <h2>3. Autenticación 3D Secure</h2>
+  <p>Implementamos <strong>3D Secure 2.0</strong> para transacciones con tarjeta, lo que agrega una capa adicional de seguridad. Dependiendo de tu banco, es posible que se te solicite verificar tu identidad mediante:</p>
+  <ul>
+    <li>Código SMS enviado a tu teléfono registrado.</li>
+    <li>Notificación en la app de tu banco.</li>
+    <li>Autenticación biométrica (huella digital o reconocimiento facial).</li>
+  </ul>
+
+  <h2>4. Cumplimiento PCI DSS</h2>
+  <p>Nuestro procesador de pagos, Azul, cumple con el estándar <strong>PCI DSS</strong> (Payment Card Industry Data Security Standard), que establece los requisitos de seguridad más estrictos de la industria para el manejo de datos de tarjetas.</p>
+
+  <h2>5. Verificación de identidad</h2>
+  <div class="security-badges">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png" alt="Mastercard">
+    <img src="https://usa.visa.com/dam/VCOM/regional/na/us/pay-with-visa/images/visa-secure_dkbg_72dpi.png" alt="Visa Secure">
+    <img src="https://brand.mastercard.com/content/dam/mccom/brandcenter/thumbnails/mc_idcheck_hrz_rgb_pos.png" alt="Mastercard ID Check">
+  </div>
+  <p>Las transacciones realizadas a través de Pincer están protegidas por los programas de verificación <strong>Visa Secure</strong> (antes Verified by Visa) y <strong>Mastercard ID Check</strong>, que verifican la identidad del tarjetahabiente en tiempo real.</p>
+
+  <h2>6. Contacto de seguridad</h2>
+  <p>Si detectas alguna actividad sospechosa o tienes preguntas sobre la seguridad de tus datos:</p>
+  <ul>
+    <li>Email: <strong>info@pincerweb.com</strong></li>
+    <li>Teléfono: <strong>+1 (829) 548-1236</strong></li>
+  </ul>
+
+  <a class="back" href="/">← Volver a Pincer</a>
+</div>
+</body>
+</html>

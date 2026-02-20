@@ -1505,6 +1505,37 @@
       margin-bottom: 10px;
       display: none;
     }
+    .checkout-terms {
+      margin-bottom: 12px;
+    }
+    .checkout-terms label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.8em;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .checkout-terms input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .checkout-terms a {
+      color: #4a7c2c;
+      text-decoration: underline;
+    }
+    .checkout-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 14px;
+      opacity: 0.5;
+    }
+    .checkout-badges img {
+      height: 22px;
+      object-fit: contain;
+    }
 
     /* Closed overlay */
     .closed-overlay {
@@ -1677,8 +1708,20 @@
       <input type="text" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric">
     </div>
   </div>
+  <div class="checkout-terms">
+    <label>
+      <input type="checkbox" id="termsCheckbox">
+      <span>Acepto los <a href="/politicas/privacidad" target="_blank">términos de privacidad</a> y la <a href="/politicas/devoluciones" target="_blank">política de devoluciones</a></span>
+    </label>
+  </div>
   <div class="checkout-error" id="checkoutError"></div>
   <button class="checkout-pay-btn" id="checkoutPayBtn" onclick="processPayment()">Pagar RD$0</button>
+  <div class="checkout-badges">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png" alt="Mastercard">
+    <img src="https://usa.visa.com/dam/VCOM/regional/na/us/pay-with-visa/images/visa-secure_dkbg_72dpi.png" alt="Visa Secure">
+    <img src="https://brand.mastercard.com/content/dam/mccom/brandcenter/thumbnails/mc_idcheck_hrz_rgb_pos.png" alt="Mastercard ID Check">
+  </div>
   <!-- 3DS processing overlay -->
   <div id="threeDSOverlay" style="display:none; position:absolute; inset:0; background:white; border-radius:16px; z-index:10; flex-direction:column; align-items:center; justify-content:center; padding:30px;">
     <div id="threeDSSpinner" style="text-align:center;">
@@ -2679,6 +2722,13 @@ async function processPayment() {
     errorDiv.textContent = 'Número inválido. Usa formato: 809-123-4567';
     errorDiv.style.display = 'block';
     document.getElementById('checkoutPhone').focus();
+    return;
+  }
+
+  // Validate terms checkbox
+  if (!document.getElementById('termsCheckbox').checked) {
+    errorDiv.textContent = 'Debes aceptar los términos y condiciones';
+    errorDiv.style.display = 'block';
     return;
   }
 

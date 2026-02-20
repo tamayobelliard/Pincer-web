@@ -3,7 +3,11 @@
     { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
-    { "source": "/login", "destination": "/login/index.html" }
+    { "source": "/login", "destination": "/login/index.html" },
+    { "source": "/politicas/privacidad", "destination": "/politicas/privacidad.html" },
+    { "source": "/politicas/devoluciones", "destination": "/politicas/devoluciones.html" },
+    { "source": "/politicas/seguridad", "destination": "/politicas/seguridad.html" },
+    { "source": "/politicas/entrega", "destination": "/politicas/entrega.html" }
   ],
   "redirects": [
     { "source": "/", "destination": "/mrsandwich", "statusCode": 302, "has": [{ "type": "host", "value": "pincer-web.vercel.app" }] },
