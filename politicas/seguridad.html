@@ -22,7 +22,7 @@
     p, li { font-size: 0.95em; color: var(--text-secondary); line-height: 1.8; margin-bottom: 12px; }
     ul { padding-left: 24px; margin-bottom: 16px; }
     .security-badges { display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; margin: 40px 0; padding: 30px; background: var(--bg-light); border-radius: 12px; border: 1px solid var(--border); }
-    .security-badges img { height: 48px; object-fit: contain; }
+    .security-badges svg { height: 36px; }
     .back { display: inline-block; margin-top: 40px; color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9em; }
     .back:hover { text-decoration: underline; }
   </style>
@@ -57,10 +57,10 @@
 
   <h2>5. Verificación de identidad</h2>
   <div class="security-badges">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png" alt="Visa">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png" alt="Mastercard">
-    <img src="https://usa.visa.com/dam/VCOM/regional/na/us/pay-with-visa/images/visa-secure_dkbg_72dpi.png" alt="Visa Secure">
-    <img src="https://brand.mastercard.com/content/dam/mccom/brandcenter/thumbnails/mc_idcheck_hrz_rgb_pos.png" alt="Mastercard ID Check">
+    <svg viewBox="0 0 80 26" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="26" rx="4" fill="#1a1f71" opacity=".1"/><text x="40" y="19" text-anchor="middle" font-family="-apple-system,sans-serif" font-weight="800" font-size="18" font-style="italic" fill="#1a1f71">VISA</text></svg>
+    <svg viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="20" r="14" fill="#EB001B"/><circle cx="50" cy="20" r="14" fill="#F79E1B"/><path d="M40 9.4a14 14 0 010 21.2 14 14 0 000-21.2z" fill="#FF5F00"/></svg>
+    <svg viewBox="0 0 110 28" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="110" height="28" rx="4" fill="#1a1f71" opacity=".08"/><path d="M14 8a4 4 0 00-4 4v2h8v-2a4 4 0 00-4-4zm-5 6v6a2 2 0 002 2h6a2 2 0 002-2v-6H9zm5 2a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#1a1f71" opacity=".7"/><text x="24" y="19" font-family="-apple-system,sans-serif" font-weight="700" font-size="9.5" font-style="italic" fill="#1a1f71">VISA</text><text x="53" y="19" font-family="-apple-system,sans-serif" font-weight="600" font-size="8" fill="#1a1f71" opacity=".6">SECURE</text></svg>
+    <svg viewBox="0 0 140 28" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="28" rx="4" fill="#000" opacity=".05"/><circle cx="16" cy="14" r="7" fill="#EB001B"/><circle cx="26" cy="14" r="7" fill="#F79E1B"/><path d="M21 8.5a7 7 0 010 11 7 7 0 000-11z" fill="#FF5F00"/><text x="38" y="17" font-family="-apple-system,sans-serif" font-weight="600" font-size="8.5" fill="#0F172A" opacity=".7">ID Check</text><path d="M108 7a4 4 0 00-4 4v2h8v-2a4 4 0 00-4-4zm-5 6v6a2 2 0 002 2h6a2 2 0 002-2v-6h-10zm5 2a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" fill="#0F172A" opacity=".5"/></svg>
   </div>
   <p>Las transacciones realizadas a través de Pincer están protegidas por los programas de verificación <strong>Visa Secure</strong> (antes Verified by Visa) y <strong>Mastercard ID Check</strong>, que verifican la identidad del tarjetahabiente en tiempo real.</p>
 
