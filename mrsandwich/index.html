@@ -1496,6 +1496,7 @@
       cursor: not-allowed;
       box-shadow: none;
     }
+    @keyframes spin3ds { to { transform: rotate(360deg); } }
     .checkout-error {
       color: #dc2626;
       font-size: 0.85em;
@@ -1678,6 +1679,16 @@
   </div>
   <div class="checkout-error" id="checkoutError"></div>
   <button class="checkout-pay-btn" id="checkoutPayBtn" onclick="processPayment()">Pagar RD$0</button>
+  <!-- 3DS processing overlay -->
+  <div id="threeDSOverlay" style="display:none; position:absolute; inset:0; background:white; border-radius:16px; z-index:10; flex-direction:column; align-items:center; justify-content:center; padding:30px;">
+    <div id="threeDSSpinner" style="text-align:center;">
+      <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#4a7c2c;border-radius:50%;animation:spin3ds 0.8s linear infinite;margin:0 auto 16px;"></div>
+      <p id="threeDSStatus" style="color:#475569;font-weight:600;font-size:0.95em;">Verificando con tu banco...</p>
+    </div>
+    <div id="threeDSChallengeFrame" style="display:none;width:100%;flex:1;min-height:400px;"></div>
+  </div>
+  <!-- Hidden container for 3DS Method iframe -->
+  <iframe id="threeDSMethodIframe" name="threeDSMethodIframe" style="display:none;width:0;height:0;border:0;"></iframe>
 </div>
 
 <div class="chef-clippy" id="chefClippy">
@@ -2710,11 +2721,20 @@ async function processPayment() {
     // Generate custom order ID
     const customOrderId = 'MRS-' + Date.now();
 
+    // Collect browser info for 3DS
+    const browserInfo = {
+      language: navigator.language || 'es-DO',
+      colorDepth: screen.colorDepth || 24,
+      screenHeight: screen.height || 920,
+      screenWidth: screen.width || 412,
+      timeZoneOffset: new Date().getTimezoneOffset(),
+    };
+
     payBtn.disabled = true;
     payBtn.textContent = 'Procesando pago...';
 
     try {
-      dbg('💳 Enviando pago a /api/payment...');
+      dbg('💳 Enviando pago a /api/payment con 3DS...');
       const payRes = await fetchWithTimeout('/api/payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2724,23 +2744,43 @@ async function processPayment() {
           cvc: cvv,
           amount: amountCents,
           itbis: '000',
-          customOrderId: customOrderId
+          customOrderId,
+          customerName: name,
+          customerPhone: phone,
+          browserInfo,
         })
-      }, 30000);
+      }, 45000);
 
       const payData = await payRes.json();
-      dbg('💳 Respuesta pago: ' + JSON.stringify(payData).substring(0, 200));
+      dbg('💳 Respuesta pago: ' + JSON.stringify(payData).substring(0, 300));
 
       if (payData.approved) {
-        dbg('✅ Pago aprobado, enviando orden a Supabase...');
+        // Direct approval (frictionless)
+        dbg('✅ Pago aprobado directo, enviando orden a Supabase...');
         customerPhone = phone;
         await submitOrderToSupabase('paid', payData.azulOrderId || customOrderId, name);
-      } else {
-        errorDiv.textContent = payData.message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
-        errorDiv.style.display = 'block';
-        payBtn.disabled = false;
-        payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+        return;
       }
+
+      if (payData.threeDSMethod) {
+        // 3DS Method: inject hidden iframe, wait, then continue payment
+        dbg('🔐 3DS Method requerido, inyectando iframe...');
+        await handle3DSMethod(payData, name, phone, total, customOrderId);
+        return;
+      }
+
+      if (payData.challengeRequired) {
+        // Challenge: show bank authentication iframe
+        dbg('🔐 3DS Challenge requerido, mostrando iframe...');
+        await handle3DSChallenge(payData, name, phone, total, customOrderId);
+        return;
+      }
+
+      // Declined or error
+      errorDiv.textContent = payData.message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
     } catch (err) {
       dbg('❌ Error de pago: ' + err.message);
       errorDiv.textContent = 'Error de conexión al procesar el pago. Intenta de nuevo.';
@@ -2749,6 +2789,195 @@ async function processPayment() {
       payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
     }
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3DS SECURE FLOW HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+function show3DSOverlay(msg) {
+  const overlay = document.getElementById('threeDSOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('threeDSStatus').textContent = msg || 'Verificando con tu banco...';
+  document.getElementById('threeDSSpinner').style.display = 'block';
+  document.getElementById('threeDSChallengeFrame').style.display = 'none';
+}
+
+function hide3DSOverlay() {
+  document.getElementById('threeDSOverlay').style.display = 'none';
+  document.getElementById('threeDSChallengeFrame').innerHTML = '';
+}
+
+async function handle3DSMethod(payData, customerName, phone, total, customOrderId) {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  show3DSOverlay('Verificando tarjeta...');
+
+  try {
+    // Inject the 3DS Method form into hidden iframe
+    if (payData.methodForm) {
+      const iframe = document.getElementById('threeDSMethodIframe');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(payData.methodForm);
+      doc.close();
+    }
+
+    // Poll for method notification (the bank will POST to our method-notify endpoint)
+    dbg('🔐 Polling 3DS method status...');
+    const methodReceived = await poll3DSStatus(payData.sessionId, 'method_received', 10000);
+    dbg('🔐 Method notification received: ' + methodReceived);
+
+    // Now continue the payment by calling Azul again (they need the same AzulOrderId)
+    show3DSOverlay('Procesando pago seguro...');
+
+    const continueRes = await fetchWithTimeout('/api/3ds/continue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: payData.sessionId,
+        azulOrderId: payData.azulOrderId,
+      })
+    }, 45000);
+
+    const continueData = await continueRes.json();
+    dbg('🔐 3DS continue response: ' + JSON.stringify(continueData).substring(0, 300));
+
+    if (continueData.approved) {
+      hide3DSOverlay();
+      customerPhone = phone;
+      await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
+      return;
+    }
+
+    if (continueData.challengeRequired) {
+      await handle3DSChallenge(continueData, customerName, phone, total, customOrderId);
+      return;
+    }
+
+    // Declined
+    hide3DSOverlay();
+    errorDiv.textContent = continueData.message || 'Pago rechazado.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  } catch (err) {
+    dbg('❌ 3DS Method error: ' + err.message);
+    hide3DSOverlay();
+    errorDiv.textContent = 'Error en verificación de seguridad. Intenta de nuevo.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  }
+}
+
+async function handle3DSChallenge(payData, customerName, phone, total, customOrderId) {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  // Show challenge iframe
+  const overlay = document.getElementById('threeDSOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('threeDSSpinner').style.display = 'none';
+  const frameContainer = document.getElementById('threeDSChallengeFrame');
+  frameContainer.style.display = 'block';
+
+  if (payData.redirectUrl) {
+    // Create iframe for challenge
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'width:100%;height:100%;min-height:400px;border:none;border-radius:8px;';
+    iframe.id = 'challengeIframe';
+    frameContainer.innerHTML = '';
+    frameContainer.appendChild(iframe);
+
+    // If there's POST data, submit a form to the iframe
+    if (payData.redirectPostData) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payData.redirectUrl;
+      form.target = iframe.id;
+      iframe.name = iframe.id;
+
+      // Parse redirect post data (could be key=value pairs or JSON)
+      try {
+        const postData = typeof payData.redirectPostData === 'string'
+          ? JSON.parse(payData.redirectPostData) : payData.redirectPostData;
+        for (const [key, val] of Object.entries(postData)) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+      } catch (e) {
+        // If not JSON, try URL params
+        const params = new URLSearchParams(payData.redirectPostData);
+        for (const [key, val] of params.entries()) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+      }
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+    } else {
+      iframe.src = payData.redirectUrl;
+    }
+  }
+
+  // Listen for challenge completion via postMessage from callback page
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Challenge timeout')), 300000); // 5 min
+
+      function onMessage(event) {
+        if (event.data?.type === '3ds_challenge_complete' && event.data?.session === payData.sessionId) {
+          clearTimeout(timeout);
+          window.removeEventListener('message', onMessage);
+          resolve(event.data);
+        }
+      }
+      window.addEventListener('message', onMessage);
+    });
+
+    hide3DSOverlay();
+    dbg('🔐 Challenge complete: ' + JSON.stringify(result));
+
+    if (result.approved) {
+      customerPhone = phone;
+      await submitOrderToSupabase('paid', result.result?.azulOrderId || customOrderId, customerName);
+    } else {
+      errorDiv.textContent = result.result?.message || 'Pago rechazado por el banco.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+    }
+  } catch (err) {
+    dbg('❌ Challenge error: ' + err.message);
+    hide3DSOverlay();
+    errorDiv.textContent = 'La verificación de seguridad expiró. Intenta de nuevo.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  }
+}
+
+async function poll3DSStatus(sessionId, waitFor, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await fetch(`/api/3ds/status?session=${sessionId}`);
+      const data = await r.json();
+      if (waitFor === 'method_received' && data.methodReceived) return true;
+      if (data.status === 'approved' || data.status === 'declined' || data.status === 'error') return data;
+    } catch (e) { /* retry */ }
+    await new Promise(ok => setTimeout(ok, 1000));
+  }
+  return false;
 }
 
 async function submitOrderToSupabase(status, azulOrderId, customerName) {
