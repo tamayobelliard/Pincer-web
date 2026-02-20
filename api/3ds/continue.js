@@ -32,11 +32,9 @@ function callAzul(url, headers, body, agent) {
   });
 }
 
+// TEMP: hardcoded to pruebas for 3DS testing
 function getBaseUrl() {
-  const isDev = process.env.AZUL_ENV === 'development';
-  return isDev
-    ? 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx'
-    : 'https://pagos.azul.com.do/WebServices/JSON/default.aspx';
+  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
 }
 
 export default async function handler(req, res) {
@@ -58,9 +56,9 @@ export default async function handler(req, res) {
   const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
 
   try {
-    const isDev = process.env.AZUL_ENV === 'development';
-    const auth1 = isDev ? '3dsecure' : process.env.AZUL_AUTH1;
-    const auth2 = isDev ? '3dsecure' : process.env.AZUL_AUTH2;
+    // TEMP: hardcoded for 3DS testing
+    const auth1 = '3dsecure';
+    const auth2 = '3dsecure';
 
     const agent = getSSLAgent();
 

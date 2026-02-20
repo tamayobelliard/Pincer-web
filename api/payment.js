@@ -49,11 +49,9 @@ function callAzul(url, headers, body, agent) {
 }
 
 // Azul API base URL
+// TEMP: hardcoded to pruebas for 3DS testing
 function getBaseUrl() {
-  const isDev = process.env.AZUL_ENV === 'development';
-  return isDev
-    ? 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx'
-    : 'https://pagos.azul.com.do/WebServices/JSON/default.aspx';
+  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
 }
 
 // Supabase helper
@@ -169,10 +167,9 @@ export default async function handler(req, res) {
       },
     };
 
-    // Use 3dsecure auth for test environment
-    const isDev = process.env.AZUL_ENV === 'development';
-    const auth1 = isDev ? '3dsecure' : process.env.AZUL_AUTH1;
-    const auth2 = isDev ? '3dsecure' : process.env.AZUL_AUTH2;
+    // TEMP: hardcoded for 3DS testing
+    const auth1 = '3dsecure';
+    const auth2 = '3dsecure';
 
     // Call Azul API with mTLS
     const agent = getSSLAgent();
