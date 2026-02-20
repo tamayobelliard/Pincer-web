@@ -146,12 +146,13 @@ export default async function handler(req, res) {
       ForceNo3DS: "",
       AltMerchantName: "",
       CardHolderInfo: {
-        CardHolderName: customerName || "",
-        CardHolderPhoneNumber: customerPhone || "",
+        Name: customerName || "",
+        PhoneMobile: customerPhone || "",
       },
       ThreeDSAuth: {
         TermUrl: `${baseUrl}/api/3ds/callback?session=${sessionId}`,
         MethodNotificationUrl: `${baseUrl}/api/3ds/method-notify?session=${sessionId}`,
+        RequestorChallengeIndicator: "01",
       },
       BrowserInfo: {
         AcceptHeader: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -160,7 +161,7 @@ export default async function handler(req, res) {
         ColorDepth: String(browserInfo?.colorDepth || 24),
         ScreenHeight: String(browserInfo?.screenHeight || 920),
         ScreenWidth: String(browserInfo?.screenWidth || 412),
-        TimeZoneOffset: String(browserInfo?.timeZoneOffset || 240),
+        TimeZone: String(browserInfo?.timeZoneOffset || 240),
         UserAgent: req.headers['user-agent'] || '',
         JavaEnabled: "false",
         JavaScriptEnabled: "true",

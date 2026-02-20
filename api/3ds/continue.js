@@ -62,19 +62,37 @@ export default async function handler(req, res) {
 
     const agent = getSSLAgent();
 
-    // ProcessThreeDSMethod: only Channel, Store, AzulOrderId
+    // Check if method notification was received
+    const sessRes = await fetch(
+      `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+    const sessRows = await sessRes.json();
+    const methodReceived = sessRows[0]?.method_notification_received === true;
+
+    const requestBody = {
+      Channel: "EC",
+      Store: process.env.AZUL_MERCHANT_ID,
+      AZULOrderId: azulOrderId,
+      MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
+    };
+
+    console.log('AZUL ProcessThreeDSMethod REQUEST:', JSON.stringify(requestBody));
+
+    // ProcessThreeDSMethod
     const result = await callAzul(
       getBaseUrl(),
       { 'Auth1': auth1, 'Auth2': auth2 },
-      {
-        Channel: "EC",
-        Store: process.env.AZUL_MERCHANT_ID,
-        AzulOrderId: azulOrderId,
-      },
+      requestBody,
       agent
     );
 
-    console.log('Azul 3DS continue response:', JSON.stringify(result).substring(0, 500));
+    console.log('AZUL ProcessThreeDSMethod RESPONSE:', JSON.stringify(result));
 
     // CASE 1: Approved (frictionless after method)
     if (result.IsoCode === '00') {
