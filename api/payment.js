@@ -226,8 +226,7 @@ export default async function handler(req, res) {
         threeDSMethod: true,
         sessionId,
         azulOrderId: result.AzulOrderId,
-        methodForm: result.ThreeDSMethodData || result.MethodForm || '',
-        methodUrl: result.ThreeDSMethodURL || '',
+        methodForm: result.ThreeDSMethod?.MethodForm || '',
       });
     }
 
