@@ -34,7 +34,7 @@ function callAzul(url, headers, body, agent) {
 
 // TEMP: hardcoded to pruebas for 3DS testing
 function getBaseUrl() {
-  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
+  return 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
 }
 
 export default async function handler(req, res) {
