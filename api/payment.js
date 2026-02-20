@@ -174,6 +174,8 @@ export default async function handler(req, res) {
     // Call Azul API with mTLS
     const agent = getSSLAgent();
 
+    console.log('AZUL REQUEST:', JSON.stringify(azulRequest));
+
     const result = await callAzul(
       getBaseUrl(),
       { 'Auth1': auth1, 'Auth2': auth2 },
@@ -181,7 +183,7 @@ export default async function handler(req, res) {
       agent
     );
 
-    console.log('Azul 3DS response:', JSON.stringify(result).substring(0, 500));
+    console.log('AZUL RAW RESPONSE:', JSON.stringify(result));
 
     // Save 3DS session in Supabase
     await supabasePost('sessions_3ds', {
