@@ -525,10 +525,10 @@
 
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 24px;
+      grid-template-columns: 1fr 1fr;
+      align-items: stretch;
+      gap: 1.5rem;
       margin-top: 60px;
-      align-items: start;
       max-width: 820px;
       margin-left: auto;
       margin-right: auto;
@@ -538,10 +538,12 @@
       background: var(--bg);
       border: 2px solid var(--border);
       border-radius: 16px;
-      padding: 36px 28px;
+      padding: 2.5rem;
       text-align: center;
       position: relative;
       transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
     }
 
     .pricing-card:hover {
@@ -553,12 +555,11 @@
     .pricing-card.featured {
       border-color: #DC2626;
       background: linear-gradient(135deg, #FFF 0%, #FEF2F2 100%);
-      transform: scale(1.04);
       box-shadow: 0 12px 32px rgba(220,38,38,0.12);
     }
 
     .pricing-card.featured:hover {
-      transform: scale(1.04) translateY(-4px);
+      transform: translateY(-4px);
     }
 
     .pricing-badge {
@@ -606,6 +607,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+      flex: 1;
     }
     .pricing-features li {
       font-size: 14px;
@@ -807,14 +809,6 @@
       .pricing-grid {
         grid-template-columns: 1fr;
       }
-
-      .pricing-card.featured {
-        transform: none;
-      }
-
-      .pricing-card.featured:hover {
-        transform: translateY(-4px);
-      }
     }
   </style>
 </head>
@@ -833,7 +827,7 @@
       <a href="#product">Producto</a>
       <a href="#how-it-works">Cómo funciona</a>
       <a href="#benefits">Beneficios</a>
-      <a href="#pricing">Pricing</a>
+      <a href="#pricing">Precio</a>
     </div>
     <div class="nav-right">
       <a class="btn-nav" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20probar%20Pincer%20gratis" target="_blank" rel="noopener">Try out for free</a>
@@ -1015,7 +1009,7 @@
 
       <!-- SOFTWARE PINCER -->
       <div class="pricing-card featured reveal">
-        <div class="pricing-badge">Gratis para siempre</div>
+        <div class="pricing-badge">✦ Gratis</div>
         <div class="pricing-name">Software Pincer</div>
         <div class="pricing-amount" style="font-size: 42px;">$0</div>
         <div class="pricing-period">/ mes</div>
@@ -1030,7 +1024,7 @@
           <li>Personalización de marca</li>
           <li>Soporte incluido</li>
         </ul>
-        <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20activar%20Pincer%20gratis" target="_blank" rel="noopener">Activar gratis</a>
+        <a class="pricing-btn" href="https://wa.me/18295481236?text=Hola%2C%20quiero%20activar%20Pincer%20gratis" target="_blank" rel="noopener">Activar</a>
       </div>
 
       <!-- KIT DE INICIO -->
