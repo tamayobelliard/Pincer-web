@@ -3789,13 +3789,46 @@ function pinzerClearReplies() {
   document.getElementById('pinzer-replies').innerHTML = '';
 }
 
+function showDynamicReplies(botAnswer) {
+  const lower = botAnswer.toLowerCase();
+  if (lower.includes('guí') || lower.includes('menú') || lower.includes('directamente') || lower.includes('explico')) {
+    pinzerShowReplies([
+      { label: '🍽️ Guíame tú' },
+      { label: '👀 Voy a ver el menú' }
+    ]);
+  } else if (lower.includes('antoja') || lower.includes('qué te provoca') || lower.includes('qué vas a')) {
+    pinzerShowReplies([
+      { label: '🔥 Recomiéndame algo' },
+      { label: '👀 Voy a ver el menú' }
+    ]);
+  }
+}
+
 function handleQuickReply(label) {
   pinzerClearReplies();
+
+  // "Voy a ver el menú" closes the chat
+  if (label === '👀 Voy a ver el menú') {
+    pinzerUserSay(label);
+    pinzerSay('¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪');
+    setTimeout(() => {
+      closePinzer();
+      bubblePermanentlyClosed = false;
+      showBubble('Aquí toy si me necesitas 💪', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
+    }, 1200);
+    return;
+  }
 
   // Replies that send to AI
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú',
+    '🍽️ Guíame tú': 'Sí, guíame por el menú',
+    '🔥 Recomiéndame algo': 'Recomiéndame algo bueno'
   };
 
   const aiMessage = messageMap[label] || label;
@@ -3849,6 +3882,7 @@ async function sendToAI(userMessage) {
       const answer = data.answer || '¡Diablo, se me fue la señal! 😅';
       chatHistory.push({ role: 'assistant', content: answer });
       pinzerSay(answer);
+      showDynamicReplies(answer);
     } else {
       pinzerSay('¡Ay, algo falló! 😅 Intenta de nuevo en un momento.');
     }
