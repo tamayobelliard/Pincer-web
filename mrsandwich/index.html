@@ -3710,10 +3710,40 @@ function buildMenuData() {
     const catTitle = (CATEGORY_CONFIG[cat] && CATEGORY_CONFIG[cat].title) || cat;
     for (const item of items) {
       const soldOut = soldOutSet.has(item.id) ? ' [AGOTADO]' : '';
-      lines.push(`${catTitle}: ${item.name} - RD$${item.price} - ${item.desc || ''}${soldOut}`);
+      lines.push(`${catTitle}: [id:${item.id}] ${item.name} - RD$${item.price} - ${item.desc || ''}${soldOut}`);
     }
   }
   return lines.join('\n');
+}
+
+function findMenuItem(itemId) {
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const found = items.find(i => i.id === itemId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseBotResponse(text) {
+  let cleanText = text;
+  let buttons = [];
+  let addToCart = null;
+
+  // Extract [ADD_TO_CART: item_id]
+  const cartMatch = cleanText.match(/\[ADD_TO_CART:\s*([^\]]+)\]/);
+  if (cartMatch) {
+    addToCart = cartMatch[1].trim();
+    cleanText = cleanText.replace(cartMatch[0], '').trim();
+  }
+
+  // Extract [BUTTONS: opt1 | opt2 | opt3]
+  const btnMatch = cleanText.match(/\[BUTTONS:\s*([^\]]+)\]/);
+  if (btnMatch) {
+    buttons = btnMatch[1].split('|').map(b => b.trim()).filter(Boolean);
+    cleanText = cleanText.replace(btnMatch[0], '').trim();
+  }
+
+  return { cleanText, buttons, addToCart };
 }
 
 function openPinzer() {
@@ -3789,28 +3819,19 @@ function pinzerClearReplies() {
   document.getElementById('pinzer-replies').innerHTML = '';
 }
 
-function showDynamicReplies(botAnswer) {
-  const lower = botAnswer.toLowerCase();
-  if (lower.includes('guí') || lower.includes('menú') || lower.includes('directamente') || lower.includes('explico')) {
-    pinzerShowReplies([
-      { label: '🍽️ Guíame tú' },
-      { label: '👀 Voy a ver el menú' }
-    ]);
-  } else if (lower.includes('antoja') || lower.includes('qué te provoca') || lower.includes('qué vas a')) {
-    pinzerShowReplies([
-      { label: '🔥 Recomiéndame algo' },
-      { label: '👀 Voy a ver el menú' }
-    ]);
-  }
-}
-
 function handleQuickReply(label) {
   pinzerClearReplies();
 
-  // "Voy a ver el menú" closes the chat
-  if (label === '👀 Voy a ver el menú') {
+  // Close-chat buttons
+  const closeLabels = ['👋 Cerrar', '✅ Eso es todo'];
+  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú');
+
+  if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
     pinzerUserSay(label);
-    pinzerSay('¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪');
+    const farewell = isViewMenu
+      ? '¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪'
+      : '¡Buen provecho! Si necesitas algo aquí toy 💪';
+    pinzerSay(farewell);
     setTimeout(() => {
       closePinzer();
       bubblePermanentlyClosed = false;
@@ -3823,12 +3844,10 @@ function handleQuickReply(label) {
     return;
   }
 
-  // Replies that send to AI
+  // Static mappings for welcome buttons
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú',
-    '🍽️ Guíame tú': 'Sí, guíame por el menú',
-    '🔥 Recomiéndame algo': 'Recomiéndame algo bueno'
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
   };
 
   const aiMessage = messageMap[label] || label;
@@ -3879,10 +3898,25 @@ async function sendToAI(userMessage) {
 
     if (res.ok) {
       const data = await res.json();
-      const answer = data.answer || '¡Diablo, se me fue la señal! 😅';
-      chatHistory.push({ role: 'assistant', content: answer });
-      pinzerSay(answer);
-      showDynamicReplies(answer);
+      const rawAnswer = data.answer || '¡Diablo, se me fue la señal! 😅';
+      chatHistory.push({ role: 'assistant', content: rawAnswer });
+
+      const parsed = parseBotResponse(rawAnswer);
+      pinzerSay(parsed.cleanText);
+
+      // Handle ADD_TO_CART action
+      if (parsed.addToCart) {
+        const item = findMenuItem(parsed.addToCart);
+        if (item && !soldOutSet.has(item.id)) {
+          addItem(item.id, item.name, item.price);
+          pinzerSay(`✅ ${item.name} agregado al carrito`);
+        }
+      }
+
+      // Show parsed buttons
+      if (parsed.buttons.length > 0) {
+        pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
+      }
     } else {
       pinzerSay('¡Ay, algo falló! 😅 Intenta de nuevo en un momento.');
     }
