@@ -3728,22 +3728,48 @@ function parseBotResponse(text) {
   let cleanText = text;
   let buttons = [];
   let addToCart = null;
+  let addToCartNote = null;
+  let showPhotos = [];
 
-  // Extract [ADD_TO_CART: item_id]
+  // Extract all [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | note]
   const cartMatch = cleanText.match(/\[ADD_TO_CART:\s*([^\]]+)\]/);
   if (cartMatch) {
-    addToCart = cartMatch[1].trim();
+    const parts = cartMatch[1].split('|').map(p => p.trim());
+    addToCart = parts[0];
+    addToCartNote = parts[1] || null;
     cleanText = cleanText.replace(cartMatch[0], '').trim();
   }
 
-  // Extract [BUTTONS: opt1 | opt2 | opt3]
-  const btnMatch = cleanText.match(/\[BUTTONS:\s*([^\]]+)\]/);
-  if (btnMatch) {
-    buttons = btnMatch[1].split('|').map(b => b.trim()).filter(Boolean);
-    cleanText = cleanText.replace(btnMatch[0], '').trim();
+  // Extract all [SHOW_PHOTO: item_id]
+  const photoRegex = /\[SHOW_PHOTO:\s*([^\]]+)\]/g;
+  let photoMatch;
+  while ((photoMatch = photoRegex.exec(cleanText)) !== null) {
+    showPhotos.push(photoMatch[1].trim());
   }
+  cleanText = cleanText.replace(/\[SHOW_PHOTO:\s*[^\]]+\]/g, '').trim();
 
-  return { cleanText, buttons, addToCart };
+  // Extract ALL [BUTTONS:] groups and merge them
+  const btnRegex = /\[BUTTONS:\s*([^\]]+)\]/g;
+  let btnMatch;
+  while ((btnMatch = btnRegex.exec(cleanText)) !== null) {
+    const parsed = btnMatch[1].split('|').map(b => b.trim()).filter(Boolean);
+    buttons.push(...parsed);
+  }
+  cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
+
+  return { cleanText, buttons, addToCart, addToCartNote, showPhotos };
+}
+
+function showPhotoInChat(itemId) {
+  const item = findMenuItem(itemId);
+  if (!item || !item.img) return;
+  const container = document.getElementById('pinzer-messages');
+  const imgDiv = document.createElement('div');
+  imgDiv.className = 'pinzer-message pinzer-bot';
+  imgDiv.style.cssText = 'padding:4px; background:transparent; box-shadow:none;';
+  imgDiv.innerHTML = `<img src="${item.img}" alt="${item.name}" style="width:100%; max-width:260px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">`;
+  container.appendChild(imgDiv);
+  container.scrollTop = container.scrollHeight;
 }
 
 function openPinzer() {
@@ -3904,12 +3930,16 @@ async function sendToAI(userMessage) {
       const parsed = parseBotResponse(rawAnswer);
       pinzerSay(parsed.cleanText);
 
+      // Show photos
+      parsed.showPhotos.forEach(id => showPhotoInChat(id));
+
       // Handle ADD_TO_CART action
       if (parsed.addToCart) {
         const item = findMenuItem(parsed.addToCart);
         if (item && !soldOutSet.has(item.id)) {
-          addItem(item.id, item.name, item.price);
-          pinzerSay(`✅ ${item.name} agregado al carrito`);
+          addItem(item.id, item.name, item.price, parsed.addToCartNote);
+          const noteText = parsed.addToCartNote ? ` (${parsed.addToCartNote})` : '';
+          pinzerSay(`✅ ${item.name} agregado al carrito${noteText}`);
         }
       }
 
