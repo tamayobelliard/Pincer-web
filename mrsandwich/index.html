@@ -3743,14 +3743,13 @@ function closePinzer() {
 
 function showWelcomeMessages() {
   setTimeout(() => {
-    pinzerSay('¡Klk! Bienvenido a Mr. Sandwich 🔥 ¿Es tu primera vez por aquí? Si quieres puedes ver el menú directamente ahí arriba, o si prefieres yo te guío y te explico todo. Cualquier cosa aquí toy pa\' ti 💪');
+    pinzerSay('¡Klk! Bienvenido a Mr. Sandwich 🔥 ¿Es tu primera vez por aquí?');
   }, 500);
 
-  // Show quick replies after message
   setTimeout(() => {
     pinzerShowReplies([
-      { label: '🍽️ Guíame por el menú' },
-      { label: '❓ Tengo una pregunta' }
+      { label: '👋 Sí, primera vez' },
+      { label: '🔄 Ya he venido antes' }
     ]);
   }, 1200);
 }
@@ -3795,8 +3794,8 @@ function handleQuickReply(label) {
 
   // Replies that send to AI
   const messageMap = {
-    '🍽️ Guíame por el menú': 'Guíame por el menú, quiero que me expliques las opciones',
-    '❓ Tengo una pregunta': 'Tengo una pregunta sobre el menú'
+    '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
   };
 
   const aiMessage = messageMap[label] || label;
