@@ -433,6 +433,8 @@ let restaurants = [];
 let modalMode = 'create';
 let editingRestaurantId = null;
 let editingRestaurantSlug = null;
+let accumulatedItems = [];
+let photoCount = 0;
 
 async function loadRestaurants() {
   try {
@@ -697,6 +699,8 @@ function closeModal() {
   modalMode = 'create';
   editingRestaurantId = null;
   editingRestaurantSlug = null;
+  accumulatedItems = [];
+  photoCount = 0;
 }
 
 async function updateRestaurant() {
@@ -873,12 +877,14 @@ async function uploadMenuPhoto(dataUri) {
     const res = await adminFetch('/api/parse-menu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUri, restaurant_slug: slug }),
+      body: JSON.stringify({ image: dataUri, restaurant_slug: slug, start_order: accumulatedItems.length }),
     });
     const data = await res.json();
 
     if (data.success) {
-      showMenuPreview(data.items, data.count);
+      accumulatedItems = accumulatedItems.concat(data.items);
+      photoCount++;
+      showMenuPreview(accumulatedItems, accumulatedItems.length, photoCount, !!data.menuStyle);
     } else {
       alert(data.error || 'Error al procesar la imagen');
       showMenuLoading(false);
@@ -901,15 +907,27 @@ function showMenuLoading(show) {
   const postLoading = document.getElementById('postCreateMenuLoading');
   if (postIdle) postIdle.style.display = show ? 'none' : '';
   if (postLoading) postLoading.classList.toggle('active', show);
+
+  // Hide previews during loading
+  if (show) {
+    const fp = document.getElementById('menuPreviewContainer');
+    const pp = document.getElementById('postCreateMenuPreview');
+    if (fp) fp.style.display = 'none';
+    if (pp) pp.style.display = 'none';
+  }
 }
 
-function showMenuPreview(items, count) {
+function showMenuPreview(items, count, photos, styleSaved) {
   showMenuLoading(false);
+
+  const counterText = photos > 1
+    ? `${count} items extraídos de ${photos} fotos`
+    : `${count} items extraídos`;
 
   const previewHtml = `
     <div class="menu-preview-header">
-      <h4>Items extraídos</h4>
-      <span class="menu-preview-count">${count} items</span>
+      <h4>${counterText}</h4>
+      ${styleSaved ? '<span style="font-size:0.75em;color:#059669;">Estilo guardado</span>' : ''}
     </div>
     <div class="menu-preview">
       ${items.map(item => `
@@ -925,7 +943,10 @@ function showMenuPreview(items, count) {
         </div>
       `).join('')}
     </div>
-    <button type="button" class="btn-primary" style="width:100%;margin-top:10px;" onclick="confirmMenu()">Confirmar Menú</button>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button type="button" class="btn-upload-menu" style="flex:1;" onclick="triggerMenuUpload()">Subir Otra Foto</button>
+      <button type="button" class="btn-primary" style="flex:1;" onclick="confirmMenu()">Listo</button>
+    </div>
   `;
 
   // Render in whichever container is visible
@@ -962,6 +983,8 @@ function confirmMenu() {
 }
 
 function resetMenuUpload() {
+  accumulatedItems = [];
+  photoCount = 0;
   showMenuLoading(false);
   const formContainer = document.getElementById('menuPreviewContainer');
   if (formContainer) {

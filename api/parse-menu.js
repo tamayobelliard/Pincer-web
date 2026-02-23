@@ -22,6 +22,26 @@ async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   } catch { return false; }
 }
 
+// Reusable Claude API call
+function callClaude(apiKey, imageContent, textPrompt) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [imageContent, { type: 'text', text: textPrompt }],
+      }],
+    }),
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -39,7 +59,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { image, restaurant_slug } = req.body;
+  const { image, restaurant_slug, start_order } = req.body;
 
   if (!image || !restaurant_slug) {
     return res.status(400).json({ error: 'image (base64) and restaurant_slug are required' });
@@ -57,83 +77,83 @@ export default async function handler(req, res) {
       }
     }
 
-    // Send image to Claude Vision
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
-                  data: imageData,
-                },
-              },
-              {
-                type: 'text',
-                text: 'This is a photo of a restaurant menu. Extract all items and return ONLY a JSON array with no extra text, in this format: [{"name": "Item Name", "price": 350, "category": "food", "description": "Brief description"}]. Price must be an integer in DOP. Category must be one of: food, drinks, extras. Description can be empty string if not visible.',
-              },
-            ],
-          },
-        ],
-      }),
-    });
+    const imageContent = {
+      type: 'image',
+      source: { type: 'base64', media_type: mediaType, data: imageData },
+    };
 
-    const claudeData = await claudeRes.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
 
-    if (!claudeRes.ok) {
-      console.error('Claude API error:', claudeData);
+    // Run item extraction + style detection in parallel
+    const [itemsRes, styleRes] = await Promise.all([
+      callClaude(apiKey, imageContent,
+        'This is a photo of a restaurant menu. Extract all items and return ONLY a JSON array with no extra text. Use the EXACT section/category names visible on the menu (e.g. "Entradas", "Pita Sandwich", "Bebidas", "Shawramas Clásicos") as the category field. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). Description can be empty string if not visible.',
+      ),
+      callClaude(apiKey, imageContent,
+        'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design. section_names should list all menu section headings in the order they appear.',
+      ),
+    ]);
+
+    const [itemsData, styleData] = await Promise.all([
+      itemsRes.json(),
+      styleRes.json(),
+    ]);
+
+    // Process items
+    if (!itemsRes.ok) {
+      console.error('Claude items API error:', itemsData);
       return res.status(502).json({ error: 'Failed to process image with AI' });
     }
 
-    const rawText = claudeData.content?.find(c => c.type === 'text')?.text || '';
+    const rawItemsText = itemsData.content?.find(c => c.type === 'text')?.text || '';
 
     // Extract JSON array from response (handle markdown code blocks)
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+    const jsonMatch = rawItemsText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      return res.status(422).json({ error: 'Could not extract menu items from image', raw: rawText });
+      return res.status(422).json({ error: 'Could not extract menu items from image', raw: rawItemsText });
     }
 
     let items;
     try {
       items = JSON.parse(jsonMatch[0]);
     } catch (e) {
-      return res.status(422).json({ error: 'Invalid JSON from AI response', raw: rawText });
+      return res.status(422).json({ error: 'Invalid JSON from AI response', raw: rawItemsText });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(422).json({ error: 'No menu items detected in image' });
     }
 
-    // Build rows for bulk insert
-    const validCategories = ['food', 'drinks', 'extras'];
+    // Process style (non-critical — don't fail if style extraction fails)
+    let menuStyle = null;
+    if (styleRes.ok) {
+      try {
+        const rawStyleText = styleData.content?.find(c => c.type === 'text')?.text || '';
+        const styleMatch = rawStyleText.match(/\{[\s\S]*\}/);
+        if (styleMatch) menuStyle = JSON.parse(styleMatch[0]);
+      } catch (e) {
+        console.error('Style parsing error:', e.message);
+      }
+    }
+
+    const offset = parseInt(start_order) || 0;
+
+    // Build rows for bulk insert (use real categories from menu)
     const rows = items.map((item, i) => ({
-      id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${i}`,
+      id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${offset + i}`,
       name: String(item.name || '').slice(0, 100),
       price: Math.round(Number(item.price)) || 0,
-      category: validCategories.includes(item.category) ? item.category : 'food',
+      category: String(item.category || 'General').slice(0, 50),
       description: String(item.description || '').slice(0, 500),
       restaurant_slug,
       active: true,
       sold_out: false,
-      display_order: i,
+      display_order: offset + i,
     }));
 
-    // Bulk insert into products
-    const insertRes = await fetch(
-      `${supabaseUrl}/rest/v1/products`,
-      {
+    // Bulk insert items + save style in parallel
+    const promises = [
+      fetch(`${supabaseUrl}/rest/v1/products`, {
         method: 'POST',
         headers: {
           'apikey': supabaseKey,
@@ -142,8 +162,24 @@ export default async function handler(req, res) {
           'Prefer': 'return=representation',
         },
         body: JSON.stringify(rows),
-      }
-    );
+      }),
+    ];
+
+    if (menuStyle) {
+      promises.push(
+        fetch(`${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ menu_style: menuStyle }),
+        }).catch(e => console.error('Style save error:', e.message))
+      );
+    }
+
+    const [insertRes] = await Promise.all(promises);
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
@@ -157,6 +193,7 @@ export default async function handler(req, res) {
       success: true,
       count: inserted.length,
       items: inserted,
+      menuStyle: menuStyle || null,
     });
 
   } catch (error) {
