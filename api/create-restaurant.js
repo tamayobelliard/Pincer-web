@@ -82,6 +82,14 @@ export default async function handler(req, res) {
           display_name: name,
           role: 'restaurant',
           status: 'pending',
+          business_type: business_type || null,
+          address: address || null,
+          phone: phone || null,
+          contact_name: contact_name || null,
+          email: email || null,
+          hours: hours || null,
+          website: website || null,
+          notes: notes || null,
         }),
       }
     );
