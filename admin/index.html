@@ -143,6 +143,74 @@
 
     .empty-state { text-align: center; padding: 40px; color: #94a3b8; }
 
+    /* Edit button */
+    .btn-edit {
+      background: #f0f0ff; border: 1px solid #c7d2fe; color: #4338ca;
+      padding: 8px 16px; border-radius: 8px; cursor: pointer;
+      font-size: 0.85em; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-edit:hover { background: #e0e7ff; }
+
+    /* Menu upload */
+    .menu-upload-section {
+      margin-top: 10px; margin-bottom: 14px;
+      padding: 16px; border: 2px dashed #e2e8f0; border-radius: 12px;
+      text-align: center; background: #f8fafc;
+    }
+    .menu-upload-section.disabled { opacity: 0.5; pointer-events: none; }
+    .btn-upload-menu {
+      background: linear-gradient(135deg, #059669, #10b981); color: white;
+      border: none; padding: 10px 20px; border-radius: 8px;
+      font-weight: 700; cursor: pointer; font-size: 0.9em;
+    }
+    .btn-upload-menu:disabled { background: #94a3b8; cursor: not-allowed; }
+    .menu-upload-loading { display: none; padding: 20px; text-align: center; color: #64748b; }
+    .menu-upload-loading.active { display: block; }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid #e2e8f0; border-top-color: #4338ca;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Menu preview */
+    .menu-preview { max-height: 300px; overflow-y: auto; }
+    .menu-preview-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; background: white; border: 1px solid #e2e8f0;
+      border-radius: 8px; margin-bottom: 6px; font-size: 0.9em;
+    }
+    .menu-preview-item .item-name { font-weight: 600; color: #1e293b; }
+    .menu-preview-item .item-price { color: #4338ca; font-weight: 700; }
+    .menu-preview-item .item-category {
+      font-size: 0.75em; background: #f1f5f9; color: #64748b;
+      padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: 700;
+    }
+    .menu-preview-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .menu-preview-header h4 { color: #166534; margin: 0; }
+    .menu-preview-count {
+      background: #dcfce7; color: #166534; padding: 4px 10px;
+      border-radius: 12px; font-size: 0.8em; font-weight: 700;
+    }
+
+    /* Tooltip */
+    .tooltip-wrapper { position: relative; display: inline-block; }
+    .tooltip-wrapper .tooltip-text {
+      visibility: hidden; background: #1e293b; color: white;
+      font-size: 0.8em; padding: 6px 12px; border-radius: 6px;
+      position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+      white-space: nowrap; z-index: 1;
+    }
+    .tooltip-wrapper:hover .tooltip-text { visibility: visible; }
+
+    /* Current hours in edit mode */
+    .current-hours {
+      background: #fef9c3; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 8px 14px; font-size: 0.85em; color: #854d0e; margin-bottom: 8px;
+    }
+
     @media (max-width: 600px) {
       .stats-row { grid-template-columns: 1fr; }
       .restaurant-card { flex-direction: column; align-items: flex-start; gap: 12px; }
@@ -202,10 +270,10 @@
   </div>
 </div>
 
-<!-- New Restaurant Modal -->
+<!-- Restaurant Modal (Create / Edit) -->
 <div class="modal-overlay" id="newModal">
   <div class="modal">
-    <h2>Nuevo Cliente</h2>
+    <h2 id="modalTitle">Nuevo Cliente</h2>
     <div id="modalForm">
       <label>Nombre del negocio *</label>
       <input type="text" id="fieldName" placeholder="Ej: La Cocina de María">
@@ -229,6 +297,7 @@
       <label>Email</label>
       <input type="text" id="fieldEmail" placeholder="correo@ejemplo.com">
       <label>Horario</label>
+      <div id="currentHoursDisplay" class="current-hours" style="display:none;"></div>
       <div class="schedule-builder">
         <div class="day-chips" id="dayChips"></div>
         <div class="time-row">
@@ -244,9 +313,27 @@
       <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
       <label>Notas</label>
       <textarea id="fieldNotes" placeholder="Notas adicionales..."></textarea>
+
+      <!-- Menu Photo Upload -->
+      <div id="menuUploadSection" class="menu-upload-section disabled">
+        <div id="menuUploadIdle">
+          <div class="tooltip-wrapper">
+            <button type="button" class="btn-upload-menu" id="btnUploadMenu" disabled onclick="triggerMenuUpload()">Subir Foto de Menú</button>
+            <span class="tooltip-text" id="uploadTooltip">Guarda el cliente primero</span>
+          </div>
+          <p style="color:#94a3b8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP</p>
+        </div>
+        <div class="menu-upload-loading" id="menuUploadLoading">
+          <div class="spinner"></div>
+          <p style="margin-top:10px;">Procesando menú con IA...</p>
+        </div>
+        <div id="menuPreviewContainer" style="display:none;"></div>
+      </div>
+      <input type="file" id="menuFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleMenuFile(event)">
+
       <div class="modal-buttons">
         <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-        <button class="btn-submit" id="submitBtn" onclick="createRestaurant()">Crear Cliente</button>
+        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Crear Cliente</button>
       </div>
     </div>
     <div id="modalResult" style="display:none;"></div>
@@ -343,6 +430,9 @@ function showAdmin() {
 // ══════════════════════════════════════════════════════════════
 
 let restaurants = [];
+let modalMode = 'create';
+let editingRestaurantId = null;
+let editingRestaurantSlug = null;
 
 async function loadRestaurants() {
   try {
@@ -384,6 +474,7 @@ function renderRestaurants() {
           <div class="meta">@${escapeHtml(r.username)} · /${escapeHtml(r.restaurant_slug || '')} · ${date}</div>
         </div>
         <div class="restaurant-actions">
+          <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
         </div>
@@ -530,17 +621,129 @@ initScheduleBuilder();
 // ══════════════════════════════════════════════════════════════
 
 function openNewModal() {
+  modalMode = 'create';
+  editingRestaurantId = null;
+  editingRestaurantSlug = null;
+
+  document.getElementById('modalTitle').textContent = 'Nuevo Cliente';
+  document.getElementById('submitBtn').textContent = 'Crear Cliente';
   document.getElementById('modalForm').style.display = 'block';
   document.getElementById('modalResult').style.display = 'none';
   document.getElementById('newModal').classList.add('active');
+
   ['fieldName','fieldAddress','fieldPhone','fieldContact','fieldEmail','fieldWebsite','fieldNotes']
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('fieldType').value = '';
   resetSchedule();
+
+  document.getElementById('currentHoursDisplay').style.display = 'none';
+  document.getElementById('menuUploadSection').classList.add('disabled');
+  document.getElementById('btnUploadMenu').disabled = true;
+  document.getElementById('uploadTooltip').style.display = '';
+  resetMenuUpload();
+}
+
+function openEditModal(id) {
+  const r = restaurants.find(x => x.id === id);
+  if (!r) return;
+
+  modalMode = 'edit';
+  editingRestaurantId = id;
+  editingRestaurantSlug = r.restaurant_slug;
+
+  document.getElementById('modalTitle').textContent = 'Editar Cliente';
+  document.getElementById('submitBtn').textContent = 'Actualizar';
+  document.getElementById('modalForm').style.display = 'block';
+  document.getElementById('modalResult').style.display = 'none';
+  document.getElementById('newModal').classList.add('active');
+
+  // Pre-fill fields
+  document.getElementById('fieldName').value = r.display_name || '';
+  document.getElementById('fieldType').value = r.business_type || '';
+  document.getElementById('fieldAddress').value = r.address || '';
+  document.getElementById('fieldPhone').value = r.phone || '';
+  document.getElementById('fieldContact').value = r.contact_name || '';
+  document.getElementById('fieldEmail').value = r.email || '';
+  document.getElementById('fieldWebsite').value = r.website || '';
+  document.getElementById('fieldNotes').value = r.notes || '';
+
+  // Schedule: show current hours, reset builder for optional overwrite
+  resetSchedule();
+  const hoursDisplay = document.getElementById('currentHoursDisplay');
+  if (r.hours && r.hours !== 'Selecciona días y horario') {
+    hoursDisplay.textContent = 'Horario actual: ' + r.hours;
+    hoursDisplay.style.display = 'block';
+  } else {
+    hoursDisplay.style.display = 'none';
+  }
+
+  // Menu upload: enabled (slug exists)
+  document.getElementById('menuUploadSection').classList.remove('disabled');
+  document.getElementById('btnUploadMenu').disabled = false;
+  document.getElementById('uploadTooltip').style.display = 'none';
+  resetMenuUpload();
+}
+
+function handleSubmit() {
+  if (modalMode === 'edit') {
+    updateRestaurant();
+  } else {
+    createRestaurant();
+  }
 }
 
 function closeModal() {
   document.getElementById('newModal').classList.remove('active');
+  modalMode = 'create';
+  editingRestaurantId = null;
+  editingRestaurantSlug = null;
+}
+
+async function updateRestaurant() {
+  const name = document.getElementById('fieldName').value.trim();
+  if (!name) { alert('El nombre es requerido'); return; }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Actualizando...';
+
+  // Use schedule builder if admin changed it, otherwise preserve existing
+  const scheduleText = getScheduleText();
+  const r = restaurants.find(x => x.id === editingRestaurantId);
+  const useNewSchedule = scheduleText !== 'Selecciona días y horario';
+  const hours = useNewSchedule ? scheduleText : (r ? r.hours : null);
+
+  try {
+    const res = await adminFetch('/api/update-restaurant', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editingRestaurantId,
+        display_name: name,
+        business_type: document.getElementById('fieldType').value.trim(),
+        address: document.getElementById('fieldAddress').value.trim(),
+        phone: document.getElementById('fieldPhone').value.trim(),
+        contact_name: document.getElementById('fieldContact').value.trim(),
+        email: document.getElementById('fieldEmail').value.trim(),
+        hours,
+        website: document.getElementById('fieldWebsite').value.trim(),
+        notes: document.getElementById('fieldNotes').value.trim(),
+      }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      closeModal();
+      loadRestaurants();
+    } else {
+      alert(data.error || 'Error al actualizar cliente');
+    }
+  } catch (err) {
+    alert('Error de conexión');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Actualizar';
+  }
 }
 
 async function createRestaurant() {
@@ -570,6 +773,9 @@ async function createRestaurant() {
     const data = await res.json();
 
     if (data.success) {
+      // Store slug for menu upload
+      editingRestaurantSlug = data.username;
+
       document.getElementById('modalForm').style.display = 'none';
       document.getElementById('modalResult').style.display = 'block';
       document.getElementById('modalResult').innerHTML = `
@@ -579,6 +785,17 @@ async function createRestaurant() {
           <div><strong>Usuario:</strong> <span class="cred">${escapeHtml(data.username)}</span></div>
           <div style="margin-top:8px;"><strong>Contraseña:</strong> <span class="cred">${escapeHtml(data.temp_password)}</span></div>
           <p style="margin-top:16px;color:#64748b;font-size:0.85em;">${escapeHtml(data.display_name)} puede iniciar sesión en pincerweb.com/${escapeHtml(data.username)}/dashboard</p>
+        </div>
+        <div class="menu-upload-section" style="margin-top:16px;">
+          <div id="postCreateMenuIdle">
+            <button type="button" class="btn-upload-menu" onclick="triggerMenuUpload()">Subir Foto de Menú</button>
+            <p style="color:#94a3b8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP — Opcional</p>
+          </div>
+          <div class="menu-upload-loading" id="postCreateMenuLoading">
+            <div class="spinner"></div>
+            <p style="margin-top:10px;">Procesando menú con IA...</p>
+          </div>
+          <div id="postCreateMenuPreview" style="display:none;"></div>
         </div>
         <div class="modal-buttons" style="margin-top:16px;">
           <button class="btn-primary" onclick="closeModal()" style="width:100%;">Cerrar</button>
@@ -594,6 +811,145 @@ async function createRestaurant() {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Crear Cliente';
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MENU PHOTO UPLOAD
+// ══════════════════════════════════════════════════════════════
+
+function triggerMenuUpload() {
+  document.getElementById('menuFileInput').click();
+}
+
+function handleMenuFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    alert('Formato no soportado. Usa JPG, PNG o WebP.');
+    return;
+  }
+  if (file.size > 4 * 1024 * 1024) {
+    alert('La imagen es muy grande. Máximo 4MB.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    uploadMenuPhoto(e.target.result);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+async function uploadMenuPhoto(dataUri) {
+  const slug = editingRestaurantSlug;
+  if (!slug) { alert('Error: no se encontró el slug del restaurante'); return; }
+
+  showMenuLoading(true);
+
+  try {
+    const res = await adminFetch('/api/parse-menu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUri, restaurant_slug: slug }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      showMenuPreview(data.items, data.count);
+    } else {
+      alert(data.error || 'Error al procesar la imagen');
+      showMenuLoading(false);
+    }
+  } catch (err) {
+    alert('Error de conexión al procesar menú');
+    showMenuLoading(false);
+  }
+}
+
+function showMenuLoading(show) {
+  // In-form context
+  const formIdle = document.getElementById('menuUploadIdle');
+  const formLoading = document.getElementById('menuUploadLoading');
+  if (formIdle) formIdle.style.display = show ? 'none' : '';
+  if (formLoading) formLoading.classList.toggle('active', show);
+
+  // Post-create context
+  const postIdle = document.getElementById('postCreateMenuIdle');
+  const postLoading = document.getElementById('postCreateMenuLoading');
+  if (postIdle) postIdle.style.display = show ? 'none' : '';
+  if (postLoading) postLoading.classList.toggle('active', show);
+}
+
+function showMenuPreview(items, count) {
+  showMenuLoading(false);
+
+  const previewHtml = `
+    <div class="menu-preview-header">
+      <h4>Items extraídos</h4>
+      <span class="menu-preview-count">${count} items</span>
+    </div>
+    <div class="menu-preview">
+      ${items.map(item => `
+        <div class="menu-preview-item">
+          <div>
+            <span class="item-name">${escapeHtml(item.name)}</span>
+            ${item.description ? `<br><span style="font-size:0.8em;color:#94a3b8;">${escapeHtml(item.description)}</span>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="item-category">${escapeHtml(item.category)}</span>
+            <span class="item-price">RD$${item.price}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <button type="button" class="btn-primary" style="width:100%;margin-top:10px;" onclick="confirmMenu()">Confirmar Menú</button>
+  `;
+
+  // Render in whichever container is visible
+  const formContainer = document.getElementById('menuPreviewContainer');
+  const postContainer = document.getElementById('postCreateMenuPreview');
+
+  if (formContainer && document.getElementById('modalForm').style.display !== 'none') {
+    formContainer.innerHTML = previewHtml;
+    formContainer.style.display = 'block';
+    document.getElementById('menuUploadIdle').style.display = 'none';
+  }
+  if (postContainer && document.getElementById('modalResult').style.display !== 'none') {
+    postContainer.innerHTML = previewHtml;
+    postContainer.style.display = 'block';
+    const postIdle = document.getElementById('postCreateMenuIdle');
+    if (postIdle) postIdle.style.display = 'none';
+  }
+}
+
+function confirmMenu() {
+  // Items already saved by parse-menu.js — just close the preview
+  const formContainer = document.getElementById('menuPreviewContainer');
+  const postContainer = document.getElementById('postCreateMenuPreview');
+
+  if (formContainer) {
+    formContainer.style.display = 'none';
+    document.getElementById('menuUploadIdle').style.display = '';
+  }
+  if (postContainer) {
+    postContainer.style.display = 'none';
+    const postIdle = document.getElementById('postCreateMenuIdle');
+    if (postIdle) postIdle.style.display = '';
+  }
+}
+
+function resetMenuUpload() {
+  showMenuLoading(false);
+  const formContainer = document.getElementById('menuPreviewContainer');
+  if (formContainer) {
+    formContainer.style.display = 'none';
+    formContainer.innerHTML = '';
+  }
+  const idle = document.getElementById('menuUploadIdle');
+  if (idle) idle.style.display = '';
 }
 
 // Close modal on overlay click
