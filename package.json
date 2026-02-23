@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "private": true,
   "dependencies": {
     "bcryptjs": "^2.4.3",
