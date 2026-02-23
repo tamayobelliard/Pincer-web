@@ -1,0 +1,396 @@
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
+// Cache SSL agent at module level (reused across warm invocations)
+let cachedAgent = null;
+function getSSLAgent() {
+  if (cachedAgent) return cachedAgent;
+  const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-chain.pem'));
+  const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
+  cachedAgent = new https.Agent({ cert, key, rejectUnauthorized: true, keepAlive: true });
+  return cachedAgent;
+}
+
+function callAzul(url, headers, body, agent, timeoutMs = 9500) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      agent,
+      timeout: timeoutMs,
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('Invalid JSON: ' + data.substring(0, 200))); }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Azul timeout')); });
+    req.on('error', reject);
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+const AZUL_URL = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+
+// Fire-and-forget Supabase PATCH
+function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
+  fetch(
+    `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+    }
+  ).catch(e => console.error('Session patch error:', e.message));
+}
+
+// Escape for safe JS string interpolation in HTML script blocks
+function escJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"')
+    .replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACTION: callback
+// ══════════════════════════════════════════════════════════════
+async function handleCallback(req, res) {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
+  const sessionId = req.query.session;
+  if (!sessionId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
+    return res.status(400).send('Invalid session');
+  }
+
+  const cRes = req.body?.cRes || req.body?.cres || req.body?.CRes || '';
+
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  try {
+    const [agent, sessRows] = await Promise.all([
+      Promise.resolve(getSSLAgent()),
+      fetch(
+        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=azul_order_id`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          signal: AbortSignal.timeout(3000),
+        }
+      ).then(r => r.json()),
+    ]);
+
+    if (!sessRows.length) {
+      return res.status(404).send('Session not found');
+    }
+    const azulOrderId = sessRows[0].azul_order_id;
+
+    const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
+    const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
+
+    const result = await callAzul(
+      AZUL_URL,
+      { 'Auth1': auth1, 'Auth2': auth2 },
+      {
+        Channel: "EC",
+        Store: process.env.AZUL_MERCHANT_ID,
+        AzulOrderId: azulOrderId,
+        CRes: cRes,
+      },
+      agent
+    );
+
+    const approved = result.IsoCode === '00';
+
+    patchSession(supabaseUrl, supabaseKey, sessionId, {
+      status: approved ? 'approved' : 'declined',
+      cres: cRes,
+      final_response: result,
+    });
+
+    const safeSession = escJs(sessionId);
+    const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
+    const redirectUrl = `${baseUrl}/mrsandwich?3ds_session=${encodeURIComponent(sessionId)}&3ds_result=${approved ? 'approved' : 'declined'}`;
+
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(`<!DOCTYPE html>
+<html><head><title>Procesando...</title></head>
+<body>
+<p>Procesando resultado del pago...</p>
+<script>
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: '3ds_challenge_complete',
+      session: '${safeSession}',
+      approved: ${approved},
+      result: ${JSON.stringify({
+        authorizationCode: result.AuthorizationCode || '',
+        azulOrderId: result.AzulOrderId || '',
+        customOrderId: result.CustomOrderId || '',
+        message: result.ResponseMessage || '',
+        rrn: result.RRN || '',
+        ticket: result.Ticket || '',
+        isoCode: result.IsoCode || '',
+      })}
+    }, '${escJs(ALLOWED_ORIGIN)}');
+  } else {
+    window.location.href = '${escJs(redirectUrl)}';
+  }
+</script>
+</body></html>`);
+
+  } catch (error) {
+    console.error('3ds callback error:', error);
+
+    patchSession(supabaseUrl, supabaseKey, sessionId, {
+      status: 'error',
+      final_response: { error: error.message },
+    });
+
+    const safeSession = escJs(sessionId);
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(`<!DOCTYPE html>
+<html><body>
+<p>Error procesando el pago. Puedes cerrar esta ventana.</p>
+<script>
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: '3ds_challenge_complete', session: '${safeSession}', approved: false }, '${escJs(ALLOWED_ORIGIN)}');
+  }
+</script>
+</body></html>`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACTION: continue
+// ══════════════════════════════════════════════════════════════
+async function handleContinue(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { sessionId, azulOrderId } = req.body;
+
+  if (!sessionId || !azulOrderId) {
+    return res.status(400).json({ error: 'Missing sessionId or azulOrderId' });
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  try {
+    const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
+    const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
+
+    const [agent, sessRows] = await Promise.all([
+      Promise.resolve(getSSLAgent()),
+      fetch(
+        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          signal: AbortSignal.timeout(3000),
+        }
+      ).then(r => r.json()).catch(() => []),
+    ]);
+    const methodReceived = sessRows[0]?.method_notification_received === true;
+
+    const requestBody = {
+      Channel: "EC",
+      Store: process.env.AZUL_MERCHANT_ID,
+      AzulOrderId: azulOrderId,
+      MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
+    };
+
+    const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
+
+    // CASE 1: Approved (frictionless after method)
+    if (result.IsoCode === '00') {
+      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'approved', final_response: result });
+
+      return res.status(200).json({
+        approved: true,
+        authorizationCode: result.AuthorizationCode,
+        azulOrderId: result.AzulOrderId,
+        customOrderId: result.CustomOrderId,
+        message: result.ResponseMessage,
+        rrn: result.RRN,
+        ticket: result.Ticket,
+      });
+    }
+
+    // CASE 2: Challenge required
+    if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
+      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
+
+      return res.status(200).json({
+        approved: false,
+        challengeRequired: true,
+        sessionId,
+        azulOrderId: result.AzulOrderId || azulOrderId,
+        redirectUrl: result.RedirectUrl || '',
+        redirectPostData: result.RedirectPostData || '',
+      });
+    }
+
+    // CASE 3: Declined or error
+    patchSession(supabaseUrl, supabaseKey, sessionId, {
+      status: result.ResponseCode === 'Error' ? 'error' : 'declined',
+      final_response: result,
+    });
+
+    return res.status(200).json({
+      approved: false,
+      isoCode: result.IsoCode,
+      message: result.ResponseMessage || result.ErrorDescription || 'Pago rechazado',
+    });
+
+  } catch (error) {
+    console.error('3ds continue error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACTION: method-notify
+// ══════════════════════════════════════════════════════════════
+async function handleMethodNotify(req, res) {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
+  const sessionId = req.query.session;
+  if (!sessionId) {
+    return res.status(400).send('Missing session');
+  }
+
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    await fetch(
+      `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          method_notification_received: true,
+          updated_at: new Date().toISOString(),
+        }),
+      }
+    );
+  } catch (err) {
+    console.error('method-notify supabase error:', err);
+  }
+
+  // Return minimal HTML — the ACS expects a 200 response
+  res.setHeader('Content-Type', 'text/html');
+  return res.status(200).send('<html><body>OK</body></html>');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACTION: status
+// ══════════════════════════════════════════════════════════════
+async function handleStatus(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const sessionId = req.query.session;
+  if (!sessionId) {
+    return res.status(400).json({ error: 'Missing session' });
+  }
+
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const r = await fetch(
+      `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=status,method_notification_received,final_response`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!r.ok) {
+      console.error('3ds status supabase error:', r.status);
+      return res.status(500).json({ error: 'DB error' });
+    }
+
+    const rows = await r.json();
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const session = rows[0];
+    const fr = session.final_response;
+
+    // Return only non-sensitive fields (no auth codes, tickets, RRN)
+    const safeResponse = (session.status === 'approved' || session.status === 'declined' || session.status === 'error') && fr
+      ? { isoCode: fr.IsoCode, message: fr.ResponseMessage, responseCode: fr.ResponseCode }
+      : null;
+
+    return res.status(200).json({
+      status: session.status,
+      methodReceived: session.method_notification_received,
+      finalResponse: safeResponse,
+    });
+
+  } catch (error) {
+    console.error('3ds status error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ROUTER
+// ══════════════════════════════════════════════════════════════
+export default async function handler(req, res) {
+  const action = req.query.action;
+
+  switch (action) {
+    case 'callback':      return handleCallback(req, res);
+    case 'continue':      return handleContinue(req, res);
+    case 'method-notify': return handleMethodNotify(req, res);
+    case 'status':        return handleStatus(req, res);
+    default:
+      return res.status(400).json({ error: 'Missing or invalid action parameter' });
+  }
+}

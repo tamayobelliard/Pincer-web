@@ -3183,7 +3183,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
     // Now continue the payment by calling Azul again (they need the same AzulOrderId)
     show3DSOverlay('Procesando pago seguro...');
 
-    const continueRes = await fetchWithTimeout('/api/3ds/continue', {
+    const continueRes = await fetchWithTimeout('/api/3ds?action=continue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3344,7 +3344,7 @@ async function poll3DSStatus(sessionId, waitFor, timeoutMs) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const r = await fetch(`/api/3ds/status?session=${sessionId}`);
+      const r = await fetch(`/api/3ds?action=status&session=${sessionId}`);
       const data = await r.json();
       if (waitFor === 'method_received' && data.methodReceived) return true;
       if (data.status === 'approved' || data.status === 'declined' || data.status === 'error') return data;

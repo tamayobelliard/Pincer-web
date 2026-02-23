@@ -151,8 +151,8 @@ export default async function handler(req, res) {
         PhoneMobile: customerPhone || "",
       },
       ThreeDSAuth: {
-        TermUrl: `${baseUrl}/api/3ds/callback?session=${sessionId}`,
-        MethodNotificationUrl: `${baseUrl}/api/3ds/method-notify?session=${sessionId}`,
+        TermUrl: `${baseUrl}/api/3ds?action=callback&session=${sessionId}`,
+        MethodNotificationUrl: `${baseUrl}/api/3ds?action=method-notify&session=${sessionId}`,
         RequestorChallengeIndicator: "01",
       },
       BrowserInfo: {
