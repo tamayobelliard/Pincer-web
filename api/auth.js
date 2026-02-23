@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
   // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -56,6 +56,7 @@ export default async function handler(req, res) {
       restaurant_slug: user.restaurant_slug,
       display_name: user.display_name,
       username: user.username,
+      ...(user.role === 'admin' && process.env.ADMIN_API_KEY ? { adminToken: process.env.ADMIN_API_KEY } : {}),
     });
 
   } catch (error) {

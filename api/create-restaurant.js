@@ -1,13 +1,21 @@
+import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Verify admin access
+  const adminKey = process.env.ADMIN_API_KEY;
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const { name, business_type, address, phone, contact_name, email, hours, website, notes } = req.body;
 
@@ -26,11 +34,12 @@ export default async function handler(req, res) {
       .replace(/[^a-z0-9]+/g, '')
       .slice(0, 20);
 
-    // Generate random 8-char password
+    // Cryptographically secure password generation
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(8);
     let temp_password = '';
     for (let i = 0; i < 8; i++) {
-      temp_password += chars.charAt(Math.floor(Math.random() * chars.length));
+      temp_password += chars.charAt(bytes[i] % chars.length);
     }
 
     const password_hash = await bcrypt.hash(temp_password, 10);
@@ -75,6 +84,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('create-restaurant error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

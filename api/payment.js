@@ -40,8 +40,7 @@ function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   });
 }
 
-// TEMP: hardcoded to pruebas for 3DS testing
-const AZUL_URL = 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
+const AZUL_URL = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
 
 // Fire-and-forget Supabase helpers (don't block response to client)
 const sbUrl = () => process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
@@ -83,7 +82,7 @@ async function supabasePostAwait(table, data) {
 
 export default async function handler(req, res) {
   // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -170,9 +169,8 @@ export default async function handler(req, res) {
       },
     };
 
-    // TEMP: hardcoded for 3DS testing
-    const auth1 = '3dsecure';
-    const auth2 = '3dsecure';
+    const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
+    const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
     const agent = getSSLAgent();
 

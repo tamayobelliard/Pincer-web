@@ -38,8 +38,7 @@ function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   });
 }
 
-// TEMP: hardcoded to pruebas for 3DS testing
-const AZUL_URL = 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+const AZUL_URL = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
 
 // Fire-and-forget Supabase PATCH (don't block response)
 function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
@@ -58,7 +57,7 @@ function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -75,9 +74,8 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   try {
-    // TEMP: hardcoded for 3DS testing
-    const auth1 = '3dsecure';
-    const auth2 = '3dsecure';
+    const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
+    const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
     // Parallel: get SSL agent + check method notification
     const agentPromise = Promise.resolve(getSSLAgent());

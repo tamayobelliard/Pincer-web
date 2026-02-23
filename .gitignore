@@ -1,3 +1,8 @@
 pincer-azul.key
 *.key
 *.csr
+*.pem
+.env
+.env.*
+.env.local
+certs/

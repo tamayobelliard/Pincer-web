@@ -1,9 +1,17 @@
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Verify admin access
+  const adminKey = process.env.ADMIN_API_KEY;
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,8 +29,7 @@ export default async function handler(req, res) {
         }
       );
       if (!r.ok) {
-        const err = await r.text();
-        console.error('Supabase GET error:', err);
+        console.error('Supabase GET error:', await r.text());
         return res.status(r.status).json({ error: 'Failed to load restaurants' });
       }
       const raw = await r.json();
@@ -30,15 +37,15 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     } catch (error) {
       console.error('restaurants GET error:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 
   // PATCH — toggle status
   if (req.method === 'PATCH') {
     const { id, status } = req.body;
-    if (!id || !status) {
-      return res.status(400).json({ error: 'id and status required' });
+    if (!id || !status || !['active', 'pending', 'disabled'].includes(status)) {
+      return res.status(400).json({ error: 'Valid id and status required' });
     }
     try {
       const r = await fetch(
@@ -54,14 +61,13 @@ export default async function handler(req, res) {
         }
       );
       if (!r.ok) {
-        const err = await r.text();
-        console.error('Supabase PATCH error:', err);
+        console.error('Supabase PATCH error:', await r.text());
         return res.status(r.status).json({ error: 'Failed to update' });
       }
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error('restaurants PATCH error:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 

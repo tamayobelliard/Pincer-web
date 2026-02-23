@@ -1,5 +1,7 @@
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -35,16 +37,21 @@ export default async function handler(req, res) {
     }
 
     const session = rows[0];
+    const fr = session.final_response;
+
+    // Return only non-sensitive fields (no auth codes, tickets, RRN)
+    const safeResponse = (session.status === 'approved' || session.status === 'declined' || session.status === 'error') && fr
+      ? { isoCode: fr.IsoCode, message: fr.ResponseMessage, responseCode: fr.ResponseCode }
+      : null;
 
     return res.status(200).json({
       status: session.status,
       methodReceived: session.method_notification_received,
-      finalResponse: session.status === 'approved' || session.status === 'declined' || session.status === 'error'
-        ? session.final_response : null,
+      finalResponse: safeResponse,
     });
 
   } catch (error) {
     console.error('3ds status error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

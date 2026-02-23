@@ -2,6 +2,8 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
 // Cache SSL agent at module level
 let cachedAgent = null;
 function getSSLAgent() {
@@ -38,8 +40,7 @@ function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   });
 }
 
-// TEMP: hardcoded to pruebas for 3DS testing
-const AZUL_URL = 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+const AZUL_URL = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
 
 // Fire-and-forget Supabase PATCH
 function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
@@ -57,17 +58,23 @@ function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
   ).catch(e => console.error('Session patch error:', e.message));
 }
 
+// Escape for safe JS string interpolation in HTML script blocks
+function escJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"')
+    .replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
 
   const sessionId = req.query.session;
-  if (!sessionId) {
-    return res.status(400).send('Missing session');
+  if (!sessionId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
+    return res.status(400).send('Invalid session');
   }
 
   const cRes = req.body?.cRes || req.body?.cres || req.body?.CRes || '';
@@ -96,9 +103,8 @@ export default async function handler(req, res) {
     }
     const azulOrderId = sessRows[0].azul_order_id;
 
-    // TEMP: hardcoded for 3DS testing
-    const auth1 = '3dsecure';
-    const auth2 = '3dsecure';
+    const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
+    const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
     const result = await callAzul(
       AZUL_URL,
@@ -121,8 +127,9 @@ export default async function handler(req, res) {
       final_response: result,
     });
 
+    const safeSession = escJs(sessionId);
     const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
-    const redirectUrl = `${baseUrl}/mrsandwich?3ds_session=${sessionId}&3ds_result=${approved ? 'approved' : 'declined'}`;
+    const redirectUrl = `${baseUrl}/mrsandwich?3ds_session=${encodeURIComponent(sessionId)}&3ds_result=${approved ? 'approved' : 'declined'}`;
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(`<!DOCTYPE html>
@@ -133,7 +140,7 @@ export default async function handler(req, res) {
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
       type: '3ds_challenge_complete',
-      session: '${sessionId}',
+      session: '${safeSession}',
       approved: ${approved},
       result: ${JSON.stringify({
         authorizationCode: result.AuthorizationCode || '',
@@ -144,9 +151,9 @@ export default async function handler(req, res) {
         ticket: result.Ticket || '',
         isoCode: result.IsoCode || '',
       })}
-    }, '*');
+    }, '${escJs(ALLOWED_ORIGIN)}');
   } else {
-    window.location.href = '${redirectUrl}';
+    window.location.href = '${escJs(redirectUrl)}';
   }
 </script>
 </body></html>`);
@@ -159,13 +166,14 @@ export default async function handler(req, res) {
       final_response: { error: error.message },
     });
 
+    const safeSession = escJs(sessionId);
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(`<!DOCTYPE html>
 <html><body>
 <p>Error procesando el pago. Puedes cerrar esta ventana.</p>
 <script>
   if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: '3ds_challenge_complete', session: '${sessionId}', approved: false }, '*');
+    window.parent.postMessage({ type: '3ds_challenge_complete', session: '${safeSession}', approved: false }, '${escJs(ALLOWED_ORIGIN)}');
   }
 </script>
 </body></html>`);

@@ -286,7 +286,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
     if (data.success && data.role === 'admin') {
       sessionStorage.setItem('dashboard_session', JSON.stringify({
-        role: data.role, username: data.username, display_name: data.display_name
+        role: data.role, username: data.username, display_name: data.display_name,
+        adminToken: data.adminToken || '',
       }));
       showAdmin();
     } else if (data.success) {
@@ -332,7 +333,10 @@ let restaurants = [];
 
 async function loadRestaurants() {
   try {
-    const res = await fetch('/api/admin/restaurants');
+    const session = getSession();
+    const res = await fetch('/api/admin/restaurants', {
+      headers: { 'x-admin-key': session?.adminToken || '' },
+    });
     if (!res.ok) throw new Error('Failed to load');
     restaurants = await res.json();
     renderRestaurants();
@@ -391,9 +395,10 @@ function escapeHtml(str) {
 async function toggleStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
   try {
+    const session = getSession();
     const res = await fetch('/api/admin/restaurants', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': session?.adminToken || '' },
       body: JSON.stringify({ id, status: newStatus }),
     });
     if (res.ok) {
@@ -538,9 +543,10 @@ async function createRestaurant() {
   submitBtn.textContent = 'Creando...';
 
   try {
+    const session = getSession();
     const res = await fetch('/api/create-restaurant', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': session?.adminToken || '' },
       body: JSON.stringify({
         name,
         business_type: document.getElementById('fieldType').value.trim(),

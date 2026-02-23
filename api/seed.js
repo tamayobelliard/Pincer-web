@@ -1,13 +1,20 @@
 import bcrypt from 'bcryptjs';
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-seed-secret');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Require seed secret to prevent unauthorized access
+  const seedSecret = process.env.SEED_SECRET;
+  if (!seedSecret || req.headers['x-seed-secret'] !== seedSecret) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
@@ -69,6 +76,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('seed error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
