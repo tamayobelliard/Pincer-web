@@ -34,7 +34,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Verify webhook secret
-  const webhookSecret = req.headers['x-webhook-secret'] || req.query.secret;
+  const webhookSecret = req.headers['x-webhook-secret'];
   if (webhookSecret !== process.env.SUPABASE_WEBHOOK_SECRET) {
     console.error('Invalid webhook secret');
     return res.status(401).json({ error: 'Unauthorized' });

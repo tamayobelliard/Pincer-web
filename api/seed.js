@@ -23,14 +23,14 @@ export default async function handler(req, res) {
     const users = [
       {
         username: 'admin',
-        password: 'Admin2025!',
+        password: process.env.SEED_ADMIN_PASSWORD || 'Admin2025!',
         role: 'admin',
         restaurant_slug: null,
         display_name: 'Pincer Admin',
       },
       {
         username: 'mrsandwich',
-        password: 'chef2025',
+        password: process.env.SEED_RESTAURANT_PASSWORD || 'chef2025',
         role: 'restaurant',
         restaurant_slug: 'mrsandwich',
         display_name: 'Mr. Sandwich by Chef Elly',

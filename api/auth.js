@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
@@ -50,14 +51,46 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, error: 'Usuario o contraseña incorrectos' });
     }
 
-    return res.status(200).json({
+    const response = {
       success: true,
       role: user.role,
       restaurant_slug: user.restaurant_slug,
       display_name: user.display_name,
       username: user.username,
-      ...(user.role === 'admin' && process.env.ADMIN_API_KEY ? { adminToken: process.env.ADMIN_API_KEY } : {}),
-    });
+    };
+
+    // For admin users, generate a unique session token (not the static API key)
+    if (user.role === 'admin') {
+      const sessionToken = randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+      // Store session in Supabase
+      const sessRes = await fetch(
+        `${supabaseUrl}/rest/v1/admin_sessions`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token: sessionToken,
+            user_id: user.id,
+            expires_at: expiresAt,
+          }),
+        }
+      );
+
+      if (!sessRes.ok) {
+        console.error('Failed to create admin session:', await sessRes.text());
+        return res.status(500).json({ success: false, error: 'Error del servidor' });
+      }
+
+      response.adminToken = sessionToken;
+    }
+
+    return res.status(200).json(response);
 
   } catch (error) {
     console.error('auth error:', error);
