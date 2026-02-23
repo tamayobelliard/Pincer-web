@@ -1324,7 +1324,7 @@ async function loadAnalytics() {
   const { start, end } = getFilterDateRange(activeTimeFilter);
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?created_at=gte.' + encodeURIComponent(start) + '&created_at=lte.' + encodeURIComponent(end) + '&select=*',
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.mrsandwich&created_at=gte.' + encodeURIComponent(start) + '&created_at=lte.' + encodeURIComponent(end) + '&select=*',
       { headers: sbGetHeaders() }, 12000
     );
     if (!res.ok) { dbg('⚠️ analytics HTTP ' + res.status); return; }
@@ -1446,7 +1446,7 @@ async function loadOrders() {
   if (!storeIsOpen) return;
 
   try {
-    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?select=*&order=created_at.desc';
+    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.mrsandwich&select=*&order=created_at.desc';
     // Filter by session: only orders since store opened
     if (storeOpenedAt) {
       ordersUrl += '&created_at=gte.' + encodeURIComponent(storeOpenedAt);
@@ -1556,7 +1556,7 @@ async function loadOrders() {
 
 async function acceptOrder(id) {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.mrsandwich', {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'accepted' })
     });
@@ -1569,7 +1569,7 @@ async function acceptOrder(id) {
 
 async function markReady(id) {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id, {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.mrsandwich', {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'ready' })
     });
@@ -1582,7 +1582,7 @@ async function markReady(id) {
 
 async function markAsNotified(orderId) {
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId, {
+    await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.mrsandwich', {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'notified' })
     });
@@ -1792,7 +1792,7 @@ async function initializeDashboard() {
   // Test connection first
   try {
     const testRes = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?select=id&limit=1',
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.mrsandwich&select=id&limit=1',
       { headers: sbGetHeaders() }, 10000
     );
     if (testRes.ok) {

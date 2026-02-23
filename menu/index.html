@@ -4,375 +4,4252 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cargando menú...</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #2d5016;
+      --primary-light: #4a7c2c;
+      --accent: #f4e4c1;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      min-height: 100vh;
-      padding: 20px;
-      padding-bottom: 40px;
-      transition: background 0.3s;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
     }
     body.font-classic { font-family: 'Georgia', 'Times New Roman', serif; }
     body.font-casual { font-family: 'Nunito', 'Quicksand', -apple-system, sans-serif; }
-
-    /* Default theme (overridden by menu_style) */
-    body { background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); }
-
-    .container { max-width: 500px; margin: 0 auto; }
-
-    /* Header */
+    body {
+      min-height: 100vh;
+      padding: 20px;
+      padding-bottom: 100px;
+    }
+    
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
     .header {
       text-align: center;
       color: white;
       margin-bottom: 30px;
-      padding-top: 10px;
-    }
-    .header-icon {
-      width: 100px; height: 100px; border-radius: 50%;
-      background: rgba(255,255,255,0.2); margin: 0 auto 16px auto;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2.5em; border: 4px solid rgba(255,255,255,0.3);
-    }
-    .header h1 {
-      font-size: 2em; margin-bottom: 6px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-      font-weight: 700; letter-spacing: 0.5px;
-    }
-    .header .subtitle {
-      font-size: 0.95em; opacity: 0.9; font-weight: 500;
-      color: rgba(255,255,255,0.85);
-    }
-    .header .hours {
-      margin-top: 8px; font-size: 0.85em;
-      color: rgba(255,255,255,0.75);
     }
 
-    /* Menu section */
-    .menu-card {
-      background: white; border-radius: 16px; padding: 24px;
-      margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    .logo-container {
+      background: white;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      margin: 0 auto 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      border: 5px solid var(--accent);
+    }
+
+    .logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .header h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header .subtitle {
+      font-size: 1.1em;
+      opacity: 0.95;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 2px;
+    }
+    
+    /* Connection status banner */
+    .conn-banner {
+      max-width: 500px;
+      margin: 0 auto 15px auto;
+      padding: 10px 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      display: none;
+    }
+    .conn-banner.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #fca5a5;
+    }
+    .conn-banner.ok {
+      display: block;
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #6ee7b7;
+      animation: fadeOut 3s forwards;
+    }
+    @keyframes fadeOut {
+      0%,70% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+
+    .menu-section {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .section-title {
+      font-size: 1.5em;
+      color: var(--primary);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 3px solid var(--accent);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .category-title {
-      font-size: 1.3em; margin: 24px 0 14px 0;
-      font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.5px; padding-left: 12px;
-      border-left: 4px solid var(--accent);
+      font-size: 1.3em;
+      color: var(--primary);
+      margin: 25px 0 15px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 4px solid var(--primary-light);
+      padding-left: 12px;
+    }
+    
+    .menu-item {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 12px;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+      position: relative;
+    }
+    
+    .menu-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(45, 80, 22, 0.15);
+      border-color: var(--primary-light);
+    }
+
+    .menu-item.sold-out {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .sold-out-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #dc3545;
+      color: white;
+      font-size: 0.75em;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
+    }
+
+    .item-image {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .item-image[style*="cursor:pointer"]:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(74, 124, 44, 0.4);
+    }
+    
+    .item-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    
+    .item-name {
+      font-size: 1.15em;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+    
+    .item-description {
+      font-size: 0.85em;
+      color: #6c757d;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .item-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .item-price {
+      font-size: 1.2em;
+      font-weight: 700;
+      color: var(--primary-light);
+      flex-shrink: 0;
+    }
+
+    .menu-qty-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    .menu-qty-btn {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      width: 32px;
+      height: 32px;
+      font-size: 1.2em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+      line-height: 1;
+    }
+
+    .menu-qty-btn:first-child {
+      border-radius: 8px 0 0 8px;
+    }
+
+    .menu-qty-btn:last-child {
+      border-radius: 0 8px 8px 0;
+    }
+
+    .menu-qty-btn:active {
+      background: var(--primary);
+    }
+
+    .menu-qty-num {
+      background: #eef2ee;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.95em;
+      width: 28px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .add-btn {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(74, 124, 44, 0.3);
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .add-btn:hover {
+      background: var(--primary);
+      transform: scale(1.05);
+    }
+    
+    .add-btn:active {
+      transform: scale(0.98);
+    }
+    
+    .order-summary {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    
+    .order-item {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .order-item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    
+    .order-item-name {
+      font-weight: 600;
       color: var(--primary);
     }
-    .category-title:first-child { margin-top: 0; }
 
-    .menu-item {
-      background: #f8f9fa; border-radius: 12px;
-      padding: 14px 16px; margin-bottom: 10px;
-      display: flex; justify-content: space-between;
-      align-items: flex-start; gap: 12px;
-      border: 2px solid transparent;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .menu-item:hover {
-      border-color: var(--accent);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .menu-item:last-child { margin-bottom: 0; }
-
-    .item-info { flex: 1; min-width: 0; }
-    .item-name {
-      font-size: 1.05em; font-weight: 700;
-      color: var(--primary); margin-bottom: 3px;
-    }
-    .item-desc {
-      font-size: 0.83em; color: #6c757d;
-      line-height: 1.4; margin-bottom: 2px;
-    }
-    .item-price {
-      font-size: 1.15em; font-weight: 700;
-      color: var(--accent); white-space: nowrap;
-      flex-shrink: 0; align-self: center;
+    .order-item-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      padding: 6px 8px;
+      background: white;
+      border-radius: 4px;
+      border-left: 3px solid var(--primary-light);
+      margin-top: 4px;
     }
 
-    /* States */
-    .loading-state, .error-state {
-      text-align: center; padding: 60px 20px;
-    }
-    .loading-state {
-      color: rgba(255,255,255,0.9);
-    }
-    .spinner {
-      display: inline-block; width: 36px; height: 36px;
-      border: 4px solid rgba(255,255,255,0.3);
-      border-top-color: white; border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-state p { margin-top: 14px; font-size: 1.05em; }
-
-    .error-state .error-card {
-      background: white; border-radius: 16px; padding: 40px 24px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.15); max-width: 400px;
-      margin: 0 auto;
-    }
-    .error-state .error-icon {
-      font-size: 3em; margin-bottom: 16px;
-    }
-    .error-state h2 {
-      color: #1e293b; margin-bottom: 8px; font-size: 1.3em;
-    }
-    .error-state p {
-      color: #64748b; font-size: 0.95em;
+    .order-item-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Footer */
+    .qty-btn {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 1.1em;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+
+    .qty-btn:hover {
+      background: var(--primary);
+    }
+
+    .qty-btn:active {
+      background: #1a3a0e;
+    }
+
+    .qty-btn.minus {
+      background: #dc3545;
+    }
+
+    .qty-btn.minus:hover {
+      background: #c82333;
+    }
+
+    .qty-display {
+      font-weight: 700;
+      font-size: 1em;
+      color: var(--primary);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .order-item-price {
+      font-weight: 700;
+      color: var(--primary-light);
+      font-size: 0.95em;
+      margin-left: 8px;
+    }
+    
+    .order-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: var(--accent);
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .empty-order {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+      font-size: 1.1em;
+    }
+    
+    .place-order-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 460px;
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 18px;
+      border-radius: 12px;
+      font-size: 1.3em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(220, 38, 38, 0.4);
+      transition: all 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .place-order-btn:hover {
+      background: #b91c1c;
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.5);
+    }
+    
+    .place-order-btn:active {
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    .place-order-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #dc3545;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      font-size: 0.9em;
+      margin-left: 8px;
+    }
+    
+    .receipt-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      opacity: 0; visibility: hidden;
+      transition: all 0.3s;
+      z-index: 1200;
+    }
+    .receipt-overlay.show { opacity: 1; visibility: visible; }
+
+    .receipt-modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 92%; max-width: 400px; max-height: 90vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      z-index: 1201;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .receipt-modal.show { transform: translate(-50%, -50%) scale(1); }
+
+    .receipt-content {
+      padding: 28px 24px 20px;
+    }
+    .receipt-header {
+      text-align: center;
+      padding-bottom: 16px;
+      border-bottom: 2px dashed #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .receipt-logo {
+      font-size: 1.25em;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .receipt-title {
+      font-size: 0.85em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 6px;
+      font-weight: 600;
+    }
+    .receipt-check {
+      width: 48px; height: 48px;
+      background: #dcfce7;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px;
+      font-size: 1.5em;
+    }
+    .receipt-order-number {
+      text-align: center;
+      margin: 16px 0;
+      padding: 14px;
+      background: #f0fdf4;
+      border-radius: 12px;
+      border: 2px solid #bbf7d0;
+    }
+    .receipt-order-label {
+      font-size: 0.75em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .receipt-order-id {
+      font-size: 2.2em;
+      font-weight: 800;
+      color: #166534;
+      line-height: 1.1;
+    }
+    .receipt-datetime {
+      text-align: center;
+      font-size: 0.8em;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .receipt-section {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+    .receipt-section-title {
+      font-size: 0.7em;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .receipt-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 0.88em;
+      color: #334155;
+    }
+    .receipt-item-name {
+      flex: 1;
+      margin-right: 8px;
+    }
+    .receipt-item-qty {
+      color: #94a3b8;
+      margin-right: 8px;
+      font-size: 0.85em;
+    }
+    .receipt-item-price {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .receipt-subtotal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+      font-size: 0.88em;
+      color: #64748b;
+    }
+    .receipt-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      margin-top: 6px;
+      border-top: 2px solid #0f172a;
+      font-weight: 800;
+      font-size: 1.1em;
+      color: #0f172a;
+    }
+    .receipt-payment-info {
+      font-size: 0.82em;
+      color: #475569;
+      line-height: 1.7;
+    }
+    .receipt-payment-info .label {
+      color: #94a3b8;
+      font-size: 0.92em;
+    }
+    .receipt-azul-badge {
+      text-align: center;
+      margin-top: 16px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .receipt-azul-text {
+      font-size: 0.72em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .receipt-azul-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .receipt-azul-logos img {
+      height: 28px;
+      object-fit: contain;
+    }
+    .receipt-restaurant-info {
+      text-align: center;
+      font-size: 0.75em;
+      color: #94a3b8;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+    .receipt-status {
+      text-align: center;
+      margin-top: 14px;
+      padding: 12px;
+      background: #fff7ed;
+      border-radius: 8px;
+      color: #9a3412;
+      font-weight: 600;
+      font-size: 0.85em;
+    }
+    .receipt-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px 24px 24px;
+      border-top: 1px solid #f1f5f9;
+      background: #fafafa;
+      border-radius: 0 0 16px 16px;
+    }
+    .receipt-btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.92em;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .receipt-btn-download {
+      background: var(--primary);
+      color: white;
+    }
+    .receipt-btn-download:active { transform: scale(0.98); background: #1a3a0a; }
+    .receipt-btn-whatsapp {
+      background: #25d366;
+      color: white;
+    }
+    .receipt-btn-whatsapp:active { transform: scale(0.98); background: #1da851; }
+    .receipt-btn-close {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+    }
+    .receipt-btn-close:active { background: #f1f5f9; }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 999;
+    }
+    
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .notes-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 400px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .notes-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .notes-popup h3 {
+      color: var(--primary);
+      margin-bottom: 10px;
+      font-size: 1.3em;
+    }
+
+    .notes-popup p {
+      color: #6c757d;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+
+    .notes-popup textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 15px;
+    }
+
+    .notes-popup textarea:focus {
+      outline: none;
+      border-color: var(--primary-light);
+    }
+
+    .notes-popup-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .notes-popup button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .notes-popup .btn-cancel {
+      background: #e2e8f0;
+      color: #64748b;
+    }
+
+    .notes-popup .btn-cancel:hover {
+      background: #cbd5e1;
+    }
+
+    .notes-popup .btn-add {
+      background: var(--primary-light);
+      color: white;
+    }
+
+    .notes-popup .btn-add:hover {
+      background: var(--primary);
+    }
+
+    .soldout-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 30px 25px 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 380px;
+      text-align: center;
+    }
+    .soldout-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .soldout-popup .soldout-emoji {
+      font-size: 2.8em;
+      margin-bottom: 8px;
+    }
+    .soldout-popup h3 {
+      color: #dc2626;
+      font-size: 1.25em;
+      margin-bottom: 6px;
+    }
+    .soldout-popup .soldout-product-name {
+      font-weight: 700;
+      color: #1e1b4b;
+      font-size: 1.05em;
+      margin-bottom: 10px;
+    }
+    .soldout-popup p {
+      color: #64748b;
+      font-size: 0.95em;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+    .soldout-popup button {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .soldout-popup button:hover {
+      background: var(--primary);
+    }
+
+    .extras-section {
+      margin: 15px 0 10px 0;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .extras-section h4 {
+      font-size: 0.95em;
+      color: #475569;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .extras-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .extra-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .extra-checkbox:hover {
+      background: #f1f5f9;
+    }
+    .extra-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .extra-checkbox label {
+      flex: 1;
+      cursor: pointer;
+      font-size: 0.95em;
+      color: #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .extra-checkbox .extra-price {
+      font-weight: 600;
+      color: var(--primary-light);
+    }
+
+    .note-papas {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin-top: 15px;
+      border-radius: 8px;
+      font-size: 0.9em;
+      color: #856404;
+      font-weight: 600;
+    }
+
+    .ready-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #155724;
+      color: white;
+      text-align: center;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 1.05em;
+      z-index: 2000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: slideDown 0.4s ease-out;
+      line-height: 1.5;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
+    }
+
+    .ready-banner button {
+      display: block;
+      margin: 8px auto 0;
+      background: var(--accent);
+      color: #155724;
+      border: none;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+
+    .chef-clippy {
+      position: fixed;
+      bottom: 20px;
+      right: -200px;
+      z-index: 999;
+      animation: slideIn 1s ease-out 1s forwards;
+    }
+    
+    @keyframes slideIn {
+      to { right: 20px; }
+    }
+    
+    .clippy-container {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      gap: 15px;
+    }
+    
+    .clippy-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      box-shadow: 0 8px 30px rgba(45,80,22,0.5);
+      border: 4px solid var(--primary-light);
+      animation: bounce 2.5s ease-in-out infinite;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: white;
+      position: relative;
+    }
+    
+    .clippy-avatar:hover {
+      transform: scale(1.15) rotate(5deg);
+      box-shadow: 0 12px 40px rgba(45,80,22,0.7);
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    
+    .speech-bubble {
+      display: none;
+      position: absolute;
+      bottom: 110%;
+    }
+    
+    .speech-bubble.show {
+      display: block;
+      right: 0;
+      background: white;
+      padding: 15px 18px;
+      border-radius: 18px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+      border: 3px solid var(--primary-light);
+      max-width: 240px;
+      animation: bubblePop 0.5s ease-out;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    
+    .speech-bubble.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    @keyframes bubblePop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -15px;
+      right: 25px;
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 16px solid var(--primary-light);
+    }
+    
+    .speech-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      right: 28px;
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-top: 12px solid white;
+      z-index: 1;
+    }
+    
+    .bubble-text {
+      font-size: 0.95em;
+      color: var(--primary);
+      font-weight: 600;
+      line-height: 1.4;
+      margin: 0;
+    }
+    
+    .bubble-emoji {
+      font-size: 1.3em;
+      margin-right: 6px;
+    }
+    
+    .bubble-close {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      transition: all 0.2s;
+      line-height: 1;
+    }
+    
+    .bubble-close:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+    
+    .notification-pulse {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 28px;
+      height: 28px;
+      background: #ef4444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 0.85em;
+      animation: pulseBadge 1.5s ease-in-out infinite;
+      border: 3px solid white;
+    }
+    
+    @keyframes pulseBadge {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239,68,68,0.7);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(239,68,68,0);
+      }
+    }
+
+    #pinzer-modal {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 350px;
+      max-width: 90vw;
+      height: 500px;
+      max-height: 70vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      z-index: 999;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pinzer-message {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: slideInMsg 0.3s ease-out;
+    }
+
+    @keyframes slideInMsg {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .pinzer-bot {
+      background: var(--accent);
+      color: var(--primary);
+      align-self: flex-start;
+    }
+
+    .pinzer-user {
+      background: var(--primary-light);
+      color: white;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .pinzer-reply-btn {
+      background: white;
+      border: 2px solid var(--primary-light);
+      color: var(--primary-light);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .pinzer-reply-btn:hover {
+      background: var(--primary-light);
+      color: white;
+    }
+
+    #pinzer-messages {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+    
+    .pinzer-typing {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 14px;
+      background: var(--accent);
+      border-radius: 12px;
+      max-width: 60%;
+      align-self: flex-start;
+      margin-bottom: 12px;
+      animation: slideInMsg 0.3s ease-out;
+    }
+
+    .pinzer-typing span {
+      width: 8px;
+      height: 8px;
+      background: var(--primary-light);
+      border-radius: 50%;
+      animation: typingDot 1.4s infinite;
+    }
+
+    .pinzer-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .pinzer-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+      30% { opacity: 1; transform: scale(1); }
+    }
+
+    .pinzer-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .pinzer-input-bar input {
+      flex: 1;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 10px 16px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .pinzer-input-bar input:focus {
+      border-color: var(--primary-light);
+    }
+
+    .pinzer-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .pinzer-send-btn:hover {
+      background: var(--primary);
+    }
+
+    .clippy-avatar.pulse-hint {
+      animation: pulseHint 2s ease-in-out 3;
+    }
+
+    @keyframes pulseHint {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @media (max-width: 768px) {
+      .clippy-avatar {
+        width: 80px;
+        height: 80px;
+      }
+      .speech-bubble {
+        max-width: 200px;
+        font-size: 0.9em;
+      }
+    }
+
+    .error-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: white;
+      padding: 30px 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: all 0.3s;
+      max-width: 90%;
+      width: 380px;
+      text-align: center;
+    }
+    .error-popup.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .error-popup .error-emoji {
+      font-size: 3em;
+      margin-bottom: 15px;
+    }
+    .error-popup h3 {
+      color: #dc2626;
+      font-size: 1.3em;
+      margin-bottom: 12px;
+    }
+    .error-popup p {
+      color: #64748b;
+      font-size: 0.95em;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .error-popup button {
+      background: var(--primary-light);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .error-popup button:hover {
+      background: var(--primary);
+    }
+
+    /* Debug panel - hidden by default */
+    .debug-panel {
+      display: none;
+      max-width: 500px;
+      margin: 20px auto;
+      background: rgba(0,0,0,0.8);
+      color: #22c55e;
+      padding: 15px;
+      border-radius: 12px;
+      font-family: monospace;
+      font-size: 0.8em;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .debug-panel.show {
+      display: block;
+    }
+
+    /* Mis Órdenes section */
+    .mis-ordenes-item {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-left: 5px solid #94a3b8;
+    }
+    .mis-ordenes-item.mo-pending { border-left-color: #f59e0b; }
+    .mis-ordenes-item.mo-accepted { border-left-color: #3b82f6; }
+    .mis-ordenes-item.mo-ready { border-left-color: #16a34a; }
+
+    .mo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .mo-order-number {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: #1e40af;
+      background: #dbeafe;
+      padding: 3px 12px;
+      border-radius: 6px;
+    }
+    .mo-status {
+      font-size: 0.8em;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .mo-status.pending { background: #fef3c7; color: #92400e; }
+    .mo-status.accepted { background: #dbeafe; color: #1e40af; }
+    .mo-status.ready { background: #d1fae5; color: #065f46; }
+
+    .mo-items-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 10px 0;
+    }
+    .mo-items-list li {
+      padding: 4px 0;
+      font-size: 0.9em;
+      color: #334155;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .mo-items-list li:last-child { border-bottom: none; }
+    .mo-items-list .mo-item-qty { font-weight: 700; color: #1e40af; }
+    .mo-items-list .mo-item-notes {
+      font-size: 0.85em;
+      color: #6c757d;
+      font-style: italic;
+      margin-left: 8px;
+    }
+
+    .mo-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--accent);
+      border-radius: 6px;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1.05em;
+    }
+
+    /* Phone field in order summary */
+    .phone-field {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f0f9ff;
+      border-radius: 10px;
+      border: 2px solid #bae6fd;
+    }
+    .phone-field label {
+      display: block;
+      font-weight: 700;
+      color: #0c4a6e;
+      margin-bottom: 6px;
+      font-size: 0.95em;
+    }
+    .phone-field input[type="tel"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+    }
+    .phone-field input[type="tel"]:focus {
+      outline: none;
+      border-color: var(--primary-light);
+    }
+    .phone-field input[type="tel"].invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+    .phone-field .phone-hint {
+      font-size: 0.8em;
+      color: #64748b;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .phone-field .phone-error {
+      font-size: 0.8em;
+      color: #dc2626;
+      font-weight: 600;
+      margin-top: 6px;
+      display: none;
+    }
+
+    /* ── Checkout Modal ── */
+    .checkout-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 1100;
+    }
+    .checkout-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .checkout-modal {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      max-height: 90vh;
+      background: white;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -8px 32px rgba(0,0,0,0.25);
+      z-index: 1101;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      padding: 12px 20px 30px 20px;
+    }
+    .checkout-modal.show {
+      transform: translateY(0);
+    }
+
+    .checkout-handle {
+      width: 40px;
+      height: 5px;
+      background: #cbd5e1;
+      border-radius: 3px;
+      margin: 0 auto 15px auto;
+      cursor: pointer;
+    }
+
+    .checkout-modal h3 {
+      text-align: center;
+      color: var(--primary);
+      font-size: 1.4em;
+      margin-bottom: 15px;
+    }
+
+    .checkout-summary {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+
+    .checkout-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95em;
+      color: #334155;
+    }
+    .checkout-item:last-child { border-bottom: none; }
+    .checkout-item-name { flex: 1; }
+    .checkout-item-qty {
+      font-weight: 700;
+      color: #1e40af;
+      margin: 0 12px;
+      white-space: nowrap;
+    }
+    .checkout-item-price {
+      font-weight: 600;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .checkout-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: var(--accent);
+      border-radius: 8px;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: var(--primary);
+      margin-bottom: 15px;
+    }
+
+    .checkout-field {
+      margin-bottom: 12px;
+    }
+    .checkout-field label {
+      display: block;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+    .checkout-field input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+    }
+    .checkout-field input:focus {
+      outline: none;
+      border-color: var(--primary-light);
+    }
+    .checkout-field input.invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+
+    .checkout-methods-title {
+      font-weight: 700;
+      color: #334155;
+      font-size: 0.95em;
+      margin-bottom: 8px;
+    }
+    .checkout-methods {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .checkout-method {
+      flex: 1;
+      padding: 10px 8px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      background: white;
+      font-weight: 600;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      color: #64748b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checkout-method.active {
+      border-color: var(--primary-light);
+      color: var(--primary);
+      background: #f0fdf4;
+    }
+
+    .checkout-card-fields {
+      margin-bottom: 15px;
+    }
+    .checkout-card-fields input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+    .checkout-card-fields input:focus {
+      outline: none;
+      border-color: var(--primary-light);
+    }
+    .checkout-card-fields input.invalid {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+    .checkout-card-row {
+      display: flex;
+      gap: 8px;
+    }
+    .checkout-card-row input {
+      flex: 1;
+    }
+
+    .checkout-pay-btn {
+      width: 100%;
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 1.2em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+      transition: all 0.3s;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checkout-pay-btn:hover {
+      background: #b91c1c;
+      box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
+    }
+    .checkout-pay-btn:active {
+      transform: scale(0.98);
+    }
+    .checkout-pay-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    @keyframes spin3ds { to { transform: rotate(360deg); } }
+    .checkout-error {
+      color: #dc2626;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .checkout-terms {
+      margin-bottom: 12px;
+    }
+    .checkout-terms label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.8em;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .checkout-terms input[type="checkbox"] {
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+    .checkout-terms a {
+      color: var(--primary-light);
+      text-decoration: underline;
+    }
+    .checkout-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .checkout-badges img {
+      height: 32px;
+      object-fit: contain;
+    }
+
+    /* Closed overlay */
+    .closed-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(45, 80, 22, 0.92);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      color: white;
+      padding: 30px;
+    }
+    .closed-overlay-logo {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: white; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      overflow: hidden; border: 5px solid var(--accent);
+    }
+    .closed-overlay-logo img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .closed-overlay h2 {
+      font-size: 2em; margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .closed-overlay .closed-hours {
+      font-size: 1.3em; margin-bottom: 15px; color: var(--accent);
+    }
+    .closed-overlay .closed-msg {
+      font-size: 1.1em; opacity: 0.9;
+    }
+
+    /* Pincer Footer */
     .pincer-footer {
-      background: #0F172A; padding: 40px 20px 30px;
-      margin: 30px -20px -40px -20px; text-align: center;
+      background: #0F172A;
+      color: white;
+      padding: 40px 20px 100px;
+      text-align: center;
+      margin-top: 30px;
     }
-    .pincer-footer-inner { max-width: 500px; margin: 0 auto; }
+    .pincer-footer-inner {
+      max-width: 500px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .pincer-footer-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .pincer-footer-badges img { height: 36px; object-fit: contain; }
     .pincer-footer-links {
-      margin: 16px 0; display: flex;
-      justify-content: center; gap: 16px; flex-wrap: wrap;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
     .pincer-footer-links a {
-      color: rgba(255,255,255,0.5); text-decoration: none;
-      font-size: 0.8em; transition: color 0.2s;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
     }
     .pincer-footer-links a:hover { color: white; }
     .pincer-footer-contact {
-      font-size: 0.8em; color: rgba(255,255,255,0.4); margin-bottom: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
     }
-    .pincer-footer-contact a { color: rgba(255,255,255,0.5); text-decoration: none; }
+    .pincer-footer-contact a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+    }
     .pincer-footer-contact a:hover { color: white; }
     .pincer-footer-copyright {
-      font-size: 0.75em; color: rgba(255,255,255,0.3); margin-bottom: 6px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 10px;
     }
     .pincer-footer-powered {
-      font-size: 0.75em; color: rgba(255,255,255,0.25);
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
     }
-    .pincer-footer-powered strong { color: rgba(255,255,255,0.5); }
-
-    @media (max-width: 400px) {
-      body { padding: 12px; padding-bottom: 30px; }
-      .header h1 { font-size: 1.6em; }
-      .menu-card { padding: 16px; }
-    }
+    .pincer-footer-powered strong { color: rgba(255,255,255,0.6); }
   </style>
 </head>
 <body>
 
-<div class="container" id="app">
-  <div class="loading-state" id="loadingState">
-    <div class="spinner"></div>
-    <p>Cargando men&uacute;...</p>
+<div class="closed-overlay" id="closedOverlay" style="display:none;">
+  <div class="closed-overlay-logo">
+    <span style="font-size:4em;">🍽️</span>
+  </div>
+  <h2>Estamos cerrados</h2>
+  <div class="closed-hours" id="closedHours"></div>
+  <div class="closed-msg">¡Te esperamos!</div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div class="logo-container">
+      <span style="font-size:4em;">🍽️</span>
+    </div>
+    <h1 id="restaurantName">Cargando...</h1>
+    <p class="subtitle" id="restaurantSubtitle"></p>
+  </div>
+
+  <!-- Connection status banner -->
+  <div class="conn-banner" id="connBanner"></div>
+
+  <!-- Debug panel (tap logo 5 times to show) -->
+  <div class="debug-panel" id="debugPanel"></div>
+
+  <div class="menu-section" id="menuSection">
+    <h2 class="section-title">Menú</h2>
+  </div>
+
+  <div class="order-summary">
+    <h2 class="section-title">
+      Tu Orden
+      <span class="badge" id="order-count" style="display: none;">0</span>
+    </h2>
+    <div id="orderList">
+      <div class="empty-order">
+        Tu orden está vacía<br>
+        Agrega items del menú
+      </div>
+    </div>
+    <div id="orderTotal" style="display: none;"></div>
+    <div class="phone-field" id="phoneField" style="display: none;">
+      <label for="phoneInput">📱 Tu número de WhatsApp</label>
+      <input type="tel" id="phoneInput" placeholder="809-123-4567" maxlength="15"
+             oninput="onPhoneInput(this)"
+             onkeydown="if(event.key==='Enter'){this.blur();document.getElementById('placeOrderBtn').scrollIntoView({behavior:'smooth',block:'center'});}">
+      <div class="phone-hint">Te notificaremos por WhatsApp cuando tu orden esté lista</div>
+      <div class="phone-error" id="phoneError">Número inválido. Usa formato: 809-123-4567</div>
+    </div>
+  </div>
+
+  <div class="order-summary" id="misOrdenesSection" style="display: none;">
+    <h2 class="section-title">Mis Órdenes</h2>
+    <div id="misOrdenesList"></div>
+  </div>
+</div>
+
+<!-- Pincer Footer -->
+<footer class="pincer-footer">
+  <div class="pincer-footer-inner">
+    <a href="https://www.pincerweb.com" style="color:white;text-decoration:none;font-size:24px;font-weight:800;">Pincer</a>
+    <p style="font-size:14px;color:rgba(255,255,255,0.7);margin:0;">Pedidos por QR que elevan la experiencia de tu restaurante, food truck o food park.</p>
+    <div class="pincer-footer-badges">
+      <img src="https://i.imgur.com/gMRFXRj.png" alt="Visa">
+      <img src="https://i.imgur.com/qgq4m7h.png" alt="Mastercard">
+      <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+      <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+    </div>
+    <div class="pincer-footer-links">
+      <a href="/politicas/privacidad">Privacidad</a>
+      <a href="/politicas/devoluciones">Devoluciones</a>
+      <a href="/politicas/seguridad">Seguridad</a>
+      <a href="/politicas/entrega">Entrega</a>
+    </div>
+    <div class="pincer-footer-contact">
+      <a href="mailto:info@pincerweb.com">info@pincerweb.com</a> · <a href="tel:+18295481236">+1 (829) 548-1236</a><br>
+      Santiago, República Dominicana
+    </div>
+    <div class="pincer-footer-copyright">&copy; 2026 Pincer. Hecho en República Dominicana.</div>
+    <div class="pincer-footer-powered">Powered by <strong>Pincer</strong></div>
+  </div>
+</footer>
+
+<button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
+  Ordenar Ahora
+</button>
+
+<div class="overlay" id="overlay"></div>
+<div class="receipt-overlay" id="receiptOverlay"></div>
+<div class="receipt-modal" id="receiptModal">
+  <div class="receipt-content" id="receiptCapture">
+    <div class="receipt-header">
+      <div class="receipt-check">✓</div>
+      <div class="receipt-logo" id="receiptLogoText">Restaurante</div>
+      <div class="receipt-title">Comprobante de Pago</div>
+    </div>
+    <div class="receipt-order-number">
+      <div class="receipt-order-label">Número de Orden</div>
+      <div class="receipt-order-id" id="receiptOrderId">#0000</div>
+    </div>
+    <div class="receipt-datetime" id="receiptDatetime"></div>
+    <div class="receipt-section">
+      <div class="receipt-section-title">Detalle del pedido</div>
+      <div id="receiptItems"></div>
+      <div class="receipt-subtotal-row">
+        <span>Subtotal</span>
+        <span id="receiptSubtotal">RD$0</span>
+      </div>
+      <div class="receipt-subtotal-row">
+        <span>ITBIS (18%)</span>
+        <span id="receiptItbis">RD$0</span>
+      </div>
+      <div class="receipt-total-row">
+        <span>Total</span>
+        <span id="receiptTotal">RD$0</span>
+      </div>
+    </div>
+    <div class="receipt-section" id="receiptPaymentSection">
+      <div class="receipt-section-title">Información de pago</div>
+      <div class="receipt-payment-info">
+        <div><span class="label">Método:</span> Tarjeta de crédito/débito</div>
+        <div><span class="label">Tarjeta:</span> **** **** **** <span id="receiptCardLast4">0000</span></div>
+        <div><span class="label">Código de autorización:</span> <span id="receiptAuthCode">—</span></div>
+        <div><span class="label">Referencia Azul:</span> <span id="receiptAzulRef">—</span></div>
+      </div>
+    </div>
+    <div class="receipt-azul-badge" id="receiptAzulBadge">
+      <div class="receipt-azul-text">Procesado por Azul · Protegido con 3D Secure</div>
+      <div class="receipt-azul-logos">
+        <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+        <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+      </div>
+    </div>
+    <div class="receipt-restaurant-info" id="receiptRestaurantInfo"></div>
+    <div style="text-align:center; margin-top:12px; font-size:0.7em; color:#b0b8c4; letter-spacing:0.5px;">Powered by <strong style="color:#94a3b8;">Pincer</strong></div>
+    <div class="receipt-status" id="receiptStatus">
+      ⏳ Tu orden ha sido recibida — en cualquier momento comenzarán a prepararla
+    </div>
+  </div>
+  <div class="receipt-buttons">
+    <button class="receipt-btn receipt-btn-download" onclick="downloadReceipt()">📥 Descargar recibo</button>
+    <button class="receipt-btn receipt-btn-whatsapp" onclick="shareReceiptWhatsApp()">📲 Enviar por WhatsApp</button>
+    <button class="receipt-btn receipt-btn-close" onclick="closeReceipt()">Cerrar</button>
+  </div>
+</div>
+
+<div class="notes-popup" id="notesPopup">
+  <h3 id="notesItemName">Agregar item</h3>
+  <div id="notesItemImageContainer" style="text-align: center; margin: 10px 0;">
+    <img id="notesItemImage" src="" alt="" style="max-width: 200px; max-height: 150px; width: auto; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; object-fit: cover;">
+  </div>
+  <p>¿Alguna observación? (Opcional)</p>
+  <textarea id="notesTextarea" placeholder="Ej: Sin cebolla, extra tomate..."></textarea>
+  
+  <div class="extras-section" id="extrasSection">
+    <h4>➕ Agregar extras (opcional)</h4>
+    <div class="extras-list" id="extrasList"></div>
+  </div>
+
+  <div class="notes-popup-buttons">
+    <button class="btn-cancel" onclick="closeNotesPopup()">Cancelar</button>
+    <button class="btn-add" onclick="addItemWithNotes()">Agregar</button>
+  </div>
+</div>
+
+<div class="soldout-popup" id="soldoutPopup">
+  <div class="soldout-emoji">😔</div>
+  <h3>¡Producto agotado!</h3>
+  <div class="soldout-product-name" id="soldoutProductName">—</div>
+  <p>Lamentablemente este producto no está disponible en este momento.<br>
+     ¡Pero no te preocupes! Tenemos otras deliciosas opciones que te van a encantar. 🍔</p>
+  <button onclick="closeSoldOutPopup()">Ver otros productos</button>
+</div>
+
+<div class="error-popup" id="errorPopup">
+  <div class="error-emoji">⚠️</div>
+  <h3 id="errorTitle">Error de Conexión</h3>
+  <p id="errorMessage">Hubo un problema al procesar tu solicitud. Por favor intenta de nuevo.</p>
+  <button onclick="closeErrorPopup()">Entendido</button>
+</div>
+
+<div class="checkout-overlay" id="checkoutOverlay" onclick="closeCheckoutModal()"></div>
+<div class="checkout-modal" id="checkoutModal">
+  <div class="checkout-handle" onclick="closeCheckoutModal()"></div>
+  <h3>Checkout</h3>
+  <div class="checkout-summary" id="checkoutSummary"></div>
+  <div class="checkout-total" id="checkoutTotal"></div>
+  <div class="checkout-field">
+    <label>Nombre</label>
+    <input type="text" id="checkoutName" placeholder="Tu nombre">
+  </div>
+  <div class="checkout-field">
+    <label>Teléfono</label>
+    <input type="tel" id="checkoutPhone" placeholder="809-123-4567" maxlength="15">
+  </div>
+  <div class="checkout-methods-title">Método de Pago</div>
+  <div class="checkout-methods">
+    <button class="checkout-method active" data-method="card" onclick="selectPayMethod('card')">Tarjeta</button>
+    <button class="checkout-method" data-method="apple" onclick="selectPayMethod('apple')">Apple Pay</button>
+    <button class="checkout-method" data-method="google" onclick="selectPayMethod('google')">Google Pay</button>
+  </div>
+  <div class="checkout-card-fields" id="checkoutCardFields">
+    <input type="text" id="cardNumber" placeholder="Número de tarjeta" maxlength="19" inputmode="numeric" oninput="formatCardNumber(this)">
+    <div class="checkout-card-row">
+      <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5" inputmode="numeric" oninput="formatExpiry(this)">
+      <input type="text" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric">
+    </div>
+  </div>
+  <div class="checkout-terms">
+    <label>
+      <input type="checkbox" id="termsCheckbox">
+      <span>Acepto los <a href="/politicas/privacidad" target="_blank">términos de privacidad</a> y la <a href="/politicas/devoluciones" target="_blank">política de devoluciones</a></span>
+    </label>
+  </div>
+  <div class="checkout-error" id="checkoutError"></div>
+  <button class="checkout-pay-btn" id="checkoutPayBtn" onclick="processPayment()">Pagar RD$0</button>
+  <div class="checkout-badges">
+    <img src="https://i.imgur.com/gMRFXRj.png" alt="Visa">
+    <img src="https://i.imgur.com/qgq4m7h.png" alt="Mastercard">
+    <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+    <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+  </div>
+  <!-- 3DS processing overlay -->
+  <div id="threeDSOverlay" style="display:none; position:absolute; inset:0; background:white; border-radius:16px; z-index:10; flex-direction:column; align-items:center; justify-content:center; padding:30px;">
+    <div id="threeDSSpinner" style="text-align:center;">
+      <div style="width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:var(--primary-light);border-radius:50%;animation:spin3ds 0.8s linear infinite;margin:0 auto 16px;"></div>
+      <p id="threeDSStatus" style="color:#475569;font-weight:600;font-size:0.95em;">Verificando con tu banco...</p>
+    </div>
+    <div id="threeDSChallengeFrame" style="display:none;width:100%;flex:1;min-height:400px;"></div>
+  </div>
+  <!-- Hidden container for 3DS Method iframe -->
+  <iframe id="threeDSMethodIframe" name="threeDSMethodIframe" style="display:none;width:0;height:0;border:0;"></iframe>
+</div>
+
+<div class="chef-clippy" id="chefClippy">
+  <div class="clippy-container">
+    <div class="speech-bubble" id="speechBubble">
+      <button class="bubble-close" onclick="hideBubble()">×</button>
+      <p class="bubble-text">
+        <span class="bubble-emoji" id="bubbleEmoji">👋</span>
+        <span id="bubbleText">¡Hola! ¿Te ayudo a elegir?</span>
+      </p>
+    </div>
+    
+    <div class="clippy-avatar" onclick="openPinzer()">
+      <span style="font-size:2em;">🍽️</span>
+      <div class="notification-pulse" id="notificationBadge" style="display: none;">3</div>
+    </div>
+  </div>
+</div>
+
+<div id="pinzer-modal">
+  <div style="
+    background: linear-gradient(135deg, var(--primary-light), var(--primary));
+    color: white;
+    padding: 15px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  ">
+    <span id="chatHeaderName">🍽️ Mesero Virtual</span>
+    <button onclick="closePinzer()" style="
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      -webkit-tap-highlight-color: transparent;
+    ">×</button>
+  </div>
+  
+  <div id="pinzer-messages"></div>
+  
+  <div id="pinzer-replies" style="
+    padding: 10px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  "></div>
+  <div class="pinzer-input-bar">
+    <input type="text" id="pinzerInput" placeholder="Escríbele al mesero..." onkeydown="if(event.key==='Enter')sendPinzerMessage()">
+    <button class="pinzer-send-btn" onclick="sendPinzerMessage()">➤</button>
   </div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt';
+// ══════════════════════════════════════════════════════════════
+// CONFIGURACIÓN Y DATOS
+// ══════════════════════════════════════════════════════════════
 
-function sbHeaders() {
+const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
+
+// ── Slug extraction from URL: /menu/hummus → hummus ──
+const SLUG = window.location.pathname.split('/').filter(Boolean)[1] || '';
+if (!SLUG) {
+  document.body.innerHTML = '<div style="text-align:center;padding:80px 20px;color:#64748b;"><h2>Restaurante no encontrado</h2><p>No se especificó un restaurante en la URL.</p><a href="https://www.pincerweb.com" style="color:#4338ca;">Ir a Pincer</a></div>';
+  throw new Error('No slug in URL');
+}
+
+// ── Restaurant data (loaded on init) ──
+let restaurantData = null;
+
+// ── Dynamic keys derived from slug ──
+const SESSION_KEY = 'pincer_orders_' + SLUG;
+const WELCOMED_KEY = 'pincer_welcomed_' + SLUG;
+const ORDER_PREFIX = SLUG.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4) + '-';
+
+// ── Payment toggle (set to true when Azul is active) ──
+const PAYMENT_ENABLED = false; // TODO: reactivar con credenciales de producción Azul
+
+// ── Debug logger ──
+let debugLogs = [];
+function dbg(msg) {
+  const ts = new Date().toLocaleTimeString();
+  const line = `[${ts}] ${msg}`;
+  debugLogs.push(line);
+  const panel = document.getElementById('debugPanel');
+  if (panel && panel.classList.contains('show')) {
+    panel.innerHTML = debugLogs.slice(-30).join('<br>');
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+
+// Tap logo 5 times to show debug panel
+let logoTaps = 0;
+document.addEventListener('DOMContentLoaded', () => {
+  const logo = document.querySelector('.logo-container');
+  if (logo) {
+    logo.addEventListener('click', () => {
+      logoTaps++;
+      if (logoTaps >= 5) {
+        document.getElementById('debugPanel').classList.toggle('show');
+        document.getElementById('debugPanel').innerHTML = debugLogs.slice(-30).join('<br>');
+        logoTaps = 0;
+      }
+      setTimeout(() => { logoTaps = 0; }, 3000);
+    });
+  }
+});
+
+// ── Supabase helpers (NO client library needed) ──
+function sbHeaders(extra = {}) {
+  // New sb_publishable_ keys: use apikey header only, 
+  // Authorization must match apikey or be omitted
   return {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    ...extra
   };
 }
 
-function escHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str || '';
-  return d.innerHTML;
+// Fetch with timeout
+function fetchWithTimeout(url, options, timeoutMs = 15000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: el servidor no respondió en ' + (timeoutMs/1000) + ' segundos')), timeoutMs)
+    )
+  ]);
 }
 
-// Extract slug from URL: /menu/hummus → hummus
-const pathParts = window.location.pathname.split('/').filter(Boolean);
-const slug = pathParts[1] || '';
+// Active menu data (loaded from DB — no hardcoded fallback for dynamic pages)
+let MENU_DATA = {};
 
-if (!slug) {
-  showError('P\u00e1gina no encontrada', 'No se especific\u00f3 un restaurante en la URL.');
-} else {
-  loadRestaurant();
+// Dynamic category ordering from menu_style.section_names
+function getCategoryOrder() {
+  const allCats = Object.keys(MENU_DATA);
+  const sectionNames = restaurantData?.menu_style?.section_names || [];
+  if (!sectionNames.length) return allCats;
+  const ordered = [];
+  sectionNames.forEach(s => {
+    const match = allCats.find(c => c.toLowerCase() === s.toLowerCase());
+    if (match && !ordered.includes(match)) ordered.push(match);
+  });
+  allCats.forEach(c => { if (!ordered.includes(c)) ordered.push(c); });
+  return ordered;
 }
 
-async function loadRestaurant() {
-  try {
-    const [restRes, prodRes] = await Promise.all([
-      fetch(
-        `${SUPABASE_URL}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=display_name,menu_style,hours,phone,address,status&limit=1`,
-        { headers: sbHeaders() }
-      ),
-      fetch(
-        `${SUPABASE_URL}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(slug)}&active=eq.true&order=display_order.asc&select=name,price,category,description`,
-        { headers: sbHeaders() }
-      ),
-    ]);
-
-    if (!restRes.ok || !prodRes.ok) {
-      showError('Error de conexi\u00f3n', 'No se pudo conectar con el servidor. Intenta de nuevo.');
-      return;
-    }
-
-    const restaurants = await restRes.json();
-    const products = await prodRes.json();
-
-    if (!restaurants.length) {
-      showError('Restaurante no encontrado', 'El restaurante "' + escHtml(slug) + '" no existe o no est\u00e1 disponible.');
-      return;
-    }
-
-    const restaurant = restaurants[0];
-
-    if (restaurant.status !== 'active') {
-      showError('Restaurante no disponible', 'Este restaurante a\u00fan no est\u00e1 activo en nuestra plataforma.');
-      return;
-    }
-
-    renderPage(restaurant, products);
-
-  } catch (err) {
-    showError('Error de conexi\u00f3n', 'No se pudo cargar el men\u00fa. Verifica tu conexi\u00f3n a internet.');
+// Find extras category dynamically (for notes popup)
+function getExtras() {
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    if (cat.toLowerCase().includes('extra')) return items;
   }
+  return [];
 }
 
+// Load restaurant data from Supabase
+async function loadRestaurantData() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status&limit=1',
+      { headers: sbHeaders() }, 10000
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (!rows.length) return null;
+    if (rows[0].status !== 'active') return null;
+    return rows[0];
+  } catch (e) { return null; }
+}
+
+// Apply theme from menu_style
 function applyTheme(style) {
-  const primary = style?.primary_color || '#4338ca';
-  const secondary = style?.secondary_color || '#6366f1';
+  const primary = style?.primary_color || '#2d5016';
+  const secondary = style?.secondary_color || '#4a7c2c';
   const bg = style?.background_color || null;
+  const accent = style?.accent_color || '#f4e4c1';
 
   document.documentElement.style.setProperty('--primary', primary);
-  document.documentElement.style.setProperty('--accent', secondary);
-
-  if (bg) {
-    document.body.style.background = `linear-gradient(135deg, ${primary} 0%, ${bg} 100%)`;
-  } else {
-    document.body.style.background = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`;
-  }
+  document.documentElement.style.setProperty('--primary-light', secondary);
+  document.documentElement.style.setProperty('--accent', accent);
+  document.body.style.background = 'linear-gradient(135deg, ' + primary + ' 0%, ' + (bg || secondary) + ' 100%)';
 
   const fontStyle = style?.font_style || 'modern';
   if (fontStyle === 'classic') document.body.classList.add('font-classic');
   else if (fontStyle === 'casual') document.body.classList.add('font-casual');
 
-  // Set theme-color meta for mobile browser chrome
   const meta = document.createElement('meta');
   meta.name = 'theme-color';
   meta.content = primary;
   document.head.appendChild(meta);
 }
 
-function renderPage(restaurant, products) {
-  const style = restaurant.menu_style;
-  applyTheme(style);
+// Apply dynamic branding to DOM elements
+function applyBranding(data) {
+  document.title = data.display_name + ' — Pedir';
 
-  document.title = restaurant.display_name + ' \u2014 Men\u00fa';
-
-  // Group products by category, preserving display_order
-  const categories = [];
-  const categoryMap = {};
-  products.forEach(p => {
-    const cat = p.category || 'Men\u00fa';
-    if (!categoryMap[cat]) {
-      categoryMap[cat] = [];
-      categories.push(cat);
-    }
-    categoryMap[cat].push(p);
-  });
-
-  // If menu_style has section_names, use that order; otherwise use natural order
-  let orderedCategories = categories;
-  if (style?.section_names?.length) {
-    const sectionOrder = style.section_names;
-    orderedCategories = [];
-    sectionOrder.forEach(s => {
-      // Fuzzy match: case-insensitive
-      const match = categories.find(c => c.toLowerCase() === s.toLowerCase());
-      if (match) orderedCategories.push(match);
-    });
-    // Append any categories not in section_names
-    categories.forEach(c => {
-      if (!orderedCategories.includes(c)) orderedCategories.push(c);
-    });
-  }
-
-  let menuHtml = '';
-  orderedCategories.forEach(cat => {
-    const items = categoryMap[cat];
-    if (!items || !items.length) return;
-
-    menuHtml += `<div class="category-title">${escHtml(cat)}</div>`;
-    items.forEach(item => {
-      menuHtml += `
-        <div class="menu-item">
-          <div class="item-info">
-            <div class="item-name">${escHtml(item.name)}</div>
-            ${item.description ? `<div class="item-desc">${escHtml(item.description)}</div>` : ''}
-          </div>
-          <div class="item-price">RD$${item.price.toLocaleString()}</div>
-        </div>`;
-    });
-  });
-
-  if (!menuHtml) {
-    menuHtml = '<p style="text-align:center;color:#94a3b8;padding:30px 0;">Este restaurante a\u00fan no ha publicado su men\u00fa.</p>';
-  }
-
-  const hoursHtml = restaurant.hours
-    ? `<div class="hours">${escHtml(restaurant.hours)}</div>`
-    : '';
-
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="header">
-      <div class="header-icon">\uD83C\uDF7D\uFE0F</div>
-      <h1>${escHtml(restaurant.display_name)}</h1>
-      ${hoursHtml}
-    </div>
-    <div class="menu-card">
-      ${menuHtml}
-    </div>
-  `;
-
-  // Add footer after container
-  const footer = document.createElement('footer');
-  footer.className = 'pincer-footer';
-  footer.innerHTML = `
-    <div class="pincer-footer-inner">
-      <a href="https://www.pincerweb.com" style="color:white;text-decoration:none;font-size:20px;font-weight:800;">Pincer</a>
-      <div class="pincer-footer-links">
-        <a href="/politicas/privacidad">Privacidad</a>
-        <a href="/politicas/devoluciones">Devoluciones</a>
-        <a href="/politicas/seguridad">Seguridad</a>
-        <a href="/politicas/entrega">Entrega</a>
-      </div>
-      <div class="pincer-footer-contact">
-        <a href="mailto:info@pincerweb.com">info@pincerweb.com</a> &middot; <a href="tel:+18295481236">+1 (829) 548-1236</a><br>
-        Santiago, Rep\u00fablica Dominicana
-      </div>
-      <div class="pincer-footer-copyright">&copy; 2026 Pincer. Hecho en Rep\u00fablica Dominicana.</div>
-      <div class="pincer-footer-powered">Powered by <strong>Pincer</strong></div>
-    </div>
-  `;
-  document.body.appendChild(footer);
+  // Header
+  const h1 = document.getElementById('restaurantName');
+  if (h1) h1.textContent = data.display_name;
+  const subtitle = document.getElementById('restaurantSubtitle');
+  if (subtitle) subtitle.textContent = data.hours || '';
 }
+
+async function loadMenuFromDB() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&active=eq.true&order=display_order.asc&select=*',
+      { headers: sbHeaders(), cache: 'no-store' },
+      10000
+    );
+    if (!res.ok) {
+      dbg('⚠️ loadMenuFromDB HTTP ' + res.status);
+      return false;
+    }
+    const products = await res.json();
+    if (!products.length) {
+      dbg('⚠️ loadMenuFromDB: no products returned');
+      return false;
+    }
+
+    const menuData = {};
+    products.forEach(p => {
+      if (!menuData[p.category]) menuData[p.category] = [];
+      menuData[p.category].push({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        img: p.img_url || null,
+        desc: p.description || null,
+        category: p.category
+      });
+      // Update sold-out set from the same query
+      if (p.sold_out) soldOutSet.add(p.id);
+      else soldOutSet.delete(p.id);
+    });
+
+    MENU_DATA = menuData;
+    dbg('✅ Menú cargado desde DB: ' + products.length + ' productos');
+    return true;
+  } catch (e) {
+    dbg('⚠️ loadMenuFromDB error: ' + e.message);
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// VARIABLES DE ESTADO
+// ══════════════════════════════════════════════════════════════
+
+let order = [];
+let soldOutSet = new Set();
+let currentOrderId = null;
+let orderStatusChecker = null;
+let pendingItem = null;
+let orderReadyNotified = {};
+let orderReviewed = false;
+let sessionOrders = [];
+let customerPhone = '';
+let lastPaymentInfo = null;
+
+// ══════════════════════════════════════════════════════════════
+// CONNECTION TEST
+// ══════════════════════════════════════════════════════════════
+
+async function testConnection() {
+  const banner = document.getElementById('connBanner');
+  try {
+    dbg('🔌 Probando conexión a Supabase...');
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id&limit=1',
+      { headers: sbHeaders() },
+      10000
+    );
+    if (res.ok) {
+      dbg('✅ Conexión a Supabase OK (HTTP ' + res.status + ')');
+      banner.className = 'conn-banner ok';
+      banner.textContent = '✅ Conectado';
+      return true;
+    } else {
+      const errText = await res.text();
+      dbg('❌ Supabase respondió HTTP ' + res.status + ': ' + errText);
+      banner.className = 'conn-banner error';
+      banner.textContent = '❌ Error de conexión con el servidor (HTTP ' + res.status + ')';
+      return false;
+    }
+  } catch (e) {
+    dbg('❌ No se pudo conectar: ' + e.message);
+    banner.className = 'conn-banner error';
+    banner.textContent = '❌ Sin conexión al servidor: ' + e.message;
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FUNCIONES DE ERROR
+// ══════════════════════════════════════════════════════════════
 
 function showError(title, message) {
-  document.body.style.background = '#f1f5f9';
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="error-state" style="padding-top:80px;">
-      <div class="error-card">
-        <div class="error-icon">\uD83D\uDD0D</div>
-        <h2>${escHtml(title)}</h2>
-        <p>${escHtml(message)}</p>
-        <p style="margin-top:20px;">
-          <a href="https://www.pincerweb.com" style="color:#4338ca;font-weight:600;text-decoration:none;">Ir a Pincer &rarr;</a>
-        </p>
-      </div>
-    </div>
-  `;
+  document.getElementById('errorTitle').textContent = title;
+  document.getElementById('errorMessage').textContent = message;
+  document.getElementById('errorPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
 }
+
+function closeErrorPopup() {
+  document.getElementById('errorPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CARGAR PRODUCTOS AGOTADOS
+// ══════════════════════════════════════════════════════════════
+
+async function loadSoldOut() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&sold_out=eq.true&select=id',
+      { headers: sbHeaders(), cache: 'no-store' },
+      10000
+    );
+    if (!res.ok) {
+      dbg('⚠️ loadSoldOut HTTP ' + res.status);
+      return;
+    }
+    const data = await res.json();
+    soldOutSet = new Set(data.map(r => r.id));
+    dbg('✅ Productos agotados: ' + JSON.stringify([...soldOutSet]));
+  } catch (e) {
+    dbg('⚠️ loadSoldOut error: ' + e.message);
+  }
+}
+
+// Polling para soldout (simple y confiable)
+let soldOutPoller = null;
+function startSoldOutPoller() {
+  if (soldOutPoller) return;
+  soldOutPoller = setInterval(async () => {
+    try {
+      const res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&sold_out=eq.true&select=id',
+        { headers: sbHeaders(), cache: 'no-store' },
+        10000
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const newSet = new Set(data.map(r => r.id));
+      const oldSet = soldOutSet;
+      if (newSet.size !== oldSet.size || [...newSet].some(id => !oldSet.has(id)) || [...oldSet].some(id => !newSet.has(id))) {
+        soldOutSet = newSet;
+        renderMenu();
+        dbg('🔄 soldOut actualizado: ' + JSON.stringify([...soldOutSet]));
+
+        // Remove sold-out items from the customer's cart and notify
+        const removedItems = [];
+        for (let i = order.length - 1; i >= 0; i--) {
+          if (soldOutSet.has(order[i].id)) {
+            removedItems.push(order[i].name);
+            order.splice(i, 1);
+          }
+        }
+        if (removedItems.length > 0) {
+          renderOrder();
+          const uniqueNames = [...new Set(removedItems)];
+          showSoldOutPopup(uniqueNames.join(', '));
+        }
+      }
+    } catch (e) { /* silente */ }
+  }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PHONE VALIDATION
+// ══════════════════════════════════════════════════════════════
+
+function isValidDRPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return /^(809|829|849)\d{7}$/.test(digits);
+}
+
+function formatPhoneForWhatsApp(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return '1' + digits;
+}
+
+function onPhoneInput(input) {
+  customerPhone = input.value.trim();
+  input.classList.remove('invalid');
+  document.getElementById('phoneError').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// HTML ESCAPE HELPER (XSS prevention)
+// ══════════════════════════════════════════════════════════════
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER MENU
+// ══════════════════════════════════════════════════════════════
+
+function renderMenu() {
+  const container = document.getElementById('menuSection');
+  let html = '<h2 class="section-title">Menú</h2>';
+
+  const categoryOrder = getCategoryOrder();
+  categoryOrder.forEach(cat => {
+    const items = MENU_DATA[cat];
+    if (!items || !items.length) return;
+    html += `<div class="category-title">${escHtml(cat.toUpperCase())}</div>`;
+    items.forEach(item => { html += menuItemHTML(item); });
+  });
+
+  container.innerHTML = html;
+}
+
+function menuItemHTML(item) {
+  const isSoldOut = soldOutSet.has(item.id);
+  const soldOutClass = isSoldOut ? ' sold-out' : '';
+  const soldOutBadge = isSoldOut ? '<span class="sold-out-badge">Agotado</span>' : '';
+  const isExtra = (item.category || '').toLowerCase().includes('extra');
+
+  let imgHTML = '';
+  if (item.img) {
+    imgHTML = `<img src="${item.img}" alt="${item.name}" class="item-image">`;
+  }
+
+  let descHTML = item.desc ? `<div class="item-description">${item.desc}</div>` : '';
+
+  const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+  const qtyHTML = (isSoldOut || isExtra) ? '' : `
+    ${currentQty > 0 ? `
+      <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', -1)">−</button>
+      <span class="menu-qty-num">${currentQty}</span>
+    ` : ''}
+    <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
+
+  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}')" style="cursor:pointer;"` : '';
+
+  return `
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
+      ${soldOutBadge}
+      ${imgHTML}
+      <div class="item-info">
+        <div>
+          <div class="item-name">${item.name}</div>
+          ${descHTML}
+        </div>
+        <div class="item-bottom">
+          <div class="item-price">RD$${item.price.toLocaleString()}</div>
+          <div class="menu-qty-wrap" id="menuQty_${item.id}">${qtyHTML}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTES POPUP
+// ══════════════════════════════════════════════════════════════
+
+function showNotesPopup(id, name, price, imageUrl = null) {
+  pendingItem = { id, name, price, extras: [] };
+  document.getElementById('notesItemName').textContent = name;
+  document.getElementById('notesTextarea').value = '';
+  
+  const itemImage = document.getElementById('notesItemImage');
+  if (imageUrl) {
+    itemImage.src = imageUrl;
+    itemImage.alt = name;
+    itemImage.style.display = 'block';
+  } else {
+    itemImage.style.display = 'none';
+  }
+  
+  const extrasList = document.getElementById('extrasList');
+  extrasList.innerHTML = getExtras().map(extra => {
+    const isSoldOut = soldOutSet.has(extra.id);
+    const disabled = isSoldOut ? 'disabled' : '';
+    const label = isSoldOut ? extra.name + ' (Agotado)' : extra.name;
+    return `
+      <div class="extra-checkbox" style="${isSoldOut ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+        <input type="checkbox" id="extra_${extra.id}" value="${extra.id}" ${disabled}
+               onchange="toggleExtra('${escHtml(extra.id)}', '${escHtml(extra.name)}', ${extra.price}, this.checked)">
+        <label for="extra_${extra.id}" style="${isSoldOut ? 'cursor:not-allowed;' : ''}">
+          <span>${label}</span>
+          <span class="extra-price">+RD$${extra.price}</span>
+        </label>
+      </div>`;
+  }).join('');
+  
+  document.getElementById('notesPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeNotesPopup() {
+  document.getElementById('notesPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  pendingItem = null;
+}
+
+function toggleExtra(id, name, price, checked) {
+  if (!pendingItem) return;
+  if (checked) {
+    pendingItem.extras.push({ id, name, price });
+  } else {
+    pendingItem.extras = pendingItem.extras.filter(e => e.id !== id);
+  }
+}
+
+function addItemWithNotes() {
+  if (!pendingItem) return;
+  const notes = document.getElementById('notesTextarea').value.trim();
+  
+  addItem(pendingItem.id, pendingItem.name, pendingItem.price, notes || null);
+  
+  if (pendingItem.extras && pendingItem.extras.length > 0) {
+    pendingItem.extras.forEach(extra => {
+      const extraNote = `(para ${pendingItem.name})`;
+      addItem(extra.id, extra.name, extra.price, extraNote);
+    });
+  }
+  
+  closeNotesPopup();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SOLDOUT POPUP
+// ══════════════════════════════════════════════════════════════
+
+function showSoldOutPopup(productName) {
+  document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
+  document.getElementById('soldoutPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeSoldOutPopup() {
+  document.getElementById('soldoutPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MENU QTY CHANGE
+// ══════════════════════════════════════════════════════════════
+
+function menuQtyChange(itemId, delta) {
+  if (itemId.startsWith('extra_')) return;
+
+  const allItems = Object.values(MENU_DATA).flat();
+  const menuItem = allItems.find(i => i.id === itemId);
+  if (!menuItem) return;
+
+  if (soldOutSet.has(itemId)) { showSoldOutPopup(menuItem.name); return; }
+
+  const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
+
+  if (delta === 1 && currentQty === 0) {
+    showNotesPopup(itemId, menuItem.name, menuItem.price, menuItem.img);
+    return;
+  }
+
+  if (delta === 1) {
+    const idx = order.findIndex(o => o.id === itemId && !o.notes) !== -1
+      ? order.findIndex(o => o.id === itemId && !o.notes)
+      : order.findIndex(o => o.id === itemId);
+    if (idx !== -1) order[idx].qty += 1;
+  } else {
+    const idx = order.findIndex(o => o.id === itemId);
+    if (idx !== -1) {
+      order[idx].qty -= 1;
+      if (order[idx].qty <= 0) order.splice(idx, 1);
+    }
+  }
+
+  renderOrder();
+}
+
+function updateMenuQtyBadges() {
+  const allItems = Object.values(MENU_DATA).flat();
+  allItems.forEach(item => {
+    if (soldOutSet.has(item.id)) {
+      const w = document.getElementById("menuQty_" + item.id);
+      if (w) w.innerHTML = "";
+      return;
+    }
+    const wrap = document.getElementById('menuQty_' + item.id);
+    if (!wrap) return;
+    const currentQty = order.filter(o => o.id === item.id).reduce((s, o) => s + o.qty, 0);
+
+    if (currentQty > 0) {
+      wrap.innerHTML = `
+        <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', -1)">−</button>
+        <span class="menu-qty-num">${currentQty}</span>
+        <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', 1)">+</button>`;
+    } else {
+      wrap.innerHTML = `<button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${item.id}', 1)" style="border-radius:8px;">+</button>`;
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD ITEM
+// ══════════════════════════════════════════════════════════════
+
+function addItem(id, name, price, notes = null) {
+  if (storeClosed) return;
+  if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
+
+  const idx = order.findIndex(o => o.id === id && o.notes === notes);
+  if (idx !== -1) {
+    order[idx].qty += 1;
+  } else {
+    order.push({ id, name, price, qty: 1, notes });
+  }
+  renderOrder();
+}
+
+function changeQty(index, delta) {
+  order[index].qty += delta;
+  if (order[index].qty <= 0) order.splice(index, 1);
+  renderOrder();
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER ORDER
+// ══════════════════════════════════════════════════════════════
+
+function renderOrder() {
+  const list = document.getElementById("orderList");
+  const countBadge = document.getElementById("order-count");
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+  const totalDiv = document.getElementById("orderTotal");
+
+  const totalQty = order.reduce((s, i) => s + i.qty, 0);
+
+  const phoneField = document.getElementById('phoneField');
+
+  if (order.length === 0) {
+    list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
+    countBadge.style.display = 'none';
+    placeOrderBtn.disabled = true;
+    totalDiv.style.display = 'none';
+    phoneField.style.display = 'none';
+    orderReviewed = false;
+    updateMenuQtyBadges();
+    return;
+  }
+
+  countBadge.textContent = totalQty;
+  countBadge.style.display = 'inline-block';
+  placeOrderBtn.disabled = false;
+  phoneField.style.display = 'block';
+  // Preserve phone value across re-renders
+  const phoneInput = document.getElementById('phoneInput');
+  if (customerPhone && !phoneInput.value) phoneInput.value = customerPhone;
+  
+  orderReviewed = false;
+  placeOrderBtn.textContent = "Ordenar Ahora";
+
+  list.innerHTML = '';
+  let total = 0;
+
+  order.forEach((item, index) => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+
+    const div = document.createElement("div");
+    div.className = "order-item";
+
+    let notesHTML = item.notes ? `<div class="order-item-notes">📝 ${escHtml(item.notes)}</div>` : '';
+
+    div.innerHTML = `
+      <div class="order-item-top">
+        <span class="order-item-name">${item.name}</span>
+        <span class="order-item-price">RD$${subtotal.toLocaleString()}</span>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px;">
+        <div class="order-item-controls">
+          <button class="qty-btn minus" onclick="changeQty(${index}, -1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+          <span style="font-size:0.82em; color:#6c757d; margin-left:4px;">× RD$${item.price.toLocaleString()}</span>
+        </div>
+      </div>
+      ${notesHTML}`;
+    list.appendChild(div);
+  });
+
+  totalDiv.innerHTML = `
+    <div class="order-total">
+      <span>TOTAL:</span>
+      <span>RD$${total.toLocaleString()}</span>
+    </div>`;
+  totalDiv.style.display = 'block';
+
+  updateMenuQtyBadges();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ★ PLACE ORDER — FIXED VERSION ★
+// ══════════════════════════════════════════════════════════════
+
+async function placeOrder() {
+  if (order.length === 0) return;
+
+  const placeOrderBtn = document.getElementById("placeOrderBtn");
+
+  // PRIMER PASO: Scroll al total para que revisen
+  if (!orderReviewed) {
+    const orderSummary = document.querySelector('.order-summary');
+    if (orderSummary) orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    placeOrderBtn.textContent = "Completar Orden";
+    orderReviewed = true;
+    return;
+  }
+
+  // SEGUNDO PASO: Validar teléfono y enviar la orden
+  customerPhone = (document.getElementById('phoneInput').value || '').trim();
+  if (!customerPhone) {
+    document.getElementById('phoneInput').classList.add('invalid');
+    document.getElementById('phoneError').textContent = 'Por favor ingresa tu número de WhatsApp';
+    document.getElementById('phoneError').style.display = 'block';
+    document.getElementById('phoneInput').focus();
+    return;
+  }
+  if (!isValidDRPhone(customerPhone)) {
+    document.getElementById('phoneInput').classList.add('invalid');
+    document.getElementById('phoneError').textContent = 'Número inválido. Usa formato: 809-123-4567';
+    document.getElementById('phoneError').style.display = 'block';
+    document.getElementById('phoneInput').focus();
+    return;
+  }
+
+  // If payment is enabled, open checkout modal instead of direct submit
+  if (PAYMENT_ENABLED) {
+    openCheckoutModal();
+    return;
+  }
+
+  placeOrderBtn.disabled = true;
+  placeOrderBtn.textContent = "Procesando...";
+
+  try {
+    const itemsArray = order.map(item => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      notes: item.notes || null
+    }));
+
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const orderPayload = {
+      items: JSON.stringify(itemsArray),
+      total: total,
+      status: 'pending',
+      phone: customerPhone,
+      restaurant_slug: SLUG
+    };
+
+    dbg('📤 Enviando orden: ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
+    dbg('📤 URL: ' + SUPABASE_URL + '/rest/v1/orders');
+
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'return=representation' }),
+        body: JSON.stringify(orderPayload)
+      },
+      15000
+    );
+
+    dbg('📥 Response status: ' + res.status);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ Error body: ' + errText);
+      
+      // Si el error es por tipo de columna, intentar enviar items como objeto JSON directo
+      if (res.status === 400 && errText.includes('json')) {
+        dbg('🔄 Reintentando con items como array JSON directo...');
+        const retryPayload = {
+          items: itemsArray,
+          total: total,
+          status: 'pending',
+          phone: customerPhone,
+          restaurant_slug: SLUG
+        };
+        
+        const retryRes = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders',
+          {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(retryPayload)
+          },
+          15000
+        );
+        
+        dbg('📥 Retry status: ' + retryRes.status);
+        
+        if (!retryRes.ok) {
+          const retryErr = await retryRes.text();
+          dbg('❌ Retry error: ' + retryErr);
+          throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
+        }
+        
+        const retryData = await retryRes.json();
+        handleOrderSuccess(retryData);
+        return;
+      }
+      
+      let errorTitle = "Error al Enviar Orden";
+      let errorMessage = "No pudimos procesar tu orden. ";
+      
+      if (res.status >= 500) {
+        errorMessage += "El servidor tiene problemas. Intenta en unos momentos.";
+      } else if (res.status === 401 || res.status === 403) {
+        errorMessage += "Problema de autenticación. Recarga la página.";
+      } else {
+        errorMessage += "Código: " + res.status + ". " + errText.substring(0, 100);
+      }
+      
+      showError(errorTitle, errorMessage);
+      placeOrderBtn.disabled = false;
+      placeOrderBtn.textContent = "Ordenar Ahora";
+      return;
+    }
+
+    const data = await res.json();
+    dbg('✅ Orden creada: ' + JSON.stringify(data).substring(0, 200));
+    handleOrderSuccess(data);
+
+  } catch (err) {
+    dbg('❌ placeOrder exception: ' + err.message);
+    
+    let errorTitle = "Error de Conexión";
+    let errorMessage = err.message.includes('Timeout')
+      ? "El servidor tardó demasiado en responder. Verifica tu internet e intenta de nuevo."
+      : "No pudimos conectar con el servidor. Verifica tu conexión e intenta de nuevo.";
+    
+    showError(errorTitle, errorMessage);
+    placeOrderBtn.disabled = false;
+    placeOrderBtn.textContent = "Ordenar Ahora";
+  }
+}
+
+function handleOrderSuccess(data) {
+  const orderNumber = Array.isArray(data) ? data[0].id : data.id;
+  currentOrderId = orderNumber;
+  orderReadyNotified[orderNumber] = false;
+
+  dbg('🎉 Orden #' + orderNumber + ' creada exitosamente');
+
+  // Capture order items and total BEFORE clearing the cart
+  const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
+  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // Save order to session history before clearing cart
+  sessionOrders.push({
+    orderId: orderNumber,
+    items: order.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
+    total: receiptTotal,
+    status: 'pending',
+    phone: customerPhone
+  });
+  saveSessionOrders();
+  renderMisOrdenes();
+
+  showReceipt(orderNumber, receiptItems, receiptTotal, lastPaymentInfo);
+
+  startSessionOrdersPoller();
+
+  order = [];
+  customerPhone = '';
+  document.getElementById('phoneInput').value = '';
+  renderOrder();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHECKOUT MODAL
+// ══════════════════════════════════════════════════════════════
+
+let selectedPayMethod = 'card';
+
+function openCheckoutModal() {
+  const summaryDiv = document.getElementById('checkoutSummary');
+  const totalDiv = document.getElementById('checkoutTotal');
+  const payBtn = document.getElementById('checkoutPayBtn');
+  const errorDiv = document.getElementById('checkoutError');
+
+  // Clear previous state
+  errorDiv.style.display = 'none';
+  errorDiv.textContent = '';
+  document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
+
+  // Render items
+  let html = '';
+  let total = 0;
+  order.forEach(item => {
+    const subtotal = item.price * item.qty;
+    total += subtotal;
+    html += `<div class="checkout-item">
+      <span class="checkout-item-name">${item.name}</span>
+      <span class="checkout-item-qty">x${item.qty}</span>
+      <span class="checkout-item-price">RD$${subtotal.toLocaleString()}</span>
+    </div>`;
+  });
+  summaryDiv.innerHTML = html;
+  totalDiv.innerHTML = `<span>TOTAL</span><span>RD$${total.toLocaleString()}</span>`;
+  payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  payBtn.disabled = false;
+
+  // Pre-fill phone from existing field
+  const existingPhone = (document.getElementById('phoneInput').value || '').trim();
+  document.getElementById('checkoutPhone').value = existingPhone;
+  document.getElementById('checkoutName').value = '';
+
+  // Reset payment method to card
+  selectPayMethod('card');
+
+  // Clear card fields
+  document.getElementById('cardNumber').value = '';
+  document.getElementById('cardExpiry').value = '';
+  document.getElementById('cardCvv').value = '';
+
+  // Show modal
+  document.getElementById('checkoutOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('checkoutModal').classList.add('show'), 10);
+}
+
+function closeCheckoutModal() {
+  const modal = document.getElementById('checkoutModal');
+  modal.style.transform = '';
+  modal.classList.remove('show');
+  setTimeout(() => document.getElementById('checkoutOverlay').classList.remove('show'), 350);
+}
+
+// Swipe-down to close checkout modal
+(function() {
+  let startY = 0, currentY = 0, dragging = false;
+  const modal = document.getElementById('checkoutModal');
+
+  modal.addEventListener('touchstart', function(e) {
+    // Only start drag if at top of scroll or touching the handle
+    if (modal.scrollTop > 0 && !e.target.closest('.checkout-handle')) return;
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    dragging = true;
+    modal.style.transition = 'none';
+  }, { passive: true });
+
+  modal.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const dy = currentY - startY;
+    if (dy > 0) {
+      modal.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  modal.addEventListener('touchend', function() {
+    if (!dragging) return;
+    dragging = false;
+    modal.style.transition = '';
+    const dy = currentY - startY;
+    if (dy > 100) {
+      closeCheckoutModal();
+    } else {
+      modal.style.transform = 'translateY(0)';
+    }
+  });
+})();
+
+function selectPayMethod(method) {
+  selectedPayMethod = method;
+  document.querySelectorAll('.checkout-method').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.method === method);
+  });
+  document.getElementById('checkoutCardFields').style.display = method === 'card' ? 'block' : 'none';
+}
+
+function formatCardNumber(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 16);
+  input.value = v.replace(/(.{4})/g, '$1 ').trim();
+}
+
+function formatExpiry(input) {
+  let v = input.value.replace(/\D/g, '').substring(0, 4);
+  if (v.length >= 3) {
+    v = v.substring(0, 2) + '/' + v.substring(2);
+  }
+  input.value = v;
+}
+
+async function processPayment() {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  // Clear previous errors
+  errorDiv.style.display = 'none';
+  document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
+
+  // Validate name
+  const name = document.getElementById('checkoutName').value.trim();
+  if (!name) {
+    document.getElementById('checkoutName').classList.add('invalid');
+    errorDiv.textContent = 'Por favor ingresa tu nombre';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutName').focus();
+    return;
+  }
+
+  // Validate phone
+  const phone = document.getElementById('checkoutPhone').value.trim();
+  if (!phone || !isValidDRPhone(phone)) {
+    document.getElementById('checkoutPhone').classList.add('invalid');
+    errorDiv.textContent = 'Número inválido. Usa formato: 809-123-4567';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutPhone').focus();
+    return;
+  }
+
+  // Validate terms checkbox
+  if (!document.getElementById('termsCheckbox').checked) {
+    errorDiv.textContent = 'Debes aceptar los términos y condiciones';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Validate card fields if card method
+  if (selectedPayMethod === 'card') {
+    const cardNum = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const expiry = document.getElementById('cardExpiry').value;
+    const cvv = document.getElementById('cardCvv').value;
+
+    if (!cardNum || cardNum.length < 13) {
+      document.getElementById('cardNumber').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa un número de tarjeta válido';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardNumber').focus();
+      return;
+    }
+    if (!expiry || expiry.length < 5) {
+      document.getElementById('cardExpiry').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa la fecha de expiración (MM/AA)';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardExpiry').focus();
+      return;
+    }
+    if (!cvv || cvv.length < 3) {
+      document.getElementById('cardCvv').classList.add('invalid');
+      errorDiv.textContent = 'Ingresa el código CVV';
+      errorDiv.style.display = 'block';
+      document.getElementById('cardCvv').focus();
+      return;
+    }
+
+    // Convert expiry MM/AA to YYYYMM
+    const parts = expiry.split('/');
+    const expirationFormatted = '20' + parts[1] + parts[0];
+
+    // Amount in cents (no decimals)
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const amountCents = Math.round(total * 100).toString();
+
+    // Generate custom order ID
+    const customOrderId = ORDER_PREFIX + Date.now();
+
+    // Collect browser info for 3DS
+    const browserInfo = {
+      language: navigator.language || 'es-DO',
+      colorDepth: screen.colorDepth || 24,
+      screenHeight: screen.height || 920,
+      screenWidth: screen.width || 412,
+      timeZoneOffset: new Date().getTimezoneOffset(),
+    };
+
+    payBtn.disabled = true;
+    payBtn.textContent = 'Procesando pago...';
+
+    try {
+      dbg('💳 Enviando pago a /api/payment con 3DS...');
+      const payRes = await fetchWithTimeout('/api/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardNumber: cardNum,
+          expiration: expirationFormatted,
+          cvc: cvv,
+          amount: amountCents,
+          itbis: '000',
+          customOrderId,
+          customerName: name,
+          customerPhone: phone,
+          browserInfo,
+        })
+      }, 45000);
+
+      const payData = await payRes.json();
+      dbg('💳 Respuesta pago: ' + JSON.stringify(payData).substring(0, 300));
+
+      if (payData.approved) {
+        // Direct approval (frictionless)
+        dbg('✅ Pago aprobado directo, enviando orden a Supabase...');
+        customerPhone = phone;
+        lastPaymentInfo = {
+          authorizationCode: payData.authorizationCode || '',
+          azulOrderId: payData.azulOrderId || customOrderId,
+          cardLast4: cardNum.slice(-4),
+        };
+        await submitOrderToSupabase('paid', payData.azulOrderId || customOrderId, name);
+        return;
+      }
+
+      if (payData.threeDSMethod) {
+        // 3DS Method: inject hidden iframe, wait, then continue payment
+        dbg('🔐 3DS Method requerido, inyectando iframe...');
+        await handle3DSMethod(payData, name, phone, total, customOrderId);
+        return;
+      }
+
+      if (payData.challengeRequired) {
+        // Challenge: show bank authentication iframe
+        dbg('🔐 3DS Challenge requerido, mostrando iframe...');
+        await handle3DSChallenge(payData, name, phone, total, customOrderId);
+        return;
+      }
+
+      // Declined or error
+      errorDiv.textContent = payData.message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+    } catch (err) {
+      dbg('❌ Error de pago: ' + err.message);
+      errorDiv.textContent = 'Error de conexión al procesar el pago. Intenta de nuevo.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3DS SECURE FLOW HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+function show3DSOverlay(msg) {
+  const overlay = document.getElementById('threeDSOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('threeDSStatus').textContent = msg || 'Verificando con tu banco...';
+  document.getElementById('threeDSSpinner').style.display = 'block';
+  document.getElementById('threeDSChallengeFrame').style.display = 'none';
+}
+
+function hide3DSOverlay() {
+  document.getElementById('threeDSOverlay').style.display = 'none';
+  document.getElementById('threeDSChallengeFrame').innerHTML = '';
+}
+
+async function handle3DSMethod(payData, customerName, phone, total, customOrderId) {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  show3DSOverlay('Verificando tarjeta...');
+
+  try {
+    // Inject the 3DS Method form into hidden iframe
+    if (payData.methodForm) {
+      const iframe = document.getElementById('threeDSMethodIframe');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(payData.methodForm);
+      doc.close();
+    }
+
+    // Poll for method notification (the bank will POST to our method-notify endpoint)
+    dbg('🔐 Polling 3DS method status...');
+    const methodReceived = await poll3DSStatus(payData.sessionId, 'method_received', 10000);
+    dbg('🔐 Method notification received: ' + methodReceived);
+
+    // Now continue the payment by calling Azul again (they need the same AzulOrderId)
+    show3DSOverlay('Procesando pago seguro...');
+
+    const continueRes = await fetchWithTimeout('/api/3ds?action=continue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: payData.sessionId,
+        azulOrderId: payData.azulOrderId,
+      })
+    }, 45000);
+
+    const continueData = await continueRes.json();
+    dbg('🔐 3DS continue response: ' + JSON.stringify(continueData).substring(0, 300));
+
+    if (continueData.approved) {
+      hide3DSOverlay();
+      customerPhone = phone;
+      lastPaymentInfo = {
+        authorizationCode: continueData.authorizationCode || '',
+        azulOrderId: continueData.azulOrderId || customOrderId,
+        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+      };
+      await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
+      return;
+    }
+
+    if (continueData.challengeRequired) {
+      await handle3DSChallenge(continueData, customerName, phone, total, customOrderId);
+      return;
+    }
+
+    // Declined
+    hide3DSOverlay();
+    errorDiv.textContent = continueData.message || 'Pago rechazado.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  } catch (err) {
+    dbg('❌ 3DS Method error: ' + err.message);
+    hide3DSOverlay();
+    errorDiv.textContent = 'Error en verificación de seguridad. Intenta de nuevo.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  }
+}
+
+async function handle3DSChallenge(payData, customerName, phone, total, customOrderId) {
+  const errorDiv = document.getElementById('checkoutError');
+  const payBtn = document.getElementById('checkoutPayBtn');
+
+  // Show challenge iframe
+  const overlay = document.getElementById('threeDSOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('threeDSSpinner').style.display = 'none';
+  const frameContainer = document.getElementById('threeDSChallengeFrame');
+  frameContainer.style.display = 'block';
+
+  if (payData.redirectUrl) {
+    // Validate redirect URL domain (must be azul.com.do or pincerweb.com)
+    try {
+      const rHost = new URL(payData.redirectUrl).hostname;
+      if (!rHost.endsWith('.azul.com.do') && !rHost.endsWith('.pincerweb.com')) {
+        throw new Error('Dominio de redirección no permitido: ' + rHost);
+      }
+    } catch (e) {
+      if (e.message.includes('no permitido')) throw e;
+      throw new Error('URL de redirección inválida');
+    }
+
+    // Create iframe for challenge
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'width:100%;height:100%;min-height:400px;border:none;border-radius:8px;';
+    iframe.id = 'challengeIframe';
+    frameContainer.innerHTML = '';
+    frameContainer.appendChild(iframe);
+
+    // If there's POST data, submit a form to the iframe
+    if (payData.redirectPostData) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payData.redirectUrl;
+      form.target = iframe.id;
+      iframe.name = iframe.id;
+
+      // Parse redirect post data (could be key=value pairs or JSON)
+      try {
+        const postData = typeof payData.redirectPostData === 'string'
+          ? JSON.parse(payData.redirectPostData) : payData.redirectPostData;
+        for (const [key, val] of Object.entries(postData)) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+      } catch (e) {
+        // If not JSON, try URL params
+        const params = new URLSearchParams(payData.redirectPostData);
+        for (const [key, val] of params.entries()) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+      }
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+    } else {
+      iframe.src = payData.redirectUrl;
+    }
+  }
+
+  // Listen for challenge completion via postMessage from callback page
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Challenge timeout')), 300000); // 5 min
+
+      function onMessage(event) {
+        // Validate origin — only accept messages from our own domain
+        if (event.origin !== 'https://www.pincerweb.com' && event.origin !== window.location.origin) return;
+        if (event.data?.type === '3ds_challenge_complete' && event.data?.session === payData.sessionId) {
+          clearTimeout(timeout);
+          window.removeEventListener('message', onMessage);
+          resolve(event.data);
+        }
+      }
+      window.addEventListener('message', onMessage);
+    });
+
+    hide3DSOverlay();
+    dbg('🔐 Challenge complete: ' + JSON.stringify(result));
+
+    if (result.approved) {
+      customerPhone = phone;
+      lastPaymentInfo = {
+        authorizationCode: result.result?.authorizationCode || '',
+        azulOrderId: result.result?.azulOrderId || customOrderId,
+        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+      };
+      await submitOrderToSupabase('paid', result.result?.azulOrderId || customOrderId, customerName);
+    } else {
+      errorDiv.textContent = result.result?.message || 'Pago rechazado por el banco.';
+      errorDiv.style.display = 'block';
+      payBtn.disabled = false;
+      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+    }
+  } catch (err) {
+    dbg('❌ Challenge error: ' + err.message);
+    hide3DSOverlay();
+    errorDiv.textContent = 'La verificación de seguridad expiró. Intenta de nuevo.';
+    errorDiv.style.display = 'block';
+    payBtn.disabled = false;
+    payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  }
+}
+
+async function poll3DSStatus(sessionId, waitFor, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await fetch(`/api/3ds?action=status&session=${sessionId}`);
+      const data = await r.json();
+      if (waitFor === 'method_received' && data.methodReceived) return true;
+      if (data.status === 'approved' || data.status === 'declined' || data.status === 'error') return data;
+    } catch (e) { /* retry */ }
+    await new Promise(ok => setTimeout(ok, 1000));
+  }
+  return false;
+}
+
+async function submitOrderToSupabase(status, azulOrderId, customerName) {
+  try {
+    const itemsArray = order.map(item => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      notes: item.notes || null
+    }));
+
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const orderPayload = {
+      items: JSON.stringify(itemsArray),
+      total: total,
+      status: status,
+      phone: customerPhone,
+      restaurant_slug: SLUG
+    };
+
+    if (azulOrderId) orderPayload.azul_order_id = azulOrderId;
+    if (customerName) orderPayload.customer_name = customerName;
+
+    dbg('📤 Enviando orden (paid): ' + JSON.stringify(orderPayload).substring(0, 200));
+
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'return=representation' }),
+        body: JSON.stringify(orderPayload)
+      },
+      15000
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ Supabase error: ' + errText);
+
+      // Retry with items as JSON array if needed
+      if (res.status === 400 && errText.includes('json')) {
+        orderPayload.items = itemsArray;
+        const retryRes = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders',
+          {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(orderPayload)
+          },
+          15000
+        );
+        if (!retryRes.ok) throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
+        const retryData = await retryRes.json();
+        closeCheckoutModal();
+        handleOrderSuccess(retryData);
+        return;
+      }
+
+      throw new Error('Error al guardar la orden (HTTP ' + res.status + ')');
+    }
+
+    const data = await res.json();
+    dbg('✅ Orden pagada creada: ' + JSON.stringify(data).substring(0, 200));
+    closeCheckoutModal();
+    handleOrderSuccess(data);
+
+  } catch (err) {
+    dbg('❌ submitOrderToSupabase error: ' + err.message);
+    const errorDiv = document.getElementById('checkoutError');
+    errorDiv.textContent = 'Pago exitoso pero hubo un error guardando la orden. Contacta al restaurante.';
+    errorDiv.style.display = 'block';
+    document.getElementById('checkoutPayBtn').disabled = false;
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    document.getElementById('checkoutPayBtn').textContent = `Reintentar`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MIS ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
+function saveSessionOrders() {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionOrders)); } catch (e) { /* silente */ }
+}
+
+function loadSessionOrders() {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) {
+      sessionOrders = JSON.parse(saved);
+      sessionOrders.forEach(o => { orderReadyNotified[o.orderId] = (o.status === 'ready' || o.status === 'notified'); });
+      renderMisOrdenes();
+      startSessionOrdersPoller();
+    }
+  } catch (e) { /* silente */ }
+}
+
+function renderMisOrdenes() {
+  const section = document.getElementById('misOrdenesSection');
+  const list = document.getElementById('misOrdenesList');
+  if (!section || !list) return;
+
+  if (sessionOrders.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  list.innerHTML = '';
+
+  sessionOrders.slice().reverse().forEach(o => {
+    const statusClass = (o.status === 'ready' || o.status === 'notified') ? 'ready' : o.status === 'accepted' ? 'accepted' : 'pending';
+    const statusText = (o.status === 'ready' || o.status === 'notified') ? '✅ Lista' : o.status === 'accepted' ? '👨‍🍳 Preparando' : '⏳ Pendiente';
+
+    const itemsHTML = o.items.map(i => {
+      const notesHTML = i.notes ? `<span class="mo-item-notes">· ${escHtml(i.notes)}</span>` : '';
+      return `<li><span class="mo-item-qty">${i.qty}x</span> ${escHtml(i.name)}${notesHTML}</li>`;
+    }).join('');
+
+    const div = document.createElement('div');
+    div.className = 'mis-ordenes-item mo-' + statusClass;
+    div.innerHTML = `
+      <div class="mo-header">
+        <span class="mo-order-number">#${o.orderId}</span>
+        <span class="mo-status ${statusClass}">${statusText}</span>
+      </div>
+      <ul class="mo-items-list">${itemsHTML}</ul>
+      <div class="mo-total">
+        <span>Total:</span>
+        <span>RD$${o.total.toLocaleString()}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+let sessionOrdersPoller = null;
+function startSessionOrdersPoller() {
+  if (sessionOrdersPoller) return;
+  sessionOrdersPoller = setInterval(async () => {
+    const pendingOrders = sessionOrders.filter(o => o.status !== 'ready' && o.status !== 'notified');
+    if (pendingOrders.length === 0) {
+      clearInterval(sessionOrdersPoller);
+      sessionOrdersPoller = null;
+      return;
+    }
+    let changed = false;
+    for (const o of pendingOrders) {
+      try {
+        const res = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders?id=eq.' + o.orderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=status',
+          { headers: sbHeaders(), cache: 'no-store' },
+          10000
+        );
+        if (!res.ok) continue;
+        const rows = await res.json();
+        if (rows && rows.length > 0 && rows[0].status !== o.status) {
+          o.status = rows[0].status;
+          changed = true;
+        }
+      } catch (e) { /* silente */ }
+    }
+    if (changed) {
+      saveSessionOrders();
+      renderMisOrdenes();
+    }
+  }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PAYMENT RECEIPT
+// ══════════════════════════════════════════════════════════════
+
+let lastReceiptData = null;
+
+function showReceipt(orderNumber, items, total, paymentInfo) {
+  const pi = paymentInfo || {};
+
+  // Store for WhatsApp sharing
+  lastReceiptData = { orderNumber, items, total, paymentInfo: pi };
+
+  // Order number
+  document.getElementById('receiptOrderId').textContent = `#${orderNumber}`;
+
+  // Date & time
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('receiptDatetime').textContent = `${dateStr} — ${timeStr}`;
+
+  // Items
+  let itemsHtml = '';
+  items.forEach(item => {
+    const subtotal = item.price * item.qty;
+    itemsHtml += `<div class="receipt-item">
+      <span class="receipt-item-name">${escHtml(item.name)}</span>
+      <span class="receipt-item-qty">x${item.qty}</span>
+      <span class="receipt-item-price">RD$${subtotal.toLocaleString()}</span>
+    </div>`;
+  });
+  document.getElementById('receiptItems').innerHTML = itemsHtml;
+
+  // ITBIS breakdown (prices include 18% ITBIS)
+  const subtotalBase = Math.round(total / 1.18);
+  const itbisAmount = total - subtotalBase;
+  document.getElementById('receiptSubtotal').textContent = `RD$${subtotalBase.toLocaleString()}`;
+  document.getElementById('receiptItbis').textContent = `RD$${itbisAmount.toLocaleString()}`;
+  document.getElementById('receiptTotal').textContent = `RD$${total.toLocaleString()}`;
+
+  // Payment info (hide section for non-card orders)
+  const hasPayment = pi.cardLast4 || pi.authorizationCode;
+  document.getElementById('receiptPaymentSection').style.display = hasPayment ? '' : 'none';
+  document.getElementById('receiptAzulBadge').style.display = hasPayment ? '' : 'none';
+  if (hasPayment) {
+    document.getElementById('receiptCardLast4').textContent = pi.cardLast4 || '****';
+    document.getElementById('receiptAuthCode').textContent = pi.authorizationCode || '—';
+    document.getElementById('receiptAzulRef').textContent = pi.azulOrderId || '—';
+  }
+
+  // Reset status
+  const statusEl = document.getElementById('receiptStatus');
+  statusEl.style.background = '#fff7ed';
+  statusEl.style.color = '#9a3412';
+  statusEl.innerHTML = '⏳ Tu orden ha sido recibida — en cualquier momento comenzarán a prepararla';
+
+  // Show
+  closeNotesPopup();
+  document.getElementById('receiptOverlay').classList.add('show');
+  document.getElementById('receiptModal').classList.add('show');
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+
+function closeReceipt() {
+  document.getElementById('receiptOverlay').classList.remove('show');
+  document.getElementById('receiptModal').classList.remove('show');
+  lastPaymentInfo = null;
+}
+
+async function downloadReceipt() {
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+  try {
+    const el = document.getElementById('receiptCapture');
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+    });
+    const link = document.createElement('a');
+    link.download = `recibo-orden-${lastReceiptData?.orderNumber || 'pincer'}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (err) {
+    dbg('❌ Error generando recibo: ' + err.message);
+    alert('No se pudo generar la imagen. Toma una captura de pantalla.');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '📥 Descargar recibo';
+}
+
+function shareReceiptWhatsApp() {
+  if (!lastReceiptData) return;
+  const d = lastReceiptData;
+  const pi = d.paymentInfo || {};
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  let msg = `🧾 *Comprobante de Pago*\n`;
+  msg += `*${restaurantData?.display_name || 'Restaurante'}*\n\n`;
+  msg += `📋 *Orden #${d.orderNumber}*\n`;
+  msg += `📅 ${dateStr} — ${timeStr}\n\n`;
+  msg += `*Detalle:*\n`;
+  d.items.forEach(item => {
+    msg += `• ${item.name} x${item.qty} — RD$${(item.price * item.qty).toLocaleString()}\n`;
+  });
+  const subBase = Math.round(d.total / 1.18);
+  const itbisAmt = d.total - subBase;
+  msg += `\nSubtotal: RD$${subBase.toLocaleString()}\n`;
+  msg += `ITBIS (18%): RD$${itbisAmt.toLocaleString()}\n`;
+  msg += `💰 *Total: RD$${d.total.toLocaleString()}*\n`;
+  if (pi.cardLast4 || pi.authorizationCode) {
+    msg += `\n💳 Tarjeta: **** ${pi.cardLast4 || '****'}\n`;
+    if (pi.authorizationCode) msg += `✅ Autorización: ${pi.authorizationCode}\n`;
+    if (pi.azulOrderId) msg += `🔖 Ref. Azul: ${pi.azulOrderId}\n`;
+    msg += `\n🔒 Procesado por Azul · 3D Secure`;
+  }
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ══════════════════════════════════════════════════════════════
+// OVERLAY CLICK
+// ══════════════════════════════════════════════════════════════
+
+document.getElementById("overlay").addEventListener("click", () => {
+  const notesPopup = document.getElementById("notesPopup");
+  const errorPopup = document.getElementById("errorPopup");
+
+  if (notesPopup.classList.contains('show')) {
+    closeNotesPopup();
+  } else if (errorPopup.classList.contains('show')) {
+    closeErrorPopup();
+  }
+});
+
+document.getElementById("receiptOverlay").addEventListener("click", () => {
+  closeReceipt();
+});
+
+// ══════════════════════════════════════════════════════════════
+// CHECK ORDER STATUS
+// ══════════════════════════════════════════════════════════════
+
+async function checkOrderStatus(orderId) {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=status',
+      { headers: sbHeaders() },
+      10000
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return;
+
+    const status = rows[0].status;
+    const statusDiv = document.getElementById("receiptStatus");
+
+    if (status === "accepted" && statusDiv) {
+      statusDiv.style.background = '#fff7ed';
+      statusDiv.style.color = '#9a3412';
+      statusDiv.innerHTML = "👨‍🍳 Están preparando tu orden...";
+    }
+
+    if ((status === "ready" || status === "notified") && !orderReadyNotified[orderId]) {
+      orderReadyNotified[orderId] = true;
+      if (statusDiv) {
+        statusDiv.style.background = '#dcfce7';
+        statusDiv.style.color = '#166534';
+        statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA! — Pasa a recogerla";
+      }
+
+      if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
+
+      showReadyBanner(orderId);
+      if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+      playReadySound();
+      sendDesktopNotification(orderId);
+    }
+  } catch (e) { /* silente */ }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentOrderId && !orderReadyNotified[currentOrderId]) {
+    checkOrderStatus(currentOrderId);
+  }
+});
+
+window.addEventListener('focus', () => {
+  if (currentOrderId && !orderReadyNotified[currentOrderId]) {
+    checkOrderStatus(currentOrderId);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// READY BANNER
+// ══════════════════════════════════════════════════════════════
+
+function showReadyBanner(orderId) {
+  if (document.getElementById('readyBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'readyBanner';
+  banner.className = 'ready-banner';
+  banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} ESTÁ LISTA!<br>
+    <span style="font-weight:400; font-size:0.92em;">Pasa a la caja a pagar y retira tu orden</span>
+    <button onclick="document.getElementById('readyBanner').remove()">Entendido</button>`;
+  document.body.prepend(banner);
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUDIO & NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+
+let audioCtx = null;
+
+function ensureAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+['touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, ensureAudioContext, { once: true });
+});
+
+function playReadySound() {
+  try {
+    if (!audioCtx) return;
+    ensureAudioContext();
+    const now = audioCtx.currentTime;
+    [880, 1047, 1319].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.4, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
+      osc.start(now + i * 0.18);
+      osc.stop(now + i * 0.18 + 0.16);
+    });
+  } catch (e) { /* silente */ }
+}
+
+function sendDesktopNotification(orderId) {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'granted') {
+      new Notification("¡Tu orden está lista!", {
+        body: `Orden #${orderId} – Pasa a la caja a pagar`,
+        icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>🎉</text></svg>"
+      });
+    }
+  } catch (e) { /* silente */ }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI CHATBOT (MESERO VIRTUAL)
+// ══════════════════════════════════════════════════════════════
+
+let autoMessageInterval;
+let currentMessageIndex = 0;
+let bubblePermanentlyClosed = false;
+let chatHistory = []; // { role: 'user'|'assistant', content: string }
+let chatOpen = false;
+let welcomeShown = false;
+
+const clippyMessages = [
+  { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
+  { text: '¿No sabes qué pedir?', emoji: '🤔' },
+  { text: '¡Pregúntame lo que quieras!', emoji: '💬' },
+  { text: 'Haz click para ordenar', emoji: '👈' }
+];
+
+function hideBubble() {
+  const bubble = document.getElementById('speechBubble');
+  if (bubble) bubble.classList.remove('show');
+  bubblePermanentlyClosed = true;
+  if (autoMessageInterval) { clearInterval(autoMessageInterval); autoMessageInterval = null; }
+}
+
+function showBubble(text, emoji) {
+  if (bubblePermanentlyClosed || chatOpen) return;
+  const bubble = document.getElementById('speechBubble');
+  const bubbleText = document.getElementById('bubbleText');
+  const bubbleEmoji = document.getElementById('bubbleEmoji');
+  if (bubble && bubbleText && bubbleEmoji) {
+    bubbleText.textContent = text;
+    bubbleEmoji.textContent = emoji;
+    bubble.classList.add('show');
+  }
+}
+
+function startAutoMessages() {
+  if (bubblePermanentlyClosed) return;
+  setTimeout(() => { showBubble(clippyMessages[0].text, clippyMessages[0].emoji); }, 2000);
+  autoMessageInterval = setInterval(() => {
+    currentMessageIndex = (currentMessageIndex + 1) % clippyMessages.length;
+    const msg = clippyMessages[currentMessageIndex];
+    showBubble(msg.text, msg.emoji);
+  }, 10000);
+}
+
+function buildMenuData() {
+  const lines = [];
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const catTitle = cat;
+    for (const item of items) {
+      const soldOut = soldOutSet.has(item.id) ? ' [AGOTADO]' : '';
+      lines.push(`${catTitle}: [id:${item.id}] ${item.name} - RD$${item.price} - ${item.desc || ''}${soldOut}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function findMenuItem(itemId) {
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const found = items.find(i => i.id === itemId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseBotResponse(text) {
+  let cleanText = text;
+  let buttons = [];
+  let addToCart = null;
+  let addToCartNote = null;
+  let showPhotos = [];
+
+  // Extract all [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | note]
+  const cartMatch = cleanText.match(/\[ADD_TO_CART:\s*([^\]]+)\]/);
+  if (cartMatch) {
+    const parts = cartMatch[1].split('|').map(p => p.trim());
+    addToCart = parts[0];
+    addToCartNote = parts[1] || null;
+    cleanText = cleanText.replace(cartMatch[0], '').trim();
+  }
+
+  // Extract all [SHOW_PHOTO: item_id]
+  const photoRegex = /\[SHOW_PHOTO:\s*([^\]]+)\]/g;
+  let photoMatch;
+  while ((photoMatch = photoRegex.exec(cleanText)) !== null) {
+    showPhotos.push(photoMatch[1].trim());
+  }
+  cleanText = cleanText.replace(/\[SHOW_PHOTO:\s*[^\]]+\]/g, '').trim();
+
+  // Extract ALL [BUTTONS:] groups and merge them
+  const btnRegex = /\[BUTTONS:\s*([^\]]+)\]/g;
+  let btnMatch;
+  while ((btnMatch = btnRegex.exec(cleanText)) !== null) {
+    const parsed = btnMatch[1].split('|').map(b => b.trim()).filter(Boolean);
+    buttons.push(...parsed);
+  }
+  cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
+
+  return { cleanText, buttons, addToCart, addToCartNote, showPhotos };
+}
+
+function showPhotoInChat(itemId) {
+  const item = findMenuItem(itemId);
+  if (!item || !item.img) return;
+  const container = document.getElementById('pinzer-messages');
+  const imgDiv = document.createElement('div');
+  imgDiv.className = 'pinzer-message pinzer-bot';
+  imgDiv.style.cssText = 'padding:4px; background:transparent; box-shadow:none;';
+  imgDiv.innerHTML = `<img src="${item.img}" alt="${item.name}" style="width:100%; max-width:260px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">`;
+  container.appendChild(imgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function openPinzer() {
+  const modal = document.getElementById('pinzer-modal');
+  modal.style.display = 'flex';
+  chatOpen = true;
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'none';
+  // Hide speech bubble when chat opens
+  const bubble = document.getElementById('speechBubble');
+  if (bubble) bubble.classList.remove('show');
+
+  // Show welcome on first open
+  if (!welcomeShown) {
+    welcomeShown = true;
+    sessionStorage.setItem(WELCOMED_KEY, 'true');
+    showWelcomeMessages();
+  }
+}
+
+function closePinzer() {
+  document.getElementById('pinzer-modal').style.display = 'none';
+  chatOpen = false;
+  const clippy = document.querySelector('.chef-clippy');
+  if (clippy) clippy.style.display = 'block';
+}
+
+function showWelcomeMessages() {
+  setTimeout(() => {
+    pinzerSay('¡Klk! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + ' 🔥 ¿Es tu primera vez por aquí?');
+  }, 500);
+
+  setTimeout(() => {
+    pinzerShowReplies([
+      { label: '👋 Sí, primera vez' },
+      { label: '🔄 Ya he venido antes' }
+    ]);
+  }, 1200);
+}
+
+function pinzerSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-bot';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function pinzerUserSay(message) {
+  const container = document.getElementById('pinzer-messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'pinzer-message pinzer-user';
+  msgDiv.textContent = message;
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function pinzerShowReplies(replies) {
+  const container = document.getElementById('pinzer-replies');
+  container.innerHTML = '';
+  replies.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'pinzer-reply-btn';
+    if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
+    btn.textContent = r.label;
+    btn.onclick = () => handleQuickReply(r.label);
+    container.appendChild(btn);
+  });
+}
+
+function pinzerClearReplies() {
+  document.getElementById('pinzer-replies').innerHTML = '';
+}
+
+function handleQuickReply(label) {
+  pinzerClearReplies();
+
+  // Close-chat buttons
+  const closeLabels = ['👋 Cerrar', '✅ Eso es todo'];
+  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú');
+
+  if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
+    pinzerUserSay(label);
+    const farewell = isViewMenu
+      ? '¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪'
+      : '¡Buen provecho! Si necesitas algo aquí toy 💪';
+    pinzerSay(farewell);
+    setTimeout(() => {
+      closePinzer();
+      bubblePermanentlyClosed = false;
+      showBubble('Aquí toy si me necesitas 💪', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
+    }, 1200);
+    return;
+  }
+
+  // Static mappings for welcome buttons
+  const messageMap = {
+    '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
+  };
+
+  const aiMessage = messageMap[label] || label;
+  pinzerUserSay(label);
+  sendToAI(aiMessage);
+}
+
+function sendPinzerMessage() {
+  const input = document.getElementById('pinzerInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  pinzerClearReplies();
+  pinzerUserSay(text);
+  sendToAI(text);
+}
+
+function showTypingIndicator() {
+  const container = document.getElementById('pinzer-messages');
+  const typing = document.createElement('div');
+  typing.className = 'pinzer-typing';
+  typing.id = 'pinzerTyping';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  container.appendChild(typing);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTypingIndicator() {
+  const typing = document.getElementById('pinzerTyping');
+  if (typing) typing.remove();
+}
+
+async function sendToAI(userMessage) {
+  chatHistory.push({ role: 'user', content: userMessage });
+  showTypingIndicator();
+
+  try {
+    const res = await fetch('/api/waiter-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: chatHistory,
+        menuData: buildMenuData(),
+        restaurant_slug: SLUG,
+        restaurant_name: restaurantData?.display_name || SLUG
+      })
+    });
+
+    hideTypingIndicator();
+
+    if (res.ok) {
+      const data = await res.json();
+      const rawAnswer = data.answer || '¡Diablo, se me fue la señal! 😅';
+      chatHistory.push({ role: 'assistant', content: rawAnswer });
+
+      const parsed = parseBotResponse(rawAnswer);
+      pinzerSay(parsed.cleanText);
+
+      // Show photos
+      parsed.showPhotos.forEach(id => showPhotoInChat(id));
+
+      // Handle ADD_TO_CART action
+      if (parsed.addToCart) {
+        const item = findMenuItem(parsed.addToCart);
+        if (item && !soldOutSet.has(item.id)) {
+          addItem(item.id, item.name, item.price, parsed.addToCartNote);
+          const noteText = parsed.addToCartNote ? ` (${parsed.addToCartNote})` : '';
+          pinzerSay(`✅ ${item.name} agregado al carrito${noteText}`);
+        }
+      }
+
+      // Show parsed buttons
+      if (parsed.buttons.length > 0) {
+        pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
+      }
+    } else {
+      pinzerSay('¡Ay, algo falló! 😅 Intenta de nuevo en un momento.');
+    }
+  } catch (e) {
+    hideTypingIndicator();
+    pinzerSay('¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.');
+  }
+}
+
+// Auto-open chat on first visit
+function initChatbot() {
+  const alreadyWelcomed = sessionStorage.getItem(WELCOMED_KEY);
+
+  if (!alreadyWelcomed) {
+    // First visit: auto-open after a short delay
+    setTimeout(() => {
+      openPinzer();
+    }, 1500);
+  } else {
+    // Returning visit: just show bubble messages
+    welcomeShown = true;
+    startAutoMessages();
+    setTimeout(() => {
+      const badge = document.getElementById('notificationBadge');
+      if (badge) badge.style.display = 'flex';
+    }, 5000);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+let storeClosed = false;
+
+async function checkStoreOpen() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=is_open,opens_at',
+      { headers: sbHeaders() }, 10000
+    );
+    if (!res.ok) return true; // Default open on error
+    const data = await res.json();
+    if (data.length > 0 && data[0].is_open === false) {
+      storeClosed = true;
+      const overlay = document.getElementById('closedOverlay');
+      const hoursDiv = document.getElementById('closedHours');
+      if (data[0].opens_at) {
+        hoursDiv.textContent = 'Abrimos a las ' + data[0].opens_at + ' 🕐';
+      } else {
+        hoursDiv.textContent = '';
+      }
+      overlay.style.display = 'flex';
+      dbg('🔒 Tienda cerrada');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    dbg('⚠️ checkStoreOpen error: ' + e.message);
+    return true; // Default open on error
+  }
+}
+
+async function init() {
+  dbg('🚀 Iniciando menú dinámico para: ' + SLUG);
+
+  // 1. Load restaurant data FIRST
+  restaurantData = await loadRestaurantData();
+  if (!restaurantData) {
+    document.querySelector('.container').innerHTML = '<div style="text-align:center;padding:80px 20px;"><div style="background:white;border-radius:16px;padding:40px 24px;box-shadow:0 8px 16px rgba(0,0,0,0.15);max-width:400px;margin:0 auto;"><div style="font-size:3em;margin-bottom:16px;">🔍</div><h2 style="color:#1e293b;margin-bottom:8px;">Restaurante no encontrado</h2><p style="color:#64748b;">El restaurante "' + escHtml(SLUG) + '" no existe o no está disponible.</p><p style="margin-top:20px;"><a href="https://www.pincerweb.com" style="color:#4338ca;font-weight:600;text-decoration:none;">Ir a Pincer →</a></p></div></div>';
+    return;
+  }
+
+  // 2. Apply theme and branding
+  applyTheme(restaurantData.menu_style);
+  applyBranding(restaurantData);
+
+  // 3. Receipt branding
+  const receiptLogo = document.getElementById('receiptLogoText');
+  if (receiptLogo) receiptLogo.textContent = restaurantData.display_name;
+  const receiptInfo = document.getElementById('receiptRestaurantInfo');
+  if (receiptInfo) {
+    const lines = [restaurantData.display_name];
+    if (restaurantData.address) lines.push(restaurantData.address);
+    if (restaurantData.phone) lines.push('Tel: ' + restaurantData.phone);
+    receiptInfo.innerHTML = lines.map(l => escHtml(l)).join('<br>');
+  }
+
+  // 4. Chat header
+  const chatHeader = document.getElementById('chatHeaderName');
+  if (chatHeader) chatHeader.textContent = '🍽️ ' + restaurantData.display_name + ' - Mesero Virtual';
+
+  // 5. Load session orders
+  loadSessionOrders();
+
+  // 6. Test connection
+  const connected = await testConnection();
+
+  if (connected) {
+    const isOpen = await checkStoreOpen();
+    if (!isOpen) {
+      dbg('🔒 Menú bloqueado - tienda cerrada');
+      return;
+    }
+
+    const loaded = await loadMenuFromDB();
+    if (loaded) {
+      renderMenu();
+      dbg('✅ Menú actualizado desde DB');
+    } else {
+      document.getElementById('menuSection').innerHTML =
+        '<h2 class="section-title">Menú</h2><p style="text-align:center;color:#94a3b8;padding:30px 0;">No se pudo cargar el menú. Intenta de nuevo.</p>';
+      return;
+    }
+  } else {
+    document.getElementById('menuSection').innerHTML =
+      '<h2 class="section-title">Menú</h2><p style="text-align:center;color:#94a3b8;padding:30px 0;">Sin conexión al servidor.</p>';
+    return;
+  }
+
+  // 7. Start sold-out poller
+  startSoldOutPoller();
+
+  // 8. Init chatbot
+  initChatbot();
+
+  dbg('✅ ' + (restaurantData?.display_name || SLUG) + ' listo');
+}
+
+init();
 </script>
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+

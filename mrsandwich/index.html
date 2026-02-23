@@ -2757,7 +2757,8 @@ async function placeOrder() {
       items: JSON.stringify(itemsArray),
       total: total,
       status: 'pending',
-      phone: customerPhone
+      phone: customerPhone,
+      restaurant_slug: 'mrsandwich'
     };
 
     dbg('📤 Enviando orden: ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
@@ -2786,7 +2787,8 @@ async function placeOrder() {
           items: itemsArray,
           total: total,
           status: 'pending',
-          phone: customerPhone
+          phone: customerPhone,
+          restaurant_slug: 'mrsandwich'
         };
         
         const retryRes = await fetchWithTimeout(
@@ -3371,7 +3373,8 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       items: JSON.stringify(itemsArray),
       total: total,
       status: status,
-      phone: customerPhone
+      phone: customerPhone,
+      restaurant_slug: 'mrsandwich'
     };
 
     if (azulOrderId) orderPayload.azul_order_id = azulOrderId;
@@ -3503,7 +3506,7 @@ function startSessionOrdersPoller() {
     for (const o of pendingOrders) {
       try {
         const res = await fetchWithTimeout(
-          SUPABASE_URL + '/rest/v1/orders?id=eq.' + o.orderId + '&select=status',
+          SUPABASE_URL + '/rest/v1/orders?id=eq.' + o.orderId + '&restaurant_slug=eq.mrsandwich&select=status',
           { headers: sbHeaders(), cache: 'no-store' },
           10000
         );
@@ -3675,7 +3678,7 @@ document.getElementById("receiptOverlay").addEventListener("click", () => {
 async function checkOrderStatus(orderId) {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&select=status',
+      SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.mrsandwich&select=status',
       { headers: sbHeaders() },
       10000
     );
