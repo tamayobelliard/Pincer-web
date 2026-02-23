@@ -834,17 +834,33 @@ function handleMenuFile(event) {
     alert('Formato no soportado. Usa JPG, PNG o WebP.');
     return;
   }
-  if (file.size > 4 * 1024 * 1024) {
-    alert('La imagen es muy grande. Máximo 4MB.');
+  if (file.size > 10 * 1024 * 1024) {
+    alert('La imagen es muy grande. Máximo 10MB.');
+    return;
+  }
+
+  event.target.value = '';
+
+  // If file is over 1MB, resize to max 1200px width to reduce base64 payload
+  if (file.size > 1 * 1024 * 1024) {
+    const img = new Image();
+    img.onload = function() {
+      const MAX_W = 1200;
+      let w = img.width, h = img.height;
+      if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      uploadMenuPhoto(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = URL.createObjectURL(file);
     return;
   }
 
   const reader = new FileReader();
-  reader.onload = function(e) {
-    uploadMenuPhoto(e.target.result);
-  };
+  reader.onload = function(e) { uploadMenuPhoto(e.target.result); };
   reader.readAsDataURL(file);
-  event.target.value = '';
 }
 
 async function uploadMenuPhoto(dataUri) {

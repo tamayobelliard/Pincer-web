@@ -1,3 +1,5 @@
+export const config = { maxDuration: 60 };
+
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
 // Verify admin session token against Supabase
