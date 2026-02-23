@@ -223,6 +223,50 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ACTION: reset-password — generate new password for restaurant
+// ══════════════════════════════════════════════════════════════
+async function handleResetPassword(req, res, supabaseUrl, supabaseKey) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  try {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(8);
+    let temp_password = '';
+    for (let i = 0; i < 8; i++) {
+      temp_password += chars.charAt(bytes[i] % chars.length);
+    }
+
+    const password_hash = await bcrypt.hash(temp_password, 10);
+
+    const patchRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password_hash }),
+      }
+    );
+
+    if (!patchRes.ok) {
+      console.error('reset-password PATCH error:', await patchRes.text());
+      return res.status(500).json({ error: 'Failed to update password' });
+    }
+
+    return res.status(200).json({ success: true, temp_password });
+  } catch (e) {
+    console.error('reset-password error:', e);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
@@ -244,9 +288,10 @@ export default async function handler(req, res) {
   const action = req.query.action;
 
   switch (action) {
-    case 'restaurants': return handleRestaurants(req, res, supabaseUrl, supabaseKey);
-    case 'create':      return handleCreate(req, res, supabaseUrl, supabaseKey);
-    case 'update':      return handleUpdate(req, res, supabaseUrl, supabaseKey);
+    case 'restaurants':     return handleRestaurants(req, res, supabaseUrl, supabaseKey);
+    case 'create':          return handleCreate(req, res, supabaseUrl, supabaseKey);
+    case 'update':          return handleUpdate(req, res, supabaseUrl, supabaseKey);
+    case 'reset-password':  return handleResetPassword(req, res, supabaseUrl, supabaseKey);
     default:
       return res.status(400).json({ error: 'Missing or invalid action parameter' });
   }

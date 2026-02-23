@@ -65,6 +65,11 @@
       background: linear-gradient(135deg, #4338ca, #6366f1); color: white;
       border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95em;
     }
+    .btn-danger {
+      background: #dc2626; color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9em;
+    }
+    .btn-danger:hover { background: #b91c1c; }
 
     /* Restaurant cards */
     .restaurant-list { display: flex; flex-direction: column; gap: 14px; }
@@ -330,6 +335,12 @@
         <div id="menuPreviewContainer" style="display:none;"></div>
       </div>
       <input type="file" id="menuFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleMenuFile(event)">
+
+      <!-- Password Reset (edit mode only) -->
+      <div id="passwordResetSection" style="display:none; border-top:1px solid #e2e8f0; margin:20px 0 0 0; padding-top:16px;">
+        <button type="button" class="btn-danger" onclick="resetPassword()">🔑 Resetear Contraseña</button>
+        <div id="passwordResetResult" style="display:none;"></div>
+      </div>
 
       <div class="modal-buttons">
         <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -644,6 +655,11 @@ function openNewModal() {
   document.getElementById('btnUploadMenu').disabled = true;
   document.getElementById('uploadTooltip').style.display = '';
   resetMenuUpload();
+
+  // Hide password reset in create mode
+  document.getElementById('passwordResetSection').style.display = 'none';
+  document.getElementById('passwordResetResult').style.display = 'none';
+  document.getElementById('passwordResetResult').innerHTML = '';
 }
 
 function openEditModal(id) {
@@ -685,6 +701,11 @@ function openEditModal(id) {
   document.getElementById('btnUploadMenu').disabled = false;
   document.getElementById('uploadTooltip').style.display = 'none';
   resetMenuUpload();
+
+  // Show password reset in edit mode
+  document.getElementById('passwordResetSection').style.display = 'block';
+  document.getElementById('passwordResetResult').style.display = 'none';
+  document.getElementById('passwordResetResult').innerHTML = '';
 }
 
 function handleSubmit() {
@@ -702,6 +723,9 @@ function closeModal() {
   editingRestaurantSlug = null;
   accumulatedItems = [];
   photoCount = 0;
+  document.getElementById('passwordResetSection').style.display = 'none';
+  document.getElementById('passwordResetResult').style.display = 'none';
+  document.getElementById('passwordResetResult').innerHTML = '';
 }
 
 async function updateRestaurant() {
@@ -752,6 +776,32 @@ async function updateRestaurant() {
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Actualizar';
+  }
+}
+
+async function resetPassword() {
+  if (!editingRestaurantId) return;
+  if (!confirm('¿Seguro que quieres resetear la contraseña de este cliente? La contraseña anterior dejará de funcionar.')) return;
+
+  try {
+    const res = await adminFetch('/api/admin?action=reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingRestaurantId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('passwordResetResult').style.display = 'block';
+      document.getElementById('passwordResetResult').innerHTML = `
+        <div class="credentials-box" style="margin-top:12px;">
+          <strong>Nueva contraseña:</strong> <span class="cred">${escapeHtml(data.temp_password)}</span>
+          <p style="color:#64748b;font-size:0.8em;margin-top:8px;">Copia esta contraseña ahora — no se mostrará de nuevo.</p>
+        </div>`;
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo resetear'));
+    }
+  } catch (e) {
+    alert('Error de conexión');
   }
 }
 
