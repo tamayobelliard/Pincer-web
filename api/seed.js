@@ -72,7 +72,39 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ success: true, results });
+    // Seed test product for 3DS challenge testing (RD$90 < 100 limit)
+    const testProduct = {
+      id: 'mrsandwich-mini-sandwich-de-prueba-test',
+      name: 'Mini Sandwich de Prueba',
+      price: 90,
+      category: 'food',
+      description: 'Item temporal para pruebas de pago 3DS',
+      restaurant_slug: 'mrsandwich',
+      active: true,
+      sold_out: false,
+      display_order: 999,
+    };
+
+    const productRes = await fetch(
+      `${supabaseUrl}/rest/v1/products`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify(testProduct),
+      }
+    );
+
+    const productOk = productRes.ok;
+    if (!productOk) {
+      console.error('Failed to seed test product:', await productRes.text());
+    }
+
+    return res.status(200).json({ success: true, results, testProduct: { ...testProduct, seeded: productOk } });
 
   } catch (error) {
     console.error('seed error:', error);
