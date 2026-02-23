@@ -926,7 +926,7 @@ function sendNotification(title, body, tag) {
 async function loadProducts() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?order=display_order.asc&select=*',
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&order=display_order.asc&select=*',
       { headers: sbGetHeaders() }, 10000
     );
     if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); renderProducts(); return; }
@@ -993,7 +993,7 @@ async function toggleSoldOut(productId, isSoldOut) {
   updateProductCardUI(productId, isSoldOut);
   try {
     const res = await fetch(
-      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId),
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId) + '&restaurant_slug=eq.mrsandwich',
       { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify({ sold_out: isSoldOut }) }
     );
     if (!res.ok) {
@@ -1108,15 +1108,16 @@ async function saveProduct() {
     if (editId) {
       // PATCH existing
       res = await fetchWithTimeout(
-        SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId),
+        SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId) + '&restaurant_slug=eq.mrsandwich',
         { method: 'PATCH', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
         10000
       );
     } else {
       // POST new
-      const newId = slugify(name);
+      const newId = 'mrsandwich-' + slugify(name);
       payload.id = newId;
       payload.sold_out = false;
+      payload.restaurant_slug = 'mrsandwich';
       res = await fetchWithTimeout(
         SUPABASE_URL + '/rest/v1/products',
         { method: 'POST', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
@@ -1159,7 +1160,7 @@ async function deleteProduct() {
 
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId),
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId) + '&restaurant_slug=eq.mrsandwich',
       { method: 'DELETE', headers: sbWriteHeaders() }, 10000
     );
     if (!res.ok) {

@@ -695,7 +695,7 @@ async function loadProducts() {
   renderProducts();
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?select=id,sold_out',
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&select=id,sold_out',
       { headers: sbGetHeaders() }, 10000
     );
     if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); return; }
@@ -733,10 +733,10 @@ async function toggleSoldOut(productId, isSoldOut) {
   if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
   updateProductCardUI(productId, isSoldOut);
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/products', {
-      method: 'POST',
-      headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-      body: JSON.stringify({ id: productId, sold_out: isSoldOut })
+    const res = await fetch(SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId) + '&restaurant_slug=eq.mrsandwich', {
+      method: 'PATCH',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({ sold_out: isSoldOut })
     });
     if (!res.ok) {
       if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
