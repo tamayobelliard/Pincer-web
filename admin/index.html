@@ -477,6 +477,7 @@ function renderRestaurants() {
         </div>
         <div class="restaurant-actions">
           <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
+          <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
         </div>
@@ -967,18 +968,36 @@ function showMenuPreview(items, count, photos, styleSaved) {
 }
 
 function confirmMenu() {
-  // Items already saved by parse-menu.js — just close the preview
+  // Items already saved — switch to confirmed state (items stay visible)
+  const count = accumulatedItems.length;
+  const confirmedHtml = `
+    <div class="menu-preview-header">
+      <h4 style="color:#166534;">\u2713 ${count} \u00edtems guardados</h4>
+      <span class="menu-preview-count">${photoCount} foto${photoCount > 1 ? 's' : ''}</span>
+    </div>
+    <div class="menu-preview">
+      ${accumulatedItems.map(item => `
+        <div class="menu-preview-item">
+          <div>
+            <span class="item-name">${escapeHtml(item.name)}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="item-category">${escapeHtml(item.category)}</span>
+            <span class="item-price">RD$${item.price}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
   const formContainer = document.getElementById('menuPreviewContainer');
   const postContainer = document.getElementById('postCreateMenuPreview');
 
-  if (formContainer) {
-    formContainer.style.display = 'none';
-    document.getElementById('menuUploadIdle').style.display = '';
+  if (formContainer && formContainer.style.display !== 'none') {
+    formContainer.innerHTML = confirmedHtml;
   }
-  if (postContainer) {
-    postContainer.style.display = 'none';
-    const postIdle = document.getElementById('postCreateMenuIdle');
-    if (postIdle) postIdle.style.display = '';
+  if (postContainer && postContainer.style.display !== 'none') {
+    postContainer.innerHTML = confirmedHtml;
   }
 }
 
