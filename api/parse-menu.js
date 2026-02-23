@@ -188,8 +188,32 @@ export default async function handler(req, res) {
 
     console.log(`[parse-menu] Sample row:`, JSON.stringify(rows[0]));
 
-    // ── Step 7: Supabase bulk insert + style save ──
-    console.log('[parse-menu] Step 7: inserting into Supabase');
+    // ── Step 7: Delete existing products on first upload, then upsert ──
+    if (offset === 0) {
+      console.log(`[parse-menu] Step 7a: deleting existing products for ${restaurant_slug}`);
+      try {
+        const delRes = await fetch(
+          `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+          }
+        );
+        if (!delRes.ok) {
+          const delErr = await delRes.text();
+          console.error('[parse-menu] Delete existing products failed:', delErr);
+        } else {
+          console.log('[parse-menu] Existing products deleted');
+        }
+      } catch (delErr) {
+        console.error('[parse-menu] Delete fetch error:', delErr.message);
+      }
+    }
+
+    console.log('[parse-menu] Step 7b: upserting into Supabase');
     let insertRes;
     try {
       insertRes = await fetch(`${supabaseUrl}/rest/v1/products`, {
@@ -198,18 +222,18 @@ export default async function handler(req, res) {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
+          'Prefer': 'return=representation,resolution=merge-duplicates',
         },
         body: JSON.stringify(rows),
       });
     } catch (fetchErr) {
-      console.error('[parse-menu] Supabase products insert fetch error:', fetchErr.message);
+      console.error('[parse-menu] Supabase products upsert fetch error:', fetchErr.message);
       return res.status(500).json({ error: 'Supabase request failed', details: fetchErr.message });
     }
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
-      console.error(`[parse-menu] Supabase insert failed (${insertRes.status}):`, errText);
+      console.error(`[parse-menu] Supabase upsert failed (${insertRes.status}):`, errText);
       return res.status(500).json({ error: 'Failed to save menu items', details: errText });
     }
 
