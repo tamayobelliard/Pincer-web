@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cargando menú...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+      padding-bottom: 40px;
+      transition: background 0.3s;
+    }
+    body.font-classic { font-family: 'Georgia', 'Times New Roman', serif; }
+    body.font-casual { font-family: 'Nunito', 'Quicksand', -apple-system, sans-serif; }
+
+    /* Default theme (overridden by menu_style) */
+    body { background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); }
+
+    .container { max-width: 500px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      padding-top: 10px;
+    }
+    .header-icon {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); margin: 0 auto 16px auto;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5em; border: 4px solid rgba(255,255,255,0.3);
+    }
+    .header h1 {
+      font-size: 2em; margin-bottom: 6px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-weight: 700; letter-spacing: 0.5px;
+    }
+    .header .subtitle {
+      font-size: 0.95em; opacity: 0.9; font-weight: 500;
+      color: rgba(255,255,255,0.85);
+    }
+    .header .hours {
+      margin-top: 8px; font-size: 0.85em;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* Menu section */
+    .menu-card {
+      background: white; border-radius: 16px; padding: 24px;
+      margin-bottom: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    .category-title {
+      font-size: 1.3em; margin: 24px 0 14px 0;
+      font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding-left: 12px;
+      border-left: 4px solid var(--accent);
+      color: var(--primary);
+    }
+    .category-title:first-child { margin-top: 0; }
+
+    .menu-item {
+      background: #f8f9fa; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 10px;
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 12px;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .menu-item:hover {
+      border-color: var(--accent);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .menu-item:last-child { margin-bottom: 0; }
+
+    .item-info { flex: 1; min-width: 0; }
+    .item-name {
+      font-size: 1.05em; font-weight: 700;
+      color: var(--primary); margin-bottom: 3px;
+    }
+    .item-desc {
+      font-size: 0.83em; color: #6c757d;
+      line-height: 1.4; margin-bottom: 2px;
+    }
+    .item-price {
+      font-size: 1.15em; font-weight: 700;
+      color: var(--accent); white-space: nowrap;
+      flex-shrink: 0; align-self: center;
+    }
+
+    /* States */
+    .loading-state, .error-state {
+      text-align: center; padding: 60px 20px;
+    }
+    .loading-state {
+      color: rgba(255,255,255,0.9);
+    }
+    .spinner {
+      display: inline-block; width: 36px; height: 36px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-state p { margin-top: 14px; font-size: 1.05em; }
+
+    .error-state .error-card {
+      background: white; border-radius: 16px; padding: 40px 24px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15); max-width: 400px;
+      margin: 0 auto;
+    }
+    .error-state .error-icon {
+      font-size: 3em; margin-bottom: 16px;
+    }
+    .error-state h2 {
+      color: #1e293b; margin-bottom: 8px; font-size: 1.3em;
+    }
+    .error-state p {
+      color: #64748b; font-size: 0.95em;
+    }
+
+    /* Footer */
+    .pincer-footer {
+      background: #0F172A; padding: 40px 20px 30px;
+      margin: 30px -20px -40px -20px; text-align: center;
+    }
+    .pincer-footer-inner { max-width: 500px; margin: 0 auto; }
+    .pincer-footer-links {
+      margin: 16px 0; display: flex;
+      justify-content: center; gap: 16px; flex-wrap: wrap;
+    }
+    .pincer-footer-links a {
+      color: rgba(255,255,255,0.5); text-decoration: none;
+      font-size: 0.8em; transition: color 0.2s;
+    }
+    .pincer-footer-links a:hover { color: white; }
+    .pincer-footer-contact {
+      font-size: 0.8em; color: rgba(255,255,255,0.4); margin-bottom: 12px;
+    }
+    .pincer-footer-contact a { color: rgba(255,255,255,0.5); text-decoration: none; }
+    .pincer-footer-contact a:hover { color: white; }
+    .pincer-footer-copyright {
+      font-size: 0.75em; color: rgba(255,255,255,0.3); margin-bottom: 6px;
+    }
+    .pincer-footer-powered {
+      font-size: 0.75em; color: rgba(255,255,255,0.25);
+    }
+    .pincer-footer-powered strong { color: rgba(255,255,255,0.5); }
+
+    @media (max-width: 400px) {
+      body { padding: 12px; padding-bottom: 30px; }
+      .header h1 { font-size: 1.6em; }
+      .menu-card { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <div class="loading-state" id="loadingState">
+    <div class="spinner"></div>
+    <p>Cargando men&uacute;...</p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt';
+
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+  };
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// Extract slug from URL: /menu/hummus → hummus
+const pathParts = window.location.pathname.split('/').filter(Boolean);
+const slug = pathParts[1] || '';
+
+if (!slug) {
+  showError('P\u00e1gina no encontrada', 'No se especific\u00f3 un restaurante en la URL.');
+} else {
+  loadRestaurant();
+}
+
+async function loadRestaurant() {
+  try {
+    const [restRes, prodRes] = await Promise.all([
+      fetch(
+        `${SUPABASE_URL}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=display_name,menu_style,hours,phone,address,status&limit=1`,
+        { headers: sbHeaders() }
+      ),
+      fetch(
+        `${SUPABASE_URL}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(slug)}&active=eq.true&order=display_order.asc&select=name,price,category,description`,
+        { headers: sbHeaders() }
+      ),
+    ]);
+
+    if (!restRes.ok || !prodRes.ok) {
+      showError('Error de conexi\u00f3n', 'No se pudo conectar con el servidor. Intenta de nuevo.');
+      return;
+    }
+
+    const restaurants = await restRes.json();
+    const products = await prodRes.json();
+
+    if (!restaurants.length) {
+      showError('Restaurante no encontrado', 'El restaurante "' + escHtml(slug) + '" no existe o no est\u00e1 disponible.');
+      return;
+    }
+
+    const restaurant = restaurants[0];
+
+    if (restaurant.status !== 'active') {
+      showError('Restaurante no disponible', 'Este restaurante a\u00fan no est\u00e1 activo en nuestra plataforma.');
+      return;
+    }
+
+    renderPage(restaurant, products);
+
+  } catch (err) {
+    showError('Error de conexi\u00f3n', 'No se pudo cargar el men\u00fa. Verifica tu conexi\u00f3n a internet.');
+  }
+}
+
+function applyTheme(style) {
+  const primary = style?.primary_color || '#4338ca';
+  const secondary = style?.secondary_color || '#6366f1';
+  const bg = style?.background_color || null;
+
+  document.documentElement.style.setProperty('--primary', primary);
+  document.documentElement.style.setProperty('--accent', secondary);
+
+  if (bg) {
+    document.body.style.background = `linear-gradient(135deg, ${primary} 0%, ${bg} 100%)`;
+  } else {
+    document.body.style.background = `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`;
+  }
+
+  const fontStyle = style?.font_style || 'modern';
+  if (fontStyle === 'classic') document.body.classList.add('font-classic');
+  else if (fontStyle === 'casual') document.body.classList.add('font-casual');
+
+  // Set theme-color meta for mobile browser chrome
+  const meta = document.createElement('meta');
+  meta.name = 'theme-color';
+  meta.content = primary;
+  document.head.appendChild(meta);
+}
+
+function renderPage(restaurant, products) {
+  const style = restaurant.menu_style;
+  applyTheme(style);
+
+  document.title = restaurant.display_name + ' \u2014 Men\u00fa';
+
+  // Group products by category, preserving display_order
+  const categories = [];
+  const categoryMap = {};
+  products.forEach(p => {
+    const cat = p.category || 'Men\u00fa';
+    if (!categoryMap[cat]) {
+      categoryMap[cat] = [];
+      categories.push(cat);
+    }
+    categoryMap[cat].push(p);
+  });
+
+  // If menu_style has section_names, use that order; otherwise use natural order
+  let orderedCategories = categories;
+  if (style?.section_names?.length) {
+    const sectionOrder = style.section_names;
+    orderedCategories = [];
+    sectionOrder.forEach(s => {
+      // Fuzzy match: case-insensitive
+      const match = categories.find(c => c.toLowerCase() === s.toLowerCase());
+      if (match) orderedCategories.push(match);
+    });
+    // Append any categories not in section_names
+    categories.forEach(c => {
+      if (!orderedCategories.includes(c)) orderedCategories.push(c);
+    });
+  }
+
+  let menuHtml = '';
+  orderedCategories.forEach(cat => {
+    const items = categoryMap[cat];
+    if (!items || !items.length) return;
+
+    menuHtml += `<div class="category-title">${escHtml(cat)}</div>`;
+    items.forEach(item => {
+      menuHtml += `
+        <div class="menu-item">
+          <div class="item-info">
+            <div class="item-name">${escHtml(item.name)}</div>
+            ${item.description ? `<div class="item-desc">${escHtml(item.description)}</div>` : ''}
+          </div>
+          <div class="item-price">RD$${item.price.toLocaleString()}</div>
+        </div>`;
+    });
+  });
+
+  if (!menuHtml) {
+    menuHtml = '<p style="text-align:center;color:#94a3b8;padding:30px 0;">Este restaurante a\u00fan no ha publicado su men\u00fa.</p>';
+  }
+
+  const hoursHtml = restaurant.hours
+    ? `<div class="hours">${escHtml(restaurant.hours)}</div>`
+    : '';
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-icon">\uD83C\uDF7D\uFE0F</div>
+      <h1>${escHtml(restaurant.display_name)}</h1>
+      ${hoursHtml}
+    </div>
+    <div class="menu-card">
+      ${menuHtml}
+    </div>
+  `;
+
+  // Add footer after container
+  const footer = document.createElement('footer');
+  footer.className = 'pincer-footer';
+  footer.innerHTML = `
+    <div class="pincer-footer-inner">
+      <a href="https://www.pincerweb.com" style="color:white;text-decoration:none;font-size:20px;font-weight:800;">Pincer</a>
+      <div class="pincer-footer-links">
+        <a href="/politicas/privacidad">Privacidad</a>
+        <a href="/politicas/devoluciones">Devoluciones</a>
+        <a href="/politicas/seguridad">Seguridad</a>
+        <a href="/politicas/entrega">Entrega</a>
+      </div>
+      <div class="pincer-footer-contact">
+        <a href="mailto:info@pincerweb.com">info@pincerweb.com</a> &middot; <a href="tel:+18295481236">+1 (829) 548-1236</a><br>
+        Santiago, Rep\u00fablica Dominicana
+      </div>
+      <div class="pincer-footer-copyright">&copy; 2026 Pincer. Hecho en Rep\u00fablica Dominicana.</div>
+      <div class="pincer-footer-powered">Powered by <strong>Pincer</strong></div>
+    </div>
+  `;
+  document.body.appendChild(footer);
+}
+
+function showError(title, message) {
+  document.body.style.background = '#f1f5f9';
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="error-state" style="padding-top:80px;">
+      <div class="error-card">
+        <div class="error-icon">\uD83D\uDD0D</div>
+        <h2>${escHtml(title)}</h2>
+        <p>${escHtml(message)}</p>
+        <p style="margin-top:20px;">
+          <a href="https://www.pincerweb.com" style="color:#4338ca;font-weight:600;text-decoration:none;">Ir a Pincer &rarr;</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>

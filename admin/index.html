@@ -477,7 +477,7 @@ function renderRestaurants() {
         </div>
         <div class="restaurant-actions">
           <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
-          <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
+          <button class="btn-edit" onclick="window.open('/menu/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
         </div>
