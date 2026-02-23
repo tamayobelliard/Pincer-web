@@ -566,12 +566,20 @@
       font-weight: 600;
       white-space: nowrap;
     }
+    .receipt-subtotal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+      font-size: 0.88em;
+      color: #64748b;
+    }
     .receipt-total-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding-top: 10px;
-      margin-top: 10px;
+      margin-top: 6px;
       border-top: 2px solid #0f172a;
       font-weight: 800;
       font-size: 1.1em;
@@ -1795,6 +1803,14 @@
     <div class="receipt-section">
       <div class="receipt-section-title">Detalle del pedido</div>
       <div id="receiptItems"></div>
+      <div class="receipt-subtotal-row">
+        <span>Subtotal</span>
+        <span id="receiptSubtotal">RD$0</span>
+      </div>
+      <div class="receipt-subtotal-row">
+        <span>ITBIS (18%)</span>
+        <span id="receiptItbis">RD$0</span>
+      </div>
       <div class="receipt-total-row">
         <span>Total</span>
         <span id="receiptTotal">RD$0</span>
@@ -3435,7 +3451,11 @@ function showReceipt(orderNumber, items, total, paymentInfo) {
   });
   document.getElementById('receiptItems').innerHTML = itemsHtml;
 
-  // Total
+  // ITBIS breakdown (prices include 18% ITBIS)
+  const subtotalBase = Math.round(total / 1.18);
+  const itbisAmount = total - subtotalBase;
+  document.getElementById('receiptSubtotal').textContent = `RD$${subtotalBase.toLocaleString()}`;
+  document.getElementById('receiptItbis').textContent = `RD$${itbisAmount.toLocaleString()}`;
   document.getElementById('receiptTotal').textContent = `RD$${total.toLocaleString()}`;
 
   // Payment info (hide section for non-card orders)
@@ -3510,7 +3530,11 @@ function shareReceiptWhatsApp() {
   d.items.forEach(item => {
     msg += `• ${item.name} x${item.qty} — RD$${(item.price * item.qty).toLocaleString()}\n`;
   });
-  msg += `\n💰 *Total: RD$${d.total.toLocaleString()}*\n`;
+  const subBase = Math.round(d.total / 1.18);
+  const itbisAmt = d.total - subBase;
+  msg += `\nSubtotal: RD$${subBase.toLocaleString()}\n`;
+  msg += `ITBIS (18%): RD$${itbisAmt.toLocaleString()}\n`;
+  msg += `💰 *Total: RD$${d.total.toLocaleString()}*\n`;
   if (pi.cardLast4 || pi.authorizationCode) {
     msg += `\n💳 Tarjeta: **** ${pi.cardLast4 || '****'}\n`;
     if (pi.authorizationCode) msg += `✅ Autorización: ${pi.authorizationCode}\n`;
