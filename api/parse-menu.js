@@ -66,7 +66,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Detect media type from base64 header or default to jpeg
+    // ── Step 1: Parse base64 image ──
+    console.log('[parse-menu] Step 1: parsing base64 image');
     let mediaType = 'image/jpeg';
     let imageData = image;
     if (image.startsWith('data:')) {
@@ -76,6 +77,7 @@ export default async function handler(req, res) {
         imageData = image.slice(match[0].length);
       }
     }
+    console.log(`[parse-menu] Image: ${mediaType}, base64 length: ${imageData.length}`);
 
     const imageContent = {
       type: 'image',
@@ -83,33 +85,56 @@ export default async function handler(req, res) {
     };
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
-
-    // Run item extraction + style detection in parallel
-    const [itemsRes, styleRes] = await Promise.all([
-      callClaude(apiKey, imageContent,
-        'This is a photo of a restaurant menu. Extract all items and return ONLY a JSON array with no extra text. Use the EXACT section/category names visible on the menu (e.g. "Entradas", "Pita Sandwich", "Bebidas", "Shawramas Clásicos") as the category field. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). Description can be empty string if not visible.',
-      ),
-      callClaude(apiKey, imageContent,
-        'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design. section_names should list all menu section headings in the order they appear.',
-      ),
-    ]);
-
-    const [itemsData, styleData] = await Promise.all([
-      itemsRes.json(),
-      styleRes.json(),
-    ]);
-
-    // Process items
-    if (!itemsRes.ok) {
-      console.error('Claude items API error:', itemsData);
-      return res.status(502).json({ error: 'Failed to process image with AI' });
+    if (!apiKey) {
+      console.error('[parse-menu] ANTHROPIC_API_KEY is not set');
+      return res.status(500).json({ error: 'Server configuration error: missing API key' });
     }
 
+    // ── Step 2: Call Claude API (items + style in parallel) ──
+    console.log('[parse-menu] Step 2: calling Claude API (2 parallel requests)');
+    let itemsRes, styleRes;
+    try {
+      [itemsRes, styleRes] = await Promise.all([
+        callClaude(apiKey, imageContent,
+          'This is a photo of a restaurant menu. Extract all items and return ONLY a JSON array with no extra text. Use the EXACT section/category names visible on the menu (e.g. "Entradas", "Pita Sandwich", "Bebidas", "Shawramas Clásicos") as the category field. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). Description can be empty string if not visible.',
+        ),
+        callClaude(apiKey, imageContent,
+          'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design. section_names should list all menu section headings in the order they appear.',
+        ),
+      ]);
+    } catch (claudeErr) {
+      console.error('[parse-menu] Claude API fetch error:', claudeErr.message);
+      return res.status(502).json({ error: 'Claude API request failed', details: claudeErr.message });
+    }
+
+    console.log(`[parse-menu] Claude items response status: ${itemsRes.status}`);
+    console.log(`[parse-menu] Claude style response status: ${styleRes.status}`);
+
+    // ── Step 3: Parse Claude responses ──
+    console.log('[parse-menu] Step 3: parsing Claude responses');
+    let itemsData, styleData;
+    try {
+      [itemsData, styleData] = await Promise.all([
+        itemsRes.json(),
+        styleRes.json(),
+      ]);
+    } catch (jsonErr) {
+      console.error('[parse-menu] Claude response JSON parse error:', jsonErr.message);
+      return res.status(502).json({ error: 'Invalid response from Claude API', details: jsonErr.message });
+    }
+
+    if (!itemsRes.ok) {
+      console.error('[parse-menu] Claude items API error:', JSON.stringify(itemsData));
+      return res.status(502).json({ error: 'Failed to process image with AI', details: itemsData.error?.message || JSON.stringify(itemsData) });
+    }
+
+    // ── Step 4: Extract items from Claude text ──
+    console.log('[parse-menu] Step 4: extracting items JSON');
     const rawItemsText = itemsData.content?.find(c => c.type === 'text')?.text || '';
 
-    // Extract JSON array from response (handle markdown code blocks)
     const jsonMatch = rawItemsText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
+      console.error('[parse-menu] No JSON array found in response:', rawItemsText.substring(0, 300));
       return res.status(422).json({ error: 'Could not extract menu items from image', raw: rawItemsText });
     }
 
@@ -117,28 +142,38 @@ export default async function handler(req, res) {
     try {
       items = JSON.parse(jsonMatch[0]);
     } catch (e) {
+      console.error('[parse-menu] JSON parse error:', e.message, 'raw:', jsonMatch[0].substring(0, 300));
       return res.status(422).json({ error: 'Invalid JSON from AI response', raw: rawItemsText });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
+      console.error('[parse-menu] Empty or non-array items result');
       return res.status(422).json({ error: 'No menu items detected in image' });
     }
 
-    // Process style (non-critical — don't fail if style extraction fails)
+    console.log(`[parse-menu] Extracted ${items.length} items`);
+
+    // ── Step 5: Parse style (non-critical) ──
     let menuStyle = null;
     if (styleRes.ok) {
       try {
         const rawStyleText = styleData.content?.find(c => c.type === 'text')?.text || '';
         const styleMatch = rawStyleText.match(/\{[\s\S]*\}/);
-        if (styleMatch) menuStyle = JSON.parse(styleMatch[0]);
+        if (styleMatch) {
+          menuStyle = JSON.parse(styleMatch[0]);
+          console.log('[parse-menu] Style extracted:', JSON.stringify(menuStyle));
+        }
       } catch (e) {
-        console.error('Style parsing error:', e.message);
+        console.error('[parse-menu] Style parsing error:', e.message);
       }
+    } else {
+      console.error('[parse-menu] Style API failed with status:', styleRes.status);
     }
 
+    // ── Step 6: Build product rows ──
     const offset = parseInt(start_order) || 0;
+    console.log(`[parse-menu] Step 6: building rows with offset=${offset}`);
 
-    // Build rows for bulk insert (use real categories from menu)
     const rows = items.map((item, i) => ({
       id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${offset + i}`,
       name: String(item.name || '').slice(0, 100),
@@ -151,9 +186,13 @@ export default async function handler(req, res) {
       display_order: offset + i,
     }));
 
-    // Bulk insert items + save style in parallel
-    const promises = [
-      fetch(`${supabaseUrl}/rest/v1/products`, {
+    console.log(`[parse-menu] Sample row:`, JSON.stringify(rows[0]));
+
+    // ── Step 7: Supabase bulk insert + style save ──
+    console.log('[parse-menu] Step 7: inserting into Supabase');
+    let insertRes;
+    try {
+      insertRes = await fetch(`${supabaseUrl}/rest/v1/products`, {
         method: 'POST',
         headers: {
           'apikey': supabaseKey,
@@ -162,33 +201,39 @@ export default async function handler(req, res) {
           'Prefer': 'return=representation',
         },
         body: JSON.stringify(rows),
-      }),
-    ];
-
-    if (menuStyle) {
-      promises.push(
-        fetch(`${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ menu_style: menuStyle }),
-        }).catch(e => console.error('Style save error:', e.message))
-      );
+      });
+    } catch (fetchErr) {
+      console.error('[parse-menu] Supabase products insert fetch error:', fetchErr.message);
+      return res.status(500).json({ error: 'Supabase request failed', details: fetchErr.message });
     }
-
-    const [insertRes] = await Promise.all(promises);
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
-      console.error('Supabase bulk insert error:', errText);
+      console.error(`[parse-menu] Supabase insert failed (${insertRes.status}):`, errText);
       return res.status(500).json({ error: 'Failed to save menu items', details: errText });
     }
 
     const inserted = await insertRes.json();
+    console.log(`[parse-menu] Inserted ${inserted.length} products`);
 
+    // Save style to restaurant_users (fire and forget)
+    if (menuStyle) {
+      console.log('[parse-menu] Saving menu_style to restaurant_users');
+      fetch(`${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ menu_style: menuStyle }),
+      }).then(r => {
+        if (!r.ok) r.text().then(t => console.error('[parse-menu] Style save failed:', t));
+        else console.log('[parse-menu] Style saved successfully');
+      }).catch(e => console.error('[parse-menu] Style save error:', e.message));
+    }
+
+    console.log('[parse-menu] Done — returning success');
     return res.status(200).json({
       success: true,
       count: inserted.length,
@@ -197,7 +242,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('parse-menu error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[parse-menu] UNCAUGHT ERROR:', error.message, error.stack);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

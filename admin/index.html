@@ -886,7 +886,7 @@ async function uploadMenuPhoto(dataUri) {
       photoCount++;
       showMenuPreview(accumulatedItems, accumulatedItems.length, photoCount, !!data.menuStyle);
     } else {
-      alert(data.error || 'Error al procesar la imagen');
+      alert((data.error || 'Error al procesar la imagen') + (data.details ? '\n\nDetalle: ' + data.details : ''));
       showMenuLoading(false);
     }
   } catch (err) {
