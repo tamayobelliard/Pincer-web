@@ -1722,6 +1722,63 @@
     .closed-overlay .closed-msg {
       font-size: 1.1em; opacity: 0.9;
     }
+
+    /* Pincer Footer */
+    .pincer-footer {
+      background: #0F172A;
+      color: white;
+      padding: 40px 20px 100px;
+      text-align: center;
+      margin-top: 30px;
+    }
+    .pincer-footer-inner {
+      max-width: 500px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .pincer-footer-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .pincer-footer-badges img { height: 36px; object-fit: contain; }
+    .pincer-footer-links {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .pincer-footer-links a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+    .pincer-footer-links a:hover { color: white; }
+    .pincer-footer-contact {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
+    .pincer-footer-contact a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+    }
+    .pincer-footer-contact a:hover { color: white; }
+    .pincer-footer-copyright {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 10px;
+    }
+    .pincer-footer-powered {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    .pincer-footer-powered strong { color: rgba(255,255,255,0.6); }
   </style>
 </head>
 <body>
@@ -1781,6 +1838,30 @@
     <div id="misOrdenesList"></div>
   </div>
 </div>
+
+<!-- Pincer Footer -->
+<footer class="pincer-footer">
+  <div class="pincer-footer-inner">
+    <div class="pincer-footer-badges">
+      <img src="https://i.imgur.com/gMRFXRj.png" alt="Visa">
+      <img src="https://i.imgur.com/qgq4m7h.png" alt="Mastercard">
+      <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+      <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+    </div>
+    <div class="pincer-footer-links">
+      <a href="/politicas/privacidad">Privacidad</a>
+      <a href="/politicas/devoluciones">Devoluciones</a>
+      <a href="/politicas/seguridad">Seguridad</a>
+      <a href="/politicas/entrega">Entrega</a>
+    </div>
+    <div class="pincer-footer-contact">
+      <a href="mailto:info@pincerweb.com">info@pincerweb.com</a> · <a href="tel:+18295481236">+1 (829) 548-1236</a><br>
+      Santiago, República Dominicana
+    </div>
+    <div class="pincer-footer-copyright">&copy; 2026 Pincer. Hecho en República Dominicana.</div>
+    <div class="pincer-footer-powered">Powered by <strong>Pincer</strong></div>
+  </div>
+</footer>
 
 <button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()" disabled>
   Ordenar Ahora
