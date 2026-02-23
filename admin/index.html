@@ -265,6 +265,19 @@ function getSession() {
   } catch { return null; }
 }
 
+// Helper: fetch with auto-logout on 403 (expired/invalid session token)
+async function adminFetch(url, opts = {}) {
+  const session = getSession();
+  opts.headers = { ...opts.headers, 'x-admin-key': session?.adminToken || '' };
+  const res = await fetch(url, opts);
+  if (res.status === 403) {
+    sessionStorage.removeItem('dashboard_session');
+    location.reload();
+    throw new Error('Session expired');
+  }
+  return res;
+}
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const username = document.getElementById('username').value;
@@ -333,10 +346,7 @@ let restaurants = [];
 
 async function loadRestaurants() {
   try {
-    const session = getSession();
-    const res = await fetch('/api/admin/restaurants', {
-      headers: { 'x-admin-key': session?.adminToken || '' },
-    });
+    const res = await adminFetch('/api/admin/restaurants');
     if (!res.ok) throw new Error('Failed to load');
     restaurants = await res.json();
     renderRestaurants();
@@ -395,10 +405,9 @@ function escapeHtml(str) {
 async function toggleStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
   try {
-    const session = getSession();
-    const res = await fetch('/api/admin/restaurants', {
+    const res = await adminFetch('/api/admin/restaurants', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': session?.adminToken || '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status: newStatus }),
     });
     if (res.ok) {
@@ -543,10 +552,9 @@ async function createRestaurant() {
   submitBtn.textContent = 'Creando...';
 
   try {
-    const session = getSession();
-    const res = await fetch('/api/create-restaurant', {
+    const res = await adminFetch('/api/create-restaurant', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': session?.adminToken || '' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
         business_type: document.getElementById('fieldType').value.trim(),
