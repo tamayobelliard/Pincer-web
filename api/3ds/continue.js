@@ -102,11 +102,7 @@ export default async function handler(req, res) {
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };
 
-    console.log('AZUL ProcessThreeDSMethod REQUEST:', JSON.stringify(requestBody));
-
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
-
-    console.log('AZUL ProcessThreeDSMethod RESPONSE:', JSON.stringify(result));
 
     // CASE 1: Approved (frictionless after method)
     if (result.IsoCode === '00') {

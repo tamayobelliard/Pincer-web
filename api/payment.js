@@ -176,11 +176,7 @@ export default async function handler(req, res) {
 
     const agent = getSSLAgent();
 
-    console.log('AZUL REQUEST:', JSON.stringify(azulRequest));
-
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, azulRequest, agent);
-
-    console.log('AZUL RAW RESPONSE:', JSON.stringify(result));
 
     // Save 3DS session (awaited — we need it created before continue/callback reference it)
     await supabasePostAwait('sessions_3ds', {

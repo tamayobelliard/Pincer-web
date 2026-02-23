@@ -659,7 +659,6 @@ let debugLogs = [];
 function dbg(msg) {
   const ts = new Date().toLocaleTimeString();
   const line = `[${ts}] ${msg}`;
-  console.log(line);
   debugLogs.push(line);
   const panel = document.getElementById('debugPanel');
   if (panel) {

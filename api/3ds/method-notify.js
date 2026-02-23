@@ -14,8 +14,6 @@ export default async function handler(req, res) {
     return res.status(400).send('Missing session');
   }
 
-  console.log('3DS method notification received for session:', sessionId);
-
   try {
     const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

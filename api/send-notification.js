@@ -91,7 +91,6 @@ export default async function handler(req, res) {
     const tokens = tokenRows.map(r => r.token).filter(Boolean);
 
     if (tokens.length === 0) {
-      console.log('No FCM tokens registered');
       return res.status(200).json({ message: 'No devices registered' });
     }
 
@@ -119,7 +118,6 @@ export default async function handler(req, res) {
     };
 
     const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`Sent to ${response.successCount}/${tokens.length} devices`);
 
     // Clean up invalid tokens
     if (response.failureCount > 0) {
@@ -151,7 +149,6 @@ export default async function handler(req, res) {
         );
       }
       if (invalidTokens.length > 0) {
-        console.log(`Deactivated ${invalidTokens.length} invalid tokens`);
       }
     }
 

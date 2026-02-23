@@ -72,8 +72,6 @@ export default async function handler(req, res) {
 
   const cRes = req.body?.cRes || req.body?.cres || req.body?.CRes || '';
 
-  console.log('3DS callback received for session:', sessionId, 'cRes length:', cRes.length);
-
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -113,8 +111,6 @@ export default async function handler(req, res) {
       },
       agent
     );
-
-    console.log('Azul challenge result:', JSON.stringify(result).substring(0, 500));
 
     const approved = result.IsoCode === '00';
 
