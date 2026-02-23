@@ -2194,7 +2194,7 @@ const CATEGORY_CONFIG = {
 async function loadMenuFromDB() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?active=eq.true&order=display_order.asc&select=*',
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&active=eq.true&order=display_order.asc&select=*',
       { headers: sbHeaders(), cache: 'no-store' },
       10000
     );
@@ -2256,7 +2256,7 @@ async function testConnection() {
   try {
     dbg('🔌 Probando conexión a Supabase...');
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?select=id&limit=1',
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&select=id&limit=1',
       { headers: sbHeaders() },
       10000
     );
@@ -2303,7 +2303,7 @@ function closeErrorPopup() {
 async function loadSoldOut() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&sold_out=eq.true&select=id',
       { headers: sbHeaders(), cache: 'no-store' },
       10000
     );
@@ -2326,7 +2326,7 @@ function startSoldOutPoller() {
   soldOutPoller = setInterval(async () => {
     try {
       const res = await fetchWithTimeout(
-        SUPABASE_URL + '/rest/v1/products?sold_out=eq.true&select=id',
+        SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.mrsandwich&sold_out=eq.true&select=id',
         { headers: sbHeaders(), cache: 'no-store' },
         10000
       );
