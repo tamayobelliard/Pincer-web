@@ -88,7 +88,19 @@ export default async function handler(req, res) {
       } catch { /* fallback to casual */ }
     }
 
+    console.log('waiter-chat personality:', restaurant_slug, '->', personality);
+
     const p = PERSONALITIES[personality] || PERSONALITIES.casual;
+
+    // Welcome-only request: return greeting without calling Claude
+    if (req.body.welcome) {
+      const rName = restaurant_name || 'nuestro restaurante';
+      const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
+      const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
+      const sep = emoji ? ' ' + emoji + ' ' : '. ';
+      const greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
+      return res.status(200).json({ answer: greeting });
+    }
 
     const systemPrompt = `Eres el mesero virtual de ${rName}.
 

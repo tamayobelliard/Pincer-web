@@ -3958,17 +3958,36 @@ function closePinzer() {
   if (clippy) clippy.style.display = 'block';
 }
 
-function showWelcomeMessages() {
-  setTimeout(() => {
-    pinzerSay('¡Klk! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + ' 🔥 ¿Es tu primera vez por aquí?');
-  }, 500);
+async function showWelcomeMessages() {
+  showTypingIndicator();
+  try {
+    const res = await fetch('/api/waiter-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        welcome: true,
+        restaurant_slug: SLUG,
+        restaurant_name: restaurantData?.display_name || SLUG
+      })
+    });
+    hideTypingIndicator();
+    if (res.ok) {
+      const data = await res.json();
+      pinzerSay(data.answer);
+    } else {
+      pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
+    }
+  } catch (e) {
+    hideTypingIndicator();
+    pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
+  }
 
   setTimeout(() => {
     pinzerShowReplies([
       { label: '👋 Sí, primera vez' },
       { label: '🔄 Ya he venido antes' }
     ]);
-  }, 1200);
+  }, 500);
 }
 
 function pinzerSay(message) {
@@ -4016,13 +4035,13 @@ function handleQuickReply(label) {
   if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
     pinzerUserSay(label);
     const farewell = isViewMenu
-      ? '¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪'
-      : '¡Buen provecho! Si necesitas algo aquí toy 💪';
+      ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪'
+      : '¡Buen provecho! Si necesitas algo, aquí estoy 💪';
     pinzerSay(farewell);
     setTimeout(() => {
       closePinzer();
       bubblePermanentlyClosed = false;
-      showBubble('Aquí toy si me necesitas 💪', '👨‍🍳');
+      showBubble('¡Aquí estoy si me necesitas!', '👨‍🍳');
       setTimeout(() => {
         const bubble = document.getElementById('speechBubble');
         if (bubble) bubble.classList.remove('show');
@@ -4087,7 +4106,7 @@ async function sendToAI(userMessage) {
 
     if (res.ok) {
       const data = await res.json();
-      const rawAnswer = data.answer || '¡Diablo, se me fue la señal! 😅';
+      const rawAnswer = data.answer || 'Algo salió mal 😅 Intenta de nuevo.';
       chatHistory.push({ role: 'assistant', content: rawAnswer });
 
       const parsed = parseBotResponse(rawAnswer);
@@ -4111,11 +4130,11 @@ async function sendToAI(userMessage) {
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
       }
     } else {
-      pinzerSay('¡Ay, algo falló! 😅 Intenta de nuevo en un momento.');
+      pinzerSay('Algo falló 😅 Intenta de nuevo en un momento.');
     }
   } catch (e) {
     hideTypingIndicator();
-    pinzerSay('¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.');
+    pinzerSay('Sin conexión 😅 Intenta de nuevo.');
   }
 }
 
