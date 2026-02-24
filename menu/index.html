@@ -4370,9 +4370,30 @@ async function init() {
     receiptInfo.innerHTML = lines.map(l => escHtml(l)).join('<br>');
   }
 
-  // 4. Chat header
+  // 4. Chat header + chatbot avatar
   const chatHeader = document.getElementById('chatHeaderName');
-  if (chatHeader) chatHeader.textContent = '🍽️ ' + restaurantData.display_name + ' - Mesero Virtual';
+  if (chatHeader) {
+    if (restaurantData.logo_url) {
+      chatHeader.innerHTML = '<img src="' + restaurantData.logo_url + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;" alt=""> ' + escHtml(restaurantData.display_name) + ' - Mesero Virtual';
+    } else {
+      chatHeader.textContent = '🍽️ ' + restaurantData.display_name + ' - Mesero Virtual';
+    }
+  }
+  // Chatbot floating button: show logo if available
+  if (restaurantData.logo_url) {
+    const avatar = document.querySelector('.clippy-avatar');
+    if (avatar) {
+      const badge = avatar.querySelector('.notification-pulse');
+      const emoji = avatar.querySelector('span');
+      if (emoji) {
+        const img = document.createElement('img');
+        img.src = restaurantData.logo_url;
+        img.alt = restaurantData.display_name || '';
+        img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+        emoji.replaceWith(img);
+      }
+    }
+  }
 
   // 5. Load session orders
   loadSessionOrders();

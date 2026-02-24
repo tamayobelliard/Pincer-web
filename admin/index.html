@@ -318,6 +318,13 @@
       <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
       <label>Notas</label>
       <textarea id="fieldNotes" placeholder="Notas adicionales..."></textarea>
+      <label>Logo del negocio (URL)</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
+        <input type="text" id="fieldLogoUrl" placeholder="https://i.imgur.com/..." style="margin-bottom:0;flex:1;" oninput="previewLogo()">
+        <div id="logoPreview" style="width:48px;height:48px;border-radius:50%;border:2px solid #e2e8f0;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
+          <span style="color:#94a3b8;font-size:0.7em;">Logo</span>
+        </div>
+      </div>
       <label>Personalidad del Chatbot</label>
       <select id="fieldPersonality">
         <option value="casual">Casual y amigable (neutro)</option>
@@ -639,6 +646,16 @@ function resetSchedule() {
 
 initScheduleBuilder();
 
+function previewLogo() {
+  const url = document.getElementById('fieldLogoUrl').value.trim();
+  const preview = document.getElementById('logoPreview');
+  if (url) {
+    preview.innerHTML = '<img src="' + escapeHtml(url) + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML=\'<span style=color:#ef4444;font-size:0.6em>Error</span>\'">';
+  } else {
+    preview.innerHTML = '<span style="color:#94a3b8;font-size:0.7em;">Logo</span>';
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 // NEW RESTAURANT MODAL
 // ══════════════════════════════════════════════════════════════
@@ -658,6 +675,8 @@ function openNewModal() {
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('fieldType').value = '';
   document.getElementById('fieldPersonality').value = 'casual';
+  document.getElementById('fieldLogoUrl').value = '';
+  document.getElementById('logoPreview').innerHTML = '<span style="color:#94a3b8;font-size:0.7em;">Logo</span>';
   resetSchedule();
 
   document.getElementById('currentHoursDisplay').style.display = 'none';
@@ -696,6 +715,8 @@ function openEditModal(id) {
   document.getElementById('fieldWebsite').value = r.website || '';
   document.getElementById('fieldNotes').value = r.notes || '';
   document.getElementById('fieldPersonality').value = r.chatbot_personality || 'casual';
+  document.getElementById('fieldLogoUrl').value = r.logo_url || '';
+  previewLogo();
 
   // Schedule: show current hours, reset builder for optional overwrite
   resetSchedule();
@@ -768,6 +789,7 @@ async function updateRestaurant() {
   }
   if (useNewSchedule) body.hours = scheduleText;
   body.chatbot_personality = document.getElementById('fieldPersonality').value;
+  body.logo_url = document.getElementById('fieldLogoUrl').value.trim();
 
   try {
     const res = await adminFetch('/api/admin?action=update', {
@@ -840,6 +862,7 @@ async function createRestaurant() {
         website: document.getElementById('fieldWebsite').value.trim(),
         notes: document.getElementById('fieldNotes').value.trim(),
         chatbot_personality: document.getElementById('fieldPersonality').value,
+        logo_url: document.getElementById('fieldLogoUrl').value.trim(),
       }),
     });
     const data = await res.json();
