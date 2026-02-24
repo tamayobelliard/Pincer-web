@@ -2091,8 +2091,8 @@
 const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
 
-// ── Slug extraction from URL: /menu/hummus → hummus ──
-const SLUG = window.location.pathname.split('/').filter(Boolean)[1] || '';
+// ── Slug extraction from URL: /hummus → hummus ──
+const SLUG = window.location.pathname.split('/').filter(Boolean)[0] || '';
 if (!SLUG) {
   document.body.innerHTML = '<div style="text-align:center;padding:80px 20px;color:#64748b;"><h2>Restaurante no encontrado</h2><p>No se especificó un restaurante en la URL.</p><a href="https://www.pincerweb.com" style="color:#4338ca;">Ir a Pincer</a></div>';
   throw new Error('No slug in URL');

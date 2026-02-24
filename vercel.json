@@ -1,15 +1,15 @@
 {
   "rewrites": [
-    { "source": "/menu/:slug", "destination": "/menu/index.html" },
     { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
-    { "source": "/dashboard/:slug", "destination": "/dashboard/index.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/login", "destination": "/login/index.html" },
     { "source": "/politicas/privacidad", "destination": "/politicas/privacidad.html" },
     { "source": "/politicas/devoluciones", "destination": "/politicas/devoluciones.html" },
     { "source": "/politicas/seguridad", "destination": "/politicas/seguridad.html" },
-    { "source": "/politicas/entrega", "destination": "/politicas/entrega.html" }
+    { "source": "/politicas/entrega", "destination": "/politicas/entrega.html" },
+    { "source": "/:slug/dashboard", "destination": "/dashboard/index.html" },
+    { "source": "/:slug", "destination": "/menu/index.html" }
   ],
   "redirects": [
     { "source": "/", "destination": "/mrsandwich", "statusCode": 302, "has": [{ "type": "host", "value": "pincer-web.vercel.app" }] },

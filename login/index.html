@@ -185,7 +185,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       if (data.role === 'admin') {
         window.location.href = '/admin';
       } else {
-        window.location.href = '/dashboard/' + data.restaurant_slug;
+        window.location.href = '/' + data.restaurant_slug + '/dashboard';
       }
     } else {
       loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
