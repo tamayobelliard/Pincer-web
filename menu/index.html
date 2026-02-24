@@ -135,6 +135,50 @@
       border-left: 4px solid var(--primary-light);
       padding-left: 12px;
     }
+
+    /* Category tabs navigation */
+    .category-tabs-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      max-width: 500px;
+      margin: 0 auto 12px auto;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 6px 4px;
+      display: none; /* shown after menu loads */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .category-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+    }
+    .category-tabs::-webkit-scrollbar { display: none; }
+    .category-tab {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.85em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .category-tab:hover { background: rgba(0,0,0,0.04); }
+    .category-tab.active {
+      background: var(--primary);
+      color: white;
+    }
     
     .menu-item {
       background: #f8f9fa;
@@ -1817,6 +1861,10 @@
   <!-- Debug panel (tap logo 5 times to show) -->
   <div class="debug-panel" id="debugPanel"></div>
 
+  <div class="category-tabs-wrap" id="categoryTabsWrap">
+    <div class="category-tabs" id="categoryTabs"></div>
+  </div>
+
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
   </div>
@@ -2441,11 +2489,70 @@ function renderMenu() {
   categoryOrder.forEach(cat => {
     const items = MENU_DATA[cat];
     if (!items || !items.length) return;
-    html += `<div class="category-title">${escHtml(cat.toUpperCase())}</div>`;
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    html += `<div class="category-title" id="${catId}">${escHtml(cat.toUpperCase())}</div>`;
     items.forEach(item => { html += menuItemHTML(item); });
   });
 
   container.innerHTML = html;
+  buildCategoryTabs(categoryOrder);
+}
+
+function buildCategoryTabs(categoryOrder) {
+  const wrap = document.getElementById('categoryTabsWrap');
+  const tabsContainer = document.getElementById('categoryTabs');
+  const cats = categoryOrder.filter(c => MENU_DATA[c] && MENU_DATA[c].length);
+  if (cats.length < 2) { wrap.style.display = 'none'; return; }
+
+  tabsContainer.innerHTML = cats.map(cat => {
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `<button class="category-tab" data-cat-id="${catId}">${escHtml(cat.charAt(0).toUpperCase() + cat.slice(1))}</button>`;
+  }).join('');
+
+  wrap.style.display = 'block';
+
+  // Click → smooth scroll to section
+  tabsContainer.querySelectorAll('.category-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.catId);
+      if (!target) return;
+      const tabsHeight = wrap.offsetHeight + 12;
+      const y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+  });
+
+  // Scroll → highlight active tab
+  let scrollTicking = false;
+  window.addEventListener('scroll', () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(() => {
+      updateActiveTab(wrap, tabsContainer);
+      scrollTicking = false;
+    });
+  });
+  updateActiveTab(wrap, tabsContainer);
+}
+
+function updateActiveTab(wrap, tabsContainer) {
+  const tabs = tabsContainer.querySelectorAll('.category-tab');
+  const offset = wrap.offsetHeight + 30;
+  let activeIdx = 0;
+  tabs.forEach((tab, i) => {
+    const section = document.getElementById(tab.dataset.catId);
+    if (section && section.getBoundingClientRect().top <= offset) {
+      activeIdx = i;
+    }
+  });
+  tabs.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
+  // Scroll active tab into view within the tab bar
+  const activeTab = tabs[activeIdx];
+  if (activeTab) {
+    const container = tabsContainer;
+    const scrollLeft = activeTab.offsetLeft - container.offsetWidth / 2 + activeTab.offsetWidth / 2;
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }
 }
 
 function menuItemHTML(item) {
