@@ -125,7 +125,51 @@
       border-left: 4px solid #4a7c2c;
       padding-left: 12px;
     }
-    
+
+    /* Category tabs navigation */
+    .category-tabs-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      max-width: 500px;
+      margin: 0 auto 12px auto;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 6px 4px;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .category-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+    }
+    .category-tabs::-webkit-scrollbar { display: none; }
+    .category-tab {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #2d5016;
+      font-weight: 600;
+      font-size: 0.85em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .category-tab:hover { background: rgba(0,0,0,0.04); }
+    .category-tab.active {
+      background: #2d5016;
+      color: white;
+    }
+
     .menu-item {
       background: #f8f9fa;
       border-radius: 12px;
@@ -1807,6 +1851,10 @@
   <!-- Debug panel (tap logo 5 times to show) -->
   <div class="debug-panel" id="debugPanel"></div>
 
+  <div class="category-tabs-wrap" id="categoryTabsWrap">
+    <div class="category-tabs" id="categoryTabs"></div>
+  </div>
+
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
   </div>
@@ -2393,12 +2441,15 @@ function renderMenu() {
   const container = document.getElementById('menuSection');
   let html = '<h2 class="section-title">Menú</h2>';
 
+  const allCats = [];
   const categoryOrder = Object.keys(CATEGORY_CONFIG);
   categoryOrder.forEach(cat => {
     const items = MENU_DATA[cat];
     if (!items || !items.length) return;
     const config = CATEGORY_CONFIG[cat];
-    html += `<div class="category-title">${config.title}</div>`;
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    html += `<div class="category-title" id="${catId}">${config.title}</div>`;
+    allCats.push({ key: cat, label: config.title, id: catId });
     items.forEach(item => { html += menuItemHTML(item); });
     if (config.afterNote) {
       html += `<div class="note-papas">${config.afterNote}</div>`;
@@ -2410,11 +2461,66 @@ function renderMenu() {
     if (CATEGORY_CONFIG[cat]) return;
     const items = MENU_DATA[cat];
     if (!items || !items.length) return;
-    html += `<div class="category-title">${cat.toUpperCase()}</div>`;
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    html += `<div class="category-title" id="${catId}">${cat.toUpperCase()}</div>`;
+    allCats.push({ key: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1), id: catId });
     items.forEach(item => { html += menuItemHTML(item); });
   });
 
   container.innerHTML = html;
+  buildCategoryTabs(allCats);
+}
+
+function buildCategoryTabs(cats) {
+  const wrap = document.getElementById('categoryTabsWrap');
+  const tabsContainer = document.getElementById('categoryTabs');
+  if (cats.length < 2) { wrap.style.display = 'none'; return; }
+
+  tabsContainer.innerHTML = cats.map(c =>
+    `<button class="category-tab" data-cat-id="${c.id}">${escHtml(c.label)}</button>`
+  ).join('');
+
+  wrap.style.display = 'block';
+
+  tabsContainer.querySelectorAll('.category-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.catId);
+      if (!target) return;
+      const tabsHeight = wrap.offsetHeight + 12;
+      const y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+  });
+
+  let scrollTicking = false;
+  window.addEventListener('scroll', () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(() => {
+      updateActiveTab(wrap, tabsContainer);
+      scrollTicking = false;
+    });
+  });
+  updateActiveTab(wrap, tabsContainer);
+}
+
+function updateActiveTab(wrap, tabsContainer) {
+  const tabs = tabsContainer.querySelectorAll('.category-tab');
+  const offset = wrap.offsetHeight + 30;
+  let activeIdx = 0;
+  tabs.forEach((tab, i) => {
+    const section = document.getElementById(tab.dataset.catId);
+    if (section && section.getBoundingClientRect().top <= offset) {
+      activeIdx = i;
+    }
+  });
+  tabs.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
+  const activeTab = tabs[activeIdx];
+  if (activeTab) {
+    const container = tabsContainer;
+    const scrollLeft = activeTab.offsetLeft - container.offsetWidth / 2 + activeTab.offsetWidth / 2;
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }
 }
 
 function menuItemHTML(item) {
