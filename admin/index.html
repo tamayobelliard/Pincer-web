@@ -489,6 +489,7 @@ function renderRestaurants() {
         <div class="restaurant-actions">
           <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
           <button class="btn-edit" onclick="window.open('/menu/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
+          <button class="btn-edit" onclick="window.open('/dashboard/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Dashboard</button>
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
         </div>
@@ -843,7 +844,7 @@ async function createRestaurant() {
           <p style="margin-bottom:12px;color:#475569;">Comparte estas credenciales con el cliente:</p>
           <div><strong>Usuario:</strong> <span class="cred">${escapeHtml(data.username)}</span></div>
           <div style="margin-top:8px;"><strong>Contraseña:</strong> <span class="cred">${escapeHtml(data.temp_password)}</span></div>
-          <p style="margin-top:16px;color:#64748b;font-size:0.85em;">${escapeHtml(data.display_name)} puede iniciar sesión en pincerweb.com/${escapeHtml(data.username)}/dashboard</p>
+          <p style="margin-top:16px;color:#64748b;font-size:0.85em;">${escapeHtml(data.display_name)} puede iniciar sesión en pincerweb.com/dashboard/${escapeHtml(data.username)}</p>
         </div>
         <div class="menu-upload-section" style="margin-top:16px;">
           <div id="postCreateMenuIdle">

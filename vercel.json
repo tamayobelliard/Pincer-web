@@ -3,6 +3,7 @@
     { "source": "/menu/:slug", "destination": "/menu/index.html" },
     { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
+    { "source": "/dashboard/:slug", "destination": "/dashboard/index.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/login", "destination": "/login/index.html" },
     { "source": "/politicas/privacidad", "destination": "/politicas/privacidad.html" },

@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pincer – Restaurant Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#764ba2">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center; color: white; margin-bottom: 30px;
+      font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    h2 {
+      color: white; font-size: 1.5em; margin-bottom: 15px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+      max-width: 1200px; margin-left: auto; margin-right: auto;
+    }
+    #connection-status {
+      text-align: center; color: white; margin-bottom: 15px; font-size: 14px;
+    }
+    #notification-banner {
+      background: rgba(251, 191, 36, 0.95); color: #78350f;
+      padding: 15px; text-align: center; border-radius: 12px;
+      max-width: 1200px; margin: 0 auto 20px auto;
+      font-weight: 600; display: none; cursor: pointer; transition: all 0.3s;
+    }
+    #notification-banner:hover { background: rgba(251, 191, 36, 1); transform: scale(1.02); }
+    #notification-banner.show { display: block; }
+
+    .products-panel {
+      background: rgba(255,255,255,0.95); border-radius: 16px;
+      padding: 20px; max-width: 1200px; margin: 0 auto 24px auto;
+    }
+    .products-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+    }
+    .products-panel-header h3 { font-size: 1.25em; color: #1e1b4b; margin: 0; }
+    .products-panel-header .legend { display: flex; gap: 16px; font-size: 0.85em; color: #64748b; }
+    .products-panel-header .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .legend-dot.available { background: #22c55e; }
+    .legend-dot.soldout { background: #ef4444; }
+
+    .products-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
+    }
+    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    @media (min-width: 900px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1200px) { .products-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .product-card {
+      background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;
+      transition: border-color 0.2s, background 0.2s; position: relative;
+    }
+    .product-card.is-soldout { background: #fef2f2; border-color: #fca5a5; }
+    .product-card.is-inactive { background: #f1f5f9; border-color: #cbd5e1; opacity: 0.6; }
+    .product-card-top { display: flex; gap: 10px; align-items: flex-start; }
+    .product-card-thumb {
+      width: 60px; height: 60px; border-radius: 8px; object-fit: cover;
+      background: #e2e8f0; flex-shrink: 0;
+    }
+    .product-card-thumb-placeholder {
+      width: 60px; height: 60px; border-radius: 8px; background: #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5em; color: #94a3b8; flex-shrink: 0;
+    }
+    .product-card-info { flex: 1; min-width: 0; }
+    .product-card-name { font-weight: 700; font-size: 0.9em; color: #1e1b4b; line-height: 1.3; }
+    .product-card-price { font-size: 0.82em; color: #64748b; white-space: nowrap; margin-top: 2px; }
+    .product-card-cat {
+      display: inline-block; font-size: 0.7em; font-weight: 700; padding: 2px 8px;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;
+    }
+    .cat-munchies { background: #fff7ed; color: #c2410c; }
+    .cat-sandwiches { background: #f0fdf4; color: #15803d; }
+    .cat-burgers { background: #fef2f2; color: #dc2626; }
+    .cat-extras { background: #f1f5f9; color: #64748b; }
+
+    .product-card-actions {
+      display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 8px;
+    }
+
+    .toggle-row { display: flex; align-items: center; gap: 6px; }
+    .toggle-label { font-size: 0.72em; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .product-card.is-soldout .toggle-label { color: #dc2626; }
+
+    .btn-edit-product {
+      background: #667eea; color: white; border: none; padding: 6px 14px;
+      border-radius: 6px; font-size: 0.78em; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; margin: 0; font-family: inherit;
+    }
+    .btn-edit-product:hover { background: #5a67d8; }
+
+    .btn-add-product {
+      background: #4a7c2c; color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95em;
+      transition: all 0.2s; margin: 0; font-family: inherit;
+    }
+    .btn-add-product:hover { background: #3d6b23; }
+
+    /* Product Edit Modal */
+    .product-modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6); opacity: 0; visibility: hidden;
+      transition: all 0.3s; z-index: 5000;
+    }
+    .product-modal-overlay.show { opacity: 1; visibility: visible; }
+
+    .product-modal {
+      position: fixed; z-index: 5001; background: white;
+      overflow-y: auto; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @media (max-width: 600px) {
+      .product-modal {
+        bottom: 0; left: 0; width: 100%; max-height: 90vh;
+        border-radius: 20px 20px 0 0; transform: translateY(100%);
+        padding: 15px 20px 30px 20px;
+      }
+      .product-modal.show { transform: translateY(0); }
+    }
+    @media (min-width: 601px) {
+      .product-modal {
+        top: 50%; left: 50%; width: 500px; max-width: 90vw; max-height: 85vh;
+        border-radius: 16px; transform: translate(-50%, -50%) scale(0);
+        padding: 25px 30px 30px 30px;
+      }
+      .product-modal.show { transform: translate(-50%, -50%) scale(1); }
+    }
+
+    .product-modal-handle {
+      width: 40px; height: 5px; background: #cbd5e1; border-radius: 3px;
+      margin: 0 auto 15px auto; cursor: pointer;
+    }
+    @media (min-width: 601px) { .product-modal-handle { display: none; } }
+
+    .product-modal h3 {
+      text-align: center; color: #1e1b4b; font-size: 1.3em; margin-bottom: 20px;
+    }
+    .product-modal-field { margin-bottom: 14px; }
+    .product-modal-field label {
+      display: block; font-weight: 600; color: #475569; margin-bottom: 5px; font-size: 0.88em;
+    }
+    .product-modal-field input,
+    .product-modal-field textarea,
+    .product-modal-field select {
+      width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.95em; font-family: inherit; transition: border-color 0.2s;
+    }
+    .product-modal-field input:focus,
+    .product-modal-field textarea:focus,
+    .product-modal-field select:focus { outline: none; border-color: #667eea; }
+    .product-modal-field textarea { min-height: 70px; resize: vertical; }
+    .product-modal-field .field-row { display: flex; gap: 10px; }
+    .product-modal-field .field-row > * { flex: 1; }
+
+    .product-modal-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; margin-bottom: 10px;
+    }
+    .product-modal-toggle span { font-weight: 600; color: #475569; font-size: 0.88em; }
+
+    .product-modal-buttons {
+      display: flex; gap: 10px; margin-top: 20px;
+    }
+    .product-modal-buttons button { flex: 1; margin: 0; }
+    .btn-modal-cancel {
+      background: #e2e8f0; color: #64748b; border: none; padding: 12px;
+      border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-modal-save {
+      background: #4a7c2c; color: white; border: none; padding: 12px;
+      border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .btn-modal-save:hover { background: #3d6b23; }
+    .btn-modal-save:disabled { background: #94a3b8; cursor: not-allowed; }
+    .product-modal-error {
+      color: #dc2626; font-size: 0.85em; font-weight: 600; text-align: center;
+      margin-bottom: 10px; display: none;
+    }
+    .btn-modal-delete {
+      width: 100%; background: none; color: #dc2626; border: 2px solid #fca5a5;
+      padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;
+      font-family: inherit; margin-top: 12px; transition: all 0.2s;
+    }
+    .btn-modal-delete:hover { background: #fef2f2; border-color: #dc2626; }
+
+    .toggle-switch { position: relative; width: 48px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: #22c55e; border-radius: 26px;
+      cursor: pointer; transition: 0.25s;
+    }
+    .toggle-slider:before {
+      content: ""; position: absolute; height: 20px; width: 20px;
+      left: 3px; bottom: 3px; background: white; border-radius: 50%;
+      transition: 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider { background: #ef4444; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+    #orders { max-width: 1200px; margin: 0 auto; }
+    .order {
+      background: white; padding: 20px; margin-bottom: 15px; border-radius: 12px;
+      border-left: 8px solid #22c55e; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .new { border-left-color: #22c55e; background: #f0fdf4; }
+    .warning { border-left-color: #f59e0b; background: #fefce8; animation: pulseWarning 1.5s infinite; }
+    .late { border-left-color: #ef4444; background: #fef2f2; animation: pulseLate 0.8s infinite; }
+    .accepted { border-left-color: #1d4ed8; background: #3b82f6; }
+    .ready { border-left-color: #15803d; background: #bbf7d0; }
+    .notified { border-left-color: #6d28d9; background: #7c3aed; }
+    /* White text overrides for dark-background cards */
+    .accepted, .notified { color: white; }
+    .accepted .order-number, .notified .order-number { color: white; background: rgba(255,255,255,0.2); }
+    .accepted .order-status, .notified .order-status { background: rgba(255,255,255,0.25); color: white; }
+    .accepted .order-items-label, .notified .order-items-label { color: rgba(255,255,255,0.9); }
+    .accepted .order-item-row, .notified .order-item-row { background: rgba(255,255,255,0.1); border-left-color: rgba(255,255,255,0.3); }
+    .accepted .order-item-qty, .notified .order-item-qty,
+    .accepted .order-item-name, .notified .order-item-name { color: white; }
+    .accepted .order-item-notes, .notified .order-item-notes { color: rgba(255,255,255,0.8); }
+    .accepted .order-total, .notified .order-total { background: rgba(0,0,0,0.2); }
+    .accepted .order-phone, .notified .order-phone { background: rgba(255,255,255,0.15); color: white; border-left-color: rgba(255,255,255,0.3); }
+    .accepted .order-time, .notified .order-time { background: rgba(255,255,255,0.15); color: white; }
+    .accepted .completed-badge, .notified .completed-badge { background: rgba(255,255,255,0.25); }
+    @keyframes pulseWarning {
+      0%, 100% { background: #fefce8; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      50% { background: #fef08a; box-shadow: 0 0 20px rgba(245,158,11,0.4); }
+    }
+    @keyframes pulseLate {
+      0%, 100% { background: #fef2f2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      50% { background: #fecaca; box-shadow: 0 0 24px rgba(239,68,68,0.5); }
+    }
+    .order-number {
+      font-size: 32px; font-weight: bold; color: #1e40af; margin-bottom: 10px;
+      display: inline-block; padding: 5px 15px; background: #dbeafe; border-radius: 8px;
+    }
+    .order-items { margin: 12px 0; }
+    .order-items-label { color: #1e40af; }
+    .order-items-list { list-style: none; padding: 0; margin: 0; }
+    .order-item-row {
+      background: #f8fafc; padding: 8px 12px; margin-bottom: 6px;
+      border-radius: 6px; border-left: 3px solid #cbd5e1;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .order-item-qty { font-weight: 700; color: #1e40af; font-size: 1.1em; min-width: 30px; }
+    .order-item-name { flex: 1; color: #1e293b; font-weight: 600; }
+    .order-item-notes { font-size: 0.9em; color: #64748b; font-style: italic; margin-top: 3px; }
+    .order-item-row.is-extra {
+      background: #f1f5f9; margin-left: 35px; border-left-color: #94a3b8;
+      padding: 6px 10px; font-size: 0.95em;
+    }
+    .order-item-row.is-extra .order-item-qty { font-size: 1em; color: #64748b; }
+    .order-item-row.is-extra .order-item-name { color: #475569; font-weight: 500; }
+
+    .order-total {
+      margin-top: 12px; padding: 10px 12px;
+      background: linear-gradient(135deg, #4a7c2c, #2d5016);
+      color: white; border-radius: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 700; font-size: 1.1em;
+    }
+    .order-total-label { display: flex; align-items: center; gap: 6px; }
+
+    .time-alert {
+      display: inline-block; margin-left: 8px; padding: 4px 10px;
+      background: #fef3c7; color: #92400e; border-radius: 6px;
+      font-size: 0.85em; font-weight: 600; animation: alertPulse 1.5s infinite;
+    }
+    .time-alert.critical { background: #fee2e2; color: #991b1b; }
+    @keyframes alertPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .order-time {
+      display: inline-block; padding: 5px 12px; background: #f1f5f9;
+      border-radius: 6px; font-size: 14px; color: #475569; margin: 10px 0;
+    }
+    .order-status {
+      display: inline-block; padding: 5px 12px; border-radius: 6px;
+      font-size: 12px; font-weight: bold; margin-left: 10px;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-paid { background: #d1fae5; color: #065f46; font-weight: 700; }
+    .status-accepted { background: rgba(255,255,255,0.25); color: white; }
+    .status-ready { background: #d1fae5; color: #065f46; }
+    .status-notified { background: rgba(255,255,255,0.25); color: white; }
+
+    .order-phone {
+      margin: 12px 0; padding: 10px 12px;
+      background: #f0f9ff; border-radius: 8px; border-left: 3px solid #0ea5e9;
+      font-size: 0.95em; color: #0c4a6e; font-weight: 600;
+    }
+
+    .wa-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #25D366; color: white;
+      padding: 14px 24px; border-radius: 12px;
+      text-decoration: none; font-weight: 700; font-size: 1.1em;
+      font-family: inherit; border: none; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+      transition: all 0.2s; margin-top: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wa-btn:hover { background: #20BA5A; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37, 211, 102, 0.5); }
+    .wa-btn:active { transform: translateY(0); }
+
+    button {
+      margin-top: 15px; margin-right: 10px; padding: 12px 24px;
+      cursor: pointer; color: white; border: none; border-radius: 8px;
+      font-weight: 600; font-size: 16px; transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-accept { background: #3b82f6; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
+    .btn-accept:hover { background: #2563eb; transform: translateY(-1px); }
+    .btn-ready { background: #16a34a; box-shadow: 0 2px 4px rgba(22,163,74,0.3); }
+    .btn-ready:hover { background: #15803d; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+    .error {
+      background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px;
+      margin-bottom: 20px; text-align: center; border-left: 4px solid #dc2626;
+      max-width: 1200px; margin-left: auto; margin-right: auto;
+    }
+    .loading {
+      text-align: center; padding: 40px; color: white; font-size: 18px;
+      background: rgba(255,255,255,0.1); border-radius: 12px; backdrop-filter: blur(10px);
+    }
+    .completed-badge {
+      display: inline-block; padding: 5px 12px; background: #16a34a;
+      color: white; border-radius: 6px; font-size: 14px; font-weight: 600; margin-top: 10px;
+    }
+    .stats {
+      background: rgba(255,255,255,0.95); padding: 20px; border-radius: 12px;
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    @media (max-width: 500px) {
+      .stats { grid-template-columns: repeat(2, 1fr); padding: 16px; gap: 10px; }
+    }
+    .stat-item { text-align: center; background: #f1f5f9; border-radius: 10px; padding: 12px 8px; }
+    .stat-number { font-size: 28px; font-weight: bold; color: #1e40af; }
+    .stat-label { font-size: 13px; color: #64748b; margin-top: 4px; }
+
+    .stat-card {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #e2e8f0;
+    }
+    .stat-value { font-size: 1.8em; font-weight: bold; color: #1e40af; margin-bottom: 5px; }
+
+    /* Debug panel */
+    .debug-panel {
+      display: none; max-width: 1200px; margin: 0 auto 20px auto;
+      background: rgba(0,0,0,0.85); color: #22c55e; padding: 15px;
+      border-radius: 12px; font-family: monospace; font-size: 0.8em;
+      max-height: 250px; overflow-y: auto;
+    }
+    .debug-panel.show { display: block; }
+    .debug-toggle {
+      text-align: center; margin-bottom: 10px;
+    }
+    .debug-toggle button {
+      background: rgba(255,255,255,0.2); color: white; border: none;
+      padding: 6px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      margin: 0;
+    }
+
+    /* Store Open/Close */
+    .store-toggle-bar {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;
+    }
+    .btn-store-toggle {
+      padding: 14px 28px; border: none; border-radius: 12px; font-weight: 700;
+      font-size: 1.1em; cursor: pointer; transition: all 0.3s; font-family: inherit;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); margin: 0;
+    }
+    .btn-store-open { background: #16a34a; color: white; }
+    .btn-store-open:hover { background: #15803d; transform: translateY(-2px); }
+    .btn-store-close { background: #dc2626; color: white; }
+    .btn-store-close:hover { background: #b91c1c; transform: translateY(-2px); }
+    .store-opened-info { color: rgba(255,255,255,0.9); font-size: 0.9em; font-weight: 500; }
+
+    /* Time Filter Pills */
+    .time-filters {
+      max-width: 1200px; margin: 0 auto 16px auto;
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .time-pill {
+      padding: 8px 16px; border: 2px solid rgba(255,255,255,0.4); border-radius: 20px;
+      background: transparent; color: white; font-weight: 600; font-size: 0.85em;
+      cursor: pointer; transition: all 0.2s; font-family: inherit; margin: 0;
+    }
+    .time-pill:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.1); }
+    .time-pill.active { background: rgba(255,255,255,0.95); color: #764ba2; border-color: transparent; }
+
+    /* Analytics Stats */
+    .analytics-stats {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    }
+    @media (max-width: 600px) { .analytics-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    .analytics-card {
+      background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; text-align: center;
+    }
+    .analytics-value { font-size: 1.6em; font-weight: 700; color: #1e1b4b; margin-bottom: 4px; }
+    .analytics-value.money { color: #059669; }
+    .analytics-label { font-size: 0.8em; color: #64748b; font-weight: 500; }
+
+    /* Section headers */
+    .section-header {
+      max-width: 1200px; margin: 0 auto 12px auto;
+      color: white; font-size: 1.2em; font-weight: 700;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    }
+    .closed-notice {
+      max-width: 1200px; margin: 0 auto 20px auto;
+      background: rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 30px; text-align: center; color: rgba(255,255,255,0.8);
+      font-size: 1.1em; backdrop-filter: blur(5px);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen" style="
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex; align-items: center; justify-content: center; z-index: 10000;
+">
+  <div style="background: white; padding: 40px; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+    <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em;">
+      📟 Pincer Dashboard
+    </h1>
+    <p style="text-align: center; color: #64748b; margin-bottom: 30px;">
+      <span id="loginSubtitle"></span>
+    </p>
+    <div id="loginError" style="display: none; background: #fee2e2; color: #991b1b;
+      padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600;"></div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">Usuario</label>
+        <input type="text" id="username" required
+          style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;"
+          placeholder="">
+      </div>
+      <div style="margin-bottom: 25px;">
+        <label style="display: block; color: #475569; font-weight: 600; margin-bottom: 8px;">Contraseña</label>
+        <input type="password" id="password" required
+          style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;"
+          placeholder="••••••••">
+      </div>
+      <button type="submit" id="loginBtn" style="width: 100%; padding: 15px;
+        background: linear-gradient(135deg, #4a7c2c, #2d5016); color: white;
+        border: none; border-radius: 10px; font-size: 1.1em; font-weight: bold; cursor: pointer;">
+        Iniciar Sesión
+      </button>
+    </form>
+  </div>
+</div>
+
+<h1>📟 Pincer – Orders Dashboard</h1>
+
+<!-- Store Open/Close -->
+<div class="store-toggle-bar" id="storeToggleBar">
+  <button class="btn-store-toggle btn-store-open" id="storeToggleBtn" onclick="toggleStore()">Abrir Negocio 🟢</button>
+  <span class="store-opened-info" id="storeOpenedInfo"></span>
+</div>
+
+<!-- Time Filters -->
+<div class="time-filters" id="timeFilters">
+  <button class="time-pill active" data-range="today" onclick="selectTimeFilter('today')">Hoy</button>
+  <button class="time-pill" data-range="yesterday" onclick="selectTimeFilter('yesterday')">Ayer</button>
+  <button class="time-pill" data-range="3d" onclick="selectTimeFilter('3d')">3D</button>
+  <button class="time-pill" data-range="1w" onclick="selectTimeFilter('1w')">1S</button>
+  <button class="time-pill" data-range="1m" onclick="selectTimeFilter('1m')">1M</button>
+  <button class="time-pill" data-range="3m" onclick="selectTimeFilter('3m')">3M</button>
+  <button class="time-pill" data-range="6m" onclick="selectTimeFilter('6m')">6M</button>
+  <button class="time-pill" data-range="1y" onclick="selectTimeFilter('1y')">1A</button>
+</div>
+
+<!-- Analytics Stats -->
+<div class="analytics-stats" id="analyticsStats">
+  <div class="analytics-card"><div class="analytics-value money" id="analytics-sales">RD$0</div><div class="analytics-label">Total Ventas</div></div>
+  <div class="analytics-card"><div class="analytics-value" id="analytics-orders">0</div><div class="analytics-label"># Órdenes</div></div>
+  <div class="analytics-card"><div class="analytics-value money" id="analytics-avg">RD$0</div><div class="analytics-label">Ticket Promedio</div></div>
+  <div class="analytics-card"><div class="analytics-value" id="analytics-top" style="font-size:1em;">-</div><div class="analytics-label">Más Vendido</div></div>
+</div>
+
+<!-- Debug toggle -->
+<div class="debug-toggle">
+  <button onclick="document.getElementById('debugPanel').classList.toggle('show')">🐛 Debug</button>
+</div>
+<div class="debug-panel" id="debugPanel"></div>
+
+<div id="connection-status">🟢 Conectado</div>
+
+<div id="notification-banner" onclick="requestNotificationPermission()">
+  🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
+</div>
+
+<div class="stats" id="stats">
+  <div class="stat-item"><div class="stat-number" id="total-orders">0</div><div class="stat-label">Total Órdenes</div></div>
+  <div class="stat-item"><div class="stat-number" id="pending-orders">0</div><div class="stat-label">Pendientes</div></div>
+  <div class="stat-item"><div class="stat-number" id="preparing-orders">0</div><div class="stat-label">En Preparación</div></div>
+  <div class="stat-item"><div class="stat-number" id="ready-orders">0</div><div class="stat-label">Listas</div></div>
+</div>
+
+<div id="error-message"></div>
+
+<div class="section-header" id="liveOrdersHeader">📋 Órdenes en Vivo</div>
+<div id="orders">
+  <div class="loading">⏳ Cargando órdenes...</div>
+</div>
+
+<div class="products-panel" id="productsPanel">
+  <div class="products-panel-header">
+    <h3>📦 Productos</h3>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <div class="legend">
+        <span><span class="legend-dot available"></span> Disponible</span>
+        <span><span class="legend-dot soldout"></span> Agotado</span>
+      </div>
+      <button class="btn-add-product" onclick="openProductModal()">+ Agregar Item</button>
+    </div>
+  </div>
+  <div class="products-grid" id="productsGrid"></div>
+</div>
+
+<div class="product-modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
+<div class="product-modal" id="productModal">
+  <div class="product-modal-handle" onclick="closeProductModal()"></div>
+  <h3 id="productModalTitle">Agregar Producto</h3>
+  <input type="hidden" id="pmEditId">
+  <div class="product-modal-field">
+    <label>Nombre</label>
+    <input type="text" id="pmName" placeholder="Nombre del producto">
+  </div>
+  <div class="product-modal-field">
+    <div class="field-row">
+      <div>
+        <label>Precio (RD$)</label>
+        <input type="number" id="pmPrice" placeholder="0" min="0">
+      </div>
+      <div>
+        <label>Orden</label>
+        <input type="number" id="pmOrder" placeholder="1" min="0">
+      </div>
+    </div>
+  </div>
+  <div class="product-modal-field">
+    <label>Categoría</label>
+    <select id="pmCategory"></select>
+  </div>
+  <div class="product-modal-field">
+    <label>Descripción</label>
+    <textarea id="pmDescription" placeholder="Ingredientes, descripción..."></textarea>
+  </div>
+  <div class="product-modal-field">
+    <label>URL de imagen</label>
+    <input type="text" id="pmImgUrl" placeholder="https://i.imgur.com/...">
+  </div>
+  <div class="product-modal-toggle">
+    <span>Activo</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="pmActive" checked>
+      <span class="toggle-slider" style="background: #22c55e;"></span>
+    </label>
+  </div>
+  <div class="product-modal-error" id="pmError"></div>
+  <div class="product-modal-buttons">
+    <button class="btn-modal-cancel" onclick="closeProductModal()">Cancelar</button>
+    <button class="btn-modal-save" id="pmSaveBtn" onclick="saveProduct()">Guardar</button>
+  </div>
+  <button class="btn-modal-delete" id="pmDeleteBtn" onclick="deleteProduct()" style="display:none;">Eliminar producto</button>
+</div>
+
+<!-- AI Assistant Chatbot -->
+<div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+  <button id="aiAssistantBtn" onclick="toggleAIChat()" style="
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none; color: white; font-size: 2em; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.5); transition: all 0.3s; margin: 0;">
+    🤖
+  </button>
+  <div id="aiChatWindow" style="display: none; position: absolute; bottom: 80px; right: 0;
+    width: 400px; max-width: 90vw; height: 500px; background: white;
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    flex-direction: column; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-weight: bold; font-size: 1.1em;">🤖 Asistente de Ventas</div>
+        <div style="font-size: 0.85em; opacity: 0.9;">Tu gerente virtual</div>
+      </div>
+      <button onclick="toggleAIChat()" style="background: none; border: none; color: white;
+        font-size: 1.5em; cursor: pointer; width: 30px; height: 30px; margin: 0;">×</button>
+    </div>
+    <div id="aiChatMessages" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa;">
+      <div style="background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        👋 Hola! Soy tu asistente de ventas.<br><br>
+        <strong style="color: #4a7c2c;">Preguntas rápidas:</strong>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="background: #f0fdf4; border: 2px solid #4ade80; color: #166534; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">💰 ¿Cuánto vendí hoy?</button>
+          <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="background: #fef3c7; border: 2px solid #fbbf24; color: #92400e; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⭐ ¿Qué producto se vende más?</button>
+          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="background: #dbeafe; border: 2px solid #60a5fa; color: #1e40af; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⏰ ¿A qué hora tengo más pedidos?</button>
+          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="background: #fae8ff; border: 2px solid #d946ef; color: #86198f; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">📦 ¿Cuántas órdenes tuve hoy?</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding: 15px; border-top: 1px solid #e2e8f0; background: white;">
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="aiChatInput" placeholder="Escribe tu pregunta..."
+          onkeypress="if(event.key==='Enter') sendAIMessage()"
+          style="flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1em;">
+        <button onclick="sendAIMessage()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 0;">
+          Enviar
+        </button>
+      </div>
+      <div id="aiChatLoading" style="display: none; margin-top: 10px; text-align: center; color: #667eea; font-size: 0.9em;">
+        🤔 Analizando datos...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs (compat for non-module usage) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// SLUG EXTRACTION — /dashboard/:slug
+// ══════════════════════════════════════════════════════════════
+
+const SLUG = window.location.pathname.split('/').filter(Boolean)[1] || '';
+if (!SLUG) {
+  document.body.innerHTML = '<div style="text-align:center;padding:80px 20px;color:#64748b;"><h2>Restaurante no encontrado</h2><p>No se especificó un restaurante en la URL.</p><a href="https://www.pincerweb.com" style="color:#4338ca;">Ir a Pincer</a></div>';
+  throw new Error('No slug in URL');
+}
+let DISPLAY_NAME = SLUG;
+
+// Set initial branding from slug
+document.getElementById('loginSubtitle').textContent = SLUG;
+document.getElementById('username').placeholder = SLUG;
+
+// ══════════════════════════════════════════════════════════════
+// DEBUG LOGGER
+// ══════════════════════════════════════════════════════════════
+
+let debugLogs = [];
+function dbg(msg) {
+  const ts = new Date().toLocaleTimeString();
+  const line = `[${ts}] ${msg}`;
+  debugLogs.push(line);
+  const panel = document.getElementById('debugPanel');
+  if (panel) {
+    panel.innerHTML = debugLogs.slice(-50).join('<br>');
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TIMEZONE UTILITIES (DR = UTC-4)
+// ══════════════════════════════════════════════════════════════
+
+const DR_TIMEZONE_OFFSET = -4;
+
+function getDRDate() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (3600000 * DR_TIMEZONE_OFFSET));
+}
+
+function getDRDateString(date = null) {
+  const d = date || getDRDate();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDRDate(date = null) {
+  const d = date || getDRDate();
+  const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function updateCurrentDateDisplay() {
+  const display = document.getElementById('currentDateDisplay');
+  if (display) display.textContent = `(${formatDRDate()})`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = "https://tcwujslibopzfyufhjsr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt";
+
+function sbGetHeaders() {
+  // sb_publishable_ key: apikey header required, Authorization must match exactly
+  return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
+}
+function sbWriteHeaders(extra = {}) {
+  return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', ...extra };
+}
+
+// Fetch with timeout
+function fetchWithTimeout(url, options, timeoutMs = 12000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeoutMs))
+  ]);
+}
+
+// Products loaded from Supabase (replaces hardcoded MENU_DATA)
+let productsData = [];
+
+// ══════════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════════
+
+let soldOutSet = new Set();
+let lastOrderCount = 0;
+let hasInteracted = false;
+let storeIsOpen = false;
+let storeOpenedAt = null;
+let activeTimeFilter = 'today';
+
+// ══════════════════════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════════════════════
+
+let audioCtx = null;
+function ensureAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
+
+function playBeeps(freqs, volume = 0.4) {
+  try {
+    if (!audioCtx) return;
+    ensureAudioContext();
+    const now = audioCtx.currentTime;
+    freqs.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.15);
+      osc.start(now + i * 0.18); osc.stop(now + i * 0.18 + 0.16);
+    });
+  } catch (e) { /* silente */ }
+}
+function playNewOrderSound() { playBeeps([660, 880, 1100]); }
+function playConfirmSound() { playBeeps([440, 660], 0.3); }
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE CLOUD MESSAGING (FCM)
+// ══════════════════════════════════════════════════════════════
+
+// ⚠️ REPLACE with your Firebase project config from Firebase Console
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",
+  authDomain: "pincer-app-deda6.firebaseapp.com",
+  projectId: "pincer-app-deda6",
+  storageBucket: "pincer-app-deda6.appspot.com",
+  messagingSenderId: "1025818715545",
+  appId: "1:1025818715545:web:d149b23af22f151c85df08"
+};
+
+// ⚠️ REPLACE with your VAPID key from Firebase Console > Cloud Messaging > Web Push certificates
+const FCM_VAPID_KEY = "BKvSE0tjUVmqriHbes1yltd2ta4V2_G3NtI1JucOTZIENECuwX71zUJv8YuOqgDAejOBvMnJsH-H4I8_zTgdgBs";
+
+let fcmMessaging = null;
+
+async function initFCM() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      dbg('⚠️ FCM: Browser does not support push notifications');
+      return;
+    }
+
+    const app = firebase.initializeApp(FIREBASE_CONFIG);
+    fcmMessaging = firebase.messaging();
+
+    const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    dbg('✅ Service Worker registered: ' + swRegistration.scope);
+
+    await navigator.serviceWorker.ready;
+
+    if (Notification.permission === 'granted') {
+      await getAndStoreFCMToken(swRegistration);
+    } else if (Notification.permission === 'default') {
+      document.getElementById('notification-banner').classList.add('show');
+    }
+
+    // Handle foreground messages (tab is open)
+    fcmMessaging.onMessage(function(payload) {
+      dbg('🔔 FCM foreground message: ' + JSON.stringify(payload.data));
+      const data = payload.data || {};
+
+      playNewOrderSound();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+
+      if (Notification.permission === 'granted') {
+        const n = new Notification(data.title || 'Nueva Orden', {
+          body: data.body || '',
+          tag: 'pincer-order-' + (data.orderId || Date.now()),
+          requireInteraction: true,
+        });
+        n.onclick = function() { window.focus(); this.close(); };
+      }
+
+      loadOrders();
+    });
+
+  } catch (err) {
+    dbg('❌ FCM init error: ' + err.message);
+  }
+}
+
+async function getAndStoreFCMToken(swRegistration) {
+  try {
+    const currentToken = await fcmMessaging.getToken({
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: swRegistration,
+    });
+
+    if (currentToken) {
+      dbg('✅ FCM Token: ' + currentToken.substring(0, 20) + '...');
+      await saveFCMToken(currentToken);
+    } else {
+      dbg('⚠️ No FCM token available');
+    }
+  } catch (err) {
+    dbg('❌ FCM token error: ' + err.message);
+  }
+}
+
+async function saveFCMToken(token) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+      method: 'POST',
+      headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+      body: JSON.stringify({
+        token: token,
+        restaurant_slug: SLUG,
+        device_info: navigator.userAgent.substring(0, 200),
+        active: true,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+
+    if (res.ok) {
+      dbg('✅ FCM token saved to Supabase');
+    } else {
+      dbg('⚠️ Failed to save FCM token: HTTP ' + res.status);
+    }
+  } catch (err) {
+    dbg('❌ saveFCMToken error: ' + err.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════════════════════════
+
+function showError(msg) {
+  document.getElementById("error-message").innerHTML = `<div class="error">❌ ${msg}</div>`;
+}
+function clearError() {
+  document.getElementById("error-message").innerHTML = '';
+}
+function updateStats(orders) {
+  document.getElementById('total-orders').textContent = orders.length;
+  document.getElementById('pending-orders').textContent = orders.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
+  document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
+  document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready' || o.status === 'notified').length;
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICACIONES
+// ══════════════════════════════════════════════════════════════
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) { alert("Tu navegador no soporta notificaciones"); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      document.getElementById('notification-banner').classList.remove('show');
+      new Notification("¡Notificaciones Habilitadas!", {
+        body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
+        tag: "pincer-notifications-enabled"
+      });
+      // Register FCM token now that we have permission
+      if (fcmMessaging) {
+        const swReg = await navigator.serviceWorker.ready;
+        await getAndStoreFCMToken(swReg);
+      }
+    } else if (perm === "denied") {
+      alert("⚠️ Has bloqueado las notificaciones.\n\n1. Click en el ícono del candado 🔒\n2. Busca 'Notificaciones'\n3. Cambia a 'Permitir'");
+    }
+  } catch (e) { console.error("requestNotificationPermission:", e); }
+}
+
+function sendNotification(title, body, tag) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const n = new Notification(title, { body, tag: tag || ('pincer-' + Date.now()), requireInteraction: true });
+    n.onclick = function() { window.focus(); this.close(); };
+  } catch (e) { /* silente */ }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PRODUCTOS
+// ══════════════════════════════════════════════════════════════
+
+async function loadProducts() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&order=display_order.asc&select=*',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (!res.ok) { dbg('⚠️ products HTTP ' + res.status); renderProducts(); return; }
+    productsData = await res.json();
+    soldOutSet = new Set(productsData.filter(r => r.sold_out).map(r => r.id));
+    dbg('✅ Productos cargados: ' + productsData.length);
+    renderProducts();
+    populateCategoryDropdown();
+  } catch (e) { dbg('⚠️ loadProducts: ' + e.message); renderProducts(); }
+}
+
+function populateCategoryDropdown() {
+  const select = document.getElementById('pmCategory');
+  const cats = [...new Set(productsData.map(p => p.category).filter(Boolean))];
+  if (!cats.length) cats.push('general');
+  select.innerHTML = cats.map(c => '<option value="' + c + '">' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>').join('');
+}
+
+function getCatClass(cat) {
+  const c = (cat || '').toLowerCase();
+  if (c === 'munchies') return 'cat-munchies';
+  if (c === 'sandwiches') return 'cat-sandwiches';
+  if (c === 'burgers') return 'cat-burgers';
+  return 'cat-extras';
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '';
+  if (!productsData.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:20px;">No hay productos. Haz click en "+ Agregar Item" para comenzar.</div>';
+    return;
+  }
+  productsData.forEach(item => {
+    const isSoldOut = soldOutSet.has(item.id);
+    const isInactive = item.active === false;
+    const card = document.createElement('div');
+    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '') + (isInactive ? ' is-inactive' : '');
+    card.id = 'prodCard_' + item.id;
+
+    const thumbHTML = item.img_url
+      ? `<img class="product-card-thumb" src="${item.img_url}" alt="${item.name}">`
+      : `<div class="product-card-thumb-placeholder">🍽</div>`;
+
+    const catLabel = (item.category || 'extras').charAt(0).toUpperCase() + (item.category || 'extras').slice(1);
+
+    card.innerHTML = `
+      <div class="product-card-top">
+        ${thumbHTML}
+        <div class="product-card-info">
+          <div class="product-card-name">${item.name}</div>
+          <div class="product-card-price">RD$${(item.price || 0).toLocaleString()}</div>
+          <span class="product-card-cat ${getCatClass(item.category)}">${catLabel}</span>
+        </div>
+      </div>
+      <div class="product-card-actions">
+        <div class="toggle-row">
+          <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
+          <label class="toggle-switch">
+            <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <button class="btn-edit-product" onclick="openProductModal('${item.id}')">Editar</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function toggleSoldOut(productId, isSoldOut) {
+  if (isSoldOut) soldOutSet.add(productId); else soldOutSet.delete(productId);
+  updateProductCardUI(productId, isSoldOut);
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId) + '&restaurant_slug=eq.' + encodeURIComponent(SLUG),
+      { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify({ sold_out: isSoldOut }) }
+    );
+    if (!res.ok) {
+      if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+      updateProductCardUI(productId, !isSoldOut);
+      showError("No se pudo actualizar el producto.");
+      return;
+    }
+    // Update local data
+    const p = productsData.find(p => p.id === productId);
+    if (p) p.sold_out = isSoldOut;
+    clearError();
+  } catch (e) {
+    if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
+    updateProductCardUI(productId, !isSoldOut);
+    showError("Error de conexión.");
+  }
+}
+
+function updateProductCardUI(productId, isSoldOut) {
+  const card = document.getElementById('prodCard_' + productId);
+  if (!card) return;
+  card.classList.toggle('is-soldout', isSoldOut);
+  const label = card.querySelector('.toggle-label');
+  if (label) label.textContent = isSoldOut ? 'Agotado' : 'Disponible';
+  const cb = card.querySelector('input[type=checkbox]');
+  if (cb) cb.checked = isSoldOut;
+}
+
+// ══════════════════════════════════════════════════════════════
+// PRODUCT MODAL (CRUD)
+// ══════════════════════════════════════════════════════════════
+
+function slugify(text) {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').substring(0, 40);
+}
+
+function openProductModal(editId) {
+  const modal = document.getElementById('productModal');
+  const overlay = document.getElementById('productModalOverlay');
+  const errDiv = document.getElementById('pmError');
+  errDiv.style.display = 'none';
+
+  if (editId) {
+    const p = productsData.find(x => x.id === editId);
+    if (!p) return;
+    document.getElementById('productModalTitle').textContent = 'Editar Producto';
+    document.getElementById('pmEditId').value = p.id;
+    document.getElementById('pmName').value = p.name || '';
+    document.getElementById('pmPrice').value = p.price || 0;
+    document.getElementById('pmOrder').value = p.display_order != null ? p.display_order : 0;
+    document.getElementById('pmCategory').value = p.category || 'extras';
+    document.getElementById('pmDescription').value = p.description || '';
+    document.getElementById('pmImgUrl').value = p.img_url || '';
+    document.getElementById('pmActive').checked = p.active !== false;
+    document.getElementById('pmDeleteBtn').style.display = 'block';
+  } else {
+    document.getElementById('productModalTitle').textContent = 'Agregar Producto';
+    document.getElementById('pmEditId').value = '';
+    document.getElementById('pmName').value = '';
+    document.getElementById('pmPrice').value = '';
+    document.getElementById('pmOrder').value = productsData.length + 1;
+    document.getElementById('pmCategory').value = 'sandwiches';
+    document.getElementById('pmDescription').value = '';
+    document.getElementById('pmImgUrl').value = '';
+    document.getElementById('pmActive').checked = true;
+    document.getElementById('pmDeleteBtn').style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+  setTimeout(() => modal.classList.add('show'), 10);
+}
+
+function closeProductModal() {
+  document.getElementById('productModal').classList.remove('show');
+  setTimeout(() => document.getElementById('productModalOverlay').classList.remove('show'), 350);
+}
+
+async function saveProduct() {
+  const errDiv = document.getElementById('pmError');
+  const saveBtn = document.getElementById('pmSaveBtn');
+  errDiv.style.display = 'none';
+
+  const editId = document.getElementById('pmEditId').value;
+  const name = document.getElementById('pmName').value.trim();
+  const price = parseInt(document.getElementById('pmPrice').value) || 0;
+  const displayOrder = parseInt(document.getElementById('pmOrder').value) || 0;
+  const category = document.getElementById('pmCategory').value;
+  const description = document.getElementById('pmDescription').value.trim() || null;
+  const imgUrl = document.getElementById('pmImgUrl').value.trim() || null;
+  const active = document.getElementById('pmActive').checked;
+
+  if (!name) {
+    errDiv.textContent = 'El nombre es requerido';
+    errDiv.style.display = 'block';
+    return;
+  }
+  if (price <= 0) {
+    errDiv.textContent = 'El precio debe ser mayor a 0';
+    errDiv.style.display = 'block';
+    return;
+  }
+
+  const payload = { name, price, description, category, img_url: imgUrl, display_order: displayOrder, active };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Guardando...';
+
+  try {
+    let res;
+    if (editId) {
+      // PATCH existing
+      res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId) + '&restaurant_slug=eq.' + encodeURIComponent(SLUG),
+        { method: 'PATCH', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
+        10000
+      );
+    } else {
+      // POST new
+      const newId = SLUG + '-' + slugify(name);
+      payload.id = newId;
+      payload.sold_out = false;
+      payload.restaurant_slug = SLUG;
+      res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products',
+        { method: 'POST', headers: sbWriteHeaders({ 'Prefer': 'return=representation' }), body: JSON.stringify(payload) },
+        10000
+      );
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ saveProduct error: ' + errText);
+      errDiv.textContent = editId ? 'Error al actualizar el producto' : 'Error al crear el producto';
+      if (errText.includes('duplicate') || errText.includes('unique')) {
+        errDiv.textContent = 'Ya existe un producto con ese ID. Cambia el nombre.';
+      }
+      errDiv.style.display = 'block';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Guardar';
+      return;
+    }
+
+    dbg('✅ Producto ' + (editId ? 'actualizado' : 'creado'));
+    closeProductModal();
+    await loadProducts();
+  } catch (e) {
+    dbg('❌ saveProduct exception: ' + e.message);
+    errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    errDiv.style.display = 'block';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar';
+  }
+}
+
+async function deleteProduct() {
+  const editId = document.getElementById('pmEditId').value;
+  if (!editId) return;
+  const p = productsData.find(x => x.id === editId);
+  const name = p ? p.name : editId;
+  if (!confirm('¿Seguro que deseas eliminar "' + name + '"?')) return;
+
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(editId) + '&restaurant_slug=eq.' + encodeURIComponent(SLUG),
+      { method: 'DELETE', headers: sbWriteHeaders() }, 10000
+    );
+    if (!res.ok) {
+      const errText = await res.text();
+      dbg('❌ deleteProduct error: ' + errText);
+      showError('No se pudo eliminar el producto.');
+      return;
+    }
+    dbg('🗑️ Producto eliminado: ' + editId);
+    closeProductModal();
+    await loadProducts();
+  } catch (e) {
+    dbg('❌ deleteProduct exception: ' + e.message);
+    showError('Error de conexión al eliminar.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// STORE OPEN/CLOSE
+// ══════════════════════════════════════════════════════════════
+
+async function loadStoreStatus() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=is_open,opened_at,closed_at,opens_at',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (!res.ok) { dbg('⚠️ store_settings HTTP ' + res.status); return; }
+    const data = await res.json();
+    if (data.length > 0) {
+      storeIsOpen = data[0].is_open === true;
+      storeOpenedAt = data[0].opened_at || null;
+      updateStoreUI();
+      dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA'));
+    }
+  } catch (e) { dbg('⚠️ loadStoreStatus: ' + e.message); }
+}
+
+function updateStoreUI() {
+  const btn = document.getElementById('storeToggleBtn');
+  const info = document.getElementById('storeOpenedInfo');
+  const ordersContainer = document.getElementById('orders');
+  const liveHeader = document.getElementById('liveOrdersHeader');
+
+  if (storeIsOpen) {
+    btn.className = 'btn-store-toggle btn-store-close';
+    btn.textContent = 'Cerrar Negocio 🔴';
+    if (storeOpenedAt) {
+      const opened = new Date(storeOpenedAt);
+      info.textContent = 'Abierto desde las ' + opened.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      info.textContent = '';
+    }
+    liveHeader.style.display = 'block';
+  } else {
+    btn.className = 'btn-store-toggle btn-store-open';
+    btn.textContent = 'Abrir Negocio 🟢';
+    info.textContent = '';
+    liveHeader.style.display = 'block';
+    ordersContainer.innerHTML = '<div class="closed-notice">🔒 El negocio está cerrado. Abre el negocio para ver órdenes en vivo.</div>';
+  }
+}
+
+async function toggleStore() {
+  const btn = document.getElementById('storeToggleBtn');
+  const newState = !storeIsOpen;
+  btn.disabled = true;
+
+  const payload = { is_open: newState };
+  if (newState) {
+    payload.opened_at = new Date().toISOString();
+  } else {
+    payload.closed_at = new Date().toISOString();
+  }
+
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG),
+      { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload) }, 10000
+    );
+    if (!res.ok) {
+      showError('No se pudo actualizar el estado del negocio.');
+      btn.disabled = false;
+      return;
+    }
+    storeIsOpen = newState;
+    storeOpenedAt = newState ? payload.opened_at : storeOpenedAt;
+    updateStoreUI();
+    if (newState) loadOrders();
+    dbg(newState ? '🟢 Negocio ABIERTO' : '🔴 Negocio CERRADO');
+  } catch (e) {
+    showError('Error de conexión.');
+    dbg('❌ toggleStore: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TIME FILTERS & ANALYTICS
+// ══════════════════════════════════════════════════════════════
+
+function getFilterDateRange(range) {
+  const now = getDRDate();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let start, end;
+
+  switch (range) {
+    case 'today':
+      start = todayStart;
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case 'yesterday':
+      start = new Date(todayStart.getTime() - 86400000);
+      end = todayStart;
+      break;
+    case '3d':
+      start = new Date(todayStart.getTime() - 3 * 86400000);
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1w':
+      start = new Date(todayStart.getTime() - 7 * 86400000);
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1m':
+      start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '3m':
+      start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '6m':
+      start = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    case '1y':
+      start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      end = new Date(todayStart.getTime() + 86400000);
+      break;
+    default:
+      start = todayStart;
+      end = new Date(todayStart.getTime() + 86400000);
+  }
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  };
+}
+
+function selectTimeFilter(range) {
+  activeTimeFilter = range;
+  document.querySelectorAll('.time-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.range === range);
+  });
+  loadAnalytics();
+}
+
+async function loadAnalytics() {
+  const { start, end } = getFilterDateRange(activeTimeFilter);
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&created_at=gte.' + encodeURIComponent(start) + '&created_at=lte.' + encodeURIComponent(end) + '&select=*',
+      { headers: sbGetHeaders() }, 12000
+    );
+    if (!res.ok) { dbg('⚠️ analytics HTTP ' + res.status); return; }
+    const orders = await res.json();
+    renderAnalytics(orders);
+  } catch (e) { dbg('⚠️ loadAnalytics: ' + e.message); }
+}
+
+function renderAnalytics(orders) {
+  const count = orders.length;
+  const totalSales = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const avg = count > 0 ? Math.round(totalSales / count) : 0;
+
+  // Find top product
+  const itemCounts = {};
+  orders.forEach(o => {
+    try {
+      const items = typeof o.items === 'string' ? JSON.parse(o.items) : (Array.isArray(o.items) ? o.items : []);
+      items.forEach(item => {
+        const name = item.name || item.id || 'Desconocido';
+        if (!name.startsWith('Extra ')) {
+          itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+        }
+      });
+    } catch (e) { /* skip unparseable */ }
+  });
+  let topProduct = '-';
+  let topCount = 0;
+  Object.entries(itemCounts).forEach(([name, cnt]) => {
+    if (cnt > topCount) { topProduct = name; topCount = cnt; }
+  });
+
+  document.getElementById('analytics-sales').textContent = 'RD$' + totalSales.toLocaleString();
+  document.getElementById('analytics-orders').textContent = count;
+  document.getElementById('analytics-avg').textContent = 'RD$' + avg.toLocaleString();
+  document.getElementById('analytics-top').textContent = topProduct;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ★ RENDER ITEMS — FIXED: handles items with or without "id" field
+// ══════════════════════════════════════════════════════════════
+
+function renderOrderItems(itemsRaw) {
+  try {
+    // ★ FIX: Handle both string and already-parsed array (jsonb vs text column)
+    let items;
+    if (typeof itemsRaw === 'string') {
+      items = JSON.parse(itemsRaw);
+    } else if (Array.isArray(itemsRaw)) {
+      items = itemsRaw;
+    } else {
+      dbg('⚠️ items tipo inesperado: ' + typeof itemsRaw);
+      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return '<li class="order-item-row"><span class="order-item-name">Sin especificar</span></li>';
+    }
+
+    let html = '';
+    const processed = new Set();
+
+    for (let i = 0; i < items.length; i++) {
+      if (processed.has(i)) continue;
+      const item = items[i];
+      
+      // ★ FIX: Detect extras by id OR by name
+      const isExtra = (item.id && item.id.startsWith('extra_')) ||
+                      (item.name && item.name.toLowerCase().startsWith('extra '));
+
+      if (!isExtra) {
+        const notesHTML = item.notes ? `<div class="order-item-notes">· ${item.notes}</div>` : '';
+        html += `
+          <li class="order-item-row">
+            <span class="order-item-qty">${item.qty}x</span>
+            <div style="flex: 1;">
+              <div class="order-item-name">${item.name}</div>
+              ${notesHTML}
+            </div>
+          </li>`;
+
+        // Find linked extras
+        for (let j = i + 1; j < items.length; j++) {
+          if (processed.has(j)) continue;
+          const next = items[j];
+          const nextIsExtra = (next.id && next.id.startsWith('extra_')) ||
+                              (next.name && next.name.toLowerCase().startsWith('extra '));
+          if (nextIsExtra && next.notes && next.notes.includes(`para ${item.name}`)) {
+            html += `
+              <li class="order-item-row is-extra">
+                <span class="order-item-qty">${next.qty}x</span>
+                <div style="flex: 1;"><div class="order-item-name">${next.name}</div></div>
+              </li>`;
+            processed.add(j);
+          }
+        }
+      } else {
+        html += `
+          <li class="order-item-row is-extra">
+            <span class="order-item-qty">${item.qty}x</span>
+            <div style="flex: 1;"><div class="order-item-name">${item.name}</div></div>
+          </li>`;
+      }
+    }
+
+    return html;
+  } catch (e) {
+    dbg('❌ renderOrderItems error: ' + e.message + ' | raw: ' + String(itemsRaw).substring(0, 100));
+    return `<li class="order-item-row"><span class="order-item-name">${itemsRaw || 'Sin especificar'}</span></li>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
+async function loadOrders() {
+  // Don't load live orders if store is closed
+  if (!storeIsOpen) return;
+
+  try {
+    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=*&order=created_at.desc';
+    // Filter by session: only orders since store opened
+    if (storeOpenedAt) {
+      ordersUrl += '&created_at=gte.' + encodeURIComponent(storeOpenedAt);
+    }
+    const res = await fetchWithTimeout(ordersUrl, { headers: sbGetHeaders() }, 12000);
+
+    if (!res.ok) {
+      dbg('❌ loadOrders HTTP ' + res.status);
+      showError("Error al cargar órdenes (HTTP " + res.status + ")");
+      document.getElementById("connection-status").innerHTML = "🔴 Desconectado";
+      return;
+    }
+
+    const data = await res.json();
+    document.getElementById("connection-status").innerHTML = "🟢 Conectado";
+
+    const container = document.getElementById("orders");
+
+    if (!data || data.length === 0) {
+      container.innerHTML = "<div class='loading'>✅ No hay órdenes pendientes</div>";
+      updateStats([]);
+      lastOrderCount = 0;
+      hasInteracted = true;
+      return;
+    }
+
+    updateStats(data);
+
+    const currentPending = data.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
+
+    if (hasInteracted && currentPending > lastOrderCount) {
+      dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
+      playNewOrderSound();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+      sendNotification("¡Nueva orden en Pincer!", `Tienes ${currentPending} orden(es) pendiente(s)`);
+    }
+
+    lastOrderCount = currentPending;
+    hasInteracted = true;
+    container.innerHTML = '';
+
+    data.forEach(order => {
+      const createdAt = new Date(order.created_at);
+      const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+      const status = order.status || 'pending';
+      const isPaid = status === 'paid' || !!order.azul_order_id;
+
+      let statusClass = 'new';
+      if (status === 'notified') statusClass = 'notified';
+      else if (status === 'ready') statusClass = 'ready';
+      else if (status === 'accepted') statusClass = 'accepted';
+      else if (minutes >= 2) statusClass = 'late';
+      else if (minutes >= 1) statusClass = 'warning';
+
+      let statusBadgeClass, statusText;
+      if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
+      else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
+      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
+      else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '💳 PAGADO'; }
+      else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
+
+      const totalLabel = isPaid ? '💳 Total pagado:' : '💵 TOTAL A COBRAR:';
+      const waMsg = isPaid
+        ? `Hola! Tu orden #${order.id} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`
+        : `Hola! Tu orden #${order.id} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
+
+      const div = document.createElement("div");
+      div.className = `order ${statusClass}`;
+      div.innerHTML = `
+        <div class="order-number">#${order.id}</div>
+        <span class="order-status ${statusBadgeClass}">${statusText}</span>
+        <div class="order-items">
+          <strong class="order-items-label" style="font-size: 0.95em;">📋 ITEMS:</strong>
+          <ul class="order-items-list">
+            ${renderOrderItems(order.items)}
+          </ul>
+        </div>
+        <div class="order-total">
+          <span class="order-total-label">${totalLabel}</span>
+          <span>RD$${(order.total || 0).toLocaleString()}</span>
+        </div>
+        ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
+        <div class="order-time">
+          ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
+          ${(status === 'pending' || status === 'paid') && minutes >= 1 ? `<span class="time-alert ${minutes >= 2 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
+        </div>
+        <br>
+        ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
+        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button>` : ''}
+        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waMsg)}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
+        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
+      container.appendChild(div);
+    });
+
+    clearError();
+  } catch (err) {
+    dbg('❌ loadOrders error: ' + err.message);
+    showError("Error de conexión: " + err.message);
+    document.getElementById("connection-status").innerHTML = "🔴 Error";
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACCIONES DE ÓRDENES
+// ══════════════════════════════════════════════════════════════
+
+async function acceptOrder(id) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'accepted' })
+    });
+    if (!res.ok) { showError("Error al marcar orden #" + id); return; }
+    dbg('✅ Orden #' + id + ' → accepted');
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) { showError("Error inesperado."); }
+}
+
+async function markReady(id) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'ready' })
+    });
+    if (!res.ok) { showError("Error al marcar orden #" + id); return; }
+    dbg('✅ Orden #' + id + ' → ready');
+    playConfirmSound();
+    setTimeout(loadOrders, 150);
+  } catch (e) { showError("Error inesperado."); }
+}
+
+async function markAsNotified(orderId) {
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'notified' })
+    });
+    dbg('✅ Orden #' + orderId + ' → notified');
+    setTimeout(loadOrders, 500);
+  } catch (e) { dbg('⚠️ markAsNotified error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AUTHENTICATION
+// ══════════════════════════════════════════════════════════════
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Verificando...';
+  loginError.style.display = 'none';
+
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      if (data.role === 'admin') {
+        window.location.href = '/admin';
+        return;
+      }
+      // Validate slug match
+      if (data.restaurant_slug !== SLUG) {
+        loginError.textContent = 'Este usuario no tiene acceso a este restaurante';
+        loginError.style.display = 'block';
+        return;
+      }
+      sessionStorage.setItem('dashboard_session_' + SLUG, JSON.stringify({
+        role: data.role, restaurant_slug: data.restaurant_slug,
+        display_name: data.display_name, username: data.username
+      }));
+      DISPLAY_NAME = data.display_name;
+      document.getElementById('loginSubtitle').textContent = DISPLAY_NAME;
+      document.title = DISPLAY_NAME + ' — Pincer Dashboard';
+      document.getElementById('loginScreen').style.display = 'none';
+      initializeDashboard();
+    } else {
+      loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
+      loginError.style.display = 'block';
+    }
+  } catch (err) {
+    loginError.textContent = 'Error al conectar. Intenta de nuevo.';
+    loginError.style.display = 'block';
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Iniciar Sesión';
+  }
+}
+
+function checkSession() {
+  let sessionStr = sessionStorage.getItem('dashboard_session_' + SLUG);
+  if (!sessionStr) sessionStr = sessionStorage.getItem('dashboard_session');
+  if (!sessionStr) return false;
+  try {
+    const session = JSON.parse(sessionStr);
+    if (session.role === 'admin') return false;
+    if (session.restaurant_slug && session.restaurant_slug !== SLUG) return false;
+    DISPLAY_NAME = session.display_name || SLUG;
+    document.getElementById('loginSubtitle').textContent = DISPLAY_NAME;
+    document.title = DISPLAY_NAME + ' — Pincer Dashboard';
+    return true;
+  } catch (e) { return false; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATS Y CLEANUP
+// ══════════════════════════════════════════════════════════════
+
+async function refreshStats() {
+  try {
+    const todayDR = getDRDateString();
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_daily_stats', {
+      method: 'POST', headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_date: todayDR, p_restaurant_slug: SLUG })
+    }, 10000);
+    if (!res.ok) return;
+    const stats = await res.json();
+    if (stats && stats.length > 0) {
+      const data = stats[0];
+      document.getElementById('stat-total-orders').textContent = data.total_orders || 0;
+      document.getElementById('stat-total-sales').textContent = 'RD$' + (data.total_sales || 0).toLocaleString();
+      document.getElementById('stat-avg-order').textContent = 'RD$' + Math.round(data.avg_order_value || 0).toLocaleString();
+      document.getElementById('stat-completed').textContent = data.completed_orders || 0;
+      document.getElementById('stat-top-product').textContent = data.top_product === 'N/A' ? '-' : data.top_product;
+    }
+    updateCurrentDateDisplay();
+  } catch (err) { dbg('Stats error: ' + err.message); }
+}
+
+async function dailyCleanup() {
+  try {
+    const todayDR = getDRDateString();
+    await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
+      method: 'POST', headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_current_date: todayDR, p_restaurant_slug: SLUG })
+    }, 10000);
+  } catch (err) { dbg('Cleanup error: ' + err.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// AI ASSISTANT
+// ══════════════════════════════════════════════════════════════
+
+function toggleAIChat() {
+  const w = document.getElementById('aiChatWindow');
+  const btn = document.getElementById('aiAssistantBtn');
+  if (w.style.display === 'none' || !w.style.display) {
+    w.style.display = 'flex'; btn.textContent = '✕';
+  } else {
+    w.style.display = 'none'; btn.textContent = '🤖';
+  }
+}
+
+function addAIMessage(message, isUser = false) {
+  const container = document.getElementById('aiChatMessages');
+  const messageDiv = document.createElement('div');
+  messageDiv.style.cssText = `padding: 12px; border-radius: 12px; margin-bottom: 10px;
+    ${isUser ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;'
+             : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'}`;
+  messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
+  container.appendChild(messageDiv);
+  container.scrollTop = container.scrollHeight;
+}
+
+function askQuickQuestion(question) {
+  document.getElementById('aiChatInput').value = question;
+  sendAIMessage();
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('aiChatInput');
+  const loading = document.getElementById('aiChatLoading');
+  const question = input.value.trim();
+  if (!question) return;
+
+  addAIMessage(question, true);
+  input.value = '';
+  loading.style.display = 'block';
+
+  try {
+    const salesData = await fetchSalesData();
+    const answer = await askClaudeAI(question, salesData);
+    addAIMessage(answer);
+  } catch (error) {
+    addAIMessage('Lo siento, tuve un problema. ¿Puedes intentar de nuevo?');
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+async function fetchSalesData() {
+  try {
+    const endDateDR = getDRDateString();
+    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
+    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_sales_data', {
+      method: 'POST', headers: sbWriteHeaders(),
+      body: JSON.stringify({ p_start_date: startDateDR, p_end_date: endDateDR, p_restaurant_slug: SLUG })
+    }, 10000);
+    if (!res.ok) throw new Error('Error fetching sales data');
+    return await res.json();
+  } catch (error) { return []; }
+}
+
+async function askClaudeAI(question, salesData) {
+  const q = question.toLowerCase();
+  const todayStr = getDRDateString();
+  const today = salesData.find(d => d.date === todayStr);
+  const totalOrders = today?.total_orders || 0;
+  const totalSales = today?.total_sales || 0;
+  const topItem = today?.top_item || 'ninguno todavía';
+  const peakHour = today?.peak_hour;
+
+  if (q.includes('hola') || q.includes('hi')) {
+    return '👋 ¡Hola! Soy tu asistente de ventas. ¿Qué te gustaría saber?';
+  }
+  if (q.includes('ayud') || q.includes('puedes')) {
+    return `🤖 Puedo ayudarte con:<br>• ¿Cuánto vendí hoy?<br>• ¿Qué producto se vende más?<br>• ¿A qué hora tengo más pedidos?<br>• ¿Cuántas órdenes tuve hoy?`;
+  }
+  if ((q.includes('cuanta') || q.includes('cuánta')) && (q.includes('orden') || q.includes('tuve') || q.includes('tengo'))) {
+    if (totalOrders === 0) return '📦 Hoy todavía no has tenido órdenes.';
+    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
+  }
+  if ((q.includes('cuanto') || q.includes('cuánto')) && (q.includes('vend') || q.includes('venta') || q.includes('hoy'))) {
+    if (totalOrders === 0) return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
+    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br>Ticket promedio: RD$${Math.round(totalSales/totalOrders).toLocaleString()} 📈`;
+  }
+  if ((q.includes('producto') || q.includes('item')) && (q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular'))) {
+    if (totalOrders === 0) return '🍔 Todavía no hay ventas hoy.';
+    return `⭐ El más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. 🌟`;
+  }
+  if (q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo')) {
+    if (!peakHour) return '🕐 No hay suficientes datos para identificar la hora pico.';
+    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
+    return `⏰ La hora más ocupada fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. 🔥`;
+  }
+  return `🤔 No entendí. Intenta: "¿Cuánto vendí hoy?" o "¿Qué producto se vende más?" 💡`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+
+async function initializeDashboard() {
+  dbg('🚀 Iniciando Dashboard...');
+
+  // Test connection first
+  try {
+    const testRes = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id&limit=1',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (testRes.ok) {
+      dbg('✅ Conexión a Supabase OK');
+    } else {
+      dbg('❌ Supabase respondió HTTP ' + testRes.status);
+    }
+  } catch (e) {
+    dbg('❌ Test de conexión falló: ' + e.message);
+  }
+
+  updateCurrentDateDisplay();
+  dailyCleanup();
+
+  // Load store status first (determines if we load live orders)
+  await loadStoreStatus();
+
+  // Load analytics for default filter
+  loadAnalytics();
+
+  if ("Notification" in window && Notification.permission === "default") {
+    document.getElementById('notification-banner').classList.add('show');
+  }
+
+  loadProducts();
+  if (storeIsOpen) loadOrders();
+  initFCM();
+
+  setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
+  setInterval(loadProducts, 30000);
+
+  document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
+
+  dbg('✅ Dashboard listo');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (checkSession()) {
+    document.getElementById('loginScreen').style.display = 'none';
+    initializeDashboard();
+  }
+});
+</script>
+
+</body>
+</html>
+
+
