@@ -990,13 +990,18 @@ async function extractFromUrl() {
         groupSel.style.display = 'block';
       }
     } else {
-      alert((data.error || 'Error al extraer menú') + (data.details ? '\n\nDetalle: ' + data.details : ''));
       showMenuLoading(false);
+      showUrlFallback();
     }
   } catch (err) {
-    alert('Error de conexión al extraer menú desde URL');
     showMenuLoading(false);
+    showUrlFallback();
   }
+}
+
+function showUrlFallback() {
+  alert('No se pudo extraer el menú automáticamente. El sitio puede ser dinámico. Por favor sube fotos de cada sección del menú.');
+  document.getElementById('menuGroupSelector').style.display = 'block';
 }
 
 // ══════════════════════════════════════════════════════════════
