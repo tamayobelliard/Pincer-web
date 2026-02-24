@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Menú — Pincer</title>
+  <meta property="og:title" content="Menú Digital">
+  <meta property="og:description" content="Ordena desde tu mesa">
+  <meta property="og:image" content="https://pincerweb.com/og-default.png">
+  <meta property="og:type" content="website">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <style>
     :root {
@@ -2315,6 +2319,12 @@ function applyTheme(style) {
 function applyBranding(data) {
   document.title = data.display_name + ' — Pedir';
 
+  // OG meta tags for WhatsApp/social previews
+  var ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.setAttribute('content', data.display_name + ' — Menú Digital');
+  var ogImg = document.querySelector('meta[property="og:image"]');
+  if (ogImg && data.logo_url) ogImg.setAttribute('content', data.logo_url);
+
   // Header
   const h1 = document.getElementById('restaurantName');
   if (h1) h1.textContent = data.display_name;
@@ -2883,6 +2893,25 @@ function renderOrder() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ORDER NUMBER — per-restaurant auto-increment
+// ══════════════════════════════════════════════════════════════
+
+async function getNextOrderNumber() {
+  try {
+    var countRes = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id',
+      { headers: sbHeaders({ 'Prefer': 'count=exact' }), method: 'HEAD' },
+      5000
+    );
+    var total = parseInt(countRes.headers.get('content-range')?.split('/')[1] || '0', 10);
+    return total + 1;
+  } catch (e) {
+    dbg('⚠️ getNextOrderNumber error: ' + e.message);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // ★ PLACE ORDER — FIXED VERSION ★
 // ══════════════════════════════════════════════════════════════
 
@@ -2936,6 +2965,8 @@ async function placeOrder() {
 
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
+    const nextNum = await getNextOrderNumber();
+
     const orderPayload = {
       items: JSON.stringify(itemsArray),
       total: total,
@@ -2943,8 +2974,9 @@ async function placeOrder() {
       phone: customerPhone,
       restaurant_slug: SLUG
     };
+    if (nextNum) orderPayload.order_number = nextNum;
 
-    dbg('📤 Enviando orden: ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
+    dbg('📤 Enviando orden #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
     dbg('📤 URL: ' + SUPABASE_URL + '/rest/v1/orders');
 
     const res = await fetchWithTimeout(
@@ -2973,6 +3005,7 @@ async function placeOrder() {
           phone: customerPhone,
           restaurant_slug: SLUG
         };
+        if (nextNum) retryPayload.order_number = nextNum;
         
         const retryRes = await fetchWithTimeout(
           SUPABASE_URL + '/rest/v1/orders',
@@ -3033,11 +3066,13 @@ async function placeOrder() {
 }
 
 function handleOrderSuccess(data) {
-  const orderNumber = Array.isArray(data) ? data[0].id : data.id;
-  currentOrderId = orderNumber;
-  orderReadyNotified[orderNumber] = false;
+  const record = Array.isArray(data) ? data[0] : data;
+  const orderId = record.id;
+  const orderNumber = record.order_number || orderId;
+  currentOrderId = orderId;
+  orderReadyNotified[orderId] = false;
 
-  dbg('🎉 Orden #' + orderNumber + ' creada exitosamente');
+  dbg('🎉 Orden #' + orderNumber + ' (id=' + orderId + ') creada exitosamente');
 
   // Capture order items and total BEFORE clearing the cart
   const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
@@ -3045,7 +3080,8 @@ function handleOrderSuccess(data) {
 
   // Save order to session history before clearing cart
   sessionOrders.push({
-    orderId: orderNumber,
+    orderId: orderId,
+    orderNumber: orderNumber,
     items: order.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
     total: receiptTotal,
     status: 'pending',
@@ -3552,6 +3588,8 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
 
     const total = order.reduce((s, i) => s + i.price * i.qty, 0);
 
+    const nextNum = await getNextOrderNumber();
+
     const orderPayload = {
       items: JSON.stringify(itemsArray),
       total: total,
@@ -3559,11 +3597,12 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       phone: customerPhone,
       restaurant_slug: SLUG
     };
+    if (nextNum) orderPayload.order_number = nextNum;
 
     if (azulOrderId) orderPayload.azul_order_id = azulOrderId;
     if (customerName) orderPayload.customer_name = customerName;
 
-    dbg('📤 Enviando orden (paid): ' + JSON.stringify(orderPayload).substring(0, 200));
+    dbg('📤 Enviando orden (paid) #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200));
 
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/orders',
@@ -3663,7 +3702,7 @@ function renderMisOrdenes() {
     div.className = 'mis-ordenes-item mo-' + statusClass;
     div.innerHTML = `
       <div class="mo-header">
-        <span class="mo-order-number">#${o.orderId}</span>
+        <span class="mo-order-number">#${o.orderNumber || o.orderId}</span>
         <span class="mo-status ${statusClass}">${statusText}</span>
       </div>
       <ul class="mo-items-list">${itemsHTML}</ul>

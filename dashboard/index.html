@@ -1525,11 +1525,11 @@ async function loadOrders() {
     hasInteracted = true;
     container.innerHTML = '';
 
-    // Per-restaurant order numbering (newest = highest number)
+    // Per-restaurant order numbering — use DB order_number if available, else fallback
     const totalOrders = data.length;
 
     data.forEach((order, idx) => {
-      const orderNum = totalOrders - idx;
+      const orderNum = order.order_number || (totalOrders - idx);
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
       const status = order.status || 'pending';

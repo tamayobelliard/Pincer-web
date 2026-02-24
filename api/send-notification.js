@@ -66,7 +66,8 @@ export default async function handler(req, res) {
     }
 
     const restaurantSlug = order.restaurant_slug || 'mrsandwich';
-    const notificationTitle = `Nueva Orden #${orderId}`;
+    const orderDisplayNum = order.order_number || orderId;
+    const notificationTitle = `Nueva Orden #${orderDisplayNum}`;
     const notificationBody = `RD$${total.toLocaleString('es-DO')} - ${itemsSummary}`;
 
     // Fetch active FCM tokens for this restaurant from Supabase
