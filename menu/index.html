@@ -4129,8 +4129,7 @@ function initChatbot() {
       openPinzer();
     }, 1500);
   } else {
-    // Returning visit: just show bubble messages
-    welcomeShown = true;
+    // Returning visit: just show bubble messages (welcome will show when chat opens)
     startAutoMessages();
     setTimeout(() => {
       const badge = document.getElementById('notificationBadge');
