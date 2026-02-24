@@ -179,7 +179,18 @@
       background: var(--primary);
       color: white;
     }
-    
+
+    /* Dark background adjustments */
+    body.dark-bg .category-tabs-wrap {
+      background: rgba(30,30,30,0.92);
+    }
+    body.dark-bg .category-tab {
+      color: white;
+    }
+    body.dark-bg .category-tab.active {
+      color: white;
+    }
+
     .menu-item {
       background: #f8f9fa;
       border-radius: 12px;
@@ -2238,7 +2249,7 @@ function getExtras() {
 async function loadRestaurantData() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url&limit=1',
       { headers: sbHeaders() }, 10000
     );
     if (!res.ok) return null;
@@ -2259,7 +2270,22 @@ function applyTheme(style) {
   document.documentElement.style.setProperty('--primary', primary);
   document.documentElement.style.setProperty('--primary-light', secondary);
   document.documentElement.style.setProperty('--accent', accent);
-  document.body.style.background = 'linear-gradient(135deg, ' + primary + ' 0%, ' + (bg || secondary) + ' 100%)';
+  if (bg) {
+    document.body.style.background = bg;
+  } else {
+    document.body.style.background = 'linear-gradient(135deg, ' + primary + ' 0%, ' + secondary + ' 100%)';
+  }
+
+  // Dark background detection
+  if (bg) {
+    var hex = bg.replace('#', '');
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+    if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5) {
+      document.body.classList.add('dark-bg');
+    }
+  }
 
   const fontStyle = style?.font_style || 'modern';
   if (fontStyle === 'classic') document.body.classList.add('font-classic');
@@ -2280,6 +2306,13 @@ function applyBranding(data) {
   if (h1) h1.textContent = data.display_name;
   const subtitle = document.getElementById('restaurantSubtitle');
   if (subtitle) subtitle.textContent = data.hours || '';
+
+  // Logo: image if logo_url exists, else keep emoji
+  if (data.logo_url) {
+    document.querySelectorAll('.logo-container, .closed-overlay-logo').forEach(function(el) {
+      el.innerHTML = '<img src="' + data.logo_url + '" alt="' + escHtml(data.display_name || '') + '">';
+    });
+  }
 }
 
 async function loadMenuFromDB() {
