@@ -200,6 +200,26 @@
       border-radius: 12px; font-size: 0.8em; font-weight: 700;
     }
 
+    /* URL extraction */
+    .url-extract-section {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .url-extract-section input {
+      flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.9em; margin-bottom: 0;
+    }
+    .btn-extract-url {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white;
+      border: none; padding: 10px 16px; border-radius: 8px;
+      font-weight: 700; cursor: pointer; font-size: 0.85em; white-space: nowrap;
+    }
+    .btn-extract-url:disabled { background: #94a3b8; cursor: not-allowed; }
+    .menu-preview-group-header {
+      font-size: 0.85em; font-weight: 700; color: #4338ca; text-transform: uppercase;
+      letter-spacing: 0.5px; margin: 10px 0 6px 0; padding-bottom: 4px;
+      border-bottom: 2px solid #e0e7ff;
+    }
+
     /* Tooltip */
     .tooltip-wrapper { position: relative; display: inline-block; }
     .tooltip-wrapper .tooltip-text {
@@ -334,11 +354,26 @@
         <option value="playful">Divertido y juguetón</option>
       </select>
 
-      <!-- Menu Photo Upload -->
+      <!-- Menu Upload: URL + Photo modes -->
       <div id="menuUploadSection" class="menu-upload-section disabled">
         <div id="menuUploadIdle">
+          <!-- Option 1: URL extraction -->
+          <p style="color:#475569;font-size:0.85em;font-weight:600;margin-bottom:6px;">Extraer desde URL</p>
+          <div class="url-extract-section">
+            <input type="text" id="menuUrlInput" placeholder="https://menu.ejemplo.com/...">
+            <button type="button" class="btn-extract-url" id="btnExtractUrl" onclick="extractFromUrl()">Extraer</button>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;margin:12px 0;"></div>
+          <!-- Option 2: Photo upload -->
+          <p style="color:#475569;font-size:0.85em;font-weight:600;margin-bottom:6px;">Subir Foto de Menú</p>
+          <div id="menuGroupSelector" style="display:none;margin-bottom:8px;">
+            <label style="font-size:0.8em;color:#64748b;">Grupo de menú:</label>
+            <select id="menuGroupSelect" style="width:100%;padding:8px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.85em;margin-top:4px;">
+              <option value="">Sin grupo</option>
+            </select>
+          </div>
           <div class="tooltip-wrapper">
-            <button type="button" class="btn-upload-menu" id="btnUploadMenu" disabled onclick="triggerMenuUpload()">Subir Foto de Menú</button>
+            <button type="button" class="btn-upload-menu" id="btnUploadMenu" disabled onclick="triggerMenuUpload()">Subir Foto</button>
             <span class="tooltip-text" id="uploadTooltip">Guarda el cliente primero</span>
           </div>
           <p style="color:#94a3b8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP</p>
@@ -734,6 +769,17 @@ function openEditModal(id) {
   document.getElementById('uploadTooltip').style.display = 'none';
   resetMenuUpload();
 
+  // Populate menu group selector if restaurant has menu_groups
+  var groupSel = document.getElementById('menuGroupSelector');
+  var groupSelect = document.getElementById('menuGroupSelect');
+  if (r.menu_groups && Array.isArray(r.menu_groups) && r.menu_groups.length > 0) {
+    groupSelect.innerHTML = '<option value="">Sin grupo</option>' +
+      r.menu_groups.map(function(g) { return '<option value="' + escapeHtml(g.label) + '">' + escapeHtml(g.label) + '</option>'; }).join('');
+    groupSel.style.display = 'block';
+  } else {
+    groupSel.style.display = 'none';
+  }
+
   // Show password reset in edit mode
   document.getElementById('passwordResetSection').style.display = 'block';
   document.getElementById('passwordResetResult').style.display = 'none';
@@ -909,6 +955,51 @@ async function createRestaurant() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// MENU URL EXTRACTION
+// ══════════════════════════════════════════════════════════════
+
+async function extractFromUrl() {
+  var urlInput = document.getElementById('menuUrlInput');
+  var menuUrl = urlInput.value.trim();
+  if (!menuUrl) { alert('Ingresa una URL'); return; }
+
+  var slug = editingRestaurantSlug;
+  if (!slug) { alert('Error: no se encontró el slug del restaurante'); return; }
+
+  showMenuLoading(true);
+
+  try {
+    var res = await adminFetch('/api/parse-menu', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: menuUrl, restaurant_slug: slug, mode: 'url' }),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      accumulatedItems = data.items;
+      photoCount = 0;
+      showMenuPreview(accumulatedItems, accumulatedItems.length, 0, false, data.menuGroups);
+
+      // Update menu group selector if groups were detected
+      if (data.menuGroups && Array.isArray(data.menuGroups) && data.menuGroups.length > 0) {
+        var groupSel = document.getElementById('menuGroupSelector');
+        var groupSelect = document.getElementById('menuGroupSelect');
+        groupSelect.innerHTML = '<option value="">Sin grupo</option>' +
+          data.menuGroups.map(function(g) { return '<option value="' + escapeHtml(g.label) + '">' + escapeHtml(g.label) + '</option>'; }).join('');
+        groupSel.style.display = 'block';
+      }
+    } else {
+      alert((data.error || 'Error al extraer menú') + (data.details ? '\n\nDetalle: ' + data.details : ''));
+      showMenuLoading(false);
+    }
+  } catch (err) {
+    alert('Error de conexión al extraer menú desde URL');
+    showMenuLoading(false);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // MENU PHOTO UPLOAD
 // ══════════════════════════════════════════════════════════════
 
@@ -961,10 +1052,14 @@ async function uploadMenuPhoto(dataUri) {
   showMenuLoading(true);
 
   try {
+    var selectedGroup = document.getElementById('menuGroupSelect') ? document.getElementById('menuGroupSelect').value : '';
+    var uploadMode = selectedGroup ? 'multi-photo' : 'photo';
+    var payload = { image: dataUri, restaurant_slug: slug, start_order: accumulatedItems.length, mode: uploadMode };
+    if (selectedGroup) payload.menu_group = selectedGroup;
     const res = await adminFetch('/api/parse-menu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: dataUri, restaurant_slug: slug, start_order: accumulatedItems.length }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
@@ -1004,37 +1099,52 @@ function showMenuLoading(show) {
   }
 }
 
-function showMenuPreview(items, count, photos, styleSaved) {
+function showMenuPreview(items, count, photos, styleSaved, detectedGroups) {
   showMenuLoading(false);
 
-  const counterText = photos > 1
-    ? `${count} items extraídos de ${photos} fotos`
-    : `${count} items extraídos`;
+  var counterText = photos > 1
+    ? count + ' items extraídos de ' + photos + ' fotos'
+    : photos === 0
+    ? count + ' items extraídos desde URL'
+    : count + ' items extraídos';
 
-  const previewHtml = `
-    <div class="menu-preview-header">
-      <h4>${counterText}</h4>
-      ${styleSaved ? '<span style="font-size:0.75em;color:#059669;">Estilo guardado</span>' : ''}
-    </div>
-    <div class="menu-preview">
-      ${items.map(item => `
-        <div class="menu-preview-item">
-          <div>
-            <span class="item-name">${escapeHtml(item.name)}</span>
-            ${item.description ? `<br><span style="font-size:0.8em;color:#94a3b8;">${escapeHtml(item.description)}</span>` : ''}
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <span class="item-category">${escapeHtml(item.category)}</span>
-            <span class="item-price">RD$${item.price}</span>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-    <div style="display:flex;gap:10px;margin-top:10px;">
-      <button type="button" class="btn-upload-menu" style="flex:1;" onclick="triggerMenuUpload()">Subir Otra Foto</button>
-      <button type="button" class="btn-primary" style="flex:1;" onclick="confirmMenu()">Listo</button>
-    </div>
-  `;
+  // Group items by menu_group for display
+  var hasGroups = items.some(function(item) { return item.menu_group; });
+  var itemsHtml = '';
+  if (hasGroups) {
+    var grouped = {};
+    items.forEach(function(item) {
+      var g = item.menu_group || 'Sin grupo';
+      if (!grouped[g]) grouped[g] = [];
+      grouped[g].push(item);
+    });
+    Object.keys(grouped).forEach(function(group) {
+      itemsHtml += '<div class="menu-preview-group-header">' + escapeHtml(group) + '</div>';
+      grouped[group].forEach(function(item) {
+        itemsHtml += '<div class="menu-preview-item"><div><span class="item-name">' + escapeHtml(item.name) + '</span>' +
+          (item.description ? '<br><span style="font-size:0.8em;color:#94a3b8;">' + escapeHtml(item.description) + '</span>' : '') +
+          '</div><div style="display:flex;gap:8px;align-items:center;"><span class="item-category">' + escapeHtml(item.category) +
+          '</span><span class="item-price">RD$' + item.price + '</span></div></div>';
+      });
+    });
+  } else {
+    items.forEach(function(item) {
+      itemsHtml += '<div class="menu-preview-item"><div><span class="item-name">' + escapeHtml(item.name) + '</span>' +
+        (item.description ? '<br><span style="font-size:0.8em;color:#94a3b8;">' + escapeHtml(item.description) + '</span>' : '') +
+        '</div><div style="display:flex;gap:8px;align-items:center;"><span class="item-category">' + escapeHtml(item.category) +
+        '</span><span class="item-price">RD$' + item.price + '</span></div></div>';
+    });
+  }
+
+  var groupsInfo = detectedGroups ? '<span style="font-size:0.75em;color:#0ea5e9;">' + detectedGroups.length + ' grupo(s) detectado(s)</span>' : '';
+
+  var previewHtml = '<div class="menu-preview-header"><h4>' + counterText + '</h4>' +
+    (styleSaved ? '<span style="font-size:0.75em;color:#059669;">Estilo guardado</span>' : '') +
+    groupsInfo + '</div>' +
+    '<div class="menu-preview">' + itemsHtml + '</div>' +
+    '<div style="display:flex;gap:10px;margin-top:10px;">' +
+    '<button type="button" class="btn-upload-menu" style="flex:1;" onclick="triggerMenuUpload()">Subir Otra Foto</button>' +
+    '<button type="button" class="btn-primary" style="flex:1;" onclick="confirmMenu()">Listo</button></div>';
 
   // Render in whichever container is visible
   const formContainer = document.getElementById('menuPreviewContainer');

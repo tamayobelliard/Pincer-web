@@ -24,6 +24,9 @@ async function verifyAdmin(token, supabaseUrl, supabaseKey) {
 
 // Reusable Claude API call
 function callClaude(apiKey, imageContent, textPrompt) {
+  const content = imageContent
+    ? [imageContent, { type: 'text', text: textPrompt }]
+    : [{ type: 'text', text: textPrompt }];
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -34,10 +37,7 @@ function callClaude(apiKey, imageContent, textPrompt) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: [imageContent, { type: 'text', text: textPrompt }],
-      }],
+      messages: [{ role: 'user', content }],
     }),
   });
 }
@@ -59,13 +59,154 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const { image, restaurant_slug, start_order } = req.body;
+  const { image, restaurant_slug, start_order, mode, menu_group, url } = req.body;
+  const effectiveMode = mode || 'photo';
 
-  if (!image || !restaurant_slug) {
-    return res.status(400).json({ error: 'image (base64) and restaurant_slug are required' });
+  if (effectiveMode === 'url') {
+    if (!url || !restaurant_slug) {
+      return res.status(400).json({ error: 'url and restaurant_slug are required for URL mode' });
+    }
+  } else {
+    if (!image || !restaurant_slug) {
+      return res.status(400).json({ error: 'image (base64) and restaurant_slug are required' });
+    }
   }
 
   try {
+    // ══════════════════════════════════════════════════════════
+    // URL MODE — fetch HTML, extract with Claude text-only
+    // ══════════════════════════════════════════════════════════
+    if (effectiveMode === 'url') {
+      console.log('[parse-menu] URL mode: fetching ' + url);
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Server configuration error: missing API key' });
+      }
+
+      let htmlText;
+      try {
+        const urlRes = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PincerBot/1.0)' },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!urlRes.ok) {
+          return res.status(502).json({ error: 'Failed to fetch URL', details: 'HTTP ' + urlRes.status });
+        }
+        htmlText = await urlRes.text();
+      } catch (fetchErr) {
+        return res.status(502).json({ error: 'Failed to fetch URL', details: fetchErr.message });
+      }
+
+      if (htmlText.length > 100000) {
+        htmlText = htmlText.substring(0, 100000);
+        console.log('[parse-menu] HTML truncated to 100KB');
+      }
+      console.log('[parse-menu] HTML length: ' + htmlText.length);
+
+      const urlPrompt = 'This is the HTML of a restaurant menu page. Extract ALL menu items and return ONLY a JSON object with no extra text: {"items": [{"name": "...", "price": 350, "category": "Section Name", "menu_group": "Menu Name or null", "description": "..."}], "menu_groups": [{"key": "slug", "label": "Original Name", "hours": "if visible or null"}]}. Price must be an integer (remove currency symbols, convert to DOP if needed). menu_group is the top-level menu name if multiple menus exist, or null for single menu. category is the section within that menu. menu_groups lists all distinct menus found. If only one menu, menu_groups should be null.\n\nHTML:\n' + htmlText;
+
+      let claudeRes;
+      try {
+        claudeRes = await callClaude(apiKey, null, urlPrompt);
+      } catch (err) {
+        return res.status(502).json({ error: 'Claude API request failed', details: err.message });
+      }
+
+      if (!claudeRes.ok) {
+        const errData = await claudeRes.json().catch(() => ({}));
+        return res.status(502).json({ error: 'Claude API error', details: errData.error?.message || 'Unknown' });
+      }
+
+      const claudeData = await claudeRes.json();
+      const rawText = claudeData.content?.find(c => c.type === 'text')?.text || '';
+
+      const objMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!objMatch) {
+        return res.status(422).json({ error: 'Could not extract menu data from URL', raw: rawText.substring(0, 500) });
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(objMatch[0]);
+      } catch (e) {
+        return res.status(422).json({ error: 'Invalid JSON from AI response', raw: rawText.substring(0, 500) });
+      }
+
+      const items = parsed.items;
+      const menuGroupsConfig = parsed.menu_groups || null;
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(422).json({ error: 'No menu items detected from URL' });
+      }
+
+      console.log(`[parse-menu] URL mode: ${items.length} items, ${menuGroupsConfig ? menuGroupsConfig.length : 0} menu groups`);
+
+      const rows = items.map((item, i) => ({
+        id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${i}`,
+        name: String(item.name || '').slice(0, 100),
+        price: Math.round(Number(item.price)) || 0,
+        category: String(item.category || 'General').slice(0, 50),
+        description: String(item.description || '').slice(0, 500),
+        menu_group: item.menu_group ? String(item.menu_group).slice(0, 50) : null,
+        restaurant_slug,
+        active: true,
+        sold_out: false,
+        display_order: i,
+      }));
+
+      // Delete ALL existing products for this restaurant
+      try {
+        await fetch(
+          `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`,
+          { method: 'DELETE', headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+        );
+      } catch (e) {
+        console.error('[parse-menu] Delete error:', e.message);
+      }
+
+      const insertRes = await fetch(`${supabaseUrl}/rest/v1/products`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation,resolution=merge-duplicates',
+        },
+        body: JSON.stringify(rows),
+      });
+
+      if (!insertRes.ok) {
+        const errText = await insertRes.text();
+        return res.status(500).json({ error: 'Failed to save menu items', details: errText });
+      }
+
+      const inserted = await insertRes.json();
+
+      // Save menu_groups to restaurant_users
+      if (menuGroupsConfig) {
+        fetch(`${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ menu_groups: menuGroupsConfig }),
+        }).catch(e => console.error('[parse-menu] menu_groups save error:', e.message));
+      }
+
+      return res.status(200).json({
+        success: true,
+        count: inserted.length,
+        items: inserted,
+        menuGroups: menuGroupsConfig,
+      });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHOTO / MULTI-PHOTO MODE
+    // ══════════════════════════════════════════════════════════
+
     // ── Step 1: Parse base64 image ──
     console.log('[parse-menu] Step 1: parsing base64 image');
     let mediaType = 'image/jpeg';
@@ -180,6 +321,7 @@ export default async function handler(req, res) {
       price: Math.round(Number(item.price)) || 0,
       category: String(item.category || 'General').slice(0, 50),
       description: String(item.description || '').slice(0, 500),
+      menu_group: (effectiveMode === 'multi-photo' && menu_group) ? String(menu_group).slice(0, 50) : null,
       restaurant_slug,
       active: true,
       sold_out: false,
@@ -190,11 +332,12 @@ export default async function handler(req, res) {
 
     // ── Step 7: Delete existing products on first upload, then upsert ──
     if (offset === 0) {
-      console.log(`[parse-menu] Step 7a: deleting existing products for ${restaurant_slug}`);
+      const deleteUrl = (effectiveMode === 'multi-photo' && menu_group)
+        ? `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&menu_group=eq.${encodeURIComponent(menu_group)}`
+        : `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`;
+      console.log(`[parse-menu] Step 7a: deleting products — mode=${effectiveMode}, menu_group=${menu_group || 'ALL'}`);
       try {
-        const delRes = await fetch(
-          `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`,
-          {
+        const delRes = await fetch(deleteUrl, {
             method: 'DELETE',
             headers: {
               'apikey': supabaseKey,

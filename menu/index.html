@@ -184,7 +184,75 @@
       color: white;
     }
 
+    /* Menu group selector (multi-menu) */
+    .menu-group-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 95;
+      max-width: 500px;
+      margin: 0 auto 4px auto;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 8px 8px 4px 8px;
+      display: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+    }
+    .menu-group-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+      padding-bottom: 4px;
+    }
+    .menu-group-pills::-webkit-scrollbar { display: none; }
+    .menu-group-pill {
+      flex-shrink: 0;
+      padding: 10px 20px;
+      border-radius: 24px;
+      border: 2px solid var(--primary);
+      background: transparent;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.9em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .menu-group-pill.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .menu-group-hours {
+      text-align: center;
+      font-size: 0.75em;
+      color: var(--primary);
+      opacity: 0.7;
+      margin-top: 2px;
+      padding-bottom: 2px;
+    }
+
     /* Dark background adjustments */
+    body.dark-bg .menu-group-wrap {
+      background: rgba(30,30,30,0.96);
+    }
+    body.dark-bg .menu-group-pill {
+      color: white;
+      border-color: rgba(255,255,255,0.5);
+    }
+    body.dark-bg .menu-group-pill.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    body.dark-bg .menu-group-hours {
+      color: rgba(255,255,255,0.6);
+    }
     body.dark-bg .category-tabs-wrap {
       background: rgba(30,30,30,0.92);
     }
@@ -1890,6 +1958,12 @@
   <!-- Debug panel (tap logo 5 times to show) -->
   <div class="debug-panel" id="debugPanel"></div>
 
+  <!-- Menu Group Selector (multi-menu) -->
+  <div class="menu-group-wrap" id="menuGroupWrap">
+    <div class="menu-group-pills" id="menuGroupPills"></div>
+    <div class="menu-group-hours" id="menuGroupHours"></div>
+  </div>
+
   <div class="category-tabs-wrap" id="categoryTabsWrap">
     <div class="category-tabs" id="categoryTabs"></div>
   </div>
@@ -2240,6 +2314,9 @@ function fetchWithTimeout(url, options, timeoutMs = 15000) {
 
 // Active menu data (loaded from DB — no hardcoded fallback for dynamic pages)
 let MENU_DATA = {};
+let ALL_MENU_DATA = {};
+let menuGroups = null;
+let activeMenuGroup = null;
 
 // Dynamic category ordering from menu_style.section_names
 function getCategoryOrder() {
@@ -2267,7 +2344,7 @@ function getExtras() {
 async function loadRestaurantData() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups&limit=1',
       { headers: sbHeaders() }, 10000
     );
     if (!res.ok) return null;
@@ -2356,24 +2433,47 @@ async function loadMenuFromDB() {
       return false;
     }
 
-    const menuData = {};
-    products.forEach(p => {
-      if (!menuData[p.category]) menuData[p.category] = [];
-      menuData[p.category].push({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        img: p.img_url || null,
-        desc: p.description || null,
-        category: p.category
-      });
-      // Update sold-out set from the same query
-      if (p.sold_out) soldOutSet.add(p.id);
-      else soldOutSet.delete(p.id);
-    });
+    var hasMultiMenu = products.some(function(p) { return p.menu_group; });
 
-    MENU_DATA = menuData;
-    dbg('✅ Menú cargado desde DB: ' + products.length + ' productos');
+    if (hasMultiMenu) {
+      var allData = {};
+      products.forEach(function(p) {
+        var group = p.menu_group || 'Otros';
+        if (!allData[group]) allData[group] = {};
+        if (!allData[group][p.category]) allData[group][p.category] = [];
+        allData[group][p.category].push({
+          id: p.id, name: p.name, price: p.price,
+          img: p.img_url || null, desc: p.description || null,
+          category: p.category, menu_group: p.menu_group
+        });
+        if (p.sold_out) soldOutSet.add(p.id);
+        else soldOutSet.delete(p.id);
+      });
+      ALL_MENU_DATA = allData;
+      if (menuGroups && menuGroups.length > 0) {
+        activeMenuGroup = menuGroups[0].label;
+      } else {
+        activeMenuGroup = Object.keys(allData)[0];
+      }
+      MENU_DATA = ALL_MENU_DATA[activeMenuGroup] || {};
+    } else {
+      var menuData = {};
+      products.forEach(function(p) {
+        if (!menuData[p.category]) menuData[p.category] = [];
+        menuData[p.category].push({
+          id: p.id, name: p.name, price: p.price,
+          img: p.img_url || null, desc: p.description || null,
+          category: p.category
+        });
+        if (p.sold_out) soldOutSet.add(p.id);
+        else soldOutSet.delete(p.id);
+      });
+      MENU_DATA = menuData;
+      ALL_MENU_DATA = {};
+      activeMenuGroup = null;
+    }
+
+    dbg('✅ Menú cargado: ' + products.length + ' productos, multi=' + hasMultiMenu);
     return true;
   } catch (e) {
     dbg('⚠️ loadMenuFromDB error: ' + e.message);
@@ -2538,7 +2638,10 @@ function escHtml(str) {
 
 function renderMenu() {
   const container = document.getElementById('menuSection');
-  let html = '<h2 class="section-title">Menú</h2>';
+  const title = activeMenuGroup
+    ? '<h2 class="section-title">' + escHtml(activeMenuGroup) + '</h2>'
+    : '<h2 class="section-title">Menú</h2>';
+  let html = title;
 
   const categoryOrder = getCategoryOrder();
   categoryOrder.forEach(cat => {
@@ -2551,6 +2654,7 @@ function renderMenu() {
 
   container.innerHTML = html;
   buildCategoryTabs(categoryOrder);
+  buildMenuGroupSelector();
 }
 
 function buildCategoryTabs(categoryOrder) {
@@ -2608,6 +2712,43 @@ function updateActiveTab(wrap, tabsContainer) {
     const scrollLeft = activeTab.offsetLeft - container.offsetWidth / 2 + activeTab.offsetWidth / 2;
     container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }
+}
+
+function buildMenuGroupSelector() {
+  var wrap = document.getElementById('menuGroupWrap');
+  var pillsContainer = document.getElementById('menuGroupPills');
+  var hoursEl = document.getElementById('menuGroupHours');
+  var catWrap = document.getElementById('categoryTabsWrap');
+
+  if (!menuGroups || !menuGroups.length || !activeMenuGroup) {
+    wrap.style.display = 'none';
+    catWrap.style.top = '0px';
+    return;
+  }
+
+  pillsContainer.innerHTML = menuGroups.map(function(g) {
+    return '<button class="menu-group-pill' + (g.label === activeMenuGroup ? ' active' : '') + '" data-group="' + escHtml(g.label) + '">' + escHtml(g.label) + '</button>';
+  }).join('');
+
+  var activeGroup = menuGroups.find(function(g) { return g.label === activeMenuGroup; });
+  hoursEl.textContent = (activeGroup && activeGroup.hours) ? activeGroup.hours : '';
+  hoursEl.style.display = (activeGroup && activeGroup.hours) ? 'block' : 'none';
+
+  wrap.style.display = 'block';
+
+  requestAnimationFrame(function() {
+    catWrap.style.top = (wrap.offsetHeight + 4) + 'px';
+  });
+
+  pillsContainer.querySelectorAll('.menu-group-pill').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      activeMenuGroup = btn.dataset.group;
+      MENU_DATA = ALL_MENU_DATA[activeMenuGroup] || {};
+      renderMenu();
+      var menuSection = document.getElementById('menuSection');
+      if (menuSection) menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 }
 
 function menuItemHTML(item) {
@@ -4395,6 +4536,7 @@ async function init() {
   // 2. Apply theme and branding
   applyTheme(restaurantData.menu_style);
   applyBranding(restaurantData);
+  menuGroups = restaurantData.menu_groups || null;
 
   // 3. Receipt branding
   const receiptLogo = document.getElementById('receiptLogoText');

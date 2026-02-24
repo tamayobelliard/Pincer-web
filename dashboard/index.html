@@ -566,6 +566,10 @@
     <label>Categoría</label>
     <select id="pmCategory"></select>
   </div>
+  <div class="product-modal-field" id="pmMenuGroupField" style="display:none;">
+    <label>Grupo de Menú</label>
+    <select id="pmMenuGroup"><option value="">Sin grupo</option></select>
+  </div>
   <div class="product-modal-field">
     <label>Descripción</label>
     <textarea id="pmDescription" placeholder="Ingredientes, descripción..."></textarea>
@@ -958,6 +962,7 @@ async function loadProducts() {
     dbg('✅ Productos cargados: ' + productsData.length);
     renderProducts();
     populateCategoryDropdown();
+    populateMenuGroupDropdown();
   } catch (e) { dbg('⚠️ loadProducts: ' + e.message); renderProducts(); }
 }
 
@@ -968,12 +973,57 @@ function populateCategoryDropdown() {
   select.innerHTML = cats.map(c => '<option value="' + c + '">' + c.charAt(0).toUpperCase() + c.slice(1) + '</option>').join('');
 }
 
+function populateMenuGroupDropdown() {
+  var field = document.getElementById('pmMenuGroupField');
+  var select = document.getElementById('pmMenuGroup');
+  var groups = [...new Set(productsData.map(function(p) { return p.menu_group; }).filter(Boolean))];
+  if (groups.length === 0) { field.style.display = 'none'; return; }
+  field.style.display = 'block';
+  select.innerHTML = '<option value="">Sin grupo</option>' +
+    groups.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
+}
+
 function getCatClass(cat) {
   const c = (cat || '').toLowerCase();
   if (c === 'munchies') return 'cat-munchies';
   if (c === 'sandwiches') return 'cat-sandwiches';
   if (c === 'burgers') return 'cat-burgers';
   return 'cat-extras';
+}
+
+function createProductCard(item) {
+  var isSoldOut = soldOutSet.has(item.id);
+  var isInactive = item.active === false;
+  var card = document.createElement('div');
+  card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '') + (isInactive ? ' is-inactive' : '');
+  card.id = 'prodCard_' + item.id;
+
+  var thumbHTML = item.img_url
+    ? '<img class="product-card-thumb" src="' + item.img_url + '" alt="' + item.name + '">'
+    : '<div class="product-card-thumb-placeholder">🍽</div>';
+
+  var catLabel = (item.category || 'extras').charAt(0).toUpperCase() + (item.category || 'extras').slice(1);
+
+  card.innerHTML = `
+    <div class="product-card-top">
+      ${thumbHTML}
+      <div class="product-card-info">
+        <div class="product-card-name">${item.name}</div>
+        <div class="product-card-price">RD$${(item.price || 0).toLocaleString()}</div>
+        <span class="product-card-cat ${getCatClass(item.category)}">${catLabel}</span>
+      </div>
+    </div>
+    <div class="product-card-actions">
+      <div class="toggle-row">
+        <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
+        <label class="toggle-switch">
+          <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <button class="btn-edit-product" onclick="openProductModal('${item.id}')">Editar</button>
+    </div>`;
+  return card;
 }
 
 function renderProducts() {
@@ -983,40 +1033,30 @@ function renderProducts() {
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:20px;">No hay productos. Haz click en "+ Agregar Item" para comenzar.</div>';
     return;
   }
-  productsData.forEach(item => {
-    const isSoldOut = soldOutSet.has(item.id);
-    const isInactive = item.active === false;
-    const card = document.createElement('div');
-    card.className = 'product-card' + (isSoldOut ? ' is-soldout' : '') + (isInactive ? ' is-inactive' : '');
-    card.id = 'prodCard_' + item.id;
 
-    const thumbHTML = item.img_url
-      ? `<img class="product-card-thumb" src="${item.img_url}" alt="${item.name}">`
-      : `<div class="product-card-thumb-placeholder">🍽</div>`;
+  var hasMenuGroups = productsData.some(function(p) { return p.menu_group; });
 
-    const catLabel = (item.category || 'extras').charAt(0).toUpperCase() + (item.category || 'extras').slice(1);
-
-    card.innerHTML = `
-      <div class="product-card-top">
-        ${thumbHTML}
-        <div class="product-card-info">
-          <div class="product-card-name">${item.name}</div>
-          <div class="product-card-price">RD$${(item.price || 0).toLocaleString()}</div>
-          <span class="product-card-cat ${getCatClass(item.category)}">${catLabel}</span>
-        </div>
-      </div>
-      <div class="product-card-actions">
-        <div class="toggle-row">
-          <span class="toggle-label">${isSoldOut ? 'Agotado' : 'Disponible'}</span>
-          <label class="toggle-switch">
-            <input type="checkbox" ${isSoldOut ? 'checked' : ''} onchange="toggleSoldOut('${item.id}', this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <button class="btn-edit-product" onclick="openProductModal('${item.id}')">Editar</button>
-      </div>`;
-    grid.appendChild(card);
-  });
+  if (hasMenuGroups) {
+    var groups = {};
+    productsData.forEach(function(item) {
+      var g = item.menu_group || 'Sin grupo';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(item);
+    });
+    Object.keys(groups).forEach(function(groupName) {
+      var header = document.createElement('div');
+      header.style.cssText = 'grid-column:1/-1;font-size:1.1em;font-weight:700;color:#4338ca;margin-top:12px;padding:8px 0;border-bottom:2px solid #e0e7ff;text-transform:uppercase;letter-spacing:0.5px;';
+      header.textContent = groupName;
+      grid.appendChild(header);
+      groups[groupName].forEach(function(item) {
+        grid.appendChild(createProductCard(item));
+      });
+    });
+  } else {
+    productsData.forEach(function(item) {
+      grid.appendChild(createProductCard(item));
+    });
+  }
 }
 
 async function toggleSoldOut(productId, isSoldOut) {
@@ -1081,6 +1121,7 @@ function openProductModal(editId) {
     document.getElementById('pmDescription').value = p.description || '';
     document.getElementById('pmImgUrl').value = p.img_url || '';
     document.getElementById('pmActive').checked = p.active !== false;
+    document.getElementById('pmMenuGroup').value = p.menu_group || '';
     document.getElementById('pmDeleteBtn').style.display = 'block';
   } else {
     document.getElementById('productModalTitle').textContent = 'Agregar Producto';
@@ -1092,6 +1133,7 @@ function openProductModal(editId) {
     document.getElementById('pmDescription').value = '';
     document.getElementById('pmImgUrl').value = '';
     document.getElementById('pmActive').checked = true;
+    document.getElementById('pmMenuGroup').value = '';
     document.getElementById('pmDeleteBtn').style.display = 'none';
   }
 
@@ -1129,7 +1171,8 @@ async function saveProduct() {
     return;
   }
 
-  const payload = { name, price, description, category, img_url: imgUrl, display_order: displayOrder, active };
+  const menuGroupVal = document.getElementById('pmMenuGroup') ? document.getElementById('pmMenuGroup').value : '';
+  const payload = { name, price, description, category, img_url: imgUrl, display_order: displayOrder, active, menu_group: menuGroupVal || null };
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'Guardando...';
