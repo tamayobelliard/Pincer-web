@@ -35,6 +35,7 @@ self.addEventListener('push', function(event) {
   const title = data.title || 'Nueva Orden en Pincer';
   const body = data.body || 'Tienes una nueva orden pendiente';
   const orderId = data.orderId || '';
+  const dashboardUrl = data.url || '/' + (data.restaurantSlug || 'mrsandwich') + '/dashboard/';
 
   const options = {
     body: body,
@@ -48,7 +49,7 @@ self.addEventListener('push', function(event) {
       { action: 'open', title: 'Ver orden' }
     ],
     data: {
-      url: '/mrsandwich/dashboard/',
+      url: dashboardUrl,
       orderId: orderId
     }
   };
@@ -65,13 +66,13 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/mrsandwich/dashboard/';
+  const urlToOpen = event.notification.data?.url || '/dashboard/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];
-        if (client.url.includes('restaurant') && 'focus' in client) {
+        if (client.url.includes('dashboard') && 'focus' in client) {
           return client.focus();
         }
       }

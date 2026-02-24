@@ -65,15 +65,16 @@ export default async function handler(req, res) {
       itemsSummary = 'Ver detalles en el dashboard';
     }
 
+    const restaurantSlug = order.restaurant_slug || 'mrsandwich';
     const notificationTitle = `Nueva Orden #${orderId}`;
     const notificationBody = `RD$${total.toLocaleString('es-DO')} - ${itemsSummary}`;
 
-    // Fetch active FCM tokens from Supabase
+    // Fetch active FCM tokens for this restaurant from Supabase
     const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     const tokensRes = await fetch(
-      `${supabaseUrl}/rest/v1/fcm_tokens?select=token&active=eq.true`,
+      `${supabaseUrl}/rest/v1/fcm_tokens?select=token&active=eq.true&restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}`,
       {
         headers: {
           'apikey': supabaseServiceKey,
@@ -95,12 +96,15 @@ export default async function handler(req, res) {
     }
 
     // Send data-only push (SW always controls display)
+    const dashboardUrl = `/${restaurantSlug}/dashboard/`;
     const message = {
       data: {
         title: notificationTitle,
         body: notificationBody,
         orderId: String(orderId),
         total: String(total),
+        restaurantSlug: restaurantSlug,
+        url: dashboardUrl,
       },
       tokens: tokens,
       android: {
@@ -112,7 +116,7 @@ export default async function handler(req, res) {
           Urgency: 'high',
         },
         fcmOptions: {
-          link: '/mrsandwich/dashboard/',
+          link: dashboardUrl,
         },
       },
     };
