@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cargando menú...</title>
+  <title>Menú — Pincer</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <style>
     :root {
@@ -2401,8 +2401,6 @@ async function testConnection() {
     );
     if (res.ok) {
       dbg('✅ Conexión a Supabase OK (HTTP ' + res.status + ')');
-      banner.className = 'conn-banner ok';
-      banner.textContent = '✅ Conectado';
       return true;
     } else {
       const errText = await res.text();
