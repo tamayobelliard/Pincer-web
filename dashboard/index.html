@@ -858,17 +858,29 @@ async function getAndStoreFCMToken(swRegistration) {
 
 async function saveFCMToken(token) {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+    const payload = {
+      token: token,
+      restaurant_slug: SLUG,
+      device_info: navigator.userAgent.substring(0, 200),
+      active: true,
+      updated_at: new Date().toISOString(),
+    };
+    let res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
       method: 'POST',
       headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-      body: JSON.stringify({
-        token: token,
-        restaurant_slug: SLUG,
-        device_info: navigator.userAgent.substring(0, 200),
-        active: true,
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(payload),
     });
+
+    // If 400 (column missing), retry without restaurant_slug
+    if (res.status === 400) {
+      dbg('⚠️ FCM token insert failed, retrying without restaurant_slug');
+      delete payload.restaurant_slug;
+      res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+        method: 'POST',
+        headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify(payload),
+      });
+    }
 
     if (res.ok) {
       dbg('✅ FCM token saved to Supabase');
@@ -1212,9 +1224,14 @@ async function loadStoreStatus() {
     if (data.length > 0) {
       storeIsOpen = data[0].is_open === true;
       storeOpenedAt = data[0].opened_at || null;
-      updateStoreUI();
-      dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA'));
+    } else {
+      // No store_settings row — default to open so new restaurants work
+      storeIsOpen = true;
+      storeOpenedAt = null;
+      dbg('ℹ️ No store_settings row for ' + SLUG + ', defaulting to open');
     }
+    updateStoreUI();
+    dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA'));
   } catch (e) { dbg('⚠️ loadStoreStatus: ' + e.message); }
 }
 
@@ -1470,6 +1487,7 @@ async function loadOrders() {
     if (storeOpenedAt) {
       ordersUrl += '&created_at=gte.' + encodeURIComponent(storeOpenedAt);
     }
+    console.log('[loadOrders] SLUG:', SLUG, '| storeOpenedAt:', storeOpenedAt, '| URL:', ordersUrl);
     const res = await fetchWithTimeout(ordersUrl, { headers: sbGetHeaders() }, 12000);
 
     if (!res.ok) {
@@ -1507,7 +1525,11 @@ async function loadOrders() {
     hasInteracted = true;
     container.innerHTML = '';
 
-    data.forEach(order => {
+    // Per-restaurant order numbering (newest = highest number)
+    const totalOrders = data.length;
+
+    data.forEach((order, idx) => {
+      const orderNum = totalOrders - idx;
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
       const status = order.status || 'pending';
@@ -1529,13 +1551,13 @@ async function loadOrders() {
 
       const totalLabel = isPaid ? '💳 Total pagado:' : '💵 TOTAL A COBRAR:';
       const waMsg = isPaid
-        ? `Hola! Tu orden #${order.id} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`
-        : `Hola! Tu orden #${order.id} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
+        ? `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`
+        : `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
 
       const div = document.createElement("div");
       div.className = `order ${statusClass}`;
       div.innerHTML = `
-        <div class="order-number">#${order.id}</div>
+        <div class="order-number">#${orderNum}</div>
         <span class="order-status ${statusBadgeClass}">${statusText}</span>
         <div class="order-items">
           <strong class="order-items-label" style="font-size: 0.95em;">📋 ITEMS:</strong>
@@ -1708,13 +1730,15 @@ async function refreshStats() {
 }
 
 async function dailyCleanup() {
-  try {
-    const todayDR = getDRDateString();
-    await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
-      method: 'POST', headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_current_date: todayDR, p_restaurant_slug: SLUG })
-    }, 10000);
-  } catch (err) { dbg('Cleanup error: ' + err.message); }
+  // No-op: reset_daily_orders RPC does not exist yet.
+  // When created in Supabase, uncomment the call below.
+  // try {
+  //   const todayDR = getDRDateString();
+  //   await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reset_daily_orders', {
+  //     method: 'POST', headers: sbWriteHeaders(),
+  //     body: JSON.stringify({ p_current_date: todayDR, p_restaurant_slug: SLUG })
+  //   }, 10000);
+  // } catch (err) { dbg('Cleanup error: ' + err.message); }
 }
 
 // ══════════════════════════════════════════════════════════════
