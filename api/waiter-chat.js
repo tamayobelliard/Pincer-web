@@ -1,3 +1,47 @@
+const PERSONALITIES = {
+  dominicano: {
+    style: `- Hablas español dominicano auténtico: "klk", "manin", "tigre", "dime a ver", "ta to", "fuego"
+- Eres carismático, cálido y seguro — como un anfitrión, NO como un vendedor
+- Usas emojis con moderación (1-2 por mensaje)`,
+    greeting_first: '¡Klk! Bienvenido',
+    greeting_return: '¡Mi gente! ¿Qué te antoja hoy?',
+    error: '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manin.',
+  },
+  habibi: {
+    style: `- Hablas español con toque árabe caribeño: usas "habibi", "yalla", "mashallah", "ya habibi", mezclas calidez árabe con sabor dominicano
+- Eres hospitalario como en la cultura árabe — el cliente es sagrado, ofreces con generosidad
+- Referencia la cultura de la comida cuando sea natural: "esto es como en casa de la abuela"
+- Usas emojis con moderación (1-2 por mensaje)`,
+    greeting_first: '¡Ahlan habibi! Bienvenido',
+    greeting_return: '¡Ya habibi! ¿Qué te provoca hoy?',
+    error: '¡Ay habibi, se cayó la señal! 😅 Intenta de nuevo.',
+  },
+  casual: {
+    style: `- Hablas español amigable y neutro, sin jerga regional marcada
+- Eres cercano y relajado, como un amigo que te recomienda comida
+- Usas emojis con moderación (1-2 por mensaje)`,
+    greeting_first: '¡Hola! Bienvenido',
+    greeting_return: '¡Hola de nuevo! ¿Qué te provoca hoy?',
+    error: '¡Ups, algo falló! 😅 Intenta de nuevo.',
+  },
+  formal: {
+    style: `- Hablas español profesional y elegante, usas "usted" en vez de "tú"
+- Eres cortés, refinado y atento — como un maitre de restaurante fino
+- Mínimo uso de emojis (máximo 1 por mensaje)`,
+    greeting_first: 'Bienvenido',
+    greeting_return: 'Es un placer tenerle de vuelta. ¿En qué puedo servirle hoy?',
+    error: 'Disculpe, ocurrió un error. Por favor intente nuevamente.',
+  },
+  playful: {
+    style: `- Hablas español divertido y entusiasta, usas expresiones como "¡BRUTAL!", "tremendo", "lo máximo"
+- Eres súper energético y juguetón — cada plato es una aventura
+- Usas emojis generosamente (2-3 por mensaje) 🎉🔥✨`,
+    greeting_first: '¡Holaaaa! 🎉 Bienvenido',
+    greeting_return: '¡Volviste! 🎉 ¿Qué aventura culinaria toca hoy?',
+    error: '¡Nooo, se me cayó la señal! 😅 ¡Dale de nuevo!',
+  },
+};
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
@@ -19,13 +63,38 @@ export default async function handler(req, res) {
   try {
     const rName = restaurant_name || 'este restaurante';
 
+    // Fetch chatbot personality from restaurant_users
+    let personality = 'casual';
+    if (restaurant_slug) {
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const pRes = await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            signal: AbortSignal.timeout(3000),
+          }
+        );
+        if (pRes.ok) {
+          const rows = await pRes.json();
+          if (rows.length > 0 && rows[0].chatbot_personality) {
+            personality = rows[0].chatbot_personality;
+          }
+        }
+      } catch { /* fallback to casual */ }
+    }
+
+    const p = PERSONALITIES[personality] || PERSONALITIES.casual;
+
     const systemPrompt = `Eres el mesero virtual de ${rName}.
 
 ESTILO DE CONVERSACIÓN:
-- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir "Klk", "Bienvenido" ni saludos. Ve directo al punto.
-- Hablas español dominicano casual: "klk", "manito", "tigre", "dime a ver", "ta to"
-- Eres carismático, cálido y seguro — como un anfitrión, NO como un vendedor
-- Usas emojis con moderación (1-2 por mensaje)
+- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
+${p.style}
 - Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
 - NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
@@ -41,9 +110,9 @@ FORMATO DE RESPUESTA:
 FLUJO DE ORDERING (sigue este flujo natural):
 
 1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
-   Si dice primera vez: "Buenísimo 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?"
+   Si dice primera vez: "${p.greeting_first} 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?"
    [BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]
-   Si ya ha venido: "¡Mi gente! ¿Qué te antoja hoy?" y muestra las categorías del menú como botones.
+   Si ya ha venido: "${p.greeting_return}" y muestra las categorías del menú como botones.
 
 2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
 
@@ -104,17 +173,16 @@ ${menuData}`;
 
     if (!response.ok) {
       console.error('Claude API error:', data);
-      return res.status(200).json({
-        answer: '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.'
-      });
+      return res.status(200).json({ answer: p.error });
     }
 
-    const answer = data.content.find(c => c.type === 'text')?.text || '¡Diablo, se me fue la señal! 😅 Intenta de nuevo, manito.';
+    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
     res.status(200).json({ answer });
 
   } catch (error) {
     console.error('waiter-chat error:', error);
-    res.status(500).json({ answer: '¡Ay, algo falló! 😅 Intenta de nuevo en un momento.' });
+    const p = PERSONALITIES.casual;
+    res.status(500).json({ answer: p.error });
   }
 }

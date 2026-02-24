@@ -91,7 +91,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
 async function handleCreate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, business_type, address, phone, contact_name, email, hours, website, notes } = req.body;
+  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality } = req.body;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'El nombre es requerido' });
@@ -141,6 +141,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           hours: hours || null,
           website: website || null,
           notes: notes || null,
+          chatbot_personality: chatbot_personality || 'casual',
         }),
       }
     );
@@ -173,7 +174,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes } = req.body;
+  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'id is required' });
@@ -190,6 +191,7 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (hours !== undefined) update.hours = hours || null;
   if (website !== undefined) update.website = website || null;
   if (notes !== undefined) update.notes = notes || null;
+  if (chatbot_personality !== undefined) update.chatbot_personality = chatbot_personality || 'casual';
 
   if (Object.keys(update).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });

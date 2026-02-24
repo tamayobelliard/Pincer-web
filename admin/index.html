@@ -318,6 +318,14 @@
       <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
       <label>Notas</label>
       <textarea id="fieldNotes" placeholder="Notas adicionales..."></textarea>
+      <label>Personalidad del Chatbot</label>
+      <select id="fieldPersonality">
+        <option value="casual">Casual y amigable (neutro)</option>
+        <option value="dominicano">Dominicano auténtico</option>
+        <option value="habibi">Árabe caribeño (habibi)</option>
+        <option value="formal">Profesional y formal</option>
+        <option value="playful">Divertido y juguetón</option>
+      </select>
 
       <!-- Menu Photo Upload -->
       <div id="menuUploadSection" class="menu-upload-section disabled">
@@ -649,6 +657,7 @@ function openNewModal() {
   ['fieldName','fieldAddress','fieldPhone','fieldContact','fieldEmail','fieldWebsite','fieldNotes']
     .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('fieldType').value = '';
+  document.getElementById('fieldPersonality').value = 'casual';
   resetSchedule();
 
   document.getElementById('currentHoursDisplay').style.display = 'none';
@@ -686,6 +695,7 @@ function openEditModal(id) {
   document.getElementById('fieldEmail').value = r.email || '';
   document.getElementById('fieldWebsite').value = r.website || '';
   document.getElementById('fieldNotes').value = r.notes || '';
+  document.getElementById('fieldPersonality').value = r.chatbot_personality || 'casual';
 
   // Schedule: show current hours, reset builder for optional overwrite
   resetSchedule();
@@ -757,6 +767,7 @@ async function updateRestaurant() {
     if (v) body[k] = v;
   }
   if (useNewSchedule) body.hours = scheduleText;
+  body.chatbot_personality = document.getElementById('fieldPersonality').value;
 
   try {
     const res = await adminFetch('/api/admin?action=update', {
@@ -828,6 +839,7 @@ async function createRestaurant() {
         hours: getScheduleText(),
         website: document.getElementById('fieldWebsite').value.trim(),
         notes: document.getElementById('fieldNotes').value.trim(),
+        chatbot_personality: document.getElementById('fieldPersonality').value,
       }),
     });
     const data = await res.json();
