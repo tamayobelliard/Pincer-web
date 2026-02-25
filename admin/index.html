@@ -241,6 +241,59 @@
       .restaurant-card { flex-direction: column; align-items: flex-start; gap: 12px; }
       .restaurant-actions { width: 100%; justify-content: space-between; }
     }
+
+    /* QR button on cards */
+    .btn-qr {
+      background: #f0f0ff; border: 1px solid #c7d2fe; color: #4338ca;
+      padding: 8px 16px; border-radius: 8px; cursor: pointer;
+      font-size: 0.85em; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-qr:hover { background: #e0e7ff; }
+
+    /* QR modal content */
+    .qr-modal-content { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .qr-modal-content #qrCodeContainer { padding: 16px; background: white; border-radius: 12px; border: 2px solid #e2e8f0; }
+    .qr-url-text { color: #64748b; font-size: 0.85em; word-break: break-all; text-align: center; margin: 0; }
+    .qr-actions { display: flex; gap: 12px; width: 100%; }
+    .qr-actions button { flex: 1; }
+
+    /* Print template (hidden on screen) */
+    #qrPrintArea { display: none; }
+
+    @media print {
+      body > *:not(#qrPrintArea) { display: none !important; }
+      .modal-overlay { display: none !important; }
+      #qrPrintArea {
+        display: block !important; position: fixed; inset: 0;
+        width: 100%; height: 100%;
+        display: flex !important; flex-direction: column; align-items: center; justify-content: center;
+      }
+      #qrPrintArea .print-content {
+        text-align: center; flex: 1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        padding: 40px 20px;
+      }
+      #qrPrintArea .print-logo { max-height: 80px; max-width: 200px; object-fit: contain; }
+      #qrPrintArea .print-name { font-size: 28px; font-weight: 800; color: #1e293b; }
+      #qrPrintArea .print-qr canvas { width: 256px !important; height: 256px !important; }
+      #qrPrintArea .print-cta {
+        font-size: 16px; font-weight: 800; color: #1e293b;
+        letter-spacing: 0.5px; max-width: 400px;
+      }
+      #qrPrintArea .print-footer {
+        width: 100%; padding: 30px 20px;
+        background: #0f172a !important; color: white !important;
+        text-align: center;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      #qrPrintArea .print-footer-logo { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+      #qrPrintArea .print-footer-logo img { height: 28px; }
+      #qrPrintArea .print-footer-logo span { font-size: 20px; font-weight: 800; color: white; }
+      #qrPrintArea .print-footer p { font-size: 12px; color: rgba(255,255,255,0.7); margin: 4px 0; }
+      #qrPrintArea .print-footer-badges { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 12px 0; }
+      #qrPrintArea .print-footer-badges img { height: 32px; object-fit: contain; }
+      #qrPrintArea .print-footer-copyright { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -401,6 +454,48 @@
   </div>
 </div>
 
+<!-- QR Code Modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal" style="max-width:520px;">
+    <h2 id="qrModalTitle">Código QR</h2>
+    <div class="qr-modal-content">
+      <div id="qrCodeContainer"></div>
+      <p class="qr-url-text" id="qrUrl"></p>
+      <div class="qr-actions">
+        <button class="btn-primary" onclick="downloadQR()">Descargar QR</button>
+        <button class="btn-edit" onclick="printQR()">Imprimir QR</button>
+      </div>
+    </div>
+    <button class="btn-toggle" onclick="closeQrModal()" style="margin-top:16px;width:100%;">Cerrar</button>
+  </div>
+</div>
+
+<!-- QR Print Template (hidden on screen, visible on print) -->
+<div id="qrPrintArea">
+  <div class="print-content">
+    <img id="printLogo" class="print-logo" src="" alt="">
+    <div id="printName" class="print-name"></div>
+    <div id="printQrCode" class="print-qr"></div>
+    <div class="print-cta">ESCANEA, ORDENA Y PAGA SIN HACER FILAS</div>
+  </div>
+  <div class="print-footer">
+    <div class="print-footer-logo">
+      <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+      <span>Pincer</span>
+    </div>
+    <p>Pedidos por QR que elevan la experiencia de tu restaurante, food truck o food park.</p>
+    <p>info@pincerweb.com · +1(829) 548-1236 · Santiago, República Dominicana</p>
+    <div class="print-footer-badges">
+      <img src="https://i.imgur.com/gMRFXRj.png" alt="Visa">
+      <img src="https://i.imgur.com/qgq4m7h.png" alt="Mastercard">
+      <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+      <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+    </div>
+    <p class="print-footer-copyright">© 2026 Pincer. Hecho en República Dominicana.</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════
 // AUTH
@@ -540,6 +635,7 @@ function renderRestaurants() {
           <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
           <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
           <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}/dashboard', '_blank')">Dashboard</button>
+          ${r.status === 'active' ? `<button class="btn-qr" onclick="showQR('${escapeHtml(r.restaurant_slug || '')}','${escapeHtml(r.display_name)}','${escapeHtml(r.logo_url || '')}')">Ver QR</button>` : ''}
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
         </div>
@@ -568,11 +664,94 @@ async function toggleStatus(id, currentStatus) {
     });
     if (res.ok) {
       loadRestaurants();
+      // Auto-show QR when activating a restaurant
+      if (newStatus === 'active') {
+        const r = restaurants.find(x => String(x.id) === String(id));
+        if (r) showQR(r.restaurant_slug || '', r.display_name || '', r.logo_url || '');
+      }
     }
   } catch (err) {
     alert('Error al cambiar estado');
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// QR CODE
+// ══════════════════════════════════════════════════════════════
+
+let currentQrSlug = '';
+let currentQrName = '';
+let currentQrLogo = '';
+
+function showQR(slug, displayName, logoUrl) {
+  currentQrSlug = slug;
+  currentQrName = displayName;
+  currentQrLogo = logoUrl;
+
+  document.getElementById('qrModalTitle').textContent = displayName;
+
+  const container = document.getElementById('qrCodeContainer');
+  container.innerHTML = '';
+  new QRCode(container, {
+    text: 'https://pincerweb.com/' + slug,
+    width: 256,
+    height: 256,
+    colorDark: '#1e293b',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  document.getElementById('qrUrl').textContent = 'pincerweb.com/' + slug;
+  document.getElementById('qrModal').classList.add('active');
+}
+
+function closeQrModal() {
+  document.getElementById('qrModal').classList.remove('active');
+}
+
+function downloadQR() {
+  // Wait a tick for QRCode.js to render the canvas
+  setTimeout(function() {
+    const canvas = document.querySelector('#qrCodeContainer canvas');
+    if (!canvas) { alert('Error: QR no generado'); return; }
+    const link = document.createElement('a');
+    link.download = (currentQrName || 'QR') + '-QR.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, 100);
+}
+
+function printQR() {
+  // Populate print template
+  const logo = document.getElementById('printLogo');
+  if (currentQrLogo) {
+    logo.src = currentQrLogo;
+    logo.style.display = '';
+  } else {
+    logo.style.display = 'none';
+  }
+
+  document.getElementById('printName').textContent = currentQrName;
+
+  // Clone QR canvas into print area
+  const printQr = document.getElementById('printQrCode');
+  printQr.innerHTML = '';
+  const srcCanvas = document.querySelector('#qrCodeContainer canvas');
+  if (srcCanvas) {
+    const clone = document.createElement('canvas');
+    clone.width = srcCanvas.width;
+    clone.height = srcCanvas.height;
+    clone.getContext('2d').drawImage(srcCanvas, 0, 0);
+    printQr.appendChild(clone);
+  }
+
+  window.print();
+}
+
+// Close QR modal on overlay click
+document.getElementById('qrModal').addEventListener('click', function(e) {
+  if (e.target === e.currentTarget) closeQrModal();
+});
 
 // ══════════════════════════════════════════════════════════════
 // NEW RESTAURANT MODAL
