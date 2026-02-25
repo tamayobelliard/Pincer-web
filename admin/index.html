@@ -260,31 +260,40 @@
     /* Print template (hidden on screen) */
     #qrPrintArea { display: none; }
 
+    @page { margin: 0; }
     @media print {
+      html, body { margin: 0 !important; padding: 0 !important; }
       body > *:not(#qrPrintArea) { display: none !important; }
       .modal-overlay { display: none !important; }
       #qrPrintArea {
-        display: block !important; position: fixed; inset: 0;
-        width: 100%; height: 100%;
-        display: flex !important; flex-direction: column; align-items: center; justify-content: center;
-      }
-      #qrPrintArea .print-content {
-        text-align: center; flex: 1;
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
-        padding: 40px 20px;
-      }
-      #qrPrintArea .print-logo { max-height: 80px; max-width: 200px; object-fit: contain; }
-      #qrPrintArea .print-name { font-size: 28px; font-weight: 800; color: #1e293b; }
-      #qrPrintArea .print-qr canvas { width: 256px !important; height: 256px !important; }
-      #qrPrintArea .print-cta {
-        font-size: 18px; font-weight: 600; color: #475569;
-        max-width: 400px;
-      }
-      #qrPrintArea .print-footer {
-        width: 100%; padding: 30px 20px;
-        background: #0f172a !important; color: white !important;
-        text-align: center;
+        display: flex !important; flex-direction: column;
+        width: 100%; min-height: 100vh;
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      /* Header: dark background with logo + name */
+      #qrPrintArea .print-header {
+        background: #1a2332 !important; color: white !important;
+        text-align: center; padding: 24px 20px;
+        display: flex; flex-direction: column; align-items: center; gap: 12px;
+      }
+      #qrPrintArea .print-logo { max-height: 120px; max-width: 240px; object-fit: contain; }
+      #qrPrintArea .print-name { font-size: 24px; font-weight: 800; color: white; }
+      /* Middle: white background with QR + CTA */
+      #qrPrintArea .print-middle {
+        flex: 1; background: white;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 32px 20px; gap: 24px; text-align: center;
+      }
+      #qrPrintArea .print-qr canvas { width: 220px !important; height: 220px !important; }
+      #qrPrintArea .print-cta {
+        font-size: 18px; font-weight: 700; color: #1e293b;
+        max-width: 360px;
+      }
+      /* Footer: dark Pincer branding */
+      #qrPrintArea .print-footer {
+        width: 100%; padding: 24px 20px;
+        background: #1a2332 !important; color: white !important;
+        text-align: center;
       }
       #qrPrintArea .print-footer-logo { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
       #qrPrintArea .print-footer-logo img { height: 28px; }
@@ -472,9 +481,11 @@
 
 <!-- QR Print Template (hidden on screen, visible on print) -->
 <div id="qrPrintArea">
-  <div class="print-content">
+  <div class="print-header">
     <img id="printLogo" class="print-logo" src="" alt="">
     <div id="printName" class="print-name"></div>
+  </div>
+  <div class="print-middle">
     <div id="printQrCode" class="print-qr"></div>
     <div class="print-cta">Ordena y paga desde tu celular, sin filas.</div>
   </div>
