@@ -2371,15 +2371,10 @@ function applyTheme(style) {
     document.body.style.background = 'linear-gradient(135deg, ' + primary + ' 0%, ' + secondary + ' 100%)';
   }
 
-  // Dark background detection
+  // Always apply dark-bg class when a custom background is set
+  // Cards stay white with dark text; only page background changes
   if (bg) {
-    var hex = bg.replace('#', '');
-    var r = parseInt(hex.substring(0, 2), 16);
-    var g = parseInt(hex.substring(2, 4), 16);
-    var b = parseInt(hex.substring(4, 6), 16);
-    if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5) {
-      document.body.classList.add('dark-bg');
-    }
+    document.body.classList.add('dark-bg');
   }
 
   const fontStyle = style?.font_style || 'modern';
