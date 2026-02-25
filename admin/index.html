@@ -286,13 +286,17 @@
       #qrPrintArea .print-name { font-size: 22px; font-weight: 800; color: white; }
       /* Middle: white background with QR + CTA */
       #qrPrintArea .print-middle {
-        flex: 1; background: white;
+        flex: 1; background: white; position: relative;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 32px 20px; gap: 24px; text-align: center;
+        padding: 32px 20px; gap: 20px; text-align: center;
       }
       #qrPrintArea .print-qr canvas { width: 220px !important; height: 220px !important; }
-      #qrPrintArea .print-cta-1 { font-size: 22px; font-weight: 800; color: #1a2332; }
-      #qrPrintArea .print-cta-2 { font-size: 28px; font-weight: 800; color: #1a2332; margin-top: 4px; }
+      #qrPrintArea .print-cta-1 { font-size: 22px; font-weight: 800; color: #1a2332; margin: 0; }
+      #qrPrintArea .print-cta-2 { font-size: 28px; font-weight: 800; color: #1a2332; margin: 4px 0 0 0; }
+      #qrPrintArea .print-watermark {
+        position: absolute; bottom: 12px; right: 16px;
+        width: 40px; height: 40px; opacity: 0.7;
+      }
       /* Footer: dark Pincer branding */
       #qrPrintArea .print-footer {
         width: 100%; padding: 24px 20px;
@@ -495,6 +499,7 @@
     <div id="printQrCode" class="print-qr"></div>
     <div class="print-cta-1">ORDENA Y PAGA DESDE TU CELULAR</div>
     <div class="print-cta-2">SIN FILAS</div>
+    <img class="print-watermark" src="https://i.imgur.com/Dep2ZsJ.png" alt="">
   </div>
   <div class="print-footer">
     <div class="print-footer-logo">
