@@ -2415,21 +2415,16 @@ function applyBranding(data) {
 function applyPlanRestrictions(data) {
   if (data.plan === 'premium') return;
 
-  // 1. Override theme with Pincer default colors
+  // 1. Override theme: black background, Pincer red accents, keep logo
   document.documentElement.style.setProperty('--primary', '#E8191A');
   document.documentElement.style.setProperty('--primary-light', '#E8191A');
-  document.documentElement.style.setProperty('--accent', '#F5F5F5');
-  document.body.style.background = '#F5F5F5';
-  document.body.classList.remove('dark-bg');
+  document.documentElement.style.setProperty('--accent', '#E8191A');
+  document.body.style.background = '#000000';
+  document.body.classList.add('dark-bg');
   var metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme) metaTheme.content = '#E8191A';
+  if (metaTheme) metaTheme.content = '#000000';
 
-  // 2. Hide logo — revert to default emoji
-  document.querySelectorAll('.logo-container, .closed-overlay-logo').forEach(function(el) {
-    el.innerHTML = '<span style="font-size:4em;">🍽️</span>';
-  });
-
-  // 3. Hide chatbot completely
+  // 2. Hide chatbot completely
   var clippy = document.getElementById('chefClippy');
   if (clippy) clippy.style.display = 'none';
   var modal = document.getElementById('pinzer-modal');
@@ -2437,9 +2432,9 @@ function applyPlanRestrictions(data) {
   var bubble = document.getElementById('speechBubble');
   if (bubble) bubble.style.display = 'none';
 
-  // 4. Show "Powered by Pincer" badge
+  // 3. Show "Powered by Pincer" badge
   var badge = document.createElement('div');
-  badge.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.06);color:#888;font-size:12px;padding:6px 16px;border-radius:20px;z-index:998;letter-spacing:0.3px;';
+  badge.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:12px;padding:6px 16px;border-radius:20px;z-index:998;letter-spacing:0.3px;';
   badge.innerHTML = 'Powered by <a href="https://www.pincerweb.com" target="_blank" style="color:#E8191A;text-decoration:none;font-weight:600;">Pincer</a>';
   document.body.appendChild(badge);
 }
