@@ -4399,6 +4399,8 @@ function pinzerShowReplies(replies) {
     btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
   });
+  const msgs = document.getElementById('pinzer-messages');
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 function pinzerClearReplies() {
@@ -4536,6 +4538,10 @@ async function sendToAI(userMessage) {
       if (parsed.buttons.length > 0) {
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
       }
+
+      // Scroll to bottom after all content is rendered
+      const chatMsgs = document.getElementById('pinzer-messages');
+      chatMsgs.scrollTop = chatMsgs.scrollHeight;
     } else {
       pinzerSay('Algo falló 😅 Intenta de nuevo en un momento.');
     }
