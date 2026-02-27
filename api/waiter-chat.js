@@ -63,14 +63,15 @@ export default async function handler(req, res) {
   try {
     const rName = restaurant_name || 'este restaurante';
 
-    // Fetch chatbot personality from restaurant_users
+    // Fetch chatbot personality and plan from restaurant_users
     let personality = 'casual';
+    let plan = 'free';
     if (restaurant_slug) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const pRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality`,
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality,plan`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -81,11 +82,21 @@ export default async function handler(req, res) {
         );
         if (pRes.ok) {
           const rows = await pRes.json();
-          if (rows.length > 0 && rows[0].chatbot_personality) {
-            personality = rows[0].chatbot_personality;
+          if (rows.length > 0) {
+            if (rows[0].chatbot_personality) {
+              personality = rows[0].chatbot_personality;
+            }
+            if (rows[0].plan) {
+              plan = rows[0].plan;
+            }
           }
         }
-      } catch { /* fallback to casual */ }
+      } catch { /* fallback to casual + free */ }
+    }
+
+    // Block free-plan restaurants from using chatbot
+    if (plan !== 'premium') {
+      return res.status(403).json({ error: 'Plan Premium requerido' });
     }
 
     console.log('waiter-chat personality:', restaurant_slug, '->', personality);

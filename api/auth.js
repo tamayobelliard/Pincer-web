@@ -57,6 +57,7 @@ export default async function handler(req, res) {
       restaurant_slug: user.restaurant_slug,
       display_name: user.display_name,
       username: user.username,
+      plan: user.plan || 'free',
     };
 
     // For admin users, generate a unique session token (not the static API key)

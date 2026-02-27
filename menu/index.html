@@ -2344,7 +2344,7 @@ function getExtras() {
 async function loadRestaurantData() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan&limit=1',
       { headers: sbHeaders() }, 10000
     );
     if (!res.ok) return null;
@@ -2409,6 +2409,39 @@ function applyBranding(data) {
       el.innerHTML = '<img src="' + data.logo_url + '" alt="' + escHtml(data.display_name || '') + '">';
     });
   }
+}
+
+// Apply plan-based restrictions (free vs premium)
+function applyPlanRestrictions(data) {
+  if (data.plan === 'premium') return;
+
+  // 1. Override theme with Pincer default colors
+  document.documentElement.style.setProperty('--primary', '#E8191A');
+  document.documentElement.style.setProperty('--primary-light', '#E8191A');
+  document.documentElement.style.setProperty('--accent', '#F5F5F5');
+  document.body.style.background = '#F5F5F5';
+  document.body.classList.remove('dark-bg');
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.content = '#E8191A';
+
+  // 2. Hide logo — revert to default emoji
+  document.querySelectorAll('.logo-container, .closed-overlay-logo').forEach(function(el) {
+    el.innerHTML = '<span style="font-size:4em;">🍽️</span>';
+  });
+
+  // 3. Hide chatbot completely
+  var clippy = document.getElementById('chefClippy');
+  if (clippy) clippy.style.display = 'none';
+  var modal = document.getElementById('pinzer-modal');
+  if (modal) modal.style.display = 'none';
+  var bubble = document.getElementById('speechBubble');
+  if (bubble) bubble.style.display = 'none';
+
+  // 4. Show "Powered by Pincer" badge
+  var badge = document.createElement('div');
+  badge.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.06);color:#888;font-size:12px;padding:6px 16px;border-radius:20px;z-index:998;letter-spacing:0.3px;';
+  badge.innerHTML = 'Powered by <a href="https://www.pincerweb.com" target="_blank" style="color:#E8191A;text-decoration:none;font-weight:600;">Pincer</a>';
+  document.body.appendChild(badge);
 }
 
 async function loadMenuFromDB() {
@@ -4531,6 +4564,7 @@ async function init() {
   // 2. Apply theme and branding
   applyTheme(restaurantData.menu_style);
   applyBranding(restaurantData);
+  applyPlanRestrictions(restaurantData);
   menuGroups = restaurantData.menu_groups || null;
 
   // 3. Receipt branding
@@ -4544,27 +4578,29 @@ async function init() {
     receiptInfo.innerHTML = lines.map(l => escHtml(l)).join('<br>');
   }
 
-  // 4. Chat header + chatbot avatar
-  const chatHeader = document.getElementById('chatHeaderName');
-  if (chatHeader) {
-    if (restaurantData.logo_url) {
-      chatHeader.innerHTML = '<img src="' + restaurantData.logo_url + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;" alt=""> ' + escHtml(restaurantData.display_name) + ' - Mesero Virtual';
-    } else {
-      chatHeader.textContent = '🍽️ ' + restaurantData.display_name + ' - Mesero Virtual';
+  // 4. Chat header + chatbot avatar (premium only)
+  if (restaurantData.plan === 'premium') {
+    const chatHeader = document.getElementById('chatHeaderName');
+    if (chatHeader) {
+      if (restaurantData.logo_url) {
+        chatHeader.innerHTML = '<img src="' + restaurantData.logo_url + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px;" alt=""> ' + escHtml(restaurantData.display_name) + ' - Mesero Virtual';
+      } else {
+        chatHeader.textContent = '🍽️ ' + restaurantData.display_name + ' - Mesero Virtual';
+      }
     }
-  }
-  // Chatbot floating button: show logo if available
-  if (restaurantData.logo_url) {
-    const avatar = document.querySelector('.clippy-avatar');
-    if (avatar) {
-      const badge = avatar.querySelector('.notification-pulse');
-      const emoji = avatar.querySelector('span');
-      if (emoji) {
-        const img = document.createElement('img');
-        img.src = restaurantData.logo_url;
-        img.alt = restaurantData.display_name || '';
-        img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
-        emoji.replaceWith(img);
+    // Chatbot floating button: show logo if available
+    if (restaurantData.logo_url) {
+      const avatar = document.querySelector('.clippy-avatar');
+      if (avatar) {
+        const badge = avatar.querySelector('.notification-pulse');
+        const emoji = avatar.querySelector('span');
+        if (emoji) {
+          const img = document.createElement('img');
+          img.src = restaurantData.logo_url;
+          img.alt = restaurantData.display_name || '';
+          img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+          emoji.replaceWith(img);
+        }
       }
     }
   }
@@ -4600,8 +4636,10 @@ async function init() {
   // 7. Start sold-out poller
   startSoldOutPoller();
 
-  // 8. Init chatbot
-  initChatbot();
+  // 8. Init chatbot (premium only)
+  if (restaurantData.plan === 'premium') {
+    initChatbot();
+  }
 
   dbg('✅ ' + (restaurantData?.display_name || SLUG) + ' listo');
 }

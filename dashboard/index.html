@@ -1884,6 +1884,33 @@ async function askClaudeAI(question, salesData) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PLAN RESTRICTIONS
+// ══════════════════════════════════════════════════════════════
+
+function applyDashboardPlanRestrictions(plan) {
+  if (plan === 'premium') return;
+
+  // Hide AI Assistant completely
+  var aiContainer = document.getElementById('aiAssistantContainer');
+  if (aiContainer) aiContainer.style.display = 'none';
+
+  // Show upgrade banner
+  var banner = document.createElement('div');
+  banner.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:16px 20px;border-radius:12px;margin:0 auto 20px auto;text-align:center;font-size:0.95em;box-shadow:0 4px 15px rgba(102,126,234,0.3);';
+  banner.innerHTML = '⭐ Actualiza a Premium para acceder al chat AI y personalización de tu menú — <strong>$40/mes</strong> <a href="https://www.pincerweb.com" target="_blank" style="color:#fbbf24;margin-left:8px;text-decoration:underline;font-weight:700;">Más info</a>';
+
+  var notifBanner = document.getElementById('notification-banner');
+  if (notifBanner && notifBanner.parentNode) {
+    notifBanner.parentNode.insertBefore(banner, notifBanner.nextSibling);
+  } else {
+    var stats = document.getElementById('stats');
+    if (stats && stats.parentNode) {
+      stats.parentNode.insertBefore(banner, stats);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════
 
@@ -1904,6 +1931,22 @@ async function initializeDashboard() {
   } catch (e) {
     dbg('❌ Test de conexión falló: ' + e.message);
   }
+
+  // Fetch restaurant plan
+  var restaurantPlan = 'free';
+  try {
+    var planRes = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan&limit=1',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (planRes.ok) {
+      var planRows = await planRes.json();
+      if (planRows.length > 0 && planRows[0].plan) {
+        restaurantPlan = planRows[0].plan;
+      }
+    }
+  } catch (e) { dbg('Plan fetch error: ' + e.message); }
+  applyDashboardPlanRestrictions(restaurantPlan);
 
   updateCurrentDateDisplay();
   dailyCleanup();
