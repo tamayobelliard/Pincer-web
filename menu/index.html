@@ -4350,7 +4350,7 @@ async function showWelcomeMessages() {
     pt: 'Gostaria que eu respondesse em português? 🇧🇷'
   };
 
-  if (langOffers[langKey]) {
+  if (langKey !== 'es' && langOffers[langKey]) {
     setTimeout(() => {
       pinzerSay(langOffers[langKey]);
       setTimeout(() => {
