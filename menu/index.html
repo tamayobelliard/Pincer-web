@@ -3093,12 +3093,14 @@ function renderOrder() {
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
   phoneField.style.display = 'block';
-  // Show order type selector
+  // Show order type selector (only if more than 1 type enabled)
   var orderTypeSec2 = document.getElementById('orderTypeSection');
-  if (orderTypeSec2 && enabledOrderTypes.length > 0) {
+  if (orderTypeSec2 && enabledOrderTypes.length > 1) {
     orderTypeSec2.style.display = 'block';
     renderOrderTypeButtons('orderTypeButtons');
     selectOrderType(selectedOrderType);
+  } else if (orderTypeSec2) {
+    orderTypeSec2.style.display = 'none';
   }
   // Preserve phone value across re-renders
   const phoneInput = document.getElementById('phoneInput');
@@ -3447,9 +3449,9 @@ function openCheckoutModal() {
   document.getElementById('checkoutPhone').value = existingPhone;
   document.getElementById('checkoutName').value = '';
 
-  // Render order type selector in checkout
+  // Render order type selector in checkout (only if more than 1 type enabled)
   var checkoutOTSection = document.getElementById('checkoutOrderTypeSection');
-  if (checkoutOTSection && enabledOrderTypes.length > 0) {
+  if (checkoutOTSection && enabledOrderTypes.length > 1) {
     checkoutOTSection.style.display = 'block';
     renderOrderTypeButtons('checkoutOrderTypeButtons');
     selectOrderType(selectedOrderType);
@@ -4922,9 +4924,12 @@ async function init() {
   applyBranding(restaurantData);
   applyPlanRestrictions(restaurantData);
   menuGroups = restaurantData.menu_groups || null;
-  enabledOrderTypes = restaurantData.order_types || ['dine_in'];
+  var rawOT = restaurantData.order_types;
+  if (typeof rawOT === 'string') { try { rawOT = JSON.parse(rawOT); } catch(e) { rawOT = null; } }
+  enabledOrderTypes = Array.isArray(rawOT) && rawOT.length > 0 ? rawOT : ['dine_in'];
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';
+  console.log('order_types:', restaurantData.order_types, '-> enabledOrderTypes:', enabledOrderTypes);
 
   // 3. Receipt branding
   const receiptLogo = document.getElementById('receiptLogoText');

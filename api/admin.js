@@ -143,7 +143,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           notes: notes || null,
           chatbot_personality: chatbot_personality || 'casual',
           logo_url: logo_url || null,
-          order_types: order_types || '["dine_in"]',
+          order_types: order_types || ["dine_in"],
           delivery_fee: delivery_fee || 0,
         }),
       }
