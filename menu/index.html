@@ -4188,6 +4188,7 @@ let bubblePermanentlyClosed = false;
 let chatHistory = []; // { role: 'user'|'assistant', content: string }
 let chatOpen = false;
 let welcomeShown = false;
+let currentLanguage = null; // null = not yet confirmed, 'es' = Spanish, 'en' = English, etc.
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -4320,6 +4321,8 @@ function closePinzer() {
 
 async function showWelcomeMessages() {
   showTypingIndicator();
+  var bLang = (navigator.language || 'es').toLowerCase();
+  var isEs = bLang.startsWith('es');
   try {
     const res = await fetch('/api/waiter-chat', {
       method: 'POST',
@@ -4335,6 +4338,16 @@ async function showWelcomeMessages() {
     if (res.ok) {
       const data = await res.json();
       pinzerSay(data.answer);
+      // If non-Spanish browser detected, show language choice buttons
+      if (data.offerLanguage) {
+        setTimeout(() => {
+          pinzerShowReplies([
+            { label: data.offerLanguage === 'en' ? '🌐 Yes, English please' : data.offerLanguage === 'fr' ? '🌐 Oui, en français' : data.offerLanguage === 'ht' ? '🌐 Wi, an Kreyòl' : '🌐 Yes / Sí' },
+            { label: '🇩🇴 Español está bien' }
+          ]);
+        }, 500);
+        return;
+      }
     } else {
       pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
     }
@@ -4343,12 +4356,10 @@ async function showWelcomeMessages() {
     pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
   }
 
-  var bLang = (navigator.language || 'es').toLowerCase();
-  var isEs = bLang.startsWith('es');
   setTimeout(() => {
     pinzerShowReplies([
-      { label: isEs ? '👋 Sí, primera vez' : '👋 First time here' },
-      { label: isEs ? '🔄 Ya he venido antes' : '🔄 I\'ve been here before' }
+      { label: '👋 Sí, primera vez' },
+      { label: '🔄 Ya he venido antes' }
     ]);
   }, 500);
 }
@@ -4415,6 +4426,21 @@ function handleQuickReply(label) {
     return;
   }
 
+  // Language choice buttons
+  if (label.startsWith('🌐 ')) {
+    pinzerUserSay(label);
+    var detectedLang = (navigator.language || 'es').toLowerCase().split('-')[0];
+    currentLanguage = detectedLang;
+    sendToAI(label.startsWith('🌐 Yes') ? 'Yes, English please' : label.startsWith('🌐 Oui') ? 'Oui, en français svp' : label.startsWith('🌐 Wi') ? 'Wi, an Kreyòl souple' : 'Yes please');
+    return;
+  }
+  if (label === '🇩🇴 Español está bien') {
+    pinzerUserSay(label);
+    currentLanguage = 'es';
+    sendToAI('Español está bien, gracias');
+    return;
+  }
+
   // Static mappings for welcome buttons (Spanish + English)
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
@@ -4466,7 +4492,8 @@ async function sendToAI(userMessage) {
         menuData: buildMenuData(),
         restaurant_slug: SLUG,
         restaurant_name: restaurantData?.display_name || SLUG,
-        browserLanguage: navigator.language || 'es'
+        browserLanguage: navigator.language || 'es',
+        currentLanguage: currentLanguage
       })
     });
 
@@ -4474,6 +4501,10 @@ async function sendToAI(userMessage) {
 
     if (res.ok) {
       const data = await res.json();
+      // Update confirmed language if API tells us
+      if (data.confirmedLanguage) {
+        currentLanguage = data.confirmedLanguage;
+      }
       const rawAnswer = data.answer || 'Algo salió mal 😅 Intenta de nuevo.';
       chatHistory.push({ role: 'assistant', content: rawAnswer });
 
@@ -4493,8 +4524,18 @@ async function sendToAI(userMessage) {
         }
       }
 
-      // Show parsed buttons
-      if (parsed.buttons.length > 0) {
+      // If API detected a language offer mid-conversation, show switch buttons
+      if (data.offerLanguage && !currentLanguage) {
+        var ol = data.offerLanguage;
+        var switchBtns = [
+          { label: ol === 'en' ? '🌐 Yes, switch to English' : ol === 'fr' ? '🌐 Oui, en français' : ol === 'ht' ? '🌐 Wi, an Kreyòl' : '🌐 Yes / Sí' },
+          { label: '🇩🇴 Español está bien' }
+        ];
+        // Append any parsed buttons after language choice
+        parsed.buttons.forEach(b => switchBtns.push({ label: b }));
+        pinzerShowReplies(switchBtns);
+      } else if (parsed.buttons.length > 0) {
+        // Show parsed buttons
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
       }
     } else {

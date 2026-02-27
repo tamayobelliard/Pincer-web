@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage } = req.body;
+  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage } = req.body;
 
   try {
     const rName = restaurant_name || 'este restaurante';
@@ -100,43 +100,71 @@ export default async function handler(req, res) {
     }
 
     const lang = (browserLanguage || 'es').toLowerCase();
-    const isSpanish = lang.startsWith('es');
+    const browserIsSpanish = lang.startsWith('es');
+    // currentLanguage: null = not yet confirmed, 'es' = Spanish confirmed, 'en'/'fr'/'ht' = other confirmed
+    const confirmedLang = currentLanguage || null;
+    const activeLang = confirmedLang || 'es'; // default to Spanish until confirmed
+    const isSpanish = activeLang.startsWith('es');
 
-    console.log('waiter-chat personality:', restaurant_slug, '->', personality, '| lang:', lang);
+    console.log('waiter-chat personality:', restaurant_slug, '->', personality, '| browser:', lang, '| confirmed:', confirmedLang);
 
     const p = PERSONALITIES[personality] || PERSONALITIES.casual;
+
+    // Language name mapping for the offer prompt
+    const LANG_NAMES = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
 
     // Welcome-only request: return greeting without calling Claude
     if (req.body.welcome) {
       const rName = restaurant_name || 'nuestro restaurante';
-      let greeting;
-      if (!isSpanish && lang.startsWith('en')) {
-        greeting = `Welcome to ${rName}! 🙌 I'm Pincer, your virtual waiter. What are you in the mood for today?`;
-      } else if (!isSpanish && lang.startsWith('fr')) {
-        greeting = `Bienvenue chez ${rName}! 🙌 Je suis Pincer, votre serveur virtuel. Qu'est-ce qui vous ferait plaisir aujourd'hui?`;
-      } else if (!isSpanish && lang.startsWith('ht')) {
-        greeting = `Byenveni nan ${rName}! 🙌 Mwen se Pincer, gason vitrin ou. Kisa ou ta renmen jodi a?`;
-      } else {
-        const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
-        const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
-        const sep = emoji ? ' ' + emoji + ' ' : '. ';
-        greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
+      const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
+      const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
+      const sep = emoji ? ' ' + emoji + ' ' : '. ';
+      let greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
+
+      // If browser is non-Spanish, greet in Spanish but offer the detected language
+      const langKey = lang.split('-')[0];
+      if (!browserIsSpanish && LANG_NAMES[langKey]) {
+        const langName = LANG_NAMES[langKey];
+        greeting += `\n\n¿Preferiría que le atendiera en ${langName}? / Would you like me to assist you in ${langName}?`;
+        return res.status(200).json({ answer: greeting, offerLanguage: langKey });
       }
-      return res.status(200).json({ answer: greeting, detectedLanguage: lang });
+
+      return res.status(200).json({ answer: greeting });
     }
 
     // Build language-specific prompt sections
-    const langInstruction = isSpanish ? '' : `
+    let langInstruction;
+    if (confirmedLang && !isSpanish) {
+      // Language already confirmed as non-Spanish — respond in that language
+      const confirmedName = LANG_NAMES[confirmedLang] || confirmedLang;
+      langInstruction = `
 LANGUAGE RULES:
-- The customer's browser language is "${lang}". You MUST respond in this language.
-- NEVER switch languages unless the customer explicitly asks you to.
-- Translate menu item names and descriptions naturally into the customer's language, but keep original name in parentheses on first mention.
-- Keep ALL prices in RD$ always.${lang.startsWith('en') ? `
-- For English speakers: highlight Dominican dishes with brief cultural context (e.g. "Mangú — a beloved Dominican mashed plantain dish").` : ''}${lang.startsWith('ht') ? `
-- For Haitian Creole (Kreyòl): use a warm, respectful tone. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
+- The customer has chosen to be served in ${confirmedName}. You MUST respond in ${confirmedName}.
+- NEVER switch languages unless the customer explicitly asks.
+- Translate menu item names and descriptions naturally, keeping the original Spanish name in parentheses on first mention.
+- Keep ALL prices in RD$ always.${confirmedLang === 'en' ? `
+- Highlight Dominican dishes with brief cultural context (e.g. "Mangú — a beloved Dominican mashed plantain dish").` : ''}${confirmedLang === 'ht' ? `
+- Use a warm, respectful tone in Kreyòl. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
 - For totals over RD$500, show USD equivalent in parentheses (use approximate rate: 1 USD = 60 RD$).
-- Buttons text must also be in the customer's language.
+- Buttons text must also be in ${confirmedName}.
 `;
+    } else if (!confirmedLang && !browserIsSpanish) {
+      // Language not yet confirmed but browser is non-Spanish — detect from messages
+      langInstruction = `
+LANGUAGE DETECTION:
+- The conversation is in Spanish by default. The customer has NOT yet chosen a language.
+- If the customer writes a full sentence clearly in a non-Spanish language, respond with BOTH: a response in that language AND a bilingual confirmation:
+  For English: "I noticed you wrote in English — would you like me to switch? / Noté que escribiste en inglés, ¿quieres que cambie?"
+  For French: "J'ai remarqué que vous écrivez en français — voulez-vous que je continue? / Noté que escribiste en francés, ¿quieres que cambie?"
+  For other languages: adapt similarly with bilingual prompt.
+  Then add: [LANG_OFFER: detected_language_code]
+- If this is a single word or button click, do NOT offer to switch — just respond in Spanish.
+- Keep responding in Spanish until the customer explicitly confirms a switch.
+`;
+    } else {
+      // Spanish confirmed or browser is Spanish — no language rules needed
+      langInstruction = '';
+    }
 
     const personalityTone = {
       dominicano: isSpanish ? p.style : '- Warm, lively tone with Dominican flavor adapted to the customer\'s language. Friendly and confident like a great host.',
@@ -233,9 +261,19 @@ ${menuData}`;
       return res.status(200).json({ answer: p.error });
     }
 
-    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
+    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
-    res.status(200).json({ answer });
+    // Detect mid-conversation language offer from Claude
+    const langOfferMatch = answer.match(/\[LANG_OFFER:\s*(\w+)\]/);
+    const responseData = { answer: answer.replace(/\[LANG_OFFER:\s*\w+\]/g, '').trim() };
+    if (langOfferMatch) {
+      responseData.offerLanguage = langOfferMatch[1];
+    }
+    if (confirmedLang) {
+      responseData.confirmedLanguage = confirmedLang;
+    }
+
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('waiter-chat error:', error);
