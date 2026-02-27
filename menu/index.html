@@ -1745,6 +1745,38 @@
       background: #f0fdf4;
     }
 
+    /* Order Type Selector */
+    .order-type-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+    .order-type-title { font-weight: 700; color: #334155; font-size: 0.95em; margin-bottom: 8px; }
+    .order-type-options { display: flex; gap: 8px; margin-bottom: 12px; }
+    .order-type-btn {
+      flex: 1; padding: 10px 8px; border: 2px solid #e2e8f0; border-radius: 8px;
+      background: white; cursor: pointer; font-size: 0.85em; font-weight: 600;
+      text-align: center; transition: all 0.2s; font-family: inherit; color: #64748b;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .order-type-btn.active { border-color: var(--primary-light); color: var(--primary); background: #f0fdf4; }
+    .order-type-extra-fields { display: none; }
+    .order-type-extra-fields.show { display: block; }
+    .order-type-field { margin-bottom: 10px; }
+    .order-type-field label { display: block; font-size: 0.85em; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .order-type-field input {
+      width: 100%; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.95em; font-family: inherit; transition: border-color 0.2s; box-sizing: border-box;
+    }
+    .order-type-field input:focus { outline: none; border-color: var(--primary-light); }
+    .order-type-field input.invalid { border-color: #dc2626; background: #fef2f2; }
+    .gps-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+      border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #475569;
+      font-size: 0.85em; cursor: pointer; margin-top: 6px; font-family: inherit; transition: all 0.2s;
+    }
+    .gps-btn:active { background: #e2e8f0; }
+    .delivery-fee-line {
+      display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.9em;
+      color: #475569; border-top: 1px dashed #e2e8f0; margin-top: 4px;
+    }
+
     .checkout-card-fields {
       margin-bottom: 15px;
     }
@@ -1992,6 +2024,33 @@
       <div class="phone-hint">Te notificaremos por WhatsApp cuando tu orden esté lista</div>
       <div class="phone-error" id="phoneError">Número inválido. Usa formato: 809-123-4567</div>
     </div>
+    <!-- Order Type Selector -->
+    <div class="order-type-section" id="orderTypeSection" style="display:none;">
+      <div class="order-type-title">Tipo de orden</div>
+      <div class="order-type-options" id="orderTypeButtons"></div>
+      <div class="order-type-extra-fields" id="takeoutFields">
+        <div class="order-type-field">
+          <label>Nombre</label>
+          <input type="text" id="takeoutName" placeholder="Tu nombre">
+        </div>
+      </div>
+      <div class="order-type-extra-fields" id="deliveryFields">
+        <div class="order-type-field">
+          <label>Nombre</label>
+          <input type="text" id="deliveryName" placeholder="Tu nombre">
+        </div>
+        <div class="order-type-field">
+          <label>Dirección de entrega</label>
+          <input type="text" id="deliveryAddress" placeholder="Calle, sector, referencia">
+          <button type="button" class="gps-btn" onclick="captureGPS()">📍 Usar mi ubicación</button>
+          <div id="gpsStatus" style="font-size:0.8em;color:#64748b;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div class="delivery-fee-line" id="deliveryFeeLine" style="display:none;">
+        <span>🛵 Delivery</span>
+        <span id="deliveryFeeAmount">RD$0</span>
+      </div>
+    </div>
   </div>
 
   <div class="order-summary" id="misOrdenesSection" style="display: none;">
@@ -2137,6 +2196,23 @@
   <div class="checkout-field">
     <label>Teléfono</label>
     <input type="tel" id="checkoutPhone" placeholder="809-123-4567" maxlength="15">
+  </div>
+  <!-- Order Type Selector (checkout flow) -->
+  <div class="order-type-section" id="checkoutOrderTypeSection" style="display:none;">
+    <div class="order-type-title">Tipo de orden</div>
+    <div class="order-type-options" id="checkoutOrderTypeButtons"></div>
+    <div class="order-type-extra-fields" id="checkoutDeliveryFields">
+      <div class="order-type-field">
+        <label>Dirección de entrega</label>
+        <input type="text" id="checkoutDeliveryAddress" placeholder="Calle, sector, referencia">
+        <button type="button" class="gps-btn" onclick="captureGPS('checkout')">📍 Usar mi ubicación</button>
+        <div id="checkoutGpsStatus" style="font-size:0.8em;color:#64748b;margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="delivery-fee-line" id="checkoutDeliveryFeeLine" style="display:none;">
+      <span>🛵 Delivery</span>
+      <span id="checkoutDeliveryFeeAmount">RD$0</span>
+    </div>
   </div>
   <div class="checkout-methods-title">Método de Pago</div>
   <div class="checkout-methods">
@@ -2344,7 +2420,7 @@ function getExtras() {
 async function loadRestaurantData() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
       { headers: sbHeaders() }, 10000
     );
     if (!res.ok) return null;
@@ -2518,6 +2594,11 @@ let orderReviewed = false;
 let sessionOrders = [];
 let customerPhone = '';
 let lastPaymentInfo = null;
+let selectedOrderType = 'dine_in';
+let customerAddress = '';
+let customerGpsLink = '';
+let enabledOrderTypes = ['dine_in'];
+let restaurantDeliveryFee = 0;
 
 // ══════════════════════════════════════════════════════════════
 // CONNECTION TEST
@@ -3001,6 +3082,8 @@ function renderOrder() {
     placeOrderBtn.disabled = true;
     totalDiv.style.display = 'none';
     phoneField.style.display = 'none';
+    var orderTypeSec = document.getElementById('orderTypeSection');
+    if (orderTypeSec) orderTypeSec.style.display = 'none';
     orderReviewed = false;
     updateMenuQtyBadges();
     return;
@@ -3010,6 +3093,13 @@ function renderOrder() {
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
   phoneField.style.display = 'block';
+  // Show order type selector
+  var orderTypeSec2 = document.getElementById('orderTypeSection');
+  if (orderTypeSec2 && enabledOrderTypes.length > 0) {
+    orderTypeSec2.style.display = 'block';
+    renderOrderTypeButtons('orderTypeButtons');
+    selectOrderType(selectedOrderType);
+  }
   // Preserve phone value across re-renders
   const phoneInput = document.getElementById('phoneInput');
   if (customerPhone && !phoneInput.value) phoneInput.value = customerPhone;
@@ -3046,12 +3136,8 @@ function renderOrder() {
     list.appendChild(div);
   });
 
-  totalDiv.innerHTML = `
-    <div class="order-total">
-      <span>TOTAL:</span>
-      <span>RD$${total.toLocaleString()}</span>
-    </div>`;
   totalDiv.style.display = 'block';
+  updateTotalWithDeliveryFee();
 
   updateMenuQtyBadges();
 }
@@ -3110,6 +3196,31 @@ async function placeOrder() {
     return;
   }
 
+  // Validate order type extra fields
+  if (selectedOrderType === 'take_out') {
+    var toName = (document.getElementById('takeoutName').value || '').trim();
+    if (!toName) {
+      document.getElementById('takeoutName').classList.add('invalid');
+      document.getElementById('takeoutName').focus();
+      return;
+    }
+  }
+  if (selectedOrderType === 'delivery') {
+    var dlName = (document.getElementById('deliveryName').value || '').trim();
+    if (!dlName) {
+      document.getElementById('deliveryName').classList.add('invalid');
+      document.getElementById('deliveryName').focus();
+      return;
+    }
+    var dlAddr = (document.getElementById('deliveryAddress').value || '').trim();
+    if (!dlAddr) {
+      document.getElementById('deliveryAddress').classList.add('invalid');
+      document.getElementById('deliveryAddress').focus();
+      return;
+    }
+    customerAddress = dlAddr;
+  }
+
   // If payment is enabled, open checkout modal instead of direct submit
   if (PAYMENT_ENABLED) {
     openCheckoutModal();
@@ -3127,7 +3238,9 @@ async function placeOrder() {
       notes: item.notes || null
     }));
 
-    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const deliveryFeeCharged = getDeliveryFee();
+    const total = itemsTotal + deliveryFeeCharged;
 
     const nextNum = await getNextOrderNumber();
 
@@ -3136,9 +3249,17 @@ async function placeOrder() {
       total: total,
       status: 'pending',
       phone: customerPhone,
-      restaurant_slug: SLUG
+      restaurant_slug: SLUG,
+      order_type: selectedOrderType
     };
     if (nextNum) orderPayload.order_number = nextNum;
+    if (selectedOrderType === 'take_out') {
+      orderPayload.customer_name = (document.getElementById('takeoutName').value || '').trim();
+    } else if (selectedOrderType === 'delivery') {
+      orderPayload.customer_name = (document.getElementById('deliveryName').value || '').trim();
+      orderPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
+      orderPayload.delivery_fee = deliveryFeeCharged;
+    }
 
     dbg('📤 Enviando orden #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
     dbg('📤 URL: ' + SUPABASE_URL + '/rest/v1/orders');
@@ -3167,9 +3288,17 @@ async function placeOrder() {
           total: total,
           status: 'pending',
           phone: customerPhone,
-          restaurant_slug: SLUG
+          restaurant_slug: SLUG,
+          order_type: selectedOrderType
         };
         if (nextNum) retryPayload.order_number = nextNum;
+        if (selectedOrderType === 'take_out') {
+          retryPayload.customer_name = (document.getElementById('takeoutName').value || '').trim();
+        } else if (selectedOrderType === 'delivery') {
+          retryPayload.customer_name = (document.getElementById('deliveryName').value || '').trim();
+          retryPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
+          retryPayload.delivery_fee = deliveryFeeCharged;
+        }
         
         const retryRes = await fetchWithTimeout(
           SUPABASE_URL + '/rest/v1/orders',
@@ -3261,6 +3390,13 @@ function handleOrderSuccess(data) {
   order = [];
   customerPhone = '';
   document.getElementById('phoneInput').value = '';
+  selectedOrderType = enabledOrderTypes[0] || 'dine_in';
+  customerAddress = '';
+  customerGpsLink = '';
+  var _toName = document.getElementById('takeoutName'); if (_toName) _toName.value = '';
+  var _dlName = document.getElementById('deliveryName'); if (_dlName) _dlName.value = '';
+  var _dlAddr = document.getElementById('deliveryAddress'); if (_dlAddr) _dlAddr.value = '';
+  var _gpsStatus = document.getElementById('gpsStatus'); if (_gpsStatus) _gpsStatus.textContent = '';
   renderOrder();
 }
 
@@ -3294,14 +3430,36 @@ function openCheckoutModal() {
     </div>`;
   });
   summaryDiv.innerHTML = html;
-  totalDiv.innerHTML = `<span>TOTAL</span><span>RD$${total.toLocaleString()}</span>`;
-  payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+  var fee = getDeliveryFee();
+  var grandTotal = total + fee;
+  var totalHTML = '';
+  if (fee > 0) {
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Subtotal</span><span>RD$' + total.toLocaleString() + '</span></div>';
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>🛵 Delivery</span><span>RD$' + fee.toLocaleString() + '</span></div>';
+  }
+  totalHTML += '<span>TOTAL</span><span>RD$' + grandTotal.toLocaleString() + '</span>';
+  totalDiv.innerHTML = totalHTML;
+  payBtn.textContent = 'Pagar RD$' + grandTotal.toLocaleString();
   payBtn.disabled = false;
 
   // Pre-fill phone from existing field
   const existingPhone = (document.getElementById('phoneInput').value || '').trim();
   document.getElementById('checkoutPhone').value = existingPhone;
   document.getElementById('checkoutName').value = '';
+
+  // Render order type selector in checkout
+  var checkoutOTSection = document.getElementById('checkoutOrderTypeSection');
+  if (checkoutOTSection && enabledOrderTypes.length > 0) {
+    checkoutOTSection.style.display = 'block';
+    renderOrderTypeButtons('checkoutOrderTypeButtons');
+    selectOrderType(selectedOrderType);
+  }
+
+  // Pre-fill delivery address if captured in main flow
+  if (selectedOrderType === 'delivery') {
+    var mainAddr = (document.getElementById('deliveryAddress') || {}).value || '';
+    if (mainAddr.trim()) document.getElementById('checkoutDeliveryAddress').value = mainAddr.trim();
+  }
 
   // Reset payment method to card
   selectPayMethod('card');
@@ -3367,6 +3525,118 @@ function selectPayMethod(method) {
   document.getElementById('checkoutCardFields').style.display = method === 'card' ? 'block' : 'none';
 }
 
+// ══════════════════════════════════════════════════════════════
+// ORDER TYPE SELECTOR
+// ══════════════════════════════════════════════════════════════
+
+function renderOrderTypeButtons(containerId) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var typeConfig = {
+    dine_in:  { label: '🍽️ Comer aquí' },
+    take_out: { label: '🥡 Para Llevar' },
+    delivery: { label: '🛵 Delivery' }
+  };
+  container.innerHTML = '';
+  enabledOrderTypes.forEach(function(type) {
+    var cfg = typeConfig[type];
+    if (!cfg) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'order-type-btn' + (type === selectedOrderType ? ' active' : '');
+    btn.dataset.type = type;
+    btn.textContent = cfg.label;
+    btn.onclick = function() { selectOrderType(type); };
+    container.appendChild(btn);
+  });
+}
+
+function selectOrderType(type) {
+  selectedOrderType = type;
+  document.querySelectorAll('.order-type-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+
+  // Toggle extra fields (non-payment flow)
+  var takeoutFields = document.getElementById('takeoutFields');
+  var deliveryFields = document.getElementById('deliveryFields');
+  var deliveryFeeLine = document.getElementById('deliveryFeeLine');
+  if (takeoutFields) takeoutFields.classList.toggle('show', type === 'take_out');
+  if (deliveryFields) deliveryFields.classList.toggle('show', type === 'delivery');
+  if (deliveryFeeLine) deliveryFeeLine.style.display = (type === 'delivery' && restaurantDeliveryFee > 0) ? 'flex' : 'none';
+
+  // Toggle extra fields (checkout flow)
+  var checkoutDeliveryFields = document.getElementById('checkoutDeliveryFields');
+  var checkoutDeliveryFeeLine = document.getElementById('checkoutDeliveryFeeLine');
+  if (checkoutDeliveryFields) checkoutDeliveryFields.classList.toggle('show', type === 'delivery');
+  if (checkoutDeliveryFeeLine) checkoutDeliveryFeeLine.style.display = (type === 'delivery' && restaurantDeliveryFee > 0) ? 'flex' : 'none';
+
+  // Update delivery fee display
+  if (type === 'delivery' && restaurantDeliveryFee > 0) {
+    var feeText = 'RD$' + restaurantDeliveryFee.toLocaleString();
+    var el1 = document.getElementById('deliveryFeeAmount');
+    var el2 = document.getElementById('checkoutDeliveryFeeAmount');
+    if (el1) el1.textContent = feeText;
+    if (el2) el2.textContent = feeText;
+  }
+
+  updateTotalWithDeliveryFee();
+}
+
+function getDeliveryFee() {
+  return (selectedOrderType === 'delivery') ? restaurantDeliveryFee : 0;
+}
+
+function updateTotalWithDeliveryFee() {
+  var itemsTotal = order.reduce(function(s, i) { return s + i.price * i.qty; }, 0);
+  var fee = getDeliveryFee();
+  var grandTotal = itemsTotal + fee;
+
+  var totalDiv = document.getElementById('orderTotal');
+  if (totalDiv && order.length > 0) {
+    var html = '';
+    if (fee > 0) {
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
+        '<span>Subtotal:</span><span>RD$' + itemsTotal.toLocaleString() + '</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;border-top:1px dashed #e2e8f0;">' +
+        '<span>🛵 Delivery:</span><span>RD$' + fee.toLocaleString() + '</span></div>';
+    }
+    html += '<div class="order-total"><span>TOTAL:</span><span>RD$' + grandTotal.toLocaleString() + '</span></div>';
+    totalDiv.innerHTML = html;
+  }
+}
+
+function captureGPS(context) {
+  var statusId = context === 'checkout' ? 'checkoutGpsStatus' : 'gpsStatus';
+  var addressId = context === 'checkout' ? 'checkoutDeliveryAddress' : 'deliveryAddress';
+  var statusEl = document.getElementById(statusId);
+
+  if (!navigator.geolocation) {
+    statusEl.textContent = 'Tu navegador no soporta geolocalización';
+    return;
+  }
+
+  statusEl.textContent = 'Obteniendo ubicación...';
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude.toFixed(6);
+      var lng = pos.coords.longitude.toFixed(6);
+      customerGpsLink = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+      statusEl.innerHTML = '✅ Ubicación capturada — <a href="' + customerGpsLink + '" target="_blank" style="color:var(--primary-light);">Ver en mapa</a>';
+      var addressInput = document.getElementById(addressId);
+      if (addressInput && !addressInput.value.trim()) {
+        addressInput.value = 'GPS: ' + lat + ', ' + lng;
+      }
+    },
+    function(err) {
+      statusEl.textContent = 'No se pudo obtener ubicación: ' + err.message;
+      customerGpsLink = '';
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
 function formatCardNumber(input) {
   let v = input.value.replace(/\D/g, '').substring(0, 16);
   input.value = v.replace(/(.{4})/g, '$1 ').trim();
@@ -3406,6 +3676,19 @@ async function processPayment() {
     errorDiv.style.display = 'block';
     document.getElementById('checkoutPhone').focus();
     return;
+  }
+
+  // Validate delivery address if delivery selected
+  if (selectedOrderType === 'delivery') {
+    var chkAddr = (document.getElementById('checkoutDeliveryAddress').value || '').trim();
+    if (!chkAddr) {
+      document.getElementById('checkoutDeliveryAddress').classList.add('invalid');
+      errorDiv.textContent = 'Por favor ingresa la dirección de entrega';
+      errorDiv.style.display = 'block';
+      document.getElementById('checkoutDeliveryAddress').focus();
+      return;
+    }
+    customerAddress = chkAddr;
   }
 
   // Validate terms checkbox
@@ -3448,7 +3731,7 @@ async function processPayment() {
     const expirationFormatted = '20' + parts[1] + parts[0];
 
     // Amount in cents (no decimals)
-    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const total = order.reduce((s, i) => s + i.price * i.qty, 0) + getDeliveryFee();
     const amountCents = Math.round(total * 100).toString();
 
     // Generate custom order ID
@@ -3750,7 +4033,9 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       notes: item.notes || null
     }));
 
-    const total = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+    const deliveryFeeCharged = getDeliveryFee();
+    const total = itemsTotal + deliveryFeeCharged;
 
     const nextNum = await getNextOrderNumber();
 
@@ -3759,12 +4044,17 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       total: total,
       status: status,
       phone: customerPhone,
-      restaurant_slug: SLUG
+      restaurant_slug: SLUG,
+      order_type: selectedOrderType
     };
     if (nextNum) orderPayload.order_number = nextNum;
 
     if (azulOrderId) orderPayload.azul_order_id = azulOrderId;
     if (customerName) orderPayload.customer_name = customerName;
+    if (selectedOrderType === 'delivery') {
+      orderPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
+      orderPayload.delivery_fee = deliveryFeeCharged;
+    }
 
     dbg('📤 Enviando orden (paid) #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200));
 
@@ -4632,6 +4922,9 @@ async function init() {
   applyBranding(restaurantData);
   applyPlanRestrictions(restaurantData);
   menuGroups = restaurantData.menu_groups || null;
+  enabledOrderTypes = restaurantData.order_types || ['dine_in'];
+  restaurantDeliveryFee = restaurantData.delivery_fee || 0;
+  selectedOrderType = enabledOrderTypes[0] || 'dine_in';
 
   // 3. Receipt branding
   const receiptLogo = document.getElementById('receiptLogoText');

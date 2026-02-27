@@ -331,6 +331,21 @@
       background: #f0f9ff; border-radius: 8px; border-left: 3px solid #0ea5e9;
       font-size: 0.95em; color: #0c4a6e; font-weight: 600;
     }
+    .order-type-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 0.8em; font-weight: 700; margin-left: 8px;
+    }
+    .order-type-badge.type-dine_in { background: #dbeafe; color: #1e40af; }
+    .order-type-badge.type-take_out { background: #fef3c7; color: #92400e; }
+    .order-type-badge.type-delivery { background: #ede9fe; color: #5b21b6; }
+    .accepted .order-type-badge, .notified .order-type-badge { background: rgba(255,255,255,0.2); color: white; }
+    .order-delivery-info {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px 12px; margin-top: 6px; font-size: 0.88em;
+    }
+    .order-delivery-info a { color: #4338ca; text-decoration: none; font-weight: 600; }
+    .accepted .order-delivery-info, .notified .order-delivery-info { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white; }
+    .accepted .order-delivery-info a, .notified .order-delivery-info a { color: #c4b5fd; }
 
     .wa-btn {
       display: inline-flex; align-items: center; gap: 8px;
@@ -1824,15 +1839,36 @@ async function loadOrders() {
       else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
 
       const totalLabel = isPaid ? '💳 Total pagado:' : '💵 TOTAL A COBRAR:';
-      const waMsg = isPaid
-        ? `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`
-        : `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
+      let waMsg;
+      if (order.order_type === 'delivery') {
+        waMsg = `Hola! Tu orden #${orderNum} de ${DISPLAY_NAME} va en camino!`;
+      } else if (isPaid) {
+        waMsg = `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`;
+      } else {
+        waMsg = `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
+      }
+
+      const orderTypeLabels = { dine_in: '🍽️ Comer aquí', take_out: '🥡 Para Llevar', delivery: '🛵 Delivery' };
+      const orderTypeBadge = order.order_type ? '<span class="order-type-badge type-' + order.order_type + '">' + (orderTypeLabels[order.order_type] || order.order_type) + '</span>' : '';
+
+      let deliveryInfoHTML = '';
+      if (order.order_type === 'delivery' && order.customer_address) {
+        let addrDisplay = order.customer_address;
+        const mapMatch = addrDisplay.match(/(https:\/\/www\.google\.com\/maps\?q=[^\s|]+)/);
+        if (mapMatch) {
+          addrDisplay = addrDisplay.replace(' | ' + mapMatch[1], '').replace(mapMatch[1], '');
+          addrDisplay = (addrDisplay.trim() || 'Ver ubicación') + ' — <a href="' + mapMatch[1] + '" target="_blank">📍 Ver en mapa</a>';
+        }
+        deliveryInfoHTML = '<div class="order-delivery-info">📍 ' + addrDisplay;
+        if (order.delivery_fee) deliveryInfoHTML += '<br>🛵 Delivery: RD$' + order.delivery_fee.toLocaleString();
+        deliveryInfoHTML += '</div>';
+      }
 
       const div = document.createElement("div");
       div.className = `order ${statusClass}`;
       div.innerHTML = `
         <div class="order-number">#${orderNum}</div>
-        <span class="order-status ${statusBadgeClass}">${statusText}</span>
+        <span class="order-status ${statusBadgeClass}">${statusText}</span>${orderTypeBadge}
         <div class="order-items">
           <strong class="order-items-label" style="font-size: 0.95em;">📋 ITEMS:</strong>
           <ul class="order-items-list">
@@ -1844,6 +1880,8 @@ async function loadOrders() {
           <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
         ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
+        ${order.customer_name ? `<div class="order-phone" style="border-left-color:#8b5cf6;">👤 ${order.customer_name}</div>` : ''}
+        ${deliveryInfoHTML}
         <div class="order-time">
           ⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}
           ${(status === 'pending' || status === 'paid') && minutes >= 1 ? `<span class="time-alert ${minutes >= 2 ? 'critical' : ''}">⚠️ URGENTE</span>` : ''}
