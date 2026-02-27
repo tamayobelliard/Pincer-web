@@ -53,12 +53,35 @@
     .legend-dot.available { background: #22c55e; }
     .legend-dot.soldout { background: #ef4444; }
 
+    .products-filters {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .products-filters select, .products-filters input[type="text"] {
+      padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.85em;
+      background: white; color: #1e293b; outline: none;
+    }
+    .products-filters select:focus, .products-filters input[type="text"]:focus { border-color: #6366f1; }
+    .products-filters input[type="text"] { flex: 1; min-width: 160px; }
+    .cat-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; margin: 8px 0 4px 0; background: #f1f5f9; border-radius: 10px;
+      cursor: pointer; user-select: none; font-weight: 700; font-size: 0.9em; color: #1e1b4b;
+    }
+    .cat-section-header:hover { background: #e2e8f0; }
+    .cat-section-header .cat-count { font-weight: 400; color: #64748b; font-size: 0.85em; }
+    .cat-section-header .cat-arrow { transition: transform 0.2s; font-size: 0.8em; }
+    .cat-section-header.expanded .cat-arrow { transform: rotate(90deg); }
+    .cat-section-grid {
+      display: none; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
+      padding: 8px 0;
+    }
+    .cat-section-grid.show { display: grid; }
     .products-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
     }
-    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
-    @media (min-width: 900px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (min-width: 1200px) { .products-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 600px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } .cat-section-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    @media (min-width: 900px) { .products-grid { grid-template-columns: repeat(3, 1fr); } .cat-section-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1200px) { .products-grid { grid-template-columns: repeat(4, 1fr); } .cat-section-grid { grid-template-columns: repeat(4, 1fr); } }
 
     .product-card {
       background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
@@ -544,7 +567,11 @@
       <button class="btn-add-product" onclick="openProductModal()">+ Agregar Item</button>
     </div>
   </div>
-  <div class="products-grid" id="productsGrid"></div>
+  <div class="products-filters" id="productsFilters" style="display:none;">
+    <select id="menuGroupFilter" onchange="renderProducts()" style="display:none;"></select>
+    <input type="text" id="productSearch" placeholder="🔍 Buscar producto..." oninput="renderProducts()">
+  </div>
+  <div id="productsContainer"></div>
 </div>
 
 <div class="product-modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
@@ -1043,36 +1070,90 @@ function createProductCard(item) {
 }
 
 function renderProducts() {
-  const grid = document.getElementById('productsGrid');
-  grid.innerHTML = '';
+  var container = document.getElementById('productsContainer');
+  container.innerHTML = '';
+  var filtersDiv = document.getElementById('productsFilters');
+
   if (!productsData.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:20px;">No hay productos. Haz click en "+ Agregar Item" para comenzar.</div>';
+    filtersDiv.style.display = 'none';
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">No hay productos. Haz click en "+ Agregar Item" para comenzar.</div>';
     return;
   }
 
+  filtersDiv.style.display = 'flex';
   var hasMenuGroups = productsData.some(function(p) { return p.menu_group; });
 
+  // Menu group dropdown
+  var groupSelect = document.getElementById('menuGroupFilter');
   if (hasMenuGroups) {
-    var groups = {};
-    productsData.forEach(function(item) {
-      var g = item.menu_group || 'Sin grupo';
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(item);
+    var groups = [];
+    productsData.forEach(function(p) {
+      var g = p.menu_group || 'Sin grupo';
+      if (groups.indexOf(g) === -1) groups.push(g);
     });
-    Object.keys(groups).forEach(function(groupName) {
-      var header = document.createElement('div');
-      header.style.cssText = 'grid-column:1/-1;font-size:1.1em;font-weight:700;color:#4338ca;margin-top:12px;padding:8px 0;border-bottom:2px solid #e0e7ff;text-transform:uppercase;letter-spacing:0.5px;';
-      header.textContent = groupName;
-      grid.appendChild(header);
-      groups[groupName].forEach(function(item) {
-        grid.appendChild(createProductCard(item));
-      });
+    var prevVal = groupSelect.value;
+    groupSelect.innerHTML = '<option value="">Todos los grupos</option>';
+    groups.forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g; opt.textContent = g;
+      groupSelect.appendChild(opt);
     });
+    if (prevVal && groups.indexOf(prevVal) !== -1) groupSelect.value = prevVal;
+    groupSelect.style.display = '';
   } else {
-    productsData.forEach(function(item) {
-      grid.appendChild(createProductCard(item));
-    });
+    groupSelect.style.display = 'none';
   }
+
+  // Filter products
+  var searchQuery = (document.getElementById('productSearch').value || '').toLowerCase().trim();
+  var selectedGroup = groupSelect.value;
+  var filtered = productsData.filter(function(p) {
+    if (selectedGroup && (p.menu_group || 'Sin grupo') !== selectedGroup) return false;
+    if (searchQuery && p.name.toLowerCase().indexOf(searchQuery) === -1) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">No se encontraron productos.</div>';
+    return;
+  }
+
+  // Group by category
+  var categories = {};
+  filtered.forEach(function(p) {
+    var cat = p.category || 'extras';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(p);
+  });
+
+  Object.keys(categories).forEach(function(cat) {
+    var items = categories[cat];
+    var catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
+
+    // Section header
+    var header = document.createElement('div');
+    header.className = 'cat-section-header';
+    header.innerHTML = '<span>' + catTitle + ' <span class="cat-count">(' + items.length + ')</span></span><span class="cat-arrow">▶</span>';
+
+    // Section grid
+    var grid = document.createElement('div');
+    grid.className = 'cat-section-grid';
+    items.forEach(function(item) { grid.appendChild(createProductCard(item)); });
+
+    // If searching, expand all sections
+    if (searchQuery) {
+      header.classList.add('expanded');
+      grid.classList.add('show');
+    }
+
+    header.onclick = function() {
+      header.classList.toggle('expanded');
+      grid.classList.toggle('show');
+    };
+
+    container.appendChild(header);
+    container.appendChild(grid);
+  });
 }
 
 async function toggleSoldOut(productId, isSoldOut) {
