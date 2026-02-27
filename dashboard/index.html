@@ -92,6 +92,12 @@
     .product-card-actions {
       display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 8px;
     }
+    .btn-quick-photo {
+      background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+      padding: 4px 8px; cursor: pointer; font-size: 1em; line-height: 1;
+    }
+    .btn-quick-photo:hover { background: #f1f5f9; }
+    .photo-uploading { opacity: 0.5; pointer-events: none; }
 
     .toggle-row { display: flex; align-items: center; gap: 6px; }
     .toggle-label { font-size: 0.72em; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -575,8 +581,17 @@
     <textarea id="pmDescription" placeholder="Ingredientes, descripción..."></textarea>
   </div>
   <div class="product-modal-field">
-    <label>URL de imagen</label>
-    <input type="text" id="pmImgUrl" placeholder="https://i.imgur.com/...">
+    <label>Foto del producto</label>
+    <div id="pmImagePreview" style="display:none;margin-bottom:8px;">
+      <img id="pmImagePreviewImg" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <button type="button" id="pmUploadBtn" onclick="document.getElementById('pmFileInput').click()" style="background:#6366f1;color:white;border:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:0.85em;cursor:pointer;">📷 Subir Foto</button>
+      <span id="pmUploadStatus" style="font-size:0.8em;color:#64748b;"></span>
+      <input type="file" id="pmFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleModalImageUpload(this)">
+    </div>
+    <label style="font-size:0.8em;color:#94a3b8;">O pega un URL</label>
+    <input type="text" id="pmImgUrl" placeholder="https://..." oninput="updateImagePreview()">
   </div>
   <div class="product-modal-toggle">
     <span>Activo</span>
@@ -1021,6 +1036,7 @@ function createProductCard(item) {
           <span class="toggle-slider"></span>
         </label>
       </div>
+      <button class="btn-quick-photo" onclick="event.stopPropagation();quickUploadPhoto('${item.id}')" title="Subir foto">📷</button>
       <button class="btn-edit-product" onclick="openProductModal('${item.id}')">Editar</button>
     </div>`;
   return card;
@@ -1123,6 +1139,8 @@ function openProductModal(editId) {
     document.getElementById('pmActive').checked = p.active !== false;
     document.getElementById('pmMenuGroup').value = p.menu_group || '';
     document.getElementById('pmDeleteBtn').style.display = 'block';
+    updateImagePreview();
+    document.getElementById('pmUploadStatus').textContent = '';
   } else {
     document.getElementById('productModalTitle').textContent = 'Agregar Producto';
     document.getElementById('pmEditId').value = '';
@@ -1135,6 +1153,8 @@ function openProductModal(editId) {
     document.getElementById('pmActive').checked = true;
     document.getElementById('pmMenuGroup').value = '';
     document.getElementById('pmDeleteBtn').style.display = 'none';
+    updateImagePreview();
+    document.getElementById('pmUploadStatus').textContent = '';
   }
 
   overlay.classList.add('show');
@@ -1144,6 +1164,136 @@ function openProductModal(editId) {
 function closeProductModal() {
   document.getElementById('productModal').classList.remove('show');
   setTimeout(() => document.getElementById('productModalOverlay').classList.remove('show'), 350);
+}
+
+// ── Image upload helpers ──
+
+function compressImage(file, maxWidth) {
+  maxWidth = maxWidth || 800;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', 0.8);
+    };
+    img.onerror = function() { reject(new Error('Error al leer imagen')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function uploadProductImage(file, productId) {
+  var blob = await compressImage(file, 800);
+  var path = SLUG + '/' + productId + '.jpg';
+  var res = await fetch(
+    SUPABASE_URL + '/storage/v1/object/product-images/' + path,
+    {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'true'
+      },
+      body: blob
+    }
+  );
+  if (!res.ok) {
+    var errText = await res.text();
+    throw new Error('Upload failed: ' + errText);
+  }
+  return SUPABASE_URL + '/storage/v1/object/public/product-images/' + path + '?t=' + Date.now();
+}
+
+function updateImagePreview() {
+  var url = document.getElementById('pmImgUrl').value.trim();
+  var preview = document.getElementById('pmImagePreview');
+  var img = document.getElementById('pmImagePreviewImg');
+  if (url) {
+    img.src = url;
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function handleModalImageUpload(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+  var status = document.getElementById('pmUploadStatus');
+  var btn = document.getElementById('pmUploadBtn');
+
+  if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    status.textContent = '❌ Solo JPG, PNG o WebP';
+    status.style.color = '#dc2626';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    status.textContent = '❌ Máximo 2MB';
+    status.style.color = '#dc2626';
+    return;
+  }
+
+  var productId = document.getElementById('pmEditId').value;
+  if (!productId) {
+    var name = document.getElementById('pmName').value.trim();
+    if (!name) { status.textContent = '❌ Escribe el nombre primero'; status.style.color = '#dc2626'; return; }
+    productId = SLUG + '-' + slugify(name);
+  }
+
+  status.textContent = '⏳ Subiendo...';
+  status.style.color = '#64748b';
+  btn.disabled = true;
+
+  try {
+    var publicUrl = await uploadProductImage(file, productId);
+    document.getElementById('pmImgUrl').value = publicUrl;
+    updateImagePreview();
+    status.textContent = '✅ Foto subida';
+    status.style.color = '#16a34a';
+  } catch (e) {
+    dbg('❌ Image upload error: ' + e.message);
+    status.textContent = '❌ Error al subir';
+    status.style.color = '#dc2626';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function quickUploadPhoto(productId) {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.onchange = async function() {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) { alert('Solo JPG, PNG o WebP'); return; }
+    if (file.size > 2 * 1024 * 1024) { alert('Máximo 2MB'); return; }
+
+    var card = document.getElementById('prodCard_' + productId);
+    if (card) card.classList.add('photo-uploading');
+
+    try {
+      var publicUrl = await uploadProductImage(file, productId);
+      // PATCH img_url in Supabase
+      await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products?id=eq.' + encodeURIComponent(productId) + '&restaurant_slug=eq.' + encodeURIComponent(SLUG),
+        { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify({ img_url: publicUrl }) },
+        10000
+      );
+      dbg('✅ Foto actualizada: ' + productId);
+      await loadProducts();
+    } catch (e) {
+      dbg('❌ Quick photo upload error: ' + e.message);
+      alert('Error al subir foto. Intenta de nuevo.');
+      if (card) card.classList.remove('photo-uploading');
+    }
+  };
+  input.click();
 }
 
 async function saveProduct() {
