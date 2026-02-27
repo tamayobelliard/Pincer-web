@@ -3903,6 +3903,7 @@ let bubblePermanentlyClosed = false;
 let chatHistory = []; // { role: 'user'|'assistant', content: string }
 let chatOpen = false;
 let welcomeShown = false;
+let currentLanguage = null; // null = not yet confirmed, 'es' = Spanish, 'en' = English, etc.
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -4038,12 +4039,35 @@ function showWelcomeMessages() {
     pinzerSay('¡Klk! Bienvenido a Mr. Sandwich 🔥 ¿Es tu primera vez por aquí?');
   }, 500);
 
-  setTimeout(() => {
-    pinzerShowReplies([
-      { label: '👋 Sí, primera vez' },
-      { label: '🔄 Ya he venido antes' }
-    ]);
-  }, 1200);
+  // Proactive language offer based on browser language
+  var bLang = (navigator.language || 'es').toLowerCase();
+  var langKey = bLang.split('-')[0];
+  var langOffers = {
+    en: 'Would you like me to assist you in English? 🇺🇸',
+    fr: 'Souhaitez-vous que je vous réponde en français? 🇫🇷',
+    ht: 'Èske ou ta renmen m pale kreyòl avèk ou? 🇭🇹',
+    de: 'Möchten Sie, dass ich auf Deutsch antworte? 🇩🇪',
+    pt: 'Gostaria que eu respondesse em português? 🇧🇷'
+  };
+
+  if (langOffers[langKey]) {
+    setTimeout(() => {
+      pinzerSay(langOffers[langKey]);
+      setTimeout(() => {
+        pinzerShowReplies([
+          { label: '✅ Yes / Sí' },
+          { label: '🇪🇸 No, español' }
+        ]);
+      }, 300);
+    }, 1300);
+  } else {
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 1200);
+  }
 }
 
 function pinzerSay(message) {
@@ -4085,19 +4109,20 @@ function handleQuickReply(label) {
   pinzerClearReplies();
 
   // Close-chat buttons
-  const closeLabels = ['👋 Cerrar', '✅ Eso es todo'];
-  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú');
+  const closeLabels = ['👋 Cerrar', '✅ Eso es todo', '👋 Close', '✅ That\'s all'];
+  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú') || label.toLowerCase().includes('browse the menu') || label.toLowerCase().includes('i\'ll browse');
 
   if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
     pinzerUserSay(label);
+    var isEs2 = !currentLanguage || currentLanguage === 'es';
     const farewell = isViewMenu
-      ? '¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪'
-      : '¡Buen provecho! Si necesitas algo aquí toy 💪';
+      ? (isEs2 ? '¡Dale! Ahí lo tienes 👆 Si necesitas algo me dices 💪' : 'There you go! 👆 Let me know if you need anything 💪')
+      : (isEs2 ? '¡Buen provecho! Si necesitas algo aquí toy 💪' : 'Enjoy your meal! I\'m here if you need anything 💪');
     pinzerSay(farewell);
     setTimeout(() => {
       closePinzer();
       bubblePermanentlyClosed = false;
-      showBubble('Aquí toy si me necesitas 💪', '👨‍🍳');
+      showBubble(isEs2 ? 'Aquí toy si me necesitas 💪' : 'I\'m here if you need me!', '👨‍🍳');
       setTimeout(() => {
         const bubble = document.getElementById('speechBubble');
         if (bubble) bubble.classList.remove('show');
@@ -4106,10 +4131,34 @@ function handleQuickReply(label) {
     return;
   }
 
-  // Static mappings for welcome buttons
+  // Language choice buttons
+  if (label === '✅ Yes / Sí') {
+    pinzerUserSay(label);
+    var detectedLang = (navigator.language || 'es').toLowerCase().split('-')[0];
+    currentLanguage = detectedLang;
+    var confirmMsgs = { en: 'Yes, English please', fr: 'Oui, en français svp', ht: 'Wi, an Kreyòl souple', de: 'Ja, auf Deutsch bitte', pt: 'Sim, em português por favor' };
+    sendToAI(confirmMsgs[detectedLang] || 'Yes please');
+    return;
+  }
+  if (label === '🇪🇸 No, español') {
+    pinzerUserSay(label);
+    currentLanguage = 'es';
+    pinzerSay('¡Perfecto! ¿Es tu primera vez por aquí?');
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 300);
+    return;
+  }
+
+  // Static mappings for welcome buttons (Spanish + English)
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú',
+    '👋 First time here': 'This is my first time here, I don\'t know the menu',
+    '🔄 I\'ve been here before': 'I\'ve been here before, I already know the menu'
   };
 
   const aiMessage = messageMap[label] || label;
@@ -4154,7 +4203,9 @@ async function sendToAI(userMessage) {
         messages: chatHistory,
         menuData: buildMenuData(),
         restaurant_slug: 'mrsandwich',
-        restaurant_name: 'Mr. Sandwich by Chef Elly'
+        restaurant_name: 'Mr. Sandwich by Chef Elly',
+        browserLanguage: navigator.language || 'es',
+        currentLanguage: currentLanguage
       })
     });
 
