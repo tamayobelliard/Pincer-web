@@ -4497,22 +4497,36 @@ async function sendToAI(userMessage) {
   chatHistory.push({ role: 'user', content: userMessage });
   showTypingIndicator();
 
+  const payload = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: chatHistory,
+      menuData: buildMenuData(),
+      restaurant_slug: SLUG,
+      restaurant_name: restaurantData?.display_name || SLUG,
+      browserLanguage: navigator.language || 'es',
+      currentLanguage: currentLanguage
+    })
+  };
+
+  let res;
   try {
-    const res = await fetch('/api/waiter-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: chatHistory,
-        menuData: buildMenuData(),
-        restaurant_slug: SLUG,
-        restaurant_name: restaurantData?.display_name || SLUG,
-        browserLanguage: navigator.language || 'es',
-        currentLanguage: currentLanguage
-      })
-    });
+    res = await fetch('/api/waiter-chat', { ...payload, signal: AbortSignal.timeout(30000) });
+  } catch (e1) {
+    // First attempt failed — retry once
+    try {
+      res = await fetch('/api/waiter-chat', { ...payload, signal: AbortSignal.timeout(30000) });
+    } catch (e2) {
+      hideTypingIndicator();
+      pinzerSay('Tardé un poco, intenta de nuevo 😅');
+      return;
+    }
+  }
 
-    hideTypingIndicator();
+  hideTypingIndicator();
 
+  try {
     if (res.ok) {
       const data = await res.json();
       const rawAnswer = data.answer || 'Algo salió mal 😅 Intenta de nuevo.';
@@ -4543,11 +4557,10 @@ async function sendToAI(userMessage) {
       const chatMsgs = document.getElementById('pinzer-messages');
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
     } else {
-      pinzerSay('Algo falló 😅 Intenta de nuevo en un momento.');
+      pinzerSay('Tardé un poco, intenta de nuevo 😅');
     }
   } catch (e) {
-    hideTypingIndicator();
-    pinzerSay('Sin conexión 😅 Intenta de nuevo.');
+    pinzerSay('Tardé un poco, intenta de nuevo 😅');
   }
 }
 

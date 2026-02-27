@@ -225,8 +225,8 @@ ${menuData}`;
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 350,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
         system: systemPrompt,
         messages: messages.slice(-10)
       })
@@ -249,3 +249,5 @@ ${menuData}`;
     res.status(500).json({ answer: p.error });
   }
 }
+
+export const config = { maxDuration: 30 };
