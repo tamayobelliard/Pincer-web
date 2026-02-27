@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, menuData, restaurant_slug, restaurant_name } = req.body;
+  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage } = req.body;
 
   try {
     const rName = restaurant_name || 'este restaurante';
@@ -99,25 +99,58 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Plan Premium requerido' });
     }
 
-    console.log('waiter-chat personality:', restaurant_slug, '->', personality);
+    const lang = (browserLanguage || 'es').toLowerCase();
+    const isSpanish = lang.startsWith('es');
+
+    console.log('waiter-chat personality:', restaurant_slug, '->', personality, '| lang:', lang);
 
     const p = PERSONALITIES[personality] || PERSONALITIES.casual;
 
     // Welcome-only request: return greeting without calling Claude
     if (req.body.welcome) {
       const rName = restaurant_name || 'nuestro restaurante';
-      const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
-      const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
-      const sep = emoji ? ' ' + emoji + ' ' : '. ';
-      const greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
-      return res.status(200).json({ answer: greeting });
+      let greeting;
+      if (!isSpanish && lang.startsWith('en')) {
+        greeting = `Welcome to ${rName}! 🙌 I'm Pincer, your virtual waiter. What are you in the mood for today?`;
+      } else if (!isSpanish && lang.startsWith('fr')) {
+        greeting = `Bienvenue chez ${rName}! 🙌 Je suis Pincer, votre serveur virtuel. Qu'est-ce qui vous ferait plaisir aujourd'hui?`;
+      } else if (!isSpanish && lang.startsWith('ht')) {
+        greeting = `Byenveni nan ${rName}! 🙌 Mwen se Pincer, gason vitrin ou. Kisa ou ta renmen jodi a?`;
+      } else {
+        const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
+        const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
+        const sep = emoji ? ' ' + emoji + ' ' : '. ';
+        greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
+      }
+      return res.status(200).json({ answer: greeting, detectedLanguage: lang });
     }
 
-    const systemPrompt = `Eres el mesero virtual de ${rName}.
+    // Build language-specific prompt sections
+    const langInstruction = isSpanish ? '' : `
+LANGUAGE RULES:
+- The customer's browser language is "${lang}". You MUST respond in this language.
+- NEVER switch languages unless the customer explicitly asks you to.
+- Translate menu item names and descriptions naturally into the customer's language, but keep original name in parentheses on first mention.
+- Keep ALL prices in RD$ always.${lang.startsWith('en') ? `
+- For English speakers: highlight Dominican dishes with brief cultural context (e.g. "Mangú — a beloved Dominican mashed plantain dish").` : ''}${lang.startsWith('ht') ? `
+- For Haitian Creole (Kreyòl): use a warm, respectful tone. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
+- For totals over RD$500, show USD equivalent in parentheses (use approximate rate: 1 USD = 60 RD$).
+- Buttons text must also be in the customer's language.
+`;
 
+    const personalityTone = {
+      dominicano: isSpanish ? p.style : '- Warm, lively tone with Dominican flavor adapted to the customer\'s language. Friendly and confident like a great host.',
+      habibi: isSpanish ? p.style : '- Warm, generous Middle Eastern hospitality adapted to the customer\'s language. The customer is sacred.',
+      casual: isSpanish ? p.style : '- Friendly, relaxed neutral tone. Like a friend recommending food.',
+      formal: isSpanish ? p.style : '- Professional, polished tone. Use formal register of the customer\'s language (e.g. "vous" in French, formal "you" in English).',
+      playful: isSpanish ? p.style : '- Fun, enthusiastic, energetic tone. Every dish is an adventure! Use 2-3 emojis per message.',
+    }[personality] || (isSpanish ? p.style : '- Friendly, relaxed neutral tone.');
+
+    const systemPrompt = `Eres el mesero virtual de ${rName}.
+${langInstruction}
 ESTILO DE CONVERSACIÓN:
 - NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
-${p.style}
+${personalityTone}
 - Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
 - NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
@@ -133,9 +166,9 @@ FORMATO DE RESPUESTA:
 FLUJO DE ORDERING (sigue este flujo natural):
 
 1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
-   Si dice primera vez: "${p.greeting_first} 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?"
-   [BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]
-   Si ya ha venido: "${p.greeting_return}" y muestra las categorías del menú como botones.
+   Si dice primera vez: "${isSpanish ? p.greeting_first + ' 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?' : 'Respond warmly and offer to guide them through the menu or let them browse.'}"
+   ${isSpanish ? '[BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]' : '[BUTTONS: 🍽️ Guide me | 👀 I\'ll browse the menu]'}
+   Si ya ha venido: "${isSpanish ? p.greeting_return : 'Welcome them back warmly'}" y muestra las categorías del menú como botones.
 
 2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
 
@@ -143,36 +176,37 @@ FLUJO DE ORDERING (sigue este flujo natural):
 
 4. DETALLE: Cuando elija un item, describe brevemente qué trae (1 oración) y ofrece ver la foto:
    [SHOW_PHOTO: item_id]
-   [BUTTONS: 📸 Ver foto | ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]
+   ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: 📸 See photo | ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
 5. FOTO: Si el cliente pide ver la foto, responde breve y vuelve a ofrecer agregar:
    [SHOW_PHOTO: item_id]
-   [BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]
+   ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
 6. NOTAS: Si el cliente dice "Agregar al carrito", ANTES de agregar pregunta por notas:
-   "¿Alguna nota especial? Ej: sin vegetales, extra queso..."
-   [BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]
+   ${isSpanish ? '"¿Alguna nota especial? Ej: sin vegetales, extra queso..."' : '"Any special notes? E.g. no veggies, extra cheese..."'}
+   ${isSpanish ? '[BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]' : '[BUTTONS: 👌 No changes, it\'s perfect | ✏️ I want to customize]'}
    - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id]
-   - Si dice "Quiero hacer un cambio": dile "Dale, escríbeme qué quieres cambiar"
+   - Si dice "Quiero hacer un cambio": dile que escriba qué quiere cambiar
    - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió]
    Después de agregar, ofrece:
-   [BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]
+   ${isSpanish ? '[BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🍟 Add a side | 🥤 Something else | ✅ That\'s all]'}
 
 7. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
 
 8. CIERRE: Si dice "Eso es todo", despídete brevemente:
-   [BUTTONS: 👋 Cerrar]
+   ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
 
 REGLAS IMPORTANTES:
 - Los item_ids están en el menú con formato [id:xxx]. Usa EXACTAMENTE esos IDs en [ADD_TO_CART:]
 - CONVERSACIONAL: Cada mensaje debe sentirse como un intercambio real, no un monólogo
-- Si el cliente dice "no sé qué pedir", hazle UNA pregunta: "¿Te va más carne, pollo o algo más ligero?"
+- Si el cliente dice "no sé qué pedir", hazle UNA pregunta sobre sus preferencias
 - Si el cliente muestra interés en algo, profundiza y sugiere complementos
 - Solo recomienda items del menú actual
 - Si un item está [AGOTADO], di que se acabó y sugiere alternativa
 - Precios en RD$
 - Si preguntan algo fuera del restaurante, redirige amablemente a la comida
-- Nunca inventes items que no están en el menú
+- NUNCA inventes items o precios que no están en el menú
+- NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
 
 MENÚ ACTUAL (items disponibles):
 ${menuData}`;

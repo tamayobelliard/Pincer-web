@@ -4327,7 +4327,8 @@ async function showWelcomeMessages() {
       body: JSON.stringify({
         welcome: true,
         restaurant_slug: SLUG,
-        restaurant_name: restaurantData?.display_name || SLUG
+        restaurant_name: restaurantData?.display_name || SLUG,
+        browserLanguage: navigator.language || 'es'
       })
     });
     hideTypingIndicator();
@@ -4342,10 +4343,12 @@ async function showWelcomeMessages() {
     pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
   }
 
+  var bLang = (navigator.language || 'es').toLowerCase();
+  var isEs = bLang.startsWith('es');
   setTimeout(() => {
     pinzerShowReplies([
-      { label: '👋 Sí, primera vez' },
-      { label: '🔄 Ya he venido antes' }
+      { label: isEs ? '👋 Sí, primera vez' : '👋 First time here' },
+      { label: isEs ? '🔄 Ya he venido antes' : '🔄 I\'ve been here before' }
     ]);
   }, 500);
 }
@@ -4389,19 +4392,21 @@ function handleQuickReply(label) {
   pinzerClearReplies();
 
   // Close-chat buttons
-  const closeLabels = ['👋 Cerrar', '✅ Eso es todo'];
-  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú');
+  const closeLabels = ['👋 Cerrar', '✅ Eso es todo', '👋 Close', '✅ That\'s all'];
+  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú') || label.toLowerCase().includes('browse the menu') || label.toLowerCase().includes('i\'ll browse');
 
   if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
     pinzerUserSay(label);
+    var bLang2 = (navigator.language || 'es').toLowerCase();
+    var isEs2 = bLang2.startsWith('es');
     const farewell = isViewMenu
-      ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪'
-      : '¡Buen provecho! Si necesitas algo, aquí estoy 💪';
+      ? (isEs2 ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪' : 'There you go! 👆 Let me know if you need anything 💪')
+      : (isEs2 ? '¡Buen provecho! Si necesitas algo, aquí estoy 💪' : 'Enjoy your meal! I\'m here if you need anything 💪');
     pinzerSay(farewell);
     setTimeout(() => {
       closePinzer();
       bubblePermanentlyClosed = false;
-      showBubble('¡Aquí estoy si me necesitas!', '👨‍🍳');
+      showBubble(isEs2 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
       setTimeout(() => {
         const bubble = document.getElementById('speechBubble');
         if (bubble) bubble.classList.remove('show');
@@ -4410,10 +4415,12 @@ function handleQuickReply(label) {
     return;
   }
 
-  // Static mappings for welcome buttons
+  // Static mappings for welcome buttons (Spanish + English)
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú'
+    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú',
+    '👋 First time here': 'This is my first time here, I don\'t know the menu',
+    '🔄 I\'ve been here before': 'I\'ve been here before, I already know the menu'
   };
 
   const aiMessage = messageMap[label] || label;
@@ -4458,7 +4465,8 @@ async function sendToAI(userMessage) {
         messages: chatHistory,
         menuData: buildMenuData(),
         restaurant_slug: SLUG,
-        restaurant_name: restaurantData?.display_name || SLUG
+        restaurant_name: restaurantData?.display_name || SLUG,
+        browserLanguage: navigator.language || 'es'
       })
     });
 
