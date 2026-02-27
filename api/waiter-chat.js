@@ -113,22 +113,13 @@ export default async function handler(req, res) {
     // Language name mapping for the offer prompt
     const LANG_NAMES = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
 
-    // Welcome-only request: return greeting without calling Claude
+    // Welcome-only request: return greeting without calling Claude (always in Spanish)
     if (req.body.welcome) {
       const rName = restaurant_name || 'nuestro restaurante';
       const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
       const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
       const sep = emoji ? ' ' + emoji + ' ' : '. ';
-      let greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
-
-      // If browser is non-Spanish, greet in Spanish but offer the detected language
-      const langKey = lang.split('-')[0];
-      if (!browserIsSpanish && LANG_NAMES[langKey]) {
-        const langName = LANG_NAMES[langKey];
-        greeting += `\n\n¿Preferiría que le atendiera en ${langName}? / Would you like me to assist you in ${langName}?`;
-        return res.status(200).json({ answer: greeting, offerLanguage: langKey });
-      }
-
+      const greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
       return res.status(200).json({ answer: greeting });
     }
 
@@ -147,19 +138,6 @@ LANGUAGE RULES:
 - Use a warm, respectful tone in Kreyòl. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
 - For totals over RD$500, show USD equivalent in parentheses (use approximate rate: 1 USD = 60 RD$).
 - Buttons text must also be in ${confirmedName}.
-`;
-    } else if (!confirmedLang && !browserIsSpanish) {
-      // Language not yet confirmed but browser is non-Spanish — detect from messages
-      langInstruction = `
-LANGUAGE DETECTION:
-- The conversation is in Spanish by default. The customer has NOT yet chosen a language.
-- If the customer writes a full sentence clearly in a non-Spanish language, respond with BOTH: a response in that language AND a bilingual confirmation:
-  For English: "I noticed you wrote in English — would you like me to switch? / Noté que escribiste en inglés, ¿quieres que cambie?"
-  For French: "J'ai remarqué que vous écrivez en français — voulez-vous que je continue? / Noté que escribiste en francés, ¿quieres que cambie?"
-  For other languages: adapt similarly with bilingual prompt.
-  Then add: [LANG_OFFER: detected_language_code]
-- If this is a single word or button click, do NOT offer to switch — just respond in Spanish.
-- Keep responding in Spanish until the customer explicitly confirms a switch.
 `;
     } else {
       // Spanish confirmed or browser is Spanish — no language rules needed
@@ -261,19 +239,9 @@ ${menuData}`;
       return res.status(200).json({ answer: p.error });
     }
 
-    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
+    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
-    // Detect mid-conversation language offer from Claude
-    const langOfferMatch = answer.match(/\[LANG_OFFER:\s*(\w+)\]/);
-    const responseData = { answer: answer.replace(/\[LANG_OFFER:\s*\w+\]/g, '').trim() };
-    if (langOfferMatch) {
-      responseData.offerLanguage = langOfferMatch[1];
-    }
-    if (confirmedLang) {
-      responseData.confirmedLanguage = confirmedLang;
-    }
-
-    res.status(200).json(responseData);
+    res.status(200).json({ answer });
 
   } catch (error) {
     console.error('waiter-chat error:', error);

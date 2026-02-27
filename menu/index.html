@@ -4321,8 +4321,6 @@ function closePinzer() {
 
 async function showWelcomeMessages() {
   showTypingIndicator();
-  var bLang = (navigator.language || 'es').toLowerCase();
-  var isEs = bLang.startsWith('es');
   try {
     const res = await fetch('/api/waiter-chat', {
       method: 'POST',
@@ -4338,16 +4336,6 @@ async function showWelcomeMessages() {
     if (res.ok) {
       const data = await res.json();
       pinzerSay(data.answer);
-      // If non-Spanish browser detected, show language choice buttons
-      if (data.offerLanguage) {
-        setTimeout(() => {
-          pinzerShowReplies([
-            { label: data.offerLanguage === 'en' ? '🌐 Yes, English please' : data.offerLanguage === 'fr' ? '🌐 Oui, en français' : data.offerLanguage === 'ht' ? '🌐 Wi, an Kreyòl' : '🌐 Yes / Sí' },
-            { label: '🇩🇴 Español está bien' }
-          ]);
-        }, 500);
-        return;
-      }
     } else {
       pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
     }
@@ -4356,12 +4344,35 @@ async function showWelcomeMessages() {
     pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
   }
 
-  setTimeout(() => {
-    pinzerShowReplies([
-      { label: '👋 Sí, primera vez' },
-      { label: '🔄 Ya he venido antes' }
-    ]);
-  }, 500);
+  // Proactive language offer based on browser language
+  var bLang = (navigator.language || 'es').toLowerCase();
+  var langKey = bLang.split('-')[0];
+  var langOffers = {
+    en: 'Would you like me to assist you in English? 🇺🇸',
+    fr: 'Souhaitez-vous que je vous réponde en français? 🇫🇷',
+    ht: 'Èske ou ta renmen m pale kreyòl avèk ou? 🇭🇹',
+    de: 'Möchten Sie, dass ich auf Deutsch antworte? 🇩🇪',
+    pt: 'Gostaria que eu respondesse em português? 🇧🇷'
+  };
+
+  if (langOffers[langKey]) {
+    setTimeout(() => {
+      pinzerSay(langOffers[langKey]);
+      setTimeout(() => {
+        pinzerShowReplies([
+          { label: '✅ Yes / Sí' },
+          { label: '🇪🇸 No, español' }
+        ]);
+      }, 300);
+    }, 800);
+  } else {
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 500);
+  }
 }
 
 function pinzerSay(message) {
@@ -4408,8 +4419,7 @@ function handleQuickReply(label) {
 
   if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
     pinzerUserSay(label);
-    var bLang2 = (navigator.language || 'es').toLowerCase();
-    var isEs2 = bLang2.startsWith('es');
+    var isEs2 = !currentLanguage || currentLanguage === 'es';
     const farewell = isViewMenu
       ? (isEs2 ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪' : 'There you go! 👆 Let me know if you need anything 💪')
       : (isEs2 ? '¡Buen provecho! Si necesitas algo, aquí estoy 💪' : 'Enjoy your meal! I\'m here if you need anything 💪');
@@ -4427,17 +4437,24 @@ function handleQuickReply(label) {
   }
 
   // Language choice buttons
-  if (label.startsWith('🌐 ')) {
+  if (label === '✅ Yes / Sí') {
     pinzerUserSay(label);
     var detectedLang = (navigator.language || 'es').toLowerCase().split('-')[0];
     currentLanguage = detectedLang;
-    sendToAI(label.startsWith('🌐 Yes') ? 'Yes, English please' : label.startsWith('🌐 Oui') ? 'Oui, en français svp' : label.startsWith('🌐 Wi') ? 'Wi, an Kreyòl souple' : 'Yes please');
+    var confirmMsgs = { en: 'Yes, English please', fr: 'Oui, en français svp', ht: 'Wi, an Kreyòl souple', de: 'Ja, auf Deutsch bitte', pt: 'Sim, em português por favor' };
+    sendToAI(confirmMsgs[detectedLang] || 'Yes please');
     return;
   }
-  if (label === '🇩🇴 Español está bien') {
+  if (label === '🇪🇸 No, español') {
     pinzerUserSay(label);
     currentLanguage = 'es';
-    sendToAI('Español está bien, gracias');
+    pinzerSay('¡Perfecto! ¿Es tu primera vez por aquí?');
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 300);
     return;
   }
 
@@ -4501,10 +4518,6 @@ async function sendToAI(userMessage) {
 
     if (res.ok) {
       const data = await res.json();
-      // Update confirmed language if API tells us
-      if (data.confirmedLanguage) {
-        currentLanguage = data.confirmedLanguage;
-      }
       const rawAnswer = data.answer || 'Algo salió mal 😅 Intenta de nuevo.';
       chatHistory.push({ role: 'assistant', content: rawAnswer });
 
@@ -4524,18 +4537,8 @@ async function sendToAI(userMessage) {
         }
       }
 
-      // If API detected a language offer mid-conversation, show switch buttons
-      if (data.offerLanguage && !currentLanguage) {
-        var ol = data.offerLanguage;
-        var switchBtns = [
-          { label: ol === 'en' ? '🌐 Yes, switch to English' : ol === 'fr' ? '🌐 Oui, en français' : ol === 'ht' ? '🌐 Wi, an Kreyòl' : '🌐 Yes / Sí' },
-          { label: '🇩🇴 Español está bien' }
-        ];
-        // Append any parsed buttons after language choice
-        parsed.buttons.forEach(b => switchBtns.push({ label: b }));
-        pinzerShowReplies(switchBtns);
-      } else if (parsed.buttons.length > 0) {
-        // Show parsed buttons
+      // Show parsed buttons
+      if (parsed.buttons.length > 0) {
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
       }
     } else {
