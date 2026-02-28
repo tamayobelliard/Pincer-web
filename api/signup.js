@@ -24,7 +24,7 @@ async function sendEmail(to, subject, html) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Pincer <onboarding@pincerweb.com>',
+        from: 'Pincer <info@pincerweb.com>',
         to: [to],
         subject,
         html,
@@ -220,7 +220,7 @@ export default async function handler(req, res) {
 
     // Send notification to admin (fire-and-forget)
     sendEmail(
-      'pincerweb@gmail.com',
+      'info@pincerweb.com',
       `Nuevo restaurante registrado: ${restaurant_name}`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
         <h2>Nuevo registro</h2>
