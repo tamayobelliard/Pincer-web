@@ -408,9 +408,11 @@
       <input type="text" id="fieldWebsite" placeholder="@instagram o www...">
       <label>Notas</label>
       <textarea id="fieldNotes" placeholder="Notas adicionales..."></textarea>
-      <label>Logo del negocio (URL)</label>
+      <label>Logo del negocio</label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
-        <input type="text" id="fieldLogoUrl" placeholder="https://i.imgur.com/..." style="margin-bottom:0;flex:1;" oninput="previewLogo()">
+        <input type="hidden" id="fieldLogoUrl">
+        <button type="button" onclick="document.getElementById('logoFileInput').click()" style="padding:8px 14px;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:8px;font-size:0.85em;font-weight:600;color:#64748b;cursor:pointer;font-family:inherit;">Subir logo</button>
+        <input type="file" id="logoFileInput" accept="image/*" style="display:none;" onchange="handleLogoFile(this)">
         <div id="logoPreview" style="width:48px;height:48px;border-radius:50%;border:2px solid #e2e8f0;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#f8fafc;">
           <span style="color:#94a3b8;font-size:0.7em;">Logo</span>
         </div>
@@ -536,6 +538,68 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════════
+// SUPABASE STORAGE (for logo upload)
+// ══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt';
+
+let adminLogoFile = null;
+
+function compressImageForLogo(file, maxWidth) {
+  maxWidth = maxWidth || 400;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', 0.8);
+    };
+    img.onerror = function() { reject(new Error('Error al leer imagen')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function uploadLogoToStorage(slug) {
+  if (!adminLogoFile) return null;
+  try {
+    var blob = await compressImageForLogo(adminLogoFile, 400);
+    var path = 'logos/' + slug + '.jpg';
+    var res = await fetch(SUPABASE_URL + '/storage/v1/object/product-images/' + path, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'true',
+      },
+      body: blob,
+    });
+    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    adminLogoFile = null;
+    return SUPABASE_URL + '/storage/v1/object/public/product-images/' + path + '?t=' + Date.now();
+  } catch (e) {
+    console.error('Logo upload error:', e);
+    return null;
+  }
+}
+
+function handleLogoFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  adminLogoFile = file;
+  var preview = document.getElementById('logoPreview');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    preview.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+  };
+  reader.readAsDataURL(file);
+}
+
 // ══════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════
@@ -915,8 +979,8 @@ function getOrderTypes() {
 }
 
 function previewLogo() {
-  const url = document.getElementById('fieldLogoUrl').value.trim();
-  const preview = document.getElementById('logoPreview');
+  var url = document.getElementById('fieldLogoUrl').value;
+  var preview = document.getElementById('logoPreview');
   if (url) {
     preview.innerHTML = '<img src="' + escapeHtml(url) + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML=\'<span style=color:#ef4444;font-size:0.6em>Error</span>\'">';
   } else {
@@ -944,6 +1008,8 @@ function openNewModal() {
   document.getElementById('fieldType').value = '';
   document.getElementById('fieldPersonality').value = 'casual';
   document.getElementById('fieldLogoUrl').value = '';
+  adminLogoFile = null;
+  document.getElementById('logoFileInput').value = '';
   document.getElementById('logoPreview').innerHTML = '<span style="color:#94a3b8;font-size:0.7em;">Logo</span>';
   resetSchedule();
 
@@ -984,6 +1050,8 @@ function openEditModal(id) {
   document.getElementById('fieldNotes').value = r.notes || '';
   document.getElementById('fieldPersonality').value = r.chatbot_personality || 'casual';
   document.getElementById('fieldLogoUrl').value = r.logo_url || '';
+  adminLogoFile = null;
+  document.getElementById('logoFileInput').value = '';
   previewLogo();
 
   // Order types
@@ -1076,9 +1144,17 @@ async function updateRestaurant() {
   }
   if (useNewSchedule) body.hours = scheduleText;
   body.chatbot_personality = document.getElementById('fieldPersonality').value;
-  body.logo_url = document.getElementById('fieldLogoUrl').value.trim();
   body.order_types = getOrderTypes();
   body.delivery_fee = parseInt(document.getElementById('fieldDeliveryFee').value) || 0;
+
+  // Upload logo if new file selected, otherwise keep existing URL
+  if (adminLogoFile && editingRestaurantSlug) {
+    var logoUrl = await uploadLogoToStorage(editingRestaurantSlug);
+    if (logoUrl) body.logo_url = logoUrl;
+    else body.logo_url = document.getElementById('fieldLogoUrl').value || '';
+  } else {
+    body.logo_url = document.getElementById('fieldLogoUrl').value || '';
+  }
 
   try {
     const res = await adminFetch('/api/admin?action=update', {
@@ -1151,7 +1227,7 @@ async function createRestaurant() {
         website: document.getElementById('fieldWebsite').value.trim(),
         notes: document.getElementById('fieldNotes').value.trim(),
         chatbot_personality: document.getElementById('fieldPersonality').value,
-        logo_url: document.getElementById('fieldLogoUrl').value.trim(),
+        logo_url: document.getElementById('fieldLogoUrl').value || '',
         order_types: getOrderTypes(),
         delivery_fee: parseInt(document.getElementById('fieldDeliveryFee').value) || 0,
       }),
@@ -1161,6 +1237,18 @@ async function createRestaurant() {
     if (data.success) {
       // Store slug for menu upload
       editingRestaurantSlug = data.username;
+
+      // Upload logo if file was selected
+      if (adminLogoFile && editingRestaurantSlug) {
+        var logoUrl = await uploadLogoToStorage(editingRestaurantSlug);
+        if (logoUrl) {
+          await fetch('/api/signup', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ restaurant_slug: editingRestaurantSlug, logo_url: logoUrl }),
+          });
+        }
+      }
 
       document.getElementById('modalForm').style.display = 'none';
       document.getElementById('modalResult').style.display = 'block';

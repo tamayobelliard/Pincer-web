@@ -38,10 +38,51 @@ async function sendEmail(to, subject, html) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // PATCH: update file URLs after signup
+  if (req.method === 'PATCH') {
+    const { restaurant_slug, logo_url, menu_files } = req.body || {};
+    if (!restaurant_slug) return res.status(400).json({ error: 'Missing restaurant_slug' });
+
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseKey) return res.status(500).json({ error: 'Server error' });
+
+    const updates = {};
+    if (logo_url) updates.logo_url = logo_url;
+    if (menu_files) updates.menu_files = menu_files;
+
+    if (Object.keys(updates).length === 0) return res.status(200).json({ success: true });
+
+    try {
+      const patchRes = await fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(updates),
+        }
+      );
+      if (!patchRes.ok) {
+        console.error('File URL update error:', await patchRes.text());
+        return res.status(500).json({ error: 'Error updating files' });
+      }
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('File URL PATCH error:', err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const {
