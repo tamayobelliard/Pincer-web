@@ -16,8 +16,9 @@ async function sendEmail(to, subject, html) {
     console.warn('RESEND_API_KEY not set — skipping email to', to);
     return;
   }
+  console.log('Resend: sending to', to, '| subject:', subject.slice(0, 50));
   try {
-    await fetch('https://api.resend.com/emails', {
+    const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -31,8 +32,115 @@ async function sendEmail(to, subject, html) {
       }),
       signal: AbortSignal.timeout(8000),
     });
+    const respBody = await resp.text();
+    if (!resp.ok) {
+      console.error('Resend API error:', resp.status, respBody);
+    } else {
+      console.log('Resend: sent OK to', to, '| response:', respBody);
+    }
   } catch (e) {
     console.error('Resend email error:', e.message);
+  }
+}
+
+// Background: extract menu products from uploaded images using Claude Vision
+async function extractMenuFromImages(restaurant_slug, menu_files) {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!supabaseKey || !anthropicKey) {
+    console.error('extractMenu: missing SUPABASE_SERVICE_ROLE_KEY or ANTHROPIC_API_KEY');
+    return;
+  }
+
+  const imageFiles = menu_files.filter(f => f.type === 'image');
+  if (imageFiles.length === 0) return;
+
+  console.log(`extractMenu: processing ${imageFiles.length} image(s) for ${restaurant_slug}`);
+
+  let allItems = [];
+
+  for (const file of imageFiles) {
+    try {
+      // Fetch image and convert to base64
+      const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
+      if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url); continue; }
+      const imgBuffer = await imgRes.arrayBuffer();
+      const base64 = Buffer.from(imgBuffer).toString('base64');
+      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+      // Call Claude Haiku with vision
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } },
+              { type: 'text', text: 'Extract all menu items from this image. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.' },
+            ],
+          }],
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!claudeRes.ok) { console.error('extractMenu: Claude API error', claudeRes.status); continue; }
+      const claudeData = await claudeRes.json();
+      const rawText = claudeData.content?.find(c => c.type === 'text')?.text || '';
+
+      // Parse JSON array from response
+      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) { console.error('extractMenu: no JSON array in response'); continue; }
+      const items = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(items)) allItems.push(...items);
+    } catch (e) {
+      console.error('extractMenu: error processing image:', e.message);
+    }
+  }
+
+  if (allItems.length === 0) { console.log('extractMenu: no items extracted'); return; }
+
+  // Build product rows (same format as parse-menu.js)
+  const rows = allItems.map((item, i) => ({
+    id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${i}`,
+    name: String(item.name || '').slice(0, 100),
+    price: Math.round(Number(item.price)) || 0,
+    category: String(item.category || 'General').slice(0, 50),
+    description: String(item.description || '').slice(0, 500),
+    restaurant_slug,
+    active: true,
+    sold_out: false,
+    display_order: i,
+  }));
+
+  console.log(`extractMenu: inserting ${rows.length} products for ${restaurant_slug}`);
+
+  try {
+    const insertRes = await fetch(`${supabaseUrl}/rest/v1/products`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation,resolution=merge-duplicates',
+      },
+      body: JSON.stringify(rows),
+    });
+    if (!insertRes.ok) {
+      console.error('extractMenu: insert error', await insertRes.text());
+    } else {
+      const inserted = await insertRes.json();
+      console.log(`extractMenu: inserted ${inserted.length} products`);
+    }
+  } catch (e) {
+    console.error('extractMenu: insert fetch error', e.message);
   }
 }
 
@@ -76,6 +184,14 @@ export default async function handler(req, res) {
         console.error('File URL update error:', await patchRes.text());
         return res.status(500).json({ error: 'Error updating files' });
       }
+
+      // Fire-and-forget: extract menu products from uploaded images
+      if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image')) {
+        extractMenuFromImages(restaurant_slug, menu_files).catch(e =>
+          console.error('extractMenu background error:', e.message)
+        );
+      }
+
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('File URL PATCH error:', err);

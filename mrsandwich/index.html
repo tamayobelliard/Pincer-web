@@ -452,7 +452,7 @@
       transform: translateX(-50%);
       width: calc(100% - 40px);
       max-width: 460px;
-      background: #dc2626;
+      background: var(--primary, #dc2626);
       color: white;
       border: none;
       padding: 18px;
@@ -460,25 +460,26 @@
       font-size: 1.3em;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 8px 16px rgba(220, 38, 38, 0.4);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
       transition: all 0.3s;
       -webkit-tap-highlight-color: transparent;
     }
-    
+
     .place-order-btn:hover {
-      background: #b91c1c;
+      filter: brightness(0.85);
       transform: translateX(-50%) translateY(-2px);
-      box-shadow: 0 12px 24px rgba(220, 38, 38, 0.5);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
     }
-    
+
     .place-order-btn:active {
       transform: translateX(-50%) translateY(0);
     }
-    
+
     .place-order-btn:disabled {
       background: #94a3b8;
       cursor: not-allowed;
       box-shadow: none;
+      filter: none;
     }
     
     .badge {
@@ -4319,6 +4320,20 @@ async function checkStoreOpen() {
 
 async function init() {
   dbg('🚀 Iniciando Mr. Sandwich...');
+
+  // Load restaurant theme color
+  try {
+    const themeRes = await fetch(
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.mrsandwich&select=menu_style&limit=1',
+      { headers: sbHeaders() }
+    );
+    if (themeRes.ok) {
+      const themeRows = await themeRes.json();
+      if (themeRows[0]?.menu_style?.primary_color) {
+        document.documentElement.style.setProperty('--primary', themeRows[0].menu_style.primary_color);
+      }
+    }
+  } catch (e) { dbg('Theme load skipped'); }
 
   // Cargar órdenes de la sesión
   loadSessionOrders();
