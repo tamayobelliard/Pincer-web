@@ -3059,15 +3059,15 @@ function updateMenuQtyBadges() {
 // ADD ITEM
 // ══════════════════════════════════════════════════════════════
 
-function addItem(id, name, price, notes = null) {
+function addItem(id, name, price, notes = null, qty = 1) {
   if (storeClosed) return;
   if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
 
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
   if (idx !== -1) {
-    order[idx].qty += 1;
+    order[idx].qty += qty;
   } else {
-    order.push({ id, name, price, qty: 1, notes });
+    order.push({ id, name, price, qty, notes });
   }
   renderOrder();
 }
@@ -4553,15 +4553,21 @@ function parseBotResponse(text) {
   let cleanText = text;
   let buttons = [];
   let addToCart = null;
+  let addToCartQty = 1;
   let addToCartNote = null;
   let showPhotos = [];
 
-  // Extract all [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | note]
+  // Extract [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | qty] or [ADD_TO_CART: item_id | qty | note] or [ADD_TO_CART: item_id | note]
   const cartMatch = cleanText.match(/\[ADD_TO_CART:\s*([^\]]+)\]/);
   if (cartMatch) {
     const parts = cartMatch[1].split('|').map(p => p.trim());
     addToCart = parts[0];
-    addToCartNote = parts[1] || null;
+    if (parts[1] && /^\d+$/.test(parts[1])) {
+      addToCartQty = parseInt(parts[1]) || 1;
+      addToCartNote = parts[2] || null;
+    } else {
+      addToCartNote = parts[1] || null;
+    }
     cleanText = cleanText.replace(cartMatch[0], '').trim();
   }
 
@@ -4582,7 +4588,7 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
-  return { cleanText, buttons, addToCart, addToCartNote, showPhotos };
+  return { cleanText, buttons, addToCart, addToCartQty, addToCartNote, showPhotos };
 }
 
 function showPhotoInChat(itemId) {
@@ -4852,9 +4858,11 @@ async function sendToAI(userMessage) {
       if (parsed.addToCart) {
         const item = findMenuItem(parsed.addToCart);
         if (item && !soldOutSet.has(item.id)) {
-          addItem(item.id, item.name, item.price, parsed.addToCartNote);
+          const qty = parsed.addToCartQty || 1;
+          addItem(item.id, item.name, item.price, parsed.addToCartNote, qty);
+          const qtyText = qty > 1 ? `${qty}x ` : '';
           const noteText = parsed.addToCartNote ? ` (${parsed.addToCartNote})` : '';
-          pinzerSay(`✅ ${item.name} agregado al carrito${noteText}`);
+          pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
         }
       }
 

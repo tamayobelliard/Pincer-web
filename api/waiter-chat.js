@@ -192,7 +192,8 @@ FORMATO DE RESPUESTA:
 - Máximo 4 botones por mensaje. Si necesitas más, envía los primeros 4 y agrega "Y también tenemos:" con más botones en la misma respuesta.
 - SIEMPRE incluye [BUTTONS:] al final de cada mensaje, sin excepción
 - Para mostrar la foto de un item usa: [SHOW_PHOTO: item_id]
-- Para agregar al carrito usa: [ADD_TO_CART: item_id] o con nota: [ADD_TO_CART: item_id | nota del cliente]
+- Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
+- IMPORTANTE: Si el cliente pide una cantidad específica (ej: "quiero 2 cervezas", "agrégame 3"), SIEMPRE incluye la cantidad como número después del item_id
 
 FLUJO DE ORDERING (sigue este flujo natural):
 
@@ -216,9 +217,9 @@ FLUJO DE ORDERING (sigue este flujo natural):
 6. NOTAS: Si el cliente dice "Agregar al carrito", ANTES de agregar pregunta por notas:
    ${isSpanish ? '"¿Alguna nota especial? Ej: sin vegetales, extra queso..."' : '"Any special notes? E.g. no veggies, extra cheese..."'}
    ${isSpanish ? '[BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]' : '[BUTTONS: 👌 No changes, it\'s perfect | ✏️ I want to customize]'}
-   - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id]
+   - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id] (o con cantidad: [ADD_TO_CART: item_id | 2])
    - Si dice "Quiero hacer un cambio": dile que escriba qué quiere cambiar
-   - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió]
+   - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió] (o con cantidad: [ADD_TO_CART: item_id | 2 | la nota])
    Después de agregar, ofrece:
    ${isSpanish ? '[BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🍟 Add a side | 🥤 Something else | ✅ That\'s all]'}
 
