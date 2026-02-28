@@ -153,7 +153,7 @@
 
     .signup-wrapper {
       width: 100%;
-      max-width: 480px;
+      max-width: 540px;
     }
 
     .card {
@@ -242,6 +242,73 @@
     input::placeholder { color: #94A3B8; }
     input:focus { border-color: var(--primary); }
     input.invalid { border-color: var(--primary); }
+
+    select, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95em;
+      color: var(--text-main);
+      transition: border-color 0.2s;
+      outline: none;
+      font-family: inherit;
+      background: white;
+    }
+    select:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0 20px;
+    }
+
+    .section-label {
+      font-size: 0.78em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .logo-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .logo-row input { flex: 1; margin-bottom: 0; }
+    .logo-preview {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-light);
+    }
+    .logo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .logo-preview span { color: #94A3B8; font-size: 0.65em; }
+
+    .checkbox-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 400;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+    .checkbox-group input[type="checkbox"] { width: auto; }
 
     .field-error {
       color: var(--primary);
@@ -434,45 +501,119 @@
         <div class="alert-box error" id="alertError"></div>
 
         <form id="signupForm" novalidate>
+          <!-- Account info -->
           <div class="form-group">
-            <label for="restaurant_name">Nombre del restaurante</label>
-            <input type="text" id="restaurant_name" required placeholder="Ej: Mi Restaurante">
+            <label for="restaurant_name">Nombre del negocio *</label>
+            <input type="text" id="restaurant_name" required placeholder="Ej: La Cocina de Maria">
             <div class="field-error" id="err_restaurant_name"></div>
           </div>
 
           <div class="form-group">
-            <label for="owner_name">Nombre del propietario</label>
-            <input type="text" id="owner_name" required placeholder="Ej: Juan Perez">
-            <div class="field-error" id="err_owner_name"></div>
+            <label for="business_type">Tipo de negocio</label>
+            <select id="business_type">
+              <option value="">Seleccionar...</option>
+              <option value="Restaurante">Restaurante</option>
+              <option value="Cafeteria">Cafeteria</option>
+              <option value="Bar">Bar</option>
+              <option value="Food Truck">Food Truck</option>
+              <option value="Food Court">Food Court</option>
+              <option value="Panaderia">Panaderia</option>
+              <option value="Otro">Otro</option>
+            </select>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="email">Email</label>
+              <label for="owner_name">Persona de contacto *</label>
+              <input type="text" id="owner_name" required placeholder="Nombre del dueno/encargado">
+              <div class="field-error" id="err_owner_name"></div>
+            </div>
+            <div class="form-group">
+              <label for="email">Email *</label>
               <input type="email" id="email" required placeholder="correo@ejemplo.com">
               <div class="field-error" id="err_email"></div>
             </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group">
-              <label for="phone">Telefono (WhatsApp)</label>
+              <label for="phone">Telefono (WhatsApp) *</label>
               <input type="tel" id="phone" required placeholder="809-000-0000">
               <div class="field-error" id="err_phone"></div>
+            </div>
+            <div class="form-group">
+              <label for="address">Direccion</label>
+              <input type="text" id="address" placeholder="Calle, sector, ciudad">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="hours">Horario</label>
+              <input type="text" id="hours" placeholder="Ej: Lun-Vie 11am-9pm">
+            </div>
+            <div class="form-group">
+              <label for="website">Website / Instagram</label>
+              <input type="text" id="website" placeholder="@instagram o www...">
+            </div>
+          </div>
+
+          <!-- Branding -->
+          <hr class="section-divider">
+          <div class="section-label">Branding y configuracion</div>
+
+          <div class="form-group">
+            <label for="logo_url">Logo del negocio (URL)</label>
+            <div class="logo-row">
+              <input type="text" id="logo_url" placeholder="https://i.imgur.com/...">
+              <div class="logo-preview" id="logoPreview">
+                <span>Logo</span>
+              </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="city">Ciudad</label>
-            <input type="text" id="city" required placeholder="Ej: Santo Domingo">
-            <div class="field-error" id="err_city"></div>
+            <label for="chatbot_personality">Personalidad del Chatbot</label>
+            <select id="chatbot_personality">
+              <option value="casual">Casual y amigable (neutro)</option>
+              <option value="dominicano">Dominicano autentico</option>
+              <option value="habibi">Arabe caribeno (habibi)</option>
+              <option value="formal">Profesional y formal</option>
+              <option value="playful">Divertido y jugueton</option>
+            </select>
           </div>
+
+          <div class="form-group">
+            <label>Tipos de orden habilitados</label>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="chkDineIn" value="dine_in" checked> Comer aqui</label>
+              <label><input type="checkbox" id="chkTakeOut" value="take_out"> Para Llevar</label>
+              <label><input type="checkbox" id="chkDelivery" value="delivery"> Delivery</label>
+            </div>
+          </div>
+
+          <div class="form-group" id="deliveryFeeField" style="display:none;">
+            <label for="delivery_fee">Costo de delivery (RD$)</label>
+            <input type="number" id="delivery_fee" placeholder="0" min="0" step="1">
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Notas adicionales</label>
+            <textarea id="notes" placeholder="Notas adicionales sobre tu negocio..."></textarea>
+          </div>
+
+          <!-- Password -->
+          <hr class="section-divider">
+          <div class="section-label">Contrasena de acceso</div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="password">Contrasena</label>
+              <label for="password">Contrasena *</label>
               <input type="password" id="password" required placeholder="Min. 6 caracteres">
               <div class="field-error" id="err_password"></div>
             </div>
             <div class="form-group">
-              <label for="confirm_password">Confirmar contrasena</label>
+              <label for="confirm_password">Confirmar contrasena *</label>
               <input type="password" id="confirm_password" required placeholder="Repetir contrasena">
               <div class="field-error" id="err_confirm_password"></div>
             </div>
@@ -525,23 +666,47 @@
 
 <script>
 (function() {
-  const form = document.getElementById('signupForm');
-  const btn = document.getElementById('signupBtn');
-  const alertError = document.getElementById('alertError');
-  const formView = document.getElementById('formView');
-  const successView = document.getElementById('successView');
+  var form = document.getElementById('signupForm');
+  var btn = document.getElementById('signupBtn');
+  var alertError = document.getElementById('alertError');
+  var formView = document.getElementById('formView');
+  var successView = document.getElementById('successView');
 
-  const fields = ['restaurant_name', 'owner_name', 'email', 'phone', 'city', 'password', 'confirm_password'];
+  var requiredFields = ['restaurant_name', 'owner_name', 'email', 'phone', 'password', 'confirm_password'];
+
+  // Logo preview
+  document.getElementById('logo_url').addEventListener('input', function() {
+    var url = this.value.trim();
+    var preview = document.getElementById('logoPreview');
+    if (url) {
+      preview.innerHTML = '<img src="' + url + '" alt="Logo" onerror="this.parentElement.innerHTML=\'<span>Error</span>\'">';
+    } else {
+      preview.innerHTML = '<span>Logo</span>';
+    }
+  });
+
+  // Delivery fee toggle
+  document.getElementById('chkDelivery').addEventListener('change', function() {
+    document.getElementById('deliveryFeeField').style.display = this.checked ? 'block' : 'none';
+  });
+
+  function getOrderTypes() {
+    var types = [];
+    if (document.getElementById('chkDineIn').checked) types.push('dine_in');
+    if (document.getElementById('chkTakeOut').checked) types.push('take_out');
+    if (document.getElementById('chkDelivery').checked) types.push('delivery');
+    return types.length > 0 ? types : ['dine_in'];
+  }
 
   function showFieldError(id, msg) {
-    const el = document.getElementById('err_' + id);
-    const input = document.getElementById(id);
+    var el = document.getElementById('err_' + id);
+    var input = document.getElementById(id);
     if (el) { el.textContent = msg; el.style.display = 'block'; }
     if (input) input.classList.add('invalid');
   }
 
   function clearErrors() {
-    fields.forEach(function(id) {
+    requiredFields.forEach(function(id) {
       var el = document.getElementById('err_' + id);
       var input = document.getElementById(id);
       if (el) { el.textContent = ''; el.style.display = 'none'; }
@@ -554,21 +719,14 @@
     clearErrors();
     var valid = true;
 
-    var name = document.getElementById('restaurant_name').value.trim();
-    if (!name) { showFieldError('restaurant_name', 'El nombre del restaurante es requerido'); valid = false; }
-
-    var owner = document.getElementById('owner_name').value.trim();
-    if (!owner) { showFieldError('owner_name', 'El nombre del propietario es requerido'); valid = false; }
+    if (!document.getElementById('restaurant_name').value.trim()) { showFieldError('restaurant_name', 'El nombre del negocio es requerido'); valid = false; }
+    if (!document.getElementById('owner_name').value.trim()) { showFieldError('owner_name', 'La persona de contacto es requerida'); valid = false; }
 
     var email = document.getElementById('email').value.trim();
     if (!email) { showFieldError('email', 'El email es requerido'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('email', 'Ingresa un email valido'); valid = false; }
 
-    var phone = document.getElementById('phone').value.trim();
-    if (!phone) { showFieldError('phone', 'El telefono es requerido'); valid = false; }
-
-    var city = document.getElementById('city').value.trim();
-    if (!city) { showFieldError('city', 'La ciudad es requerida'); valid = false; }
+    if (!document.getElementById('phone').value.trim()) { showFieldError('phone', 'El telefono es requerido'); valid = false; }
 
     var pw = document.getElementById('password').value;
     if (!pw) { showFieldError('password', 'La contrasena es requerida'); valid = false; }
@@ -594,9 +752,17 @@
       owner_name: document.getElementById('owner_name').value.trim(),
       email: document.getElementById('email').value.trim(),
       phone: document.getElementById('phone').value.trim(),
-      city: document.getElementById('city').value.trim(),
       password: document.getElementById('password').value,
       confirm_password: document.getElementById('confirm_password').value,
+      business_type: document.getElementById('business_type').value,
+      address: document.getElementById('address').value.trim(),
+      hours: document.getElementById('hours').value.trim(),
+      website: document.getElementById('website').value.trim(),
+      logo_url: document.getElementById('logo_url').value.trim(),
+      chatbot_personality: document.getElementById('chatbot_personality').value,
+      order_types: getOrderTypes(),
+      delivery_fee: parseInt(document.getElementById('delivery_fee').value) || 0,
+      notes: document.getElementById('notes').value.trim(),
     };
 
     try {

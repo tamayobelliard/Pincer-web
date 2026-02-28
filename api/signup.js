@@ -44,11 +44,16 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { restaurant_name, owner_name, email, phone, city, password, confirm_password } = req.body || {};
+  const {
+    restaurant_name, owner_name, email, phone, password, confirm_password,
+    business_type, address, hours, website, logo_url, chatbot_personality,
+    order_types, delivery_fee, notes,
+    city, // backwards compat
+  } = req.body || {};
 
   // Validate required fields
-  if (!restaurant_name || !owner_name || !email || !phone || !city || !password || !confirm_password) {
-    return res.status(400).json({ success: false, error: 'Todos los campos son requeridos' });
+  if (!restaurant_name || !owner_name || !email || !phone || !password || !confirm_password) {
+    return res.status(400).json({ success: false, error: 'Los campos marcados con * son requeridos' });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ success: false, error: 'Email no valido' });
@@ -126,14 +131,19 @@ export default async function handler(req, res) {
           contact_name: owner_name.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
-          address: city.trim(),
+          address: (address || city || '').trim() || null,
+          business_type: business_type || null,
+          hours: hours || null,
+          website: website || null,
+          logo_url: logo_url || null,
+          notes: notes || null,
           role: 'restaurant',
           status: 'active',
           plan: 'premium',
           trial_expires_at: trialExpires,
-          chatbot_personality: 'casual',
-          order_types: ['dine_in'],
-          delivery_fee: 0,
+          chatbot_personality: chatbot_personality || 'casual',
+          order_types: Array.isArray(order_types) && order_types.length > 0 ? order_types : ['dine_in'],
+          delivery_fee: parseInt(delivery_fee) || 0,
         }),
       }
     );
@@ -175,10 +185,12 @@ export default async function handler(req, res) {
         <h2>Nuevo registro</h2>
         <ul>
           <li><strong>Restaurante:</strong> ${restaurant_name}</li>
-          <li><strong>Propietario:</strong> ${owner_name}</li>
+          <li><strong>Tipo:</strong> ${business_type || 'N/A'}</li>
+          <li><strong>Contacto:</strong> ${owner_name}</li>
           <li><strong>Email:</strong> ${email}</li>
           <li><strong>Telefono:</strong> ${phone}</li>
-          <li><strong>Ciudad:</strong> ${city}</li>
+          <li><strong>Direccion:</strong> ${address || city || 'N/A'}</li>
+          <li><strong>Website:</strong> ${website || 'N/A'}</li>
           <li><strong>Slug:</strong> ${slug}</li>
         </ul>
       </div>`
