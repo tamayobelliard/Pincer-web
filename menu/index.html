@@ -4552,24 +4552,24 @@ function findMenuItem(itemId) {
 function parseBotResponse(text) {
   let cleanText = text;
   let buttons = [];
-  let addToCart = null;
-  let addToCartQty = 1;
-  let addToCartNote = null;
+  let cartItems = [];
   let showPhotos = [];
 
-  // Extract [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | qty] or [ADD_TO_CART: item_id | qty | note] or [ADD_TO_CART: item_id | note]
-  const cartMatch = cleanText.match(/\[ADD_TO_CART:\s*([^\]]+)\]/);
-  if (cartMatch) {
+  // Extract ALL [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | qty] or [ADD_TO_CART: item_id | qty | note] or [ADD_TO_CART: item_id | note]
+  const cartRegex = /\[ADD_TO_CART:\s*([^\]]+)\]/g;
+  let cartMatch;
+  while ((cartMatch = cartRegex.exec(cleanText)) !== null) {
     const parts = cartMatch[1].split('|').map(p => p.trim());
-    addToCart = parts[0];
+    const entry = { id: parts[0], qty: 1, note: null };
     if (parts[1] && /^\d+$/.test(parts[1])) {
-      addToCartQty = parseInt(parts[1]) || 1;
-      addToCartNote = parts[2] || null;
+      entry.qty = parseInt(parts[1]) || 1;
+      entry.note = parts[2] || null;
     } else {
-      addToCartNote = parts[1] || null;
+      entry.note = parts[1] || null;
     }
-    cleanText = cleanText.replace(cartMatch[0], '').trim();
+    cartItems.push(entry);
   }
+  cleanText = cleanText.replace(/\[ADD_TO_CART:\s*[^\]]+\]/g, '').trim();
 
   // Extract all [SHOW_PHOTO: item_id]
   const photoRegex = /\[SHOW_PHOTO:\s*([^\]]+)\]/g;
@@ -4588,7 +4588,7 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
-  return { cleanText, buttons, addToCart, addToCartQty, addToCartNote, showPhotos };
+  return { cleanText, buttons, cartItems, showPhotos };
 }
 
 function showPhotoInChat(itemId) {
@@ -4854,17 +4854,17 @@ async function sendToAI(userMessage) {
       // Show photos
       parsed.showPhotos.forEach(id => showPhotoInChat(id));
 
-      // Handle ADD_TO_CART action
-      if (parsed.addToCart) {
-        const item = findMenuItem(parsed.addToCart);
+      // Handle ADD_TO_CART actions (supports multiple items per response)
+      parsed.cartItems.forEach(function(ci) {
+        const item = findMenuItem(ci.id);
         if (item && !soldOutSet.has(item.id)) {
-          const qty = parsed.addToCartQty || 1;
-          addItem(item.id, item.name, item.price, parsed.addToCartNote, qty);
+          const qty = ci.qty || 1;
+          addItem(item.id, item.name, item.price, ci.note, qty);
           const qtyText = qty > 1 ? `${qty}x ` : '';
-          const noteText = parsed.addToCartNote ? ` (${parsed.addToCartNote})` : '';
+          const noteText = ci.note ? ` (${ci.note})` : '';
           pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
         }
-      }
+      });
 
       // Show parsed buttons
       if (parsed.buttons.length > 0) {
