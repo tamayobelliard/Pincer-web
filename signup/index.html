@@ -12,31 +12,143 @@
     :root {
       --primary: #E8191A;
       --primary-dark: #C41415;
-      --bg: #0F0F0F;
-      --card-bg: #1A1A1A;
-      --card-border: #2A2A2A;
-      --text-main: #FFFFFF;
-      --text-secondary: #A0A0A0;
-      --input-bg: #141414;
-      --input-border: #333333;
-      --input-focus: #E8191A;
-      --error-bg: rgba(232, 25, 26, 0.1);
-      --error-border: rgba(232, 25, 26, 0.3);
-      --success-bg: rgba(34, 197, 94, 0.1);
-      --success-border: rgba(34, 197, 94, 0.3);
-      --success-text: #22c55e;
+      --bg: #FFFFFF;
+      --bg-light: #F9FAFB;
+      --text-main: #0F172A;
+      --text-secondary: #64748B;
+      --border: #E2E8F0;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
 
     body {
-      min-height: 100vh;
       background: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+
+    /* ══════════════════════════════
+       NAV (matches index.html)
+       ══════════════════════════════ */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-logo {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .nav-center {
+      display: flex;
+      gap: 40px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .nav-center a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-center a:hover {
+      color: var(--text-main);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-nav {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(232, 25, 26, 0.2);
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-nav:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232, 25, 26, 0.3);
+    }
+
+    .btn-nav-outline {
+      color: var(--text-main);
+      border: 1.5px solid var(--border);
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      background: transparent;
+    }
+
+    .btn-nav-outline:hover {
+      border-color: var(--text-main);
+      transform: translateY(-2px);
+    }
+
+    /* ══════════════════════════════
+       SIGNUP FORM
+       ══════════════════════════════ */
+    .signup-section {
+      flex: 1;
+      display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 60px 24px;
+      background: linear-gradient(135deg, var(--bg) 0%, var(--bg-light) 100%);
     }
 
     .signup-wrapper {
@@ -44,22 +156,12 @@
       max-width: 480px;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 32px;
-      text-decoration: none;
-    }
-    .logo img { height: 36px; }
-    .logo span { font-size: 1.5em; font-weight: 800; color: var(--text-main); }
-
     .card {
-      background: var(--card-bg);
+      background: white;
       border-radius: 16px;
       padding: 36px;
-      border: 1px solid var(--card-border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
     }
 
     .card h1 {
@@ -78,8 +180,8 @@
 
     .trial-badge {
       display: inline-block;
-      background: var(--error-bg);
-      border: 1px solid var(--error-border);
+      background: rgba(232, 25, 26, 0.08);
+      border: 1px solid rgba(232, 25, 26, 0.2);
       color: var(--primary);
       font-size: 0.8em;
       font-weight: 700;
@@ -98,14 +200,14 @@
       line-height: 1.4;
     }
     .alert-box.error {
-      background: var(--error-bg);
-      color: var(--primary);
-      border: 1px solid var(--error-border);
+      background: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
     }
     .alert-box.success {
-      background: var(--success-bg);
-      color: var(--success-text);
-      border: 1px solid var(--success-border);
+      background: #F0FDF4;
+      color: #166534;
+      border: 1px solid #BBF7D0;
     }
 
     .form-group {
@@ -120,19 +222,16 @@
 
     label {
       display: block;
-      color: var(--text-secondary);
+      color: var(--text-main);
       font-weight: 600;
-      font-size: 0.82em;
+      font-size: 0.85em;
       margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     input {
       width: 100%;
       padding: 12px 14px;
-      background: var(--input-bg);
-      border: 1.5px solid var(--input-border);
+      border: 1.5px solid var(--border);
       border-radius: 8px;
       font-size: 0.95em;
       color: var(--text-main);
@@ -140,8 +239,8 @@
       outline: none;
       font-family: inherit;
     }
-    input::placeholder { color: #555; }
-    input:focus { border-color: var(--input-focus); }
+    input::placeholder { color: #94A3B8; }
+    input:focus { border-color: var(--primary); }
     input.invalid { border-color: var(--primary); }
 
     .field-error {
@@ -164,8 +263,9 @@
       cursor: pointer;
       transition: all 0.2s;
       margin-top: 8px;
+      box-shadow: 0 4px 12px rgba(232, 25, 26, 0.2);
     }
-    .btn-signup:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-signup:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(232, 25, 26, 0.3); }
     .btn-signup:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .login-link {
@@ -174,7 +274,6 @@
       margin-top: 24px;
       color: var(--text-secondary);
       font-size: 0.85em;
-      text-decoration: none;
     }
     .login-link a {
       color: var(--primary);
@@ -191,14 +290,15 @@
     .success-view .check-icon {
       width: 64px;
       height: 64px;
-      background: var(--success-bg);
-      border: 2px solid var(--success-border);
+      background: #F0FDF4;
+      border: 2px solid #BBF7D0;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 20px;
       font-size: 28px;
+      color: #166534;
     }
     .success-view h2 {
       color: var(--text-main);
@@ -216,87 +316,212 @@
       margin-top: 20px;
     }
 
+    /* ══════════════════════════════
+       FOOTER (matches index.html)
+       ══════════════════════════════ */
+    footer {
+      padding: 60px 24px 40px;
+      background: var(--text-main);
+      color: white;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .footer-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .footer-logo {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .footer-info p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: white; }
+    .footer-contact {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 8px;
+    }
+    .footer-contact a { color: rgba(255,255,255,0.7); text-decoration: none; }
+    .footer-contact a:hover { color: white; }
+    .footer-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .footer-badges img { height: 40px; object-fit: contain; }
+    .footer-copyright {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 24px;
+    }
+
+    /* ══════════════════════════════
+       RESPONSIVE
+       ══════════════════════════════ */
+    @media (max-width: 768px) {
+      .nav-center { display: none; }
+    }
+
     @media (max-width: 520px) {
       .card { padding: 24px 20px; }
       .form-row { grid-template-columns: 1fr; gap: 0; }
+      .signup-section { padding: 40px 16px; }
     }
   </style>
 </head>
 <body>
 
-<div class="signup-wrapper">
-  <a class="logo" href="/">
-    <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
-    <span>Pincer</span>
-  </a>
-
-  <div class="card">
-    <div id="formView">
-      <span class="trial-badge">30 dias gratis</span>
-      <h1>Crea tu cuenta</h1>
-      <p class="subtitle">Registra tu restaurante y empieza a recibir pedidos hoy.</p>
-
-      <div class="alert-box error" id="alertError"></div>
-
-      <form id="signupForm" novalidate>
-        <div class="form-group">
-          <label for="restaurant_name">Nombre del restaurante</label>
-          <input type="text" id="restaurant_name" required placeholder="Ej: Mi Restaurante">
-          <div class="field-error" id="err_restaurant_name"></div>
-        </div>
-
-        <div class="form-group">
-          <label for="owner_name">Nombre del propietario</label>
-          <input type="text" id="owner_name" required placeholder="Ej: Juan Perez">
-          <div class="field-error" id="err_owner_name"></div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" required placeholder="correo@ejemplo.com">
-            <div class="field-error" id="err_email"></div>
-          </div>
-          <div class="form-group">
-            <label for="phone">Telefono (WhatsApp)</label>
-            <input type="tel" id="phone" required placeholder="809-000-0000">
-            <div class="field-error" id="err_phone"></div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="city">Ciudad</label>
-          <input type="text" id="city" required placeholder="Ej: Santo Domingo">
-          <div class="field-error" id="err_city"></div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="password">Contrasena</label>
-            <input type="password" id="password" required placeholder="Min. 6 caracteres">
-            <div class="field-error" id="err_password"></div>
-          </div>
-          <div class="form-group">
-            <label for="confirm_password">Confirmar contrasena</label>
-            <input type="password" id="confirm_password" required placeholder="Repetir contrasena">
-            <div class="field-error" id="err_confirm_password"></div>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-signup" id="signupBtn">Crear cuenta gratis</button>
-      </form>
+<!-- ═══════════════════════════════
+     NAVIGATION
+     ═══════════════════════════════ -->
+<nav>
+  <div class="nav-container">
+    <a class="nav-logo" href="/">
+      <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+      <span>Pincer</span>
+    </a>
+    <div class="nav-center">
+      <a href="/#product">Producto</a>
+      <a href="/#how-it-works">Como funciona</a>
+      <a href="/#benefits">Beneficios</a>
+      <a href="/#pricing">Precio</a>
     </div>
-
-    <div class="success-view" id="successView">
-      <div class="check-icon">&#10003;</div>
-      <h2 id="successTitle">Cuenta creada</h2>
-      <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
-      <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">3</span> segundos...</p>
+    <div class="nav-right">
+      <a class="btn-nav-outline" href="/login">Sign In</a>
+      <a class="btn-nav" href="/signup">Sign Up</a>
     </div>
   </div>
+</nav>
 
-  <p class="login-link">Ya tienes cuenta? <a href="/login">Inicia sesion</a></p>
-</div>
+<!-- ═══════════════════════════════
+     SIGNUP FORM
+     ═══════════════════════════════ -->
+<section class="signup-section">
+  <div class="signup-wrapper">
+    <div class="card">
+      <div id="formView">
+        <span class="trial-badge">30 dias gratis</span>
+        <h1>Crea tu cuenta</h1>
+        <p class="subtitle">Registra tu restaurante y empieza a recibir pedidos hoy.</p>
+
+        <div class="alert-box error" id="alertError"></div>
+
+        <form id="signupForm" novalidate>
+          <div class="form-group">
+            <label for="restaurant_name">Nombre del restaurante</label>
+            <input type="text" id="restaurant_name" required placeholder="Ej: Mi Restaurante">
+            <div class="field-error" id="err_restaurant_name"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="owner_name">Nombre del propietario</label>
+            <input type="text" id="owner_name" required placeholder="Ej: Juan Perez">
+            <div class="field-error" id="err_owner_name"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" required placeholder="correo@ejemplo.com">
+              <div class="field-error" id="err_email"></div>
+            </div>
+            <div class="form-group">
+              <label for="phone">Telefono (WhatsApp)</label>
+              <input type="tel" id="phone" required placeholder="809-000-0000">
+              <div class="field-error" id="err_phone"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="city">Ciudad</label>
+            <input type="text" id="city" required placeholder="Ej: Santo Domingo">
+            <div class="field-error" id="err_city"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="password">Contrasena</label>
+              <input type="password" id="password" required placeholder="Min. 6 caracteres">
+              <div class="field-error" id="err_password"></div>
+            </div>
+            <div class="form-group">
+              <label for="confirm_password">Confirmar contrasena</label>
+              <input type="password" id="confirm_password" required placeholder="Repetir contrasena">
+              <div class="field-error" id="err_confirm_password"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-signup" id="signupBtn">Crear cuenta gratis</button>
+        </form>
+      </div>
+
+      <div class="success-view" id="successView">
+        <div class="check-icon">&#10003;</div>
+        <h2 id="successTitle">Cuenta creada</h2>
+        <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
+        <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">3</span> segundos...</p>
+      </div>
+    </div>
+
+    <p class="login-link">Ya tienes cuenta? <a href="/login">Inicia sesion</a></p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     FOOTER
+     ═══════════════════════════════ -->
+<footer>
+  <div class="footer-container">
+    <div class="footer-logo">Pincer</div>
+    <div class="footer-info">
+      <p>Pedidos por QR que elevan la experiencia de tu restaurante, food truck o food park.</p>
+    </div>
+    <div class="footer-links">
+      <a href="/politicas/privacidad">Privacidad</a>
+      <a href="/politicas/devoluciones">Devoluciones</a>
+      <a href="/politicas/seguridad">Seguridad</a>
+      <a href="/politicas/entrega">Entrega</a>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:info@pincerweb.com">info@pincerweb.com</a> · <a href="tel:+18295481236">+1 (829) 548-1236</a><br>
+      Santiago, Republica Dominicana
+    </div>
+    <div class="footer-badges">
+      <img src="https://i.imgur.com/gMRFXRj.png" alt="Visa">
+      <img src="https://i.imgur.com/qgq4m7h.png" alt="Mastercard">
+      <img src="https://i.imgur.com/fgA6bpW.png" alt="Visa Secure">
+      <img src="https://i.imgur.com/KLv1a0r.png" alt="Mastercard ID Check">
+    </div>
+    <div class="footer-copyright">&copy; 2026 Pincer. Hecho en Republica Dominicana.</div>
+  </div>
+</footer>
 
 <script>
 (function() {
