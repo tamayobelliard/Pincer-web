@@ -2416,6 +2416,22 @@ function getExtras() {
   return [];
 }
 
+// Load restaurant insights for chatbot
+var restaurantInsights = null;
+async function loadRestaurantInsights() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=summary_text&limit=1',
+      { headers: sbHeaders() }, 5000
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (rows.length > 0 && rows[0].summary_text) {
+      restaurantInsights = rows[0].summary_text;
+    }
+  } catch (e) { /* insights not critical */ }
+}
+
 // Load restaurant data from Supabase
 async function loadRestaurantData() {
   try {
@@ -4616,7 +4632,8 @@ async function showWelcomeMessages() {
         welcome: true,
         restaurant_slug: SLUG,
         restaurant_name: restaurantData?.display_name || SLUG,
-        browserLanguage: navigator.language || 'es'
+        browserLanguage: navigator.language || 'es',
+        insights: restaurantInsights || undefined
       })
     });
     hideTypingIndicator();
@@ -4798,7 +4815,8 @@ async function sendToAI(userMessage) {
       restaurant_slug: SLUG,
       restaurant_name: restaurantData?.display_name || SLUG,
       browserLanguage: navigator.language || 'es',
-      currentLanguage: currentLanguage
+      currentLanguage: currentLanguage,
+      insights: restaurantInsights || undefined
     })
   };
 
@@ -5002,6 +5020,7 @@ async function init() {
 
   // 8. Init chatbot (premium only)
   if (restaurantData.plan === 'premium') {
+    loadRestaurantInsights();
     initChatbot();
   }
 

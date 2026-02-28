@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro — Pincer</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #E8191A;
+      --primary-dark: #C41415;
+      --bg: #0F0F0F;
+      --card-bg: #1A1A1A;
+      --card-border: #2A2A2A;
+      --text-main: #FFFFFF;
+      --text-secondary: #A0A0A0;
+      --input-bg: #141414;
+      --input-border: #333333;
+      --input-focus: #E8191A;
+      --error-bg: rgba(232, 25, 26, 0.1);
+      --error-border: rgba(232, 25, 26, 0.3);
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --success-border: rgba(34, 197, 94, 0.3);
+      --success-text: #22c55e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .signup-wrapper {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 32px;
+      text-decoration: none;
+    }
+    .logo img { height: 36px; }
+    .logo span { font-size: 1.5em; font-weight: 800; color: var(--text-main); }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 36px;
+      border: 1px solid var(--card-border);
+    }
+
+    .card h1 {
+      font-size: 1.5em;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .card .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .trial-badge {
+      display: inline-block;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--primary);
+      font-size: 0.8em;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .alert-box {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      font-size: 0.9em;
+      line-height: 1.4;
+    }
+    .alert-box.error {
+      background: var(--error-bg);
+      color: var(--primary);
+      border: 1px solid var(--error-border);
+    }
+    .alert-box.success {
+      background: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-border);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.82em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: 8px;
+      font-size: 0.95em;
+      color: var(--text-main);
+      transition: border-color 0.2s;
+      outline: none;
+      font-family: inherit;
+    }
+    input::placeholder { color: #555; }
+    input:focus { border-color: var(--input-focus); }
+    input.invalid { border-color: var(--primary); }
+
+    .field-error {
+      color: var(--primary);
+      font-size: 0.78em;
+      font-weight: 500;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .btn-signup {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-signup:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-signup:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-link {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: var(--text-secondary);
+      font-size: 0.85em;
+      text-decoration: none;
+    }
+    .login-link a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .login-link a:hover { text-decoration: underline; }
+
+    .success-view {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .success-view .check-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--success-bg);
+      border: 2px solid var(--success-border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 28px;
+    }
+    .success-view h2 {
+      color: var(--text-main);
+      font-size: 1.3em;
+      margin-bottom: 8px;
+    }
+    .success-view p {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      line-height: 1.5;
+    }
+    .success-view .redirect-text {
+      color: var(--text-secondary);
+      font-size: 0.82em;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 24px 20px; }
+      .form-row { grid-template-columns: 1fr; gap: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="signup-wrapper">
+  <a class="logo" href="/">
+    <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+    <span>Pincer</span>
+  </a>
+
+  <div class="card">
+    <div id="formView">
+      <span class="trial-badge">30 dias gratis</span>
+      <h1>Crea tu cuenta</h1>
+      <p class="subtitle">Registra tu restaurante y empieza a recibir pedidos hoy.</p>
+
+      <div class="alert-box error" id="alertError"></div>
+
+      <form id="signupForm" novalidate>
+        <div class="form-group">
+          <label for="restaurant_name">Nombre del restaurante</label>
+          <input type="text" id="restaurant_name" required placeholder="Ej: Mi Restaurante">
+          <div class="field-error" id="err_restaurant_name"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="owner_name">Nombre del propietario</label>
+          <input type="text" id="owner_name" required placeholder="Ej: Juan Perez">
+          <div class="field-error" id="err_owner_name"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required placeholder="correo@ejemplo.com">
+            <div class="field-error" id="err_email"></div>
+          </div>
+          <div class="form-group">
+            <label for="phone">Telefono (WhatsApp)</label>
+            <input type="tel" id="phone" required placeholder="809-000-0000">
+            <div class="field-error" id="err_phone"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="city">Ciudad</label>
+          <input type="text" id="city" required placeholder="Ej: Santo Domingo">
+          <div class="field-error" id="err_city"></div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Contrasena</label>
+            <input type="password" id="password" required placeholder="Min. 6 caracteres">
+            <div class="field-error" id="err_password"></div>
+          </div>
+          <div class="form-group">
+            <label for="confirm_password">Confirmar contrasena</label>
+            <input type="password" id="confirm_password" required placeholder="Repetir contrasena">
+            <div class="field-error" id="err_confirm_password"></div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-signup" id="signupBtn">Crear cuenta gratis</button>
+      </form>
+    </div>
+
+    <div class="success-view" id="successView">
+      <div class="check-icon">&#10003;</div>
+      <h2 id="successTitle">Cuenta creada</h2>
+      <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
+      <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">3</span> segundos...</p>
+    </div>
+  </div>
+
+  <p class="login-link">Ya tienes cuenta? <a href="/login">Inicia sesion</a></p>
+</div>
+
+<script>
+(function() {
+  const form = document.getElementById('signupForm');
+  const btn = document.getElementById('signupBtn');
+  const alertError = document.getElementById('alertError');
+  const formView = document.getElementById('formView');
+  const successView = document.getElementById('successView');
+
+  const fields = ['restaurant_name', 'owner_name', 'email', 'phone', 'city', 'password', 'confirm_password'];
+
+  function showFieldError(id, msg) {
+    const el = document.getElementById('err_' + id);
+    const input = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+    if (input) input.classList.add('invalid');
+  }
+
+  function clearErrors() {
+    fields.forEach(function(id) {
+      var el = document.getElementById('err_' + id);
+      var input = document.getElementById(id);
+      if (el) { el.textContent = ''; el.style.display = 'none'; }
+      if (input) input.classList.remove('invalid');
+    });
+    alertError.style.display = 'none';
+  }
+
+  function validate() {
+    clearErrors();
+    var valid = true;
+
+    var name = document.getElementById('restaurant_name').value.trim();
+    if (!name) { showFieldError('restaurant_name', 'El nombre del restaurante es requerido'); valid = false; }
+
+    var owner = document.getElementById('owner_name').value.trim();
+    if (!owner) { showFieldError('owner_name', 'El nombre del propietario es requerido'); valid = false; }
+
+    var email = document.getElementById('email').value.trim();
+    if (!email) { showFieldError('email', 'El email es requerido'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('email', 'Ingresa un email valido'); valid = false; }
+
+    var phone = document.getElementById('phone').value.trim();
+    if (!phone) { showFieldError('phone', 'El telefono es requerido'); valid = false; }
+
+    var city = document.getElementById('city').value.trim();
+    if (!city) { showFieldError('city', 'La ciudad es requerida'); valid = false; }
+
+    var pw = document.getElementById('password').value;
+    if (!pw) { showFieldError('password', 'La contrasena es requerida'); valid = false; }
+    else if (pw.length < 6) { showFieldError('password', 'Minimo 6 caracteres'); valid = false; }
+
+    var cpw = document.getElementById('confirm_password').value;
+    if (!cpw) { showFieldError('confirm_password', 'Confirma tu contrasena'); valid = false; }
+    else if (pw !== cpw) { showFieldError('confirm_password', 'Las contrasenas no coinciden'); valid = false; }
+
+    return valid;
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Creando cuenta...';
+    alertError.style.display = 'none';
+
+    var body = {
+      restaurant_name: document.getElementById('restaurant_name').value.trim(),
+      owner_name: document.getElementById('owner_name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      phone: document.getElementById('phone').value.trim(),
+      city: document.getElementById('city').value.trim(),
+      password: document.getElementById('password').value,
+      confirm_password: document.getElementById('confirm_password').value,
+    };
+
+    try {
+      var res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      var data = await res.json();
+
+      if (data.success) {
+        formView.style.display = 'none';
+        successView.style.display = 'block';
+        document.getElementById('successTitle').textContent = data.display_name || 'Cuenta creada';
+
+        sessionStorage.setItem('dashboard_session', JSON.stringify({
+          role: 'restaurant',
+          restaurant_slug: data.restaurant_slug,
+          display_name: data.display_name,
+          username: data.restaurant_slug,
+        }));
+
+        var seconds = 3;
+        var countdownEl = document.getElementById('countdown');
+        var timer = setInterval(function() {
+          seconds--;
+          countdownEl.textContent = seconds;
+          if (seconds <= 0) {
+            clearInterval(timer);
+            window.location.href = '/' + data.restaurant_slug + '/dashboard';
+          }
+        }, 1000);
+      } else {
+        alertError.textContent = data.error || 'Error al crear la cuenta. Intenta de nuevo.';
+        alertError.style.display = 'block';
+      }
+    } catch (err) {
+      alertError.textContent = 'Error al conectar con el servidor. Intenta de nuevo.';
+      alertError.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Crear cuenta gratis';
+    }
+  });
+})();
+</script>
+</body>
+</html>

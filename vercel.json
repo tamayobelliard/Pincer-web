@@ -4,6 +4,7 @@
     { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/login", "destination": "/login/index.html" },
+    { "source": "/signup", "destination": "/signup/index.html" },
     { "source": "/politicas/privacidad", "destination": "/politicas/privacidad.html" },
     { "source": "/politicas/devoluciones", "destination": "/politicas/devoluciones.html" },
     { "source": "/politicas/seguridad", "destination": "/politicas/seguridad.html" },
@@ -32,5 +33,9 @@
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     }
+  ],
+  "crons": [
+    { "path": "/api/cron/downgrade-trials", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/chatbot-learnings", "schedule": "0 2 * * *" }
   ]
 }

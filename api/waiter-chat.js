@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage } = req.body;
+  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights } = req.body;
 
   try {
     const rName = restaurant_name || 'este restaurante';
@@ -92,6 +92,31 @@ export default async function handler(req, res) {
           }
         }
       } catch { /* fallback to casual + free */ }
+    }
+
+    // Fetch restaurant insights for smarter recommendations
+    let insightsText = clientInsights || '';
+    if (restaurant_slug && !insightsText) {
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const iRes = await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=summary_text&limit=1`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            signal: AbortSignal.timeout(3000),
+          }
+        );
+        if (iRes.ok) {
+          const iRows = await iRes.json();
+          if (iRows.length > 0 && iRows[0].summary_text) {
+            insightsText = iRows[0].summary_text;
+          }
+        }
+      } catch { /* no insights available — continue without */ }
     }
 
     // Block free-plan restaurants from using chatbot
@@ -214,7 +239,7 @@ REGLAS IMPORTANTES:
 - NUNCA inventes items o precios que no están en el menú
 - NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
 
-MENÚ ACTUAL (items disponibles):
+${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
 ${menuData}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
