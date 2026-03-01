@@ -37,7 +37,28 @@ async function sendEmail(to, subject, html) {
   }
 }
 
-// Extract menu products from uploaded images using Claude Vision
+// Helper: call Claude API
+function callClaude(apiKey, imageContent, textPrompt, maxTokens) {
+  const content = imageContent
+    ? [imageContent, { type: 'text', text: textPrompt }]
+    : [{ type: 'text', text: textPrompt }];
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens || 2000,
+      messages: [{ role: 'user', content }],
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+}
+
+// Extract menu products + style from uploaded images using Claude Vision
 async function extractMenuFromImages(restaurant_slug, menu_files) {
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -53,46 +74,99 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
   console.log(`extractMenu: processing ${imageFiles.length} image(s) for ${restaurant_slug}`);
 
   let allItems = [];
+  let menuStyle = null;
 
   for (const file of imageFiles) {
     try {
+      console.log('extractMenu: fetching image:', file.url);
       const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
-      if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url); continue; }
+      if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url, 'status:', imgRes.status); continue; }
       const imgBuffer = await imgRes.arrayBuffer();
       const base64 = Buffer.from(imgBuffer).toString('base64');
       const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+      console.log('extractMenu: image fetched, base64 length:', base64.length);
 
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2000,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } },
-              { type: 'text', text: 'Extract all menu items from this image. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.' },
-            ],
-          }],
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
+      const imageContent = { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } };
 
-      if (!claudeRes.ok) { console.error('extractMenu: Claude API error', claudeRes.status); continue; }
+      // Items extraction + style extraction in parallel (style only for first image)
+      const requests = [
+        callClaude(anthropicKey, imageContent,
+          'Extract all menu items from this image. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.',
+          2000,
+        ),
+      ];
+
+      if (!menuStyle) {
+        requests.push(
+          callClaude(anthropicKey, imageContent,
+            'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "accent_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design.',
+            1000,
+          ),
+        );
+      }
+
+      const results = await Promise.all(requests);
+
+      // Parse items response
+      const claudeRes = results[0];
+      if (!claudeRes.ok) { console.error('extractMenu: Claude items API error', claudeRes.status); continue; }
       const claudeData = await claudeRes.json();
       const rawText = claudeData.content?.find(c => c.type === 'text')?.text || '';
 
       const jsonMatch = rawText.match(/\[[\s\S]*\]/);
       if (!jsonMatch) { console.error('extractMenu: no JSON array in response'); continue; }
       const items = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(items)) allItems.push(...items);
+      if (Array.isArray(items)) {
+        allItems.push(...items);
+        console.log(`extractMenu: extracted ${items.length} items from image`);
+      }
+
+      // Parse style response (only for first image)
+      if (results[1] && !menuStyle) {
+        try {
+          if (results[1].ok) {
+            const styleData = await results[1].json();
+            const styleText = styleData.content?.find(c => c.type === 'text')?.text || '';
+            const styleMatch = styleText.match(/\{[\s\S]*\}/);
+            if (styleMatch) {
+              menuStyle = JSON.parse(styleMatch[0]);
+              console.log('extractMenu: style extracted:', JSON.stringify(menuStyle));
+            }
+          } else {
+            console.error('extractMenu: style API error', results[1].status);
+          }
+        } catch (e) {
+          console.error('extractMenu: style parse error:', e.message);
+        }
+      }
     } catch (e) {
       console.error('extractMenu: error processing image:', e.message);
+    }
+  }
+
+  // Save menu_style to restaurant_users (overrides default Pincer red)
+  if (menuStyle) {
+    console.log('extractMenu: saving menu_style for', restaurant_slug);
+    try {
+      const styleRes = await fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ menu_style: menuStyle }),
+        }
+      );
+      if (!styleRes.ok) {
+        console.error('extractMenu: style save failed:', await styleRes.text());
+      } else {
+        console.log('extractMenu: menu_style saved successfully');
+      }
+    } catch (e) {
+      console.error('extractMenu: style save error:', e.message);
     }
   }
 
@@ -150,11 +224,13 @@ export default async function handler(req, res) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseKey) return res.status(500).json({ error: 'Server error' });
 
+    console.log('PATCH signup:', restaurant_slug, '| logo_url:', !!logo_url, '| menu_files:', Array.isArray(menu_files) ? menu_files.length : 0);
+
     const updates = {};
     if (logo_url) updates.logo_url = logo_url;
     if (menu_files) updates.menu_files = menu_files;
 
-    if (Object.keys(updates).length === 0) return res.status(200).json({ success: true });
+    if (Object.keys(updates).length === 0) { console.log('PATCH: no updates to apply'); return res.status(200).json({ success: true }); }
 
     try {
       const patchRes = await fetch(
@@ -171,11 +247,13 @@ export default async function handler(req, res) {
         }
       );
       if (!patchRes.ok) {
-        console.error('File URL update error:', await patchRes.text());
+        const errBody = await patchRes.text();
+        console.error('PATCH update error:', patchRes.status, errBody);
         return res.status(500).json({ error: 'Error updating files' });
       }
+      console.log('PATCH: successfully updated', restaurant_slug, '| fields:', Object.keys(updates).join(', '));
 
-      // Extract menu products from uploaded images
+      // Extract menu products + style from uploaded images
       if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image')) {
         try {
           await extractMenuFromImages(restaurant_slug, menu_files);
@@ -295,6 +373,7 @@ export default async function handler(req, res) {
           notes: notes || null,
           chatbot_personality: chatbot_personality || 'casual',
           logo_url: logo_url || null,
+          menu_style: { primary_color: '#E8191A', secondary_color: '#C41415', accent_color: '#f4e4c1', font_style: 'modern' },
           order_types: Array.isArray(order_types) && order_types.length > 0 ? order_types : ['dine_in'],
           delivery_fee: parseInt(delivery_fee) || 0,
         }),
