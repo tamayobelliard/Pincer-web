@@ -1,5 +1,7 @@
 import bcrypt from 'bcryptjs';
 
+export const config = { maxDuration: 60 };
+
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
 function slugify(text) {
@@ -185,11 +187,14 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Error updating files' });
       }
 
-      // Fire-and-forget: extract menu products from uploaded images
+      // Extract menu products from uploaded images (must await to prevent Vercel from killing the function)
       if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image')) {
-        extractMenuFromImages(restaurant_slug, menu_files).catch(e =>
-          console.error('extractMenu background error:', e.message)
-        );
+        try {
+          await extractMenuFromImages(restaurant_slug, menu_files);
+        } catch (e) {
+          console.error('extractMenu error:', e.message);
+          // Don't fail the PATCH — file URLs are already saved
+        }
       }
 
       return res.status(200).json({ success: true });
@@ -314,44 +319,44 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Error al crear la cuenta' });
     }
 
-    // Send welcome email (fire-and-forget)
+    // Send welcome email + admin notification (must await to prevent Vercel from killing the function)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
-    sendEmail(
-      email,
-      'Bienvenido a Pincer — Tu prueba gratuita ha comenzado',
-      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-        <h1 style="color:#E8191A">Bienvenido a Pincer!</h1>
-        <p>Hola <strong>${owner_name}</strong>,</p>
-        <p>Tu restaurante <strong>${restaurant_name}</strong> ha sido registrado exitosamente.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-        <p><strong>Tu usuario:</strong> ${slug}</p>
-        <p><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></p>
-        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-        <p style="background:#FFF3F3;padding:12px;border-radius:8px;color:#E8191A;font-weight:bold">
-          Tu prueba gratuita de 30 dias ha comenzado. Disfruta de todas las funciones premium!
-        </p>
-        <p style="color:#888;font-size:12px;margin-top:20px">— El equipo de Pincer</p>
-      </div>`
-    );
-
-    // Send notification to admin (fire-and-forget)
-    sendEmail(
-      'info@pincerweb.com',
-      `Nuevo restaurante registrado: ${restaurant_name}`,
-      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-        <h2>Nuevo registro</h2>
-        <ul>
-          <li><strong>Restaurante:</strong> ${restaurant_name}</li>
-          <li><strong>Tipo:</strong> ${business_type || 'N/A'}</li>
-          <li><strong>Contacto:</strong> ${owner_name}</li>
-          <li><strong>Email:</strong> ${email}</li>
-          <li><strong>Telefono:</strong> ${phone}</li>
-          <li><strong>Direccion:</strong> ${address || city || 'N/A'}</li>
-          <li><strong>Website:</strong> ${website || 'N/A'}</li>
-          <li><strong>Slug:</strong> ${slug}</li>
-        </ul>
-      </div>`
-    );
+    await Promise.allSettled([
+      sendEmail(
+        email,
+        'Bienvenido a Pincer — Tu prueba gratuita ha comenzado',
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h1 style="color:#E8191A">Bienvenido a Pincer!</h1>
+          <p>Hola <strong>${owner_name}</strong>,</p>
+          <p>Tu restaurante <strong>${restaurant_name}</strong> ha sido registrado exitosamente.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p><strong>Tu usuario:</strong> ${slug}</p>
+          <p><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="background:#FFF3F3;padding:12px;border-radius:8px;color:#E8191A;font-weight:bold">
+            Tu prueba gratuita de 30 dias ha comenzado. Disfruta de todas las funciones premium!
+          </p>
+          <p style="color:#888;font-size:12px;margin-top:20px">— El equipo de Pincer</p>
+        </div>`
+      ),
+      sendEmail(
+        'info@pincerweb.com',
+        `Nuevo restaurante registrado: ${restaurant_name}`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <h2>Nuevo registro</h2>
+          <ul>
+            <li><strong>Restaurante:</strong> ${restaurant_name}</li>
+            <li><strong>Tipo:</strong> ${business_type || 'N/A'}</li>
+            <li><strong>Contacto:</strong> ${owner_name}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Telefono:</strong> ${phone}</li>
+            <li><strong>Direccion:</strong> ${address || city || 'N/A'}</li>
+            <li><strong>Website:</strong> ${website || 'N/A'}</li>
+            <li><strong>Slug:</strong> ${slug}</li>
+          </ul>
+        </div>`
+      ),
+    ]);
 
     return res.status(200).json({
       success: true,
