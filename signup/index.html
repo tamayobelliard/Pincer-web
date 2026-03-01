@@ -204,11 +204,6 @@
       color: #991B1B;
       border: 1px solid #FECACA;
     }
-    .alert-box.success {
-      background: #F0FDF4;
-      color: #166534;
-      border: 1px solid #BBF7D0;
-    }
 
     .form-group {
       margin-bottom: 16px;
@@ -335,6 +330,43 @@
       padding: 0 4px;
     }
 
+    /* Schedule Builder */
+    .schedule-builder { margin-bottom: 4px; }
+    .day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .day-chip {
+      padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+      font-size: 0.8em; font-weight: 700; cursor: pointer; user-select: none;
+      background: white; color: var(--text-secondary); transition: all 0.15s;
+    }
+    .day-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .time-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .time-row select { width: auto; flex: 1; margin-bottom: 0; padding: 8px 10px; font-size: 0.85em; min-width: 100px; }
+    .time-row span { color: var(--text-secondary); font-size: 0.85em; font-weight: 600; white-space: nowrap; }
+    .btn-apply-schedule {
+      background: rgba(232, 25, 26, 0.08); border: 1px solid rgba(232, 25, 26, 0.2); color: var(--primary);
+      padding: 6px 14px; border-radius: 6px; font-size: 0.8em; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .btn-apply-schedule:hover { background: rgba(232, 25, 26, 0.15); }
+    .schedule-preview {
+      background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-size: 0.85em; color: var(--text-secondary); min-height: 20px;
+    }
+
+    /* Menu Upload Processing */
+    .menu-upload-area {
+      margin-top: 8px; padding: 16px; border: 1.5px dashed var(--border); border-radius: 12px;
+      text-align: center; background: var(--bg-light);
+    }
+    .menu-upload-loading { display: none; padding: 20px; text-align: center; color: var(--text-secondary); }
+    .menu-upload-loading.active { display: block; }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .checkbox-group {
       display: flex;
       gap: 16px;
@@ -418,7 +450,24 @@
       font-size: 0.9em;
       line-height: 1.5;
     }
-    .success-view .redirect-text {
+
+    .credentials-box {
+      background: var(--bg-light); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 20px; margin: 20px 0; text-align: left;
+    }
+    .cred-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .cred-row:last-child { border-bottom: none; }
+    .cred-label { color: var(--text-secondary); font-size: 0.85em; font-weight: 600; }
+    .cred-value {
+      font-family: monospace; font-size: 0.95em; background: white;
+      padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+      color: var(--text-main); font-weight: 600;
+    }
+
+    .redirect-text {
       color: var(--text-secondary);
       font-size: 0.82em;
       margin-top: 20px;
@@ -536,13 +585,13 @@
     <div class="card">
       <div id="formView">
         <span class="trial-badge">30 dias gratis</span>
-        <h1>Crea tu cuenta</h1>
-        <p class="subtitle">Registra tu restaurante y empieza a recibir pedidos hoy.</p>
+        <h1>Registra tu negocio</h1>
+        <p class="subtitle">Completa los datos de tu restaurante y empieza a recibir pedidos hoy.</p>
 
         <div class="alert-box error" id="alertError"></div>
 
         <form id="signupForm" novalidate>
-          <!-- Account info -->
+          <!-- Business info -->
           <div class="form-group">
             <label for="restaurant_name">Nombre del negocio *</label>
             <input type="text" id="restaurant_name" required placeholder="Ej: La Cocina de Maria">
@@ -563,40 +612,52 @@
             </select>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="owner_name">Persona de contacto *</label>
-              <input type="text" id="owner_name" required placeholder="Nombre del dueno/encargado">
-              <div class="field-error" id="err_owner_name"></div>
-            </div>
-            <div class="form-group">
-              <label for="email">Email *</label>
-              <input type="email" id="email" required placeholder="correo@ejemplo.com">
-              <div class="field-error" id="err_email"></div>
-            </div>
+          <div class="form-group">
+            <label for="address">Direccion</label>
+            <input type="text" id="address" placeholder="Calle, sector, ciudad">
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label for="phone">Telefono (WhatsApp) *</label>
-              <input type="tel" id="phone" required placeholder="809-000-0000">
-              <div class="field-error" id="err_phone"></div>
+              <label for="phone">Telefono</label>
+              <input type="tel" id="phone" placeholder="809-000-0000">
             </div>
             <div class="form-group">
-              <label for="address">Direccion</label>
-              <input type="text" id="address" placeholder="Calle, sector, ciudad">
+              <label for="owner_name">Persona de contacto</label>
+              <input type="text" id="owner_name" placeholder="Nombre del dueno/encargado">
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="hours">Horario</label>
-              <input type="text" id="hours" placeholder="Ej: Lun-Vie 11am-9pm">
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" required placeholder="correo@ejemplo.com">
+            <div class="field-error" id="err_email"></div>
+          </div>
+
+          <!-- Schedule builder -->
+          <div class="form-group">
+            <label>Horario</label>
+            <div class="schedule-builder">
+              <div class="day-chips" id="dayChips"></div>
+              <div class="time-row">
+                <span>Abre</span>
+                <select id="timeOpen"></select>
+                <span>Cierra</span>
+                <select id="timeClose"></select>
+                <button type="button" class="btn-apply-schedule" onclick="applyToSelected()">Aplicar</button>
+              </div>
+              <div class="schedule-preview" id="schedulePreview">Selecciona dias y horario</div>
             </div>
-            <div class="form-group">
-              <label for="website">Website / Instagram</label>
-              <input type="text" id="website" placeholder="@instagram o www...">
-            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="website">Website / Instagram</label>
+            <input type="text" id="website" placeholder="@instagram o www...">
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Notas</label>
+            <textarea id="notes" placeholder="Notas adicionales sobre tu negocio..."></textarea>
           </div>
 
           <!-- Branding -->
@@ -617,7 +678,6 @@
           <div class="form-group">
             <label for="chatbot_personality">Personalidad del Chatbot</label>
             <select id="chatbot_personality">
-              <option value="">Seleccionar...</option>
               <option value="casual">Casual y amigable (neutro)</option>
               <option value="dominicano">Dominicano autentico</option>
               <option value="habibi">Arabe caribeno (habibi)</option>
@@ -629,7 +689,7 @@
           <div class="form-group">
             <label>Tipos de orden habilitados</label>
             <div class="checkbox-group">
-              <label><input type="checkbox" id="chkDineIn" value="dine_in"> Comer aqui</label>
+              <label><input type="checkbox" id="chkDineIn" value="dine_in" checked> Comer aqui</label>
               <label><input type="checkbox" id="chkTakeOut" value="take_out"> Para Llevar</label>
               <label><input type="checkbox" id="chkDelivery" value="delivery"> Delivery</label>
             </div>
@@ -640,48 +700,25 @@
             <input type="number" id="delivery_fee" placeholder="0" min="0" step="1">
           </div>
 
-          <div class="form-group">
-            <label for="notes">Notas adicionales</label>
-            <textarea id="notes" placeholder="Notas adicionales sobre tu negocio..."></textarea>
-          </div>
-
           <!-- Menu upload -->
           <hr class="section-divider">
           <div class="section-label">Tu Menu</div>
-          <p style="color:var(--text-secondary);font-size:0.85em;margin-bottom:14px;">Subenos tu menu para que podamos configurar tu pagina</p>
+          <p style="color:var(--text-secondary);font-size:0.85em;margin-bottom:14px;">Sube fotos de tu menu para que podamos configurar tu pagina automaticamente.</p>
 
-          <div class="form-group">
-            <label>Fotos del menu</label>
-            <button type="button" class="btn-upload" onclick="document.getElementById('menuPhotos').click()">Subir fotos</button>
-            <input type="file" id="menuPhotos" accept="image/*" multiple style="display:none;">
-            <div class="file-list" id="menuPhotosList"></div>
-          </div>
-
-          <div class="form-group">
-            <label>PDF del menu</label>
-            <button type="button" class="btn-upload" onclick="document.getElementById('menuPdf').click()">Subir PDF</button>
-            <input type="file" id="menuPdf" accept=".pdf" style="display:none;">
-            <div class="file-list" id="menuPdfName"></div>
-          </div>
-
-          <!-- Password -->
-          <hr class="section-divider">
-          <div class="section-label">Contrasena de acceso</div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="password">Contrasena *</label>
-              <input type="password" id="password" required placeholder="Min. 6 caracteres">
-              <div class="field-error" id="err_password"></div>
+          <div class="menu-upload-area">
+            <div id="menuUploadIdle">
+              <button type="button" class="btn-upload" onclick="document.getElementById('menuPhotos').click()">Subir Foto</button>
+              <input type="file" id="menuPhotos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+              <p style="color:#94A3B8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP</p>
+              <div class="file-list" id="menuPhotosList"></div>
             </div>
-            <div class="form-group">
-              <label for="confirm_password">Confirmar contrasena *</label>
-              <input type="password" id="confirm_password" required placeholder="Repetir contrasena">
-              <div class="field-error" id="err_confirm_password"></div>
+            <div class="menu-upload-loading" id="menuUploadLoading">
+              <div class="spinner"></div>
+              <p style="margin-top:10px;font-weight:600;">Procesando menu con IA...</p>
             </div>
           </div>
 
-          <button type="submit" class="btn-signup" id="signupBtn">Crear cuenta gratis</button>
+          <button type="submit" class="btn-signup" id="signupBtn">Registrar negocio</button>
         </form>
       </div>
 
@@ -689,7 +726,24 @@
         <div class="check-icon">&#10003;</div>
         <h2 id="successTitle">Cuenta creada</h2>
         <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
-        <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">3</span> segundos...</p>
+
+        <div class="credentials-box">
+          <div class="cred-row">
+            <span class="cred-label">Usuario</span>
+            <span class="cred-value" id="credUsername">---</span>
+          </div>
+          <div class="cred-row">
+            <span class="cred-label">Contrasena</span>
+            <span class="cred-value" id="credPassword">---</span>
+          </div>
+          <div class="cred-row">
+            <span class="cred-label">Dashboard</span>
+            <span class="cred-value" id="credDashboard" style="font-size:0.8em;">---</span>
+          </div>
+        </div>
+
+        <p style="color:var(--text-secondary);font-size:0.82em;">Guarda estas credenciales. Tambien fueron enviadas a tu email.</p>
+        <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">5</span> segundos...</p>
       </div>
     </div>
 
@@ -737,12 +791,102 @@
   var formView = document.getElementById('formView');
   var successView = document.getElementById('successView');
 
-  var requiredFields = ['restaurant_name', 'owner_name', 'email', 'phone', 'password', 'confirm_password'];
+  var requiredFields = ['restaurant_name', 'email'];
 
   // ── File state ──
   var logoFile = null;
   var menuPhotoFiles = [];
-  var menuPdfFile = null;
+
+  // ══════════════════════════════
+  // SCHEDULE BUILDER (ported from admin)
+  // ══════════════════════════════
+  var DAYS = [
+    { key: 'lun', label: 'Lun' }, { key: 'mar', label: 'Mar' }, { key: 'mie', label: 'Mie' },
+    { key: 'jue', label: 'Jue' }, { key: 'vie', label: 'Vie' }, { key: 'sab', label: 'Sab' },
+    { key: 'dom', label: 'Dom' },
+  ];
+  var schedule = {};
+
+  function buildTimeOptions() {
+    var opts = [];
+    for (var h = 6; h <= 23; h++) {
+      for (var m = 0; m < 60; m += 30) {
+        var h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        var label = h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+        opts.push({ value: String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'), label: label });
+      }
+    }
+    opts.push({ value: '24:00', label: '12:00 AM' });
+    return opts;
+  }
+
+  function initScheduleBuilder() {
+    var chipsEl = document.getElementById('dayChips');
+    chipsEl.innerHTML = DAYS.map(function(d) {
+      return '<div class="day-chip" data-day="' + d.key + '" onclick="toggleDay(\'' + d.key + '\')">' + d.label + '</div>';
+    }).join('');
+    var timeOpts = buildTimeOptions();
+    var openSel = document.getElementById('timeOpen');
+    var closeSel = document.getElementById('timeClose');
+    openSel.innerHTML = timeOpts.map(function(o) { return '<option value="' + o.value + '">' + o.label + '</option>'; }).join('');
+    closeSel.innerHTML = timeOpts.map(function(o) { return '<option value="' + o.value + '">' + o.label + '</option>'; }).join('');
+    openSel.value = '11:00';
+    closeSel.value = '22:00';
+  }
+
+  window.toggleDay = function(day) {
+    var chip = document.querySelector('.day-chip[data-day="' + day + '"]');
+    chip.classList.toggle('active');
+  };
+
+  window.applyToSelected = function() {
+    var openVal = document.getElementById('timeOpen').value;
+    var closeVal = document.getElementById('timeClose').value;
+    var openLabel = document.getElementById('timeOpen').selectedOptions[0].text;
+    var closeLabel = document.getElementById('timeClose').selectedOptions[0].text;
+    document.querySelectorAll('.day-chip.active').forEach(function(chip) {
+      schedule[chip.dataset.day] = { open: openVal, close: closeVal, openLabel: openLabel, closeLabel: closeLabel };
+    });
+    updateSchedulePreview();
+  };
+
+  function updateSchedulePreview() {
+    var el = document.getElementById('schedulePreview');
+    var assigned = DAYS.filter(function(d) { return schedule[d.key]; });
+    if (assigned.length === 0) { el.textContent = 'Selecciona dias y horario'; return; }
+    var groups = [];
+    var current = null;
+    for (var i = 0; i < DAYS.length; i++) {
+      var d = DAYS[i];
+      var s = schedule[d.key];
+      if (!s) { current = null; continue; }
+      var sig = s.open + '-' + s.close;
+      if (current && current.sig === sig && current.endIdx === i - 1) {
+        current.endIdx = i;
+        current.days.push(d);
+      } else {
+        current = { sig: sig, days: [d], endIdx: i, open: s.openLabel, close: s.closeLabel };
+        groups.push(current);
+      }
+    }
+    el.textContent = groups.map(function(g) {
+      var dayStr = g.days.length === 1 ? g.days[0].label : g.days[0].label + '-' + g.days[g.days.length - 1].label;
+      return dayStr + ' ' + g.open + ' - ' + g.close;
+    }).join(', ');
+  }
+
+  function getScheduleText() {
+    updateSchedulePreview();
+    var text = document.getElementById('schedulePreview').textContent;
+    return text === 'Selecciona dias y horario' ? '' : text;
+  }
+
+  initScheduleBuilder();
+
+  // ══════════════════════════════
+  // FILE UPLOADS
+  // ══════════════════════════════
 
   // ── Logo file upload ──
   document.getElementById('logoFile').addEventListener('change', function() {
@@ -776,20 +920,6 @@
     renderMenuPhotos();
   };
 
-  // ── Menu PDF ──
-  document.getElementById('menuPdf').addEventListener('change', function() {
-    var file = this.files[0];
-    if (!file) return;
-    menuPdfFile = file;
-    document.getElementById('menuPdfName').innerHTML = '<div class="file-item"><span>' + escapeHtml(file.name) + '</span><button type="button" class="remove-file" onclick="removeMenuPdf()">&times;</button></div>';
-  });
-
-  window.removeMenuPdf = function() {
-    menuPdfFile = null;
-    document.getElementById('menuPdf').value = '';
-    document.getElementById('menuPdfName').innerHTML = '';
-  };
-
   // ── Delivery fee toggle ──
   document.getElementById('chkDelivery').addEventListener('change', function() {
     document.getElementById('deliveryFeeField').style.display = this.checked ? 'block' : 'none';
@@ -802,6 +932,10 @@
     if (document.getElementById('chkDelivery').checked) types.push('delivery');
     return types.length > 0 ? types : ['dine_in'];
   }
+
+  // ══════════════════════════════
+  // HELPERS
+  // ══════════════════════════════
 
   function escapeHtml(str) {
     var d = document.createElement('div');
@@ -830,22 +964,14 @@
     clearErrors();
     var valid = true;
 
-    if (!document.getElementById('restaurant_name').value.trim()) { showFieldError('restaurant_name', 'El nombre del negocio es requerido'); valid = false; }
-    if (!document.getElementById('owner_name').value.trim()) { showFieldError('owner_name', 'La persona de contacto es requerida'); valid = false; }
+    if (!document.getElementById('restaurant_name').value.trim()) {
+      showFieldError('restaurant_name', 'El nombre del negocio es requerido');
+      valid = false;
+    }
 
     var email = document.getElementById('email').value.trim();
     if (!email) { showFieldError('email', 'El email es requerido'); valid = false; }
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError('email', 'Ingresa un email valido'); valid = false; }
-
-    if (!document.getElementById('phone').value.trim()) { showFieldError('phone', 'El telefono es requerido'); valid = false; }
-
-    var pw = document.getElementById('password').value;
-    if (!pw) { showFieldError('password', 'La contrasena es requerida'); valid = false; }
-    else if (pw.length < 6) { showFieldError('password', 'Minimo 6 caracteres'); valid = false; }
-
-    var cpw = document.getElementById('confirm_password').value;
-    if (!cpw) { showFieldError('confirm_password', 'Confirma tu contrasena'); valid = false; }
-    else if (pw !== cpw) { showFieldError('confirm_password', 'Las contrasenas no coinciden'); valid = false; }
 
     return valid;
   }
@@ -881,7 +1007,7 @@
       body: blob,
     });
     if (!res.ok) throw new Error('Upload failed: ' + res.status);
-    return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
+    return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path + '?t=' + Date.now();
   }
 
   // ── Upload all files after signup ──
@@ -906,16 +1032,17 @@
       } catch (e) { console.error('Menu photo upload error:', e); }
     }
 
-    // Upload menu PDF
-    if (menuPdfFile) {
-      try {
-        var url = await uploadToStorage('menus', slug + '/menu.pdf', menuPdfFile, 'application/pdf');
-        menuFiles.push({ type: 'pdf', url: url, name: menuPdfFile.name });
-      } catch (e) { console.error('Menu PDF upload error:', e); }
-    }
-
-    // Update record with file URLs
+    // Update record with file URLs (triggers AI extraction for menu images)
     if (logoUrl || menuFiles.length > 0) {
+      // Show processing indicator if menu images present
+      if (menuFiles.length > 0) {
+        var idleEl = document.getElementById('menuUploadIdle');
+        var loadingEl = document.getElementById('menuUploadLoading');
+        if (idleEl) idleEl.style.display = 'none';
+        if (loadingEl) loadingEl.classList.add('active');
+        btn.textContent = 'Procesando menu con IA...';
+      }
+
       try {
         await fetch('/api/signup', {
           method: 'PATCH',
@@ -930,13 +1057,16 @@
     }
   }
 
-  // ── Form submit ──
+  // ══════════════════════════════
+  // FORM SUBMIT
+  // ══════════════════════════════
+
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
     if (!validate()) return;
 
     btn.disabled = true;
-    btn.textContent = 'Creando cuenta...';
+    btn.textContent = 'Registrando...';
     alertError.style.display = 'none';
 
     var body = {
@@ -944,11 +1074,9 @@
       owner_name: document.getElementById('owner_name').value.trim(),
       email: document.getElementById('email').value.trim(),
       phone: document.getElementById('phone').value.trim(),
-      password: document.getElementById('password').value,
-      confirm_password: document.getElementById('confirm_password').value,
       business_type: document.getElementById('business_type').value,
       address: document.getElementById('address').value.trim(),
-      hours: document.getElementById('hours').value.trim(),
+      hours: getScheduleText(),
       website: document.getElementById('website').value.trim(),
       chatbot_personality: document.getElementById('chatbot_personality').value || 'casual',
       order_types: getOrderTypes(),
@@ -965,8 +1093,8 @@
       var data = await res.json();
 
       if (data.success) {
-        // Upload files in background (don't block success view)
-        var hasFiles = logoFile || menuPhotoFiles.length > 0 || menuPdfFile;
+        // Upload files
+        var hasFiles = logoFile || menuPhotoFiles.length > 0;
         if (hasFiles) {
           btn.textContent = 'Subiendo archivos...';
           try { await uploadFiles(data.restaurant_slug); } catch (e) { console.error('File upload error:', e); }
@@ -976,6 +1104,11 @@
         successView.style.display = 'block';
         document.getElementById('successTitle').textContent = data.display_name || 'Cuenta creada';
 
+        // Show generated credentials
+        document.getElementById('credUsername').textContent = data.restaurant_slug;
+        document.getElementById('credPassword').textContent = data.temp_password;
+        document.getElementById('credDashboard').textContent = 'pincerweb.com/' + data.restaurant_slug + '/dashboard';
+
         sessionStorage.setItem('dashboard_session', JSON.stringify({
           role: 'restaurant',
           restaurant_slug: data.restaurant_slug,
@@ -983,7 +1116,7 @@
           username: data.restaurant_slug,
         }));
 
-        var seconds = 3;
+        var seconds = 5;
         var countdownEl = document.getElementById('countdown');
         var timer = setInterval(function() {
           seconds--;
@@ -994,7 +1127,7 @@
           }
         }, 1000);
       } else {
-        alertError.textContent = data.error || 'Error al crear la cuenta. Intenta de nuevo.';
+        alertError.textContent = data.error || 'Error al registrar el negocio. Intenta de nuevo.';
         alertError.style.display = 'block';
       }
     } catch (err) {
@@ -1002,7 +1135,7 @@
       alertError.style.display = 'block';
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Crear cuenta gratis';
+      btn.textContent = 'Registrar negocio';
     }
   });
 })();

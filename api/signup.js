@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 
 export const config = { maxDuration: 60 };
@@ -273,23 +274,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const {
-    restaurant_name, owner_name, email, phone, password, confirm_password,
+    restaurant_name, owner_name, email, phone,
     business_type, address, hours, website, logo_url, chatbot_personality,
     order_types, delivery_fee, notes,
   } = req.body || {};
 
   // Validate required fields
-  if (!restaurant_name || !owner_name || !email || !phone || !password || !confirm_password) {
-    return res.status(400).json({ success: false, error: 'Los campos marcados con * son requeridos' });
+  if (!restaurant_name) {
+    return res.status(400).json({ success: false, error: 'El nombre del negocio es requerido' });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ success: false, error: 'Email no valido' });
-  }
-  if (password.length < 6) {
-    return res.status(400).json({ success: false, error: 'La contrasena debe tener al menos 6 caracteres' });
-  }
-  if (password !== confirm_password) {
-    return res.status(400).json({ success: false, error: 'Las contrasenas no coinciden' });
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ success: false, error: 'Un email valido es requerido' });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
@@ -342,8 +337,14 @@ export default async function handler(req, res) {
       }
     }
 
-    // Hash the user-provided password
-    const password_hash = await bcrypt.hash(password, 10);
+    // Auto-generate secure password (same pattern as admin.js handleCreate)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(8);
+    let temp_password = '';
+    for (let i = 0; i < 8; i++) {
+      temp_password += chars.charAt(bytes[i] % chars.length);
+    }
+    const password_hash = await bcrypt.hash(temp_password, 10);
 
     // Trial expiry: 30 days from now
     const trialExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -401,7 +402,7 @@ export default async function handler(req, res) {
           <p>Tu restaurante <strong>${restaurant_name}</strong> ha sido registrado exitosamente.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p><strong>Email de acceso:</strong> ${email}</p>
-          <p><strong>Contraseña:</strong> ${password}</p>
+          <p><strong>Contraseña:</strong> ${temp_password}</p>
           <p><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p style="background:#FFF3F3;padding:12px;border-radius:8px;color:#E8191A;font-weight:bold">
@@ -433,6 +434,7 @@ export default async function handler(req, res) {
       success: true,
       restaurant_slug: slug,
       display_name: restaurant_name.trim(),
+      temp_password,
     });
 
   } catch (error) {
