@@ -392,23 +392,32 @@ export default async function handler(req, res) {
 
     // Send welcome email + admin notification (await both before returning)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
+    const menuUrl = `https://www.pincerweb.com/${slug}`;
+    const expiryDate = new Date(trialExpires).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
     await Promise.allSettled([
       sendEmail(
         email,
-        'Bienvenido a Pincer 🎉 Tu menú digital está listo',
-        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-          <h1 style="color:#E8191A">Bienvenido a Pincer!</h1>
-          <p>Hola <strong>${owner_name}</strong>,</p>
-          <p>Tu restaurante <strong>${restaurant_name}</strong> ha sido registrado exitosamente.</p>
+        `Bienvenido a Pincer — ${restaurant_name}`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
+          </div>
+          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Bienvenido a Pincer!</h1>
+          <p style="text-align:center;color:#64748B;">Tu menu digital esta listo</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p><strong>Email de acceso:</strong> ${email}</p>
-          <p><strong>Contraseña:</strong> ${temp_password}</p>
-          <p><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></p>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#64748B;">Restaurante</td><td style="padding:8px 0;font-weight:bold;">${restaurant_name}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Email de acceso</td><td style="padding:8px 0;font-weight:bold;">${email}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Contrasena</td><td style="padding:8px 0;font-weight:bold;font-family:monospace;font-size:16px;letter-spacing:1px;">${temp_password}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Dashboard</td><td style="padding:8px 0;"><a href="${dashboardUrl}" style="color:#E8191A;font-weight:bold;">${dashboardUrl}</a></td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Tu menu</td><td style="padding:8px 0;"><a href="${menuUrl}" style="color:#E8191A;font-weight:bold;">${menuUrl}</a></td></tr>
+          </table>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="background:#FFF3F3;padding:12px;border-radius:8px;color:#E8191A;font-weight:bold">
-            Tu prueba gratuita de 30 dias ha comenzado. Disfruta de todas las funciones premium!
-          </p>
-          <p style="color:#888;font-size:12px;margin-top:20px">— El equipo de Pincer</p>
+          <div style="background:#FFF3F3;padding:14px;border-radius:8px;text-align:center;">
+            <p style="color:#E8191A;font-weight:bold;margin:0;">Prueba gratuita de 30 dias</p>
+            <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
         </div>`
       ),
       sendEmail(
@@ -425,6 +434,8 @@ export default async function handler(req, res) {
             <li><strong>Direccion:</strong> ${address || 'N/A'}</li>
             <li><strong>Website:</strong> ${website || 'N/A'}</li>
             <li><strong>Slug:</strong> ${slug}</li>
+            <li><strong>Menu:</strong> <a href="${menuUrl}">${menuUrl}</a></li>
+            <li><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></li>
           </ul>
         </div>`
       ),

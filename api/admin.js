@@ -3,6 +3,21 @@ import bcrypt from 'bcryptjs';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
+async function sendEmail(to, subject, html) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) { console.warn('RESEND_API_KEY not set — skipping email to', to); return; }
+  try {
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Pincer <info@pincerweb.com>', to: [to], subject, html }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) console.error('Resend API error:', resp.status, await resp.text());
+    else console.log('Resend: sent OK to', to);
+  } catch (e) { console.error('Resend email error:', e.message); }
+}
+
 // Verify admin session token against Supabase
 async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   if (!token) return false;
@@ -115,6 +130,9 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 
     const password_hash = await bcrypt.hash(temp_password, 10);
 
+    // Trial expiry: 30 days from now
+    const trialExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
     // Insert into restaurant_users
     const insertRes = await fetch(
       `${supabaseUrl}/rest/v1/restaurant_users`,
@@ -133,6 +151,9 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           display_name: name,
           role: 'restaurant',
           status: 'pending',
+          plan: 'premium',
+          trial_expires_at: trialExpires,
+          menu_style: { primary_color: '#E8191A', secondary_color: '#C41415', accent_color: '#f4e4c1', font_style: 'modern' },
           business_type: business_type || null,
           address: address || null,
           phone: phone || null,
@@ -156,6 +177,38 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
         return res.status(409).json({ success: false, error: 'Ya existe un usuario con ese nombre' });
       }
       return res.status(500).json({ success: false, error: 'Error al crear usuario' });
+    }
+
+    // Send welcome email if email was provided (fire and forget)
+    if (email) {
+      const dashboardUrl = `https://www.pincerweb.com/${username}/dashboard`;
+      const menuUrl = `https://www.pincerweb.com/${username}`;
+      const expiryDate = new Date(trialExpires).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
+      sendEmail(
+        email,
+        `Bienvenido a Pincer — ${name}`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
+          </div>
+          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Bienvenido a Pincer!</h1>
+          <p style="text-align:center;color:#64748B;">Tu menu digital esta listo</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#64748B;">Restaurante</td><td style="padding:8px 0;font-weight:bold;">${name}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Email de acceso</td><td style="padding:8px 0;font-weight:bold;">${email}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Contrasena</td><td style="padding:8px 0;font-weight:bold;font-family:monospace;font-size:16px;letter-spacing:1px;">${temp_password}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Dashboard</td><td style="padding:8px 0;"><a href="${dashboardUrl}" style="color:#E8191A;font-weight:bold;">${dashboardUrl}</a></td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Tu menu</td><td style="padding:8px 0;"><a href="${menuUrl}" style="color:#E8191A;font-weight:bold;">${menuUrl}</a></td></tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <div style="background:#FFF3F3;padding:14px;border-radius:8px;text-align:center;">
+            <p style="color:#E8191A;font-weight:bold;margin:0;">Prueba gratuita de 30 dias</p>
+            <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
+        </div>`
+      ).catch(e => console.error('Welcome email error:', e.message));
     }
 
     return res.status(200).json({

@@ -22,6 +22,27 @@ async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   } catch { return false; }
 }
 
+// Verify signup token: restaurant must have been created within the last 2 hours
+async function verifySignupAccess(slug, supabaseUrl, supabaseKey) {
+  if (!slug) return false;
+  try {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const r = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&created_at=gt.${twoHoursAgo}&select=id`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!r.ok) return false;
+    const rows = await r.json();
+    return rows.length > 0;
+  } catch { return false; }
+}
+
 // Reusable Claude API call
 function callClaude(apiKey, imageContent, textPrompt) {
   const content = imageContent
@@ -45,7 +66,7 @@ function callClaude(apiKey, imageContent, textPrompt) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key, x-signup-slug');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -53,9 +74,11 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // Verify admin session token
+  // Verify admin session token OR signup access (recently-created restaurant)
   const isAdmin = await verifyAdmin(req.headers['x-admin-key'], supabaseUrl, supabaseKey);
-  if (!isAdmin) {
+  const signupSlug = req.headers['x-signup-slug'] || '';
+  const isSignup = !isAdmin && signupSlug ? await verifySignupAccess(signupSlug, supabaseUrl, supabaseKey) : false;
+  if (!isAdmin && !isSignup) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

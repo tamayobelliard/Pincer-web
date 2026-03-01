@@ -367,6 +367,25 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Menu preview (post-creation) */
+    .menu-upload-section { margin-top: 16px; }
+    .btn-upload-menu {
+      display: inline-block; padding: 10px 20px; background: var(--bg-light);
+      border: 1.5px dashed var(--border); border-radius: 10px; cursor: pointer;
+      font-weight: 600; font-size: 0.9em; color: var(--text-main);
+    }
+    .btn-upload-menu:hover { border-color: var(--primary); color: var(--primary); }
+    .menu-preview { max-height: 300px; overflow-y: auto; margin-top: 10px; }
+    .menu-preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .menu-preview-header h4 { font-size: 0.9em; }
+    .menu-preview-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.85em;
+    }
+    .item-name { font-weight: 600; }
+    .item-category { background: var(--bg-light); padding: 2px 8px; border-radius: 4px; font-size: 0.8em; color: var(--text-secondary); }
+    .item-price { font-weight: 700; color: var(--primary); white-space: nowrap; }
+
     .checkbox-group {
       display: flex;
       gap: 16px;
@@ -700,24 +719,6 @@
             <input type="number" id="delivery_fee" placeholder="0" min="0" step="1">
           </div>
 
-          <!-- Menu upload -->
-          <hr class="section-divider">
-          <div class="section-label">Tu Menu</div>
-          <p style="color:var(--text-secondary);font-size:0.85em;margin-bottom:14px;">Sube fotos de tu menu para que podamos configurar tu pagina automaticamente.</p>
-
-          <div class="menu-upload-area">
-            <div id="menuUploadIdle">
-              <button type="button" class="btn-upload" onclick="document.getElementById('menuPhotos').click()">Subir Foto</button>
-              <input type="file" id="menuPhotos" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
-              <p style="color:#94A3B8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP</p>
-              <div class="file-list" id="menuPhotosList"></div>
-            </div>
-            <div class="menu-upload-loading" id="menuUploadLoading">
-              <div class="spinner"></div>
-              <p style="margin-top:10px;font-weight:600;">Procesando menu con IA...</p>
-            </div>
-          </div>
-
           <button type="submit" class="btn-signup" id="signupBtn">Registrar negocio</button>
         </form>
       </div>
@@ -740,10 +741,35 @@
             <span class="cred-label">Dashboard</span>
             <span class="cred-value" id="credDashboard" style="font-size:0.8em;">---</span>
           </div>
+          <div class="cred-row">
+            <span class="cred-label">Menu</span>
+            <span class="cred-value" id="credMenu" style="font-size:0.8em;">---</span>
+          </div>
         </div>
 
         <p style="color:var(--text-secondary);font-size:0.82em;">Guarda estas credenciales. Tambien fueron enviadas a tu email.</p>
-        <p class="redirect-text">Redirigiendo al dashboard en <span id="countdown">5</span> segundos...</p>
+
+        <!-- Menu upload section (post-creation, like admin) -->
+        <div class="menu-upload-section">
+          <hr class="section-divider" style="margin:16px 0;">
+          <p style="font-weight:600;margin-bottom:8px;">Sube fotos de tu menu</p>
+          <p style="color:var(--text-secondary);font-size:0.82em;margin-bottom:12px;">La IA extraera los productos automaticamente.</p>
+          <div id="signupMenuIdle">
+            <button type="button" class="btn-upload-menu" onclick="triggerSignupMenuUpload()">Subir Foto de Menu</button>
+            <input type="file" id="signupMenuFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            <p style="color:#94A3B8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP — Opcional</p>
+          </div>
+          <div class="menu-upload-loading" id="signupMenuLoading">
+            <div class="spinner"></div>
+            <p style="margin-top:10px;font-weight:600;">Procesando menu con IA...</p>
+          </div>
+          <div id="signupMenuPreview" style="display:none;"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <a id="linkMenu" href="#" target="_blank" style="flex:1;text-align:center;padding:12px;background:var(--bg-light);border:1.5px solid var(--border);border-radius:10px;font-weight:600;font-size:0.9em;color:var(--text-main);text-decoration:none;">Ver menu</a>
+          <a id="linkDashboard" href="#" style="flex:1;text-align:center;padding:12px;background:var(--primary);border:none;border-radius:10px;font-weight:600;font-size:0.9em;color:white;text-decoration:none;">Ir al dashboard</a>
+        </div>
       </div>
     </div>
 
@@ -795,7 +821,9 @@
 
   // ── File state ──
   var logoFile = null;
-  var menuPhotoFiles = [];
+  var createdSlug = null; // set after successful signup, used for menu upload
+  var accumulatedItems = [];
+  var photoCount = 0;
 
   // ══════════════════════════════
   // SCHEDULE BUILDER (ported from admin)
@@ -901,23 +929,127 @@
     reader.readAsDataURL(file);
   });
 
-  // ── Menu photos ──
-  document.getElementById('menuPhotos').addEventListener('change', function() {
-    menuPhotoFiles = Array.from(this.files);
-    renderMenuPhotos();
+  // ══════════════════════════════
+  // POST-CREATION MENU UPLOAD (calls /api/parse-menu like admin)
+  // ══════════════════════════════
+  window.triggerSignupMenuUpload = function() {
+    document.getElementById('signupMenuFileInput').click();
+  };
+
+  document.getElementById('signupMenuFileInput').addEventListener('change', function(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Formato no soportado. Usa JPG, PNG o WebP.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es muy grande. Maximo 10MB.');
+      return;
+    }
+    event.target.value = '';
+
+    // Resize if over 1MB
+    if (file.size > 1 * 1024 * 1024) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX_W = 1200;
+        var w = img.width, h = img.height;
+        if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        uploadSignupMenuPhoto(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = URL.createObjectURL(file);
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) { uploadSignupMenuPhoto(e.target.result); };
+    reader.readAsDataURL(file);
   });
 
-  function renderMenuPhotos() {
-    var container = document.getElementById('menuPhotosList');
-    if (menuPhotoFiles.length === 0) { container.innerHTML = ''; return; }
-    container.innerHTML = menuPhotoFiles.map(function(f, i) {
-      return '<div class="file-item"><span>' + escapeHtml(f.name) + '</span><button type="button" class="remove-file" onclick="removeMenuPhoto(' + i + ')">&times;</button></div>';
-    }).join('');
+  async function uploadSignupMenuPhoto(dataUri) {
+    if (!createdSlug) { alert('Error: restaurante no creado aun'); return; }
+
+    showSignupMenuLoading(true);
+
+    try {
+      var res = await fetch('/api/parse-menu', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-signup-slug': createdSlug,
+        },
+        body: JSON.stringify({
+          image: dataUri,
+          restaurant_slug: createdSlug,
+          start_order: accumulatedItems.length,
+        }),
+      });
+      var data = await res.json();
+
+      if (data.success) {
+        accumulatedItems = accumulatedItems.concat(data.items);
+        photoCount++;
+        showSignupMenuPreview(accumulatedItems, accumulatedItems.length, photoCount, !!data.menuStyle);
+      } else {
+        alert((data.error || 'Error al procesar la imagen') + (data.details ? '\nDetalle: ' + data.details : ''));
+        showSignupMenuLoading(false);
+      }
+    } catch (err) {
+      alert('Error de conexion al procesar menu');
+      showSignupMenuLoading(false);
+    }
   }
 
-  window.removeMenuPhoto = function(idx) {
-    menuPhotoFiles.splice(idx, 1);
-    renderMenuPhotos();
+  function showSignupMenuLoading(show) {
+    var idle = document.getElementById('signupMenuIdle');
+    var loading = document.getElementById('signupMenuLoading');
+    if (idle) idle.style.display = show ? 'none' : '';
+    if (loading) loading.classList.toggle('active', show);
+    if (show) {
+      var preview = document.getElementById('signupMenuPreview');
+      if (preview) preview.style.display = 'none';
+    }
+  }
+
+  function showSignupMenuPreview(items, count, photos, styleSaved) {
+    showSignupMenuLoading(false);
+
+    var counterText = photos > 1
+      ? count + ' items extraidos de ' + photos + ' fotos'
+      : count + ' items extraidos';
+
+    var itemsHtml = '';
+    items.forEach(function(item) {
+      itemsHtml += '<div class="menu-preview-item"><div><span class="item-name">' + escapeHtml(item.name) + '</span>' +
+        (item.description ? '<br><span style="font-size:0.8em;color:#94a3b8;">' + escapeHtml(item.description) + '</span>' : '') +
+        '</div><div style="display:flex;gap:8px;align-items:center;"><span class="item-category">' + escapeHtml(item.category) +
+        '</span><span class="item-price">RD$' + item.price + '</span></div></div>';
+    });
+
+    var previewHtml = '<div class="menu-preview-header"><h4>' + counterText + '</h4>' +
+      (styleSaved ? '<span style="font-size:0.75em;color:#059669;">Estilo guardado</span>' : '') + '</div>' +
+      '<div class="menu-preview">' + itemsHtml + '</div>' +
+      '<div style="display:flex;gap:10px;margin-top:10px;">' +
+      '<button type="button" class="btn-upload-menu" style="flex:1;" onclick="triggerSignupMenuUpload()">Subir Otra Foto</button>' +
+      '<button type="button" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;" onclick="confirmSignupMenu()">Listo</button></div>';
+
+    var container = document.getElementById('signupMenuPreview');
+    container.innerHTML = previewHtml;
+    container.style.display = 'block';
+    document.getElementById('signupMenuIdle').style.display = 'none';
+  }
+
+  window.confirmSignupMenu = function() {
+    var count = accumulatedItems.length;
+    var container = document.getElementById('signupMenuPreview');
+    container.innerHTML = '<div class="menu-preview-header"><h4 style="color:#166534;">&#10003; ' + count + ' items guardados</h4>' +
+      '<span style="font-size:0.75em;color:#94a3b8;">' + photoCount + ' foto' + (photoCount > 1 ? 's' : '') + '</span></div>';
   };
 
   // ── Delivery fee toggle ──
@@ -1010,51 +1142,19 @@
     return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path + '?t=' + Date.now();
   }
 
-  // ── Upload all files after signup ──
-  async function uploadFiles(slug) {
-    var logoUrl = null;
-    var menuFiles = [];
-
-    // Upload logo
-    if (logoFile) {
-      try {
-        var blob = await compressImage(logoFile, 400);
-        logoUrl = await uploadToStorage('product-images', 'logos/' + slug + '.jpg', blob, 'image/jpeg');
-      } catch (e) { console.error('Logo upload error:', e); }
-    }
-
-    // Upload menu photos
-    for (var i = 0; i < menuPhotoFiles.length; i++) {
-      try {
-        var blob = await compressImage(menuPhotoFiles[i], 1200);
-        var url = await uploadToStorage('menus', slug + '/menu-' + (i + 1) + '.jpg', blob, 'image/jpeg');
-        menuFiles.push({ type: 'image', url: url, name: menuPhotoFiles[i].name });
-      } catch (e) { console.error('Menu photo upload error:', e); }
-    }
-
-    // Update record with file URLs (triggers AI extraction for menu images)
-    if (logoUrl || menuFiles.length > 0) {
-      // Show processing indicator if menu images present
-      if (menuFiles.length > 0) {
-        var idleEl = document.getElementById('menuUploadIdle');
-        var loadingEl = document.getElementById('menuUploadLoading');
-        if (idleEl) idleEl.style.display = 'none';
-        if (loadingEl) loadingEl.classList.add('active');
-        btn.textContent = 'Procesando menu con IA...';
-      }
-
-      try {
-        await fetch('/api/signup', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurant_slug: slug,
-            logo_url: logoUrl,
-            menu_files: menuFiles.length > 0 ? menuFiles : undefined,
-          }),
-        });
-      } catch (e) { console.error('File URL update error:', e); }
-    }
+  // ── Upload logo after signup ──
+  async function uploadLogo(slug) {
+    if (!logoFile) return;
+    try {
+      var blob = await compressImage(logoFile, 400);
+      var logoUrl = await uploadToStorage('product-images', 'logos/' + slug + '.jpg', blob, 'image/jpeg');
+      // Save logo URL to restaurant record
+      await fetch('/api/signup', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_slug: slug, logo_url: logoUrl }),
+      });
+    } catch (e) { console.error('Logo upload error:', e); }
   }
 
   // ══════════════════════════════
@@ -1093,11 +1193,12 @@
       var data = await res.json();
 
       if (data.success) {
-        // Upload files
-        var hasFiles = logoFile || menuPhotoFiles.length > 0;
-        if (hasFiles) {
-          btn.textContent = 'Subiendo archivos...';
-          try { await uploadFiles(data.restaurant_slug); } catch (e) { console.error('File upload error:', e); }
+        createdSlug = data.restaurant_slug;
+
+        // Upload logo in background
+        if (logoFile) {
+          btn.textContent = 'Subiendo logo...';
+          try { await uploadLogo(data.restaurant_slug); } catch (e) { console.error('Logo upload error:', e); }
         }
 
         formView.style.display = 'none';
@@ -1108,6 +1209,11 @@
         document.getElementById('credUsername').textContent = data.restaurant_slug;
         document.getElementById('credPassword').textContent = data.temp_password;
         document.getElementById('credDashboard').textContent = 'pincerweb.com/' + data.restaurant_slug + '/dashboard';
+        document.getElementById('credMenu').textContent = 'pincerweb.com/' + data.restaurant_slug;
+
+        // Set links
+        document.getElementById('linkMenu').href = '/' + data.restaurant_slug;
+        document.getElementById('linkDashboard').href = '/' + data.restaurant_slug + '/dashboard';
 
         sessionStorage.setItem('dashboard_session', JSON.stringify({
           role: 'restaurant',
@@ -1115,17 +1221,6 @@
           display_name: data.display_name,
           username: data.restaurant_slug,
         }));
-
-        var seconds = 5;
-        var countdownEl = document.getElementById('countdown');
-        var timer = setInterval(function() {
-          seconds--;
-          countdownEl.textContent = seconds;
-          if (seconds <= 0) {
-            clearInterval(timer);
-            window.location.href = '/' + data.restaurant_slug + '/dashboard';
-          }
-        }, 1000);
       } else {
         alertError.textContent = data.error || 'Error al registrar el negocio. Intenta de nuevo.';
         alertError.style.display = 'block';

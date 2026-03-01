@@ -1306,8 +1306,9 @@ async function createRestaurant() {
           </div>
           <div id="postCreateMenuPreview" style="display:none;"></div>
         </div>
-        <div class="modal-buttons" style="margin-top:16px;">
-          <button class="btn-primary" onclick="closeModal()" style="width:100%;">Cerrar</button>
+        <div class="modal-buttons" style="margin-top:16px;display:flex;gap:10px;">
+          <a href="/${escapeHtml(data.username)}" target="_blank" style="flex:1;text-align:center;text-decoration:none;padding:10px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;color:#475569;font-weight:600;font-size:0.9em;">Ver menu</a>
+          <a href="/${escapeHtml(data.username)}/dashboard" target="_blank" class="btn-primary" style="flex:1;text-align:center;text-decoration:none;">Ir al dashboard</a>
         </div>
       `;
       loadRestaurants();
