@@ -4,14 +4,6 @@ export const config = { maxDuration: 60 };
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 30);
-}
-
 async function sendEmail(to, subject, html) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -45,7 +37,7 @@ async function sendEmail(to, subject, html) {
   }
 }
 
-// Background: extract menu products from uploaded images using Claude Vision
+// Extract menu products from uploaded images using Claude Vision
 async function extractMenuFromImages(restaurant_slug, menu_files) {
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,14 +56,12 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 
   for (const file of imageFiles) {
     try {
-      // Fetch image and convert to base64
       const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
       if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url); continue; }
       const imgBuffer = await imgRes.arrayBuffer();
       const base64 = Buffer.from(imgBuffer).toString('base64');
       const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
 
-      // Call Claude Haiku with vision
       const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -97,7 +87,6 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
       const claudeData = await claudeRes.json();
       const rawText = claudeData.content?.find(c => c.type === 'text')?.text || '';
 
-      // Parse JSON array from response
       const jsonMatch = rawText.match(/\[[\s\S]*\]/);
       if (!jsonMatch) { console.error('extractMenu: no JSON array in response'); continue; }
       const items = JSON.parse(jsonMatch[0]);
@@ -109,7 +98,6 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 
   if (allItems.length === 0) { console.log('extractMenu: no items extracted'); return; }
 
-  // Build product rows (same format as parse-menu.js)
   const rows = allItems.map((item, i) => ({
     id: `${restaurant_slug}-${(item.name || 'item').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40)}-${i}`,
     name: String(item.name || '').slice(0, 100),
@@ -153,7 +141,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // PATCH: update file URLs after signup
+  // ── PATCH: update file URLs + extract menu after signup ──
   if (req.method === 'PATCH') {
     const { restaurant_slug, logo_url, menu_files } = req.body || {};
     if (!restaurant_slug) return res.status(400).json({ error: 'Missing restaurant_slug' });
@@ -187,13 +175,12 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Error updating files' });
       }
 
-      // Extract menu products from uploaded images (must await to prevent Vercel from killing the function)
+      // Extract menu products from uploaded images
       if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image')) {
         try {
           await extractMenuFromImages(restaurant_slug, menu_files);
         } catch (e) {
           console.error('extractMenu error:', e.message);
-          // Don't fail the PATCH — file URLs are already saved
         }
       }
 
@@ -204,13 +191,13 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── POST: create restaurant (mirrors admin handleCreate logic) ──
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const {
     restaurant_name, owner_name, email, phone, password, confirm_password,
     business_type, address, hours, website, logo_url, chatbot_personality,
     order_types, delivery_fee, notes,
-    city, // backwards compat
   } = req.body || {};
 
   // Validate required fields
@@ -256,11 +243,16 @@ export default async function handler(req, res) {
       return res.status(409).json({ success: false, error: 'Ya existe una cuenta con este email' });
     }
 
-    // Generate slug
-    let slug = slugify(restaurant_name);
-    if (!slug) slug = 'restaurant';
+    // Generate username from name (same slugify as admin handleCreate)
+    const username = restaurant_name
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '')
+      .slice(0, 20);
 
-    // Check if slug is taken
+    let slug = username || 'restaurant';
+
+    // Check if slug is taken — append random digits if so
     const slugCheck = await fetch(
       `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`,
       { headers: sbHeaders }
@@ -268,18 +260,17 @@ export default async function handler(req, res) {
     if (slugCheck.ok) {
       const slugRows = await slugCheck.json();
       if (slugRows.length > 0) {
-        // Append random digits
-        slug = slug.slice(0, 27) + String(Math.floor(Math.random() * 900) + 100);
+        slug = slug.slice(0, 17) + String(Math.floor(Math.random() * 900) + 100);
       }
     }
 
-    // Hash password
+    // Hash the user-provided password
     const password_hash = await bcrypt.hash(password, 10);
 
     // Trial expiry: 30 days from now
     const trialExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // Insert into restaurant_users
+    // Insert into restaurant_users (same structure as admin handleCreate + signup extras)
     const insertRes = await fetch(
       `${supabaseUrl}/rest/v1/restaurant_users`,
       {
@@ -290,20 +281,20 @@ export default async function handler(req, res) {
           password_hash,
           restaurant_slug: slug,
           display_name: restaurant_name.trim(),
-          contact_name: owner_name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim(),
-          address: (address || city || '').trim() || null,
-          business_type: business_type || null,
-          hours: hours || null,
-          website: website || null,
-          logo_url: logo_url || null,
-          notes: notes || null,
           role: 'restaurant',
           status: 'active',
           plan: 'premium',
           trial_expires_at: trialExpires,
+          business_type: business_type || null,
+          address: address || null,
+          phone: phone.trim() || null,
+          contact_name: owner_name.trim() || null,
+          email: email.trim().toLowerCase(),
+          hours: hours || null,
+          website: website || null,
+          notes: notes || null,
           chatbot_personality: chatbot_personality || 'casual',
+          logo_url: logo_url || null,
           order_types: Array.isArray(order_types) && order_types.length > 0 ? order_types : ['dine_in'],
           delivery_fee: parseInt(delivery_fee) || 0,
         }),
@@ -312,25 +303,26 @@ export default async function handler(req, res) {
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
-      console.error('Insert error:', errText);
+      console.error('Failed to create restaurant user:', errText);
       if (errText.includes('duplicate') || errText.includes('unique')) {
         return res.status(409).json({ success: false, error: 'Ya existe una cuenta con este nombre o email' });
       }
       return res.status(500).json({ success: false, error: 'Error al crear la cuenta' });
     }
 
-    // Send welcome email + admin notification (must await to prevent Vercel from killing the function)
+    // Send welcome email + admin notification (await both before returning)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     await Promise.allSettled([
       sendEmail(
         email,
-        'Bienvenido a Pincer — Tu prueba gratuita ha comenzado',
+        'Bienvenido a Pincer 🎉 Tu menú digital está listo',
         `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
           <h1 style="color:#E8191A">Bienvenido a Pincer!</h1>
           <p>Hola <strong>${owner_name}</strong>,</p>
           <p>Tu restaurante <strong>${restaurant_name}</strong> ha sido registrado exitosamente.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p><strong>Tu usuario:</strong> ${slug}</p>
+          <p><strong>Email de acceso:</strong> ${email}</p>
+          <p><strong>Contraseña:</strong> ${password}</p>
           <p><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <p style="background:#FFF3F3;padding:12px;border-radius:8px;color:#E8191A;font-weight:bold">
@@ -350,7 +342,7 @@ export default async function handler(req, res) {
             <li><strong>Contacto:</strong> ${owner_name}</li>
             <li><strong>Email:</strong> ${email}</li>
             <li><strong>Telefono:</strong> ${phone}</li>
-            <li><strong>Direccion:</strong> ${address || city || 'N/A'}</li>
+            <li><strong>Direccion:</strong> ${address || 'N/A'}</li>
             <li><strong>Website:</strong> ${website || 'N/A'}</li>
             <li><strong>Slug:</strong> ${slug}</li>
           </ul>
