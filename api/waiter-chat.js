@@ -177,7 +177,9 @@ LANGUAGE RULES:
       playful: isSpanish ? p.style : '- Fun, enthusiastic, energetic tone. Every dish is an adventure! Use 2-3 emojis per message.',
     }[personality] || (isSpanish ? p.style : '- Friendly, relaxed neutral tone.');
 
-    const systemPrompt = `Eres el mesero virtual de ${rName}.
+    const systemPrompt = `REGLA ABSOLUTA: Responde SIEMPRE en español, sin excepcion, aunque el cliente escriba en otro idioma.
+
+Eres el mesero virtual de ${rName}.
 ${langInstruction}
 ESTILO DE CONVERSACIÓN:
 - NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
