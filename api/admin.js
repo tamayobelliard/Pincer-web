@@ -275,11 +275,66 @@ async function handleResetPassword(req, res, supabaseUrl, supabaseKey) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ACTION: delete — delete restaurant and all associated data
+// ══════════════════════════════════════════════════════════════
+async function handleDelete(req, res, supabaseUrl, supabaseKey) {
+  if (req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { id, restaurant_slug } = req.body;
+  if (!id || !restaurant_slug) return res.status(400).json({ error: 'id and restaurant_slug required' });
+
+  const headers = {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`,
+  };
+
+  const errors = [];
+
+  // 1. Delete all products for this restaurant
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, { method: 'DELETE', headers });
+    if (!r.ok) errors.push('products: ' + await r.text());
+  } catch (e) { errors.push('products: ' + e.message); }
+
+  // 2. Delete all orders for this restaurant
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/orders?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, { method: 'DELETE', headers });
+    if (!r.ok) errors.push('orders: ' + await r.text());
+  } catch (e) { errors.push('orders: ' + e.message); }
+
+  // 3. Delete restaurant insights
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}`, { method: 'DELETE', headers });
+    if (!r.ok) errors.push('insights: ' + await r.text());
+  } catch (e) { errors.push('insights: ' + e.message); }
+
+  // 4. Delete the restaurant user record
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers });
+    if (!r.ok) {
+      const errText = await r.text();
+      errors.push('restaurant_users: ' + errText);
+      console.error('delete restaurant_users failed:', errText);
+      return res.status(500).json({ error: 'Failed to delete restaurant' });
+    }
+  } catch (e) {
+    errors.push('restaurant_users: ' + e.message);
+    return res.status(500).json({ error: 'Failed to delete restaurant' });
+  }
+
+  if (errors.length > 0) {
+    console.warn('delete restaurant partial errors:', errors);
+  }
+
+  return res.status(200).json({ success: true });
+}
+
+// ══════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -300,6 +355,7 @@ export default async function handler(req, res) {
     case 'create':          return handleCreate(req, res, supabaseUrl, supabaseKey);
     case 'update':          return handleUpdate(req, res, supabaseUrl, supabaseKey);
     case 'reset-password':  return handleResetPassword(req, res, supabaseUrl, supabaseKey);
+    case 'delete':          return handleDelete(req, res, supabaseUrl, supabaseKey);
     default:
       return res.status(400).json({ error: 'Missing or invalid action parameter' });
   }

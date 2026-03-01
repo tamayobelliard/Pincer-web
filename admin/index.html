@@ -70,6 +70,12 @@
       border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9em;
     }
     .btn-danger:hover { background: #b91c1c; }
+    .btn-delete {
+      background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+      padding: 8px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 0.85em; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-delete:hover { background: #fee2e2; border-color: #f87171; }
 
     /* Restaurant cards */
     .restaurant-list { display: flex; flex-direction: column; gap: 14px; }
@@ -741,6 +747,7 @@ function renderRestaurants() {
           ${r.status === 'active' ? `<button class="btn-qr" onclick="showQR('${r.id}')">Ver QR</button>` : ''}
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
+          <button class="btn-delete" onclick="deleteRestaurant('${r.id}')">🗑️</button>
         </div>
       </div>
     `;
@@ -772,6 +779,34 @@ async function toggleStatus(id, currentStatus) {
     }
   } catch (err) {
     alert('Error al cambiar estado');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DELETE RESTAURANT
+// ══════════════════════════════════════════════════════════════
+
+async function deleteRestaurant(id) {
+  const r = restaurants.find(x => String(x.id) === String(id));
+  if (!r) return;
+
+  if (!confirm('¿Estás seguro que deseas eliminar ' + r.display_name + '? Esta acción eliminará todos sus productos, menús y órdenes permanentemente.')) return;
+
+  try {
+    const res = await adminFetch('/api/admin?action=delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, restaurant_slug: r.restaurant_slug }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      restaurants = restaurants.filter(x => String(x.id) !== String(id));
+      renderRestaurants();
+    } else {
+      alert(data.error || 'Error al eliminar restaurante');
+    }
+  } catch (err) {
+    alert('Error de conexión');
   }
 }
 
