@@ -11,9 +11,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <style>
     :root {
-      --primary: #2d5016;
-      --primary-light: #4a7c2c;
-      --accent: #f4e4c1;
+      --primary: #E8191A;
+      --primary-light: #E8191A;
+      --accent: #ffffff;
     }
 
     * {
@@ -24,7 +24,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      background: #1a1a1a;
     }
     body.font-classic { font-family: 'Georgia', 'Times New Roman', serif; }
     body.font-casual { font-family: 'Nunito', 'Quicksand', -apple-system, sans-serif; }
@@ -2448,36 +2448,48 @@ async function loadRestaurantData() {
   } catch (e) { return null; }
 }
 
+// ── Predefined themes (must match api/parse-menu.js) ──
+var THEMES = {
+  'rojo-clasico':      { bg: '#1a1a1a', primary: '#E8191A', text: '#ffffff', accent: '#ffffff' },
+  'negro-elegante':    { bg: '#0d0d0d', primary: '#E8191A', text: '#ffffff', accent: '#f5f5f5' },
+  'cafe-moderno':      { bg: '#faf6f1', primary: '#8B4513', text: '#2c1810', accent: '#d4a574' },
+  'verde-fresco':      { bg: '#f8fffe', primary: '#2d7a4f', text: '#1a3d2b', accent: '#4caf50' },
+  'azul-profesional':  { bg: '#f8faff', primary: '#1a4fa0', text: '#0d2748', accent: '#2196f3' },
+};
+
 // Apply theme from menu_style
 function applyTheme(style) {
-  const primary = style?.primary_color || '#2d5016';
-  const secondary = style?.secondary_color || '#4a7c2c';
-  const bg = style?.background_color || null;
-  const accent = style?.accent_color || '#f4e4c1';
+  // Resolve theme: if style has a theme name, use predefined; otherwise use stored colors
+  var resolved = style?.theme && THEMES[style.theme] ? THEMES[style.theme] : (style || THEMES['rojo-clasico']);
+  var primary = resolved.primary || '#E8191A';
+  var bg = resolved.bg || '#1a1a1a';
+  var accent = resolved.accent || '#ffffff';
+  var textColor = resolved.text || '#ffffff';
 
   document.documentElement.style.setProperty('--primary', primary);
-  document.documentElement.style.setProperty('--primary-light', secondary);
+  document.documentElement.style.setProperty('--primary-light', primary);
   document.documentElement.style.setProperty('--accent', accent);
-  if (bg) {
-    document.body.style.background = bg;
-  } else {
-    document.body.style.background = 'linear-gradient(135deg, ' + primary + ' 0%, ' + secondary + ' 100%)';
-  }
+  document.body.style.background = bg;
 
-  // Always apply dark-bg class when a custom background is set
-  // Cards stay white with dark text; only page background changes
-  if (bg) {
+  // Determine if background is dark (for card contrast)
+  var isDark = isDarkColor(bg);
+  if (isDark) {
     document.body.classList.add('dark-bg');
   }
 
-  const fontStyle = style?.font_style || 'modern';
-  if (fontStyle === 'classic') document.body.classList.add('font-classic');
-  else if (fontStyle === 'casual') document.body.classList.add('font-casual');
-
-  const meta = document.createElement('meta');
+  var meta = document.createElement('meta');
   meta.name = 'theme-color';
   meta.content = primary;
   document.head.appendChild(meta);
+}
+
+// Check if a hex color is dark
+function isDarkColor(hex) {
+  hex = hex.replace('#', '');
+  var r = parseInt(hex.substring(0, 2), 16);
+  var g = parseInt(hex.substring(2, 4), 16);
+  var b = parseInt(hex.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
 }
 
 // Apply dynamic branding to DOM elements

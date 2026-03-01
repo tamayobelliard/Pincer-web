@@ -43,6 +43,16 @@ async function verifySignupAccess(slug, supabaseUrl, supabaseKey) {
   } catch { return false; }
 }
 
+// ── Predefined themes ──
+const THEMES = {
+  'rojo-clasico':      { theme: 'rojo-clasico',      bg: '#1a1a1a', primary: '#E8191A', text: '#ffffff', accent: '#ffffff' },
+  'negro-elegante':    { theme: 'negro-elegante',    bg: '#0d0d0d', primary: '#E8191A', text: '#ffffff', accent: '#f5f5f5' },
+  'cafe-moderno':      { theme: 'cafe-moderno',      bg: '#faf6f1', primary: '#8B4513', text: '#2c1810', accent: '#d4a574' },
+  'verde-fresco':      { theme: 'verde-fresco',      bg: '#f8fffe', primary: '#2d7a4f', text: '#1a3d2b', accent: '#4caf50' },
+  'azul-profesional':  { theme: 'azul-profesional',  bg: '#f8faff', primary: '#1a4fa0', text: '#0d2748', accent: '#2196f3' },
+};
+const DEFAULT_THEME = THEMES['rojo-clasico'];
+
 // Reusable Claude API call
 function callClaude(apiKey, imageContent, textPrompt) {
   const content = imageContent
@@ -254,16 +264,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Server configuration error: missing API key' });
     }
 
-    // ── Step 2: Call Claude API (items + style in parallel) ──
+    // ── Step 2: Call Claude API (items + theme in parallel) ──
     console.log('[parse-menu] Step 2: calling Claude API (2 parallel requests)');
-    let itemsRes, styleRes;
+    let itemsRes, themeRes;
     try {
-      [itemsRes, styleRes] = await Promise.all([
+      [itemsRes, themeRes] = await Promise.all([
         callClaude(apiKey, imageContent,
           'This is a photo of a restaurant menu. Extract all items and return ONLY a JSON array with no extra text. Use the EXACT section/category names visible on the menu (e.g. "Entradas", "Pita Sandwich", "Bebidas", "Shawramas Clásicos") as the category field. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). Description can be empty string if not visible.',
         ),
         callClaude(apiKey, imageContent,
-          'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design. section_names should list all menu section headings in the order they appear.',
+          'Look at the dominant colors in this restaurant menu image. Choose the BEST matching theme from this list:\n- rojo-clasico (red/dark, bold restaurant)\n- negro-elegante (black/dark, upscale)\n- cafe-moderno (warm browns, coffee/bakery)\n- verde-fresco (greens, healthy/fresh)\n- azul-profesional (blues, professional/corporate)\nReturn ONLY the theme name, nothing else.',
         ),
       ]);
     } catch (claudeErr) {
@@ -272,15 +282,15 @@ export default async function handler(req, res) {
     }
 
     console.log(`[parse-menu] Claude items response status: ${itemsRes.status}`);
-    console.log(`[parse-menu] Claude style response status: ${styleRes.status}`);
+    console.log(`[parse-menu] Claude theme response status: ${themeRes.status}`);
 
     // ── Step 3: Parse Claude responses ──
     console.log('[parse-menu] Step 3: parsing Claude responses');
-    let itemsData, styleData;
+    let itemsData, themeData;
     try {
-      [itemsData, styleData] = await Promise.all([
+      [itemsData, themeData] = await Promise.all([
         itemsRes.json(),
-        styleRes.json(),
+        themeRes.json(),
       ]);
     } catch (jsonErr) {
       console.error('[parse-menu] Claude response JSON parse error:', jsonErr.message);
@@ -317,21 +327,23 @@ export default async function handler(req, res) {
 
     console.log(`[parse-menu] Extracted ${items.length} items`);
 
-    // ── Step 5: Parse style (non-critical) ──
-    let menuStyle = null;
-    if (styleRes.ok) {
+    // ── Step 5: Pick theme from predefined list ──
+    let menuStyle = DEFAULT_THEME;
+    if (themeRes.ok) {
       try {
-        const rawStyleText = styleData.content?.find(c => c.type === 'text')?.text || '';
-        const styleMatch = rawStyleText.match(/\{[\s\S]*\}/);
-        if (styleMatch) {
-          menuStyle = JSON.parse(styleMatch[0]);
-          console.log('[parse-menu] Style extracted:', JSON.stringify(menuStyle));
+        const rawThemeText = themeData.content?.find(c => c.type === 'text')?.text || '';
+        const themeName = rawThemeText.trim().toLowerCase().replace(/[^a-z-]/g, '');
+        if (THEMES[themeName]) {
+          menuStyle = THEMES[themeName];
+          console.log('[parse-menu] Theme picked:', themeName);
+        } else {
+          console.log('[parse-menu] Theme not recognized:', rawThemeText.trim(), '— using default');
         }
       } catch (e) {
-        console.error('[parse-menu] Style parsing error:', e.message);
+        console.error('[parse-menu] Theme parsing error:', e.message);
       }
     } else {
-      console.error('[parse-menu] Style API failed with status:', styleRes.status);
+      console.error('[parse-menu] Theme API failed with status:', themeRes.status);
     }
 
     // ── Step 6: Build product rows ──

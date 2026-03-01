@@ -153,7 +153,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           status: 'pending',
           plan: 'premium',
           trial_expires_at: trialExpires,
-          menu_style: { primary_color: '#E8191A', secondary_color: '#C41415', accent_color: '#f4e4c1', font_style: 'modern' },
+          menu_style: { theme: 'rojo-clasico', bg: '#1a1a1a', primary: '#E8191A', text: '#ffffff', accent: '#ffffff' },
           business_type: business_type || null,
           address: address || null,
           phone: phone || null,

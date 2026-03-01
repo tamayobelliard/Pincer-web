@@ -38,6 +38,16 @@ async function sendEmail(to, subject, html) {
   }
 }
 
+// ── Predefined themes (same as parse-menu.js) ──
+const THEMES = {
+  'rojo-clasico':      { theme: 'rojo-clasico',      bg: '#1a1a1a', primary: '#E8191A', text: '#ffffff', accent: '#ffffff' },
+  'negro-elegante':    { theme: 'negro-elegante',    bg: '#0d0d0d', primary: '#E8191A', text: '#ffffff', accent: '#f5f5f5' },
+  'cafe-moderno':      { theme: 'cafe-moderno',      bg: '#faf6f1', primary: '#8B4513', text: '#2c1810', accent: '#d4a574' },
+  'verde-fresco':      { theme: 'verde-fresco',      bg: '#f8fffe', primary: '#2d7a4f', text: '#1a3d2b', accent: '#4caf50' },
+  'azul-profesional':  { theme: 'azul-profesional',  bg: '#f8faff', primary: '#1a4fa0', text: '#0d2748', accent: '#2196f3' },
+};
+const DEFAULT_THEME = THEMES['rojo-clasico'];
+
 // Helper: call Claude API
 function callClaude(apiKey, imageContent, textPrompt, maxTokens) {
   const content = imageContent
@@ -89,7 +99,7 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 
       const imageContent = { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } };
 
-      // Items extraction + style extraction in parallel (style only for first image)
+      // Items extraction + theme picking in parallel (theme only for first image)
       const requests = [
         callClaude(anthropicKey, imageContent,
           'Extract all menu items from this image. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.',
@@ -100,8 +110,8 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
       if (!menuStyle) {
         requests.push(
           callClaude(anthropicKey, imageContent,
-            'Analyze this restaurant menu\'s visual design. Return ONLY a JSON object with no extra text: {"primary_color": "#hex", "secondary_color": "#hex", "background_color": "#hex", "accent_color": "#hex", "font_style": "modern or classic or casual", "section_names": ["Section 1", "Section 2"]}. Colors should match the dominant colors in the menu design.',
-            1000,
+            'Look at the dominant colors in this restaurant menu image. Choose the BEST matching theme from this list:\n- rojo-clasico (red/dark, bold restaurant)\n- negro-elegante (black/dark, upscale)\n- cafe-moderno (warm browns, coffee/bakery)\n- verde-fresco (greens, healthy/fresh)\n- azul-profesional (blues, professional/corporate)\nReturn ONLY the theme name, nothing else.',
+            100,
           ),
         );
       }
@@ -122,22 +132,27 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
         console.log(`extractMenu: extracted ${items.length} items from image`);
       }
 
-      // Parse style response (only for first image)
+      // Parse theme response (only for first image)
       if (results[1] && !menuStyle) {
         try {
           if (results[1].ok) {
-            const styleData = await results[1].json();
-            const styleText = styleData.content?.find(c => c.type === 'text')?.text || '';
-            const styleMatch = styleText.match(/\{[\s\S]*\}/);
-            if (styleMatch) {
-              menuStyle = JSON.parse(styleMatch[0]);
-              console.log('extractMenu: style extracted:', JSON.stringify(menuStyle));
+            const themeData = await results[1].json();
+            const themeText = themeData.content?.find(c => c.type === 'text')?.text || '';
+            const themeName = themeText.trim().toLowerCase().replace(/[^a-z-]/g, '');
+            if (THEMES[themeName]) {
+              menuStyle = THEMES[themeName];
+              console.log('extractMenu: theme picked:', themeName);
+            } else {
+              menuStyle = DEFAULT_THEME;
+              console.log('extractMenu: theme not recognized:', themeText.trim(), '— using default');
             }
           } else {
-            console.error('extractMenu: style API error', results[1].status);
+            console.error('extractMenu: theme API error', results[1].status);
+            menuStyle = DEFAULT_THEME;
           }
         } catch (e) {
-          console.error('extractMenu: style parse error:', e.message);
+          console.error('extractMenu: theme parse error:', e.message);
+          menuStyle = DEFAULT_THEME;
         }
       }
     } catch (e) {
@@ -366,15 +381,15 @@ export default async function handler(req, res) {
           trial_expires_at: trialExpires,
           business_type: business_type || null,
           address: address || null,
-          phone: phone.trim() || null,
-          contact_name: owner_name.trim() || null,
+          phone: (phone || '').trim() || null,
+          contact_name: (owner_name || '').trim() || null,
           email: email.trim().toLowerCase(),
           hours: hours || null,
           website: website || null,
           notes: notes || null,
           chatbot_personality: chatbot_personality || 'casual',
           logo_url: logo_url || null,
-          menu_style: { primary_color: '#E8191A', secondary_color: '#C41415', accent_color: '#f4e4c1', font_style: 'modern' },
+          menu_style: DEFAULT_THEME,
           order_types: Array.isArray(order_types) && order_types.length > 0 ? order_types : ['dine_in'],
           delivery_fee: parseInt(delivery_fee) || 0,
         }),
