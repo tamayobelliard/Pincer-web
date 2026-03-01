@@ -231,19 +231,59 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── PATCH: update file URLs + extract menu after signup ──
+  // ── PATCH: update logo (base64) or file URLs after signup ──
   if (req.method === 'PATCH') {
-    const { restaurant_slug, logo_url, menu_files } = req.body || {};
+    const { restaurant_slug, logo_base64, logo_url, menu_files } = req.body || {};
     if (!restaurant_slug) return res.status(400).json({ error: 'Missing restaurant_slug' });
 
     const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseKey) return res.status(500).json({ error: 'Server error' });
 
-    console.log('PATCH signup:', restaurant_slug, '| logo_url:', !!logo_url, '| menu_files:', Array.isArray(menu_files) ? menu_files.length : 0);
+    console.log('PATCH signup:', restaurant_slug, '| logo_base64:', !!logo_base64, '| logo_url:', !!logo_url, '| menu_files:', Array.isArray(menu_files) ? menu_files.length : 0);
 
     const updates = {};
-    if (logo_url) updates.logo_url = logo_url;
+
+    // Upload logo base64 to Supabase Storage using service role key
+    if (logo_base64) {
+      try {
+        const match = logo_base64.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!match) {
+          console.error('PATCH: invalid logo_base64 format');
+          return res.status(400).json({ error: 'Invalid logo format' });
+        }
+        const contentType = match[1];
+        const buffer = Buffer.from(match[2], 'base64');
+        const storagePath = `logos/${restaurant_slug}.jpg`;
+
+        console.log('PATCH: uploading logo to Storage, size:', buffer.length);
+        const uploadRes = await fetch(
+          `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': contentType,
+              'x-upsert': 'true',
+            },
+            body: buffer,
+          }
+        );
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          console.error('PATCH: Storage upload failed:', uploadRes.status, errText);
+        } else {
+          updates.logo_url = `${supabaseUrl}/storage/v1/object/public/product-images/${storagePath}?t=${Date.now()}`;
+          console.log('PATCH: logo uploaded, URL:', updates.logo_url);
+        }
+      } catch (e) {
+        console.error('PATCH: logo upload error:', e.message);
+      }
+    } else if (logo_url) {
+      updates.logo_url = logo_url;
+    }
+
     if (menu_files) updates.menu_files = menu_files;
 
     if (Object.keys(updates).length === 0) { console.log('PATCH: no updates to apply'); return res.status(200).json({ success: true }); }

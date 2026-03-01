@@ -808,9 +808,6 @@
 
 <script>
 (function() {
-  var SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
-  var SUPABASE_ANON_KEY = 'sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt';
-
   var form = document.getElementById('signupForm');
   var btn = document.getElementById('signupBtn');
   var alertError = document.getElementById('alertError');
@@ -1110,8 +1107,8 @@
     return valid;
   }
 
-  // ── Image compression ──
-  function compressImage(file, maxWidth) {
+  // ── Compress image to base64 data URI ──
+  function compressToBase64(file, maxWidth) {
     maxWidth = maxWidth || 800;
     return new Promise(function(resolve, reject) {
       var img = new Image();
@@ -1121,53 +1118,24 @@
         var canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        canvas.toBlob(function(blob) {
-          if (!blob) { reject(new Error('Canvas toBlob returned null')); return; }
-          resolve(blob);
-        }, 'image/jpeg', 0.8);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
       img.onerror = function() { reject(new Error('Error al leer imagen')); };
       img.src = URL.createObjectURL(file);
     });
   }
 
-  // ── Upload file to Supabase Storage ──
-  async function uploadToStorage(bucket, path, blob, contentType) {
-    console.log('[signup] Uploading to Storage:', bucket + '/' + path, 'size:', blob.size);
-    var res = await fetch(SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path, {
-      method: 'PUT',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'Content-Type': contentType,
-        'x-upsert': 'true',
-      },
-      body: blob,
-    });
-    if (!res.ok) {
-      var errText = await res.text();
-      console.error('[signup] Storage upload failed:', res.status, errText);
-      throw new Error('Upload failed: ' + res.status + ' ' + errText);
-    }
-    var publicUrl = SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path + '?t=' + Date.now();
-    console.log('[signup] Upload OK, public URL:', publicUrl);
-    return publicUrl;
-  }
-
-  // ── Upload logo after signup ──
+  // ── Upload logo after signup (sends base64 to server, server uploads to Storage) ──
   async function uploadLogo(slug) {
-    if (!logoFile) { console.log('[signup] No logo file selected'); return; }
-    console.log('[signup] Uploading logo for', slug, '| file:', logoFile.name, 'size:', logoFile.size);
+    if (!logoFile) return;
+    console.log('[signup] Compressing logo for', slug);
     try {
-      var blob = await compressImage(logoFile, 400);
-      console.log('[signup] Logo compressed, blob size:', blob.size);
-      var logoUrl = await uploadToStorage('product-images', 'logos/' + slug + '.jpg', blob, 'image/jpeg');
-      // Save logo URL to restaurant record
-      console.log('[signup] Saving logo_url via PATCH:', logoUrl);
+      var base64 = await compressToBase64(logoFile, 400);
+      console.log('[signup] Sending logo base64 to server, length:', base64.length);
       var patchRes = await fetch('/api/signup', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurant_slug: slug, logo_url: logoUrl }),
+        body: JSON.stringify({ restaurant_slug: slug, logo_base64: base64 }),
       });
       if (!patchRes.ok) {
         console.error('[signup] Logo PATCH failed:', patchRes.status, await patchRes.text());
