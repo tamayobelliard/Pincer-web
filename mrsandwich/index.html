@@ -4234,18 +4234,29 @@ function sendPinzerMessage() {
   var micBtn = document.getElementById('pinzerMicBtn');
   if (micBtn) micBtn.style.display = 'flex';
 
+  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   var recognition = new SpeechRecognition();
   recognition.continuous = false;
-  recognition.interimResults = true;
+  recognition.interimResults = !isMobile;
   recognition.lang = (navigator.language || 'es');
 
   var isRecording = false;
   var autoSendTimer = null;
+  var timeoutTimer = null;
   var originalPlaceholder = '';
+
+  function stopRecording() {
+    clearTimeout(timeoutTimer);
+    try { recognition.stop(); } catch(e) {}
+    micBtn.classList.remove('recording');
+    isRecording = false;
+    var input = document.getElementById('pinzerInput');
+    input.placeholder = originalPlaceholder || 'Escríbele a Chef Elly...';
+  }
 
   window.togglePinzerVoice = function() {
     if (isRecording) {
-      recognition.stop();
+      stopRecording();
       return;
     }
     var input = document.getElementById('pinzerInput');
@@ -4255,10 +4266,21 @@ function sendPinzerMessage() {
     micBtn.classList.add('recording');
     isRecording = true;
     recognition.lang = (navigator.language || 'es');
-    recognition.start();
+    try {
+      recognition.start();
+      timeoutTimer = setTimeout(function() {
+        if (isRecording) stopRecording();
+      }, 10000);
+    } catch(e) {
+      console.error('Speech recognition start error:', e);
+      micBtn.classList.remove('recording');
+      isRecording = false;
+      input.placeholder = 'Toca el micrófono para hablar';
+    }
   };
 
   recognition.onresult = function(event) {
+    clearTimeout(timeoutTimer);
     var transcript = '';
     for (var i = event.resultIndex; i < event.results.length; i++) {
       transcript += event.results[i][0].transcript;
@@ -4274,6 +4296,7 @@ function sendPinzerMessage() {
   };
 
   recognition.onend = function() {
+    clearTimeout(timeoutTimer);
     micBtn.classList.remove('recording');
     isRecording = false;
     var input = document.getElementById('pinzerInput');
@@ -4282,10 +4305,8 @@ function sendPinzerMessage() {
 
   recognition.onerror = function(event) {
     console.error('Speech recognition error:', event.error);
-    micBtn.classList.remove('recording');
-    isRecording = false;
-    var input = document.getElementById('pinzerInput');
-    input.placeholder = originalPlaceholder || 'Escríbele a Chef Elly...';
+    clearTimeout(timeoutTimer);
+    stopRecording();
   };
 })();
 
