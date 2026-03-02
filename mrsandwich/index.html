@@ -1282,38 +1282,6 @@
       background: #2d5016;
     }
 
-    .pinzer-mic-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #f1f5f9;
-      border: none;
-      color: #64748b;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, color 0.2s;
-      flex-shrink: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .pinzer-mic-btn:hover {
-      background: #e2e8f0;
-    }
-
-    .pinzer-mic-btn.recording {
-      background: #ef4444;
-      color: white;
-      animation: mic-pulse 1s ease-in-out infinite;
-    }
-
-    @keyframes mic-pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-    }
-
     .clippy-avatar.pulse-hint {
       animation: pulseHint 2s ease-in-out 3;
     }
@@ -2154,7 +2122,6 @@
   "></div>
   <div class="pinzer-input-bar">
     <input type="text" id="pinzerInput" placeholder="Escríbele a Chef Elly..." onkeydown="if(event.key==='Enter')sendPinzerMessage()">
-    <button class="pinzer-mic-btn" id="pinzerMicBtn" onclick="togglePinzerVoice()" style="display:none" aria-label="Grabar voz">🎤</button>
     <button class="pinzer-send-btn" onclick="sendPinzerMessage()">➤</button>
   </div>
 </div>
@@ -4225,121 +4192,6 @@ function sendPinzerMessage() {
   pinzerUserSay(text);
   sendToAI(text);
 }
-
-// Voice input via Web Speech API
-(function() {
-  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
-
-  var micBtn = document.getElementById('pinzerMicBtn');
-  if (micBtn) micBtn.style.display = 'flex';
-
-  var recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = (navigator.language || 'es');
-
-  var isRecording = false;
-  var autoSendTimer = null;
-  var timeoutTimer = null;
-  var originalPlaceholder = '';
-
-  function stopRecording() {
-    console.log('[voice] stopRecording called');
-    clearTimeout(timeoutTimer);
-    try { recognition.stop(); } catch(e) {}
-    micBtn.classList.remove('recording');
-    isRecording = false;
-    var input = document.getElementById('pinzerInput');
-    input.placeholder = originalPlaceholder || 'Escríbele a Chef Elly...';
-  }
-
-  function startRecognition() {
-    console.log('[voice] startRecognition called');
-    recognition.lang = (navigator.language || 'es');
-    try {
-      recognition.start();
-      console.log('[voice] recognition.start() succeeded');
-      timeoutTimer = setTimeout(function() {
-        console.log('[voice] 10s timeout — no speech detected');
-        if (isRecording) stopRecording();
-      }, 10000);
-    } catch(e) {
-      console.error('[voice] recognition.start() threw:', e);
-      micBtn.classList.remove('recording');
-      isRecording = false;
-      var input = document.getElementById('pinzerInput');
-      input.placeholder = 'Toca el micrófono para hablar';
-    }
-  }
-
-  window.togglePinzerVoice = function() {
-    console.log('[voice] togglePinzerVoice, isRecording:', isRecording);
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
-    var input = document.getElementById('pinzerInput');
-    originalPlaceholder = input.placeholder;
-    input.placeholder = 'Escuchando...';
-    input.value = '';
-    micBtn.classList.add('recording');
-    isRecording = true;
-
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      console.log('[voice] requesting mic permission via getUserMedia');
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
-        console.log('[voice] mic permission granted');
-        stream.getTracks().forEach(function(t) { t.stop(); });
-        startRecognition();
-      }).catch(function(err) {
-        console.error('[voice] mic permission denied:', err);
-        micBtn.classList.remove('recording');
-        isRecording = false;
-        input.placeholder = 'Permite el acceso al micrófono en tu navegador';
-      });
-    } else {
-      startRecognition();
-    }
-  };
-
-  recognition.onstart = function() {
-    console.log('[voice] recognition.onstart fired');
-  };
-
-  recognition.onresult = function(event) {
-    console.log('[voice] recognition.onresult fired, results:', event.results.length);
-    clearTimeout(timeoutTimer);
-    var transcript = '';
-    for (var i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
-    }
-    var input = document.getElementById('pinzerInput');
-    input.value = transcript;
-    if (event.results[event.results.length - 1].isFinal) {
-      console.log('[voice] final transcript:', transcript);
-      clearTimeout(autoSendTimer);
-      autoSendTimer = setTimeout(function() {
-        if (input.value.trim()) sendPinzerMessage();
-      }, 1500);
-    }
-  };
-
-  recognition.onend = function() {
-    console.log('[voice] recognition.onend fired');
-    clearTimeout(timeoutTimer);
-    micBtn.classList.remove('recording');
-    isRecording = false;
-    var input = document.getElementById('pinzerInput');
-    input.placeholder = originalPlaceholder || 'Escríbele a Chef Elly...';
-  };
-
-  recognition.onerror = function(event) {
-    console.error('[voice] recognition.onerror:', event.error);
-    clearTimeout(timeoutTimer);
-    stopRecording();
-  };
-})();
 
 function showTypingIndicator() {
   const container = document.getElementById('pinzer-messages');
