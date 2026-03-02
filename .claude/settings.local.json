@@ -5,7 +5,8 @@
       "WebFetch(domain:pincerweb.com)",
       "Bash(mv:*)",
       "Bash(echo exit:$?:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(curl:*)"
     ]
   }
 }
