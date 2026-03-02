@@ -428,6 +428,7 @@
     .btn-store-close { background: #dc2626; color: white; }
     .btn-store-close:hover { background: #b91c1c; transform: translateY(-2px); }
     .store-opened-info { color: rgba(255,255,255,0.9); font-size: 0.9em; font-weight: 500; }
+    .store-mode-label { font-size: 0.85em; font-weight: 600; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.1); }
 
     /* Time Filter Pills */
     .time-filters {
@@ -560,6 +561,7 @@
 <div class="store-toggle-bar" id="storeToggleBar">
   <button class="btn-store-toggle btn-store-open" id="storeToggleBtn" onclick="toggleStore()">Abrir Negocio 🟢</button>
   <span class="store-opened-info" id="storeOpenedInfo"></span>
+  <span class="store-mode-label" id="storeModeLabelEl"></span>
 </div>
 
 <!-- Time Filters -->
@@ -806,6 +808,70 @@ function updateCurrentDateDisplay() {
   if (display) display.textContent = `(${formatDRDate()})`;
 }
 
+// ── Schedule parser: check if restaurant is currently open ──
+function isOpenBySchedule(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return true;
+  var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var now = getDRDate();
+  var currentDay = now.getDay();
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    var match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    var h = parseInt(match[1]);
+    var m = parseInt(match[2]);
+    var ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      var parts = dayStr.split('-');
+      var normalize = function(s) { return s.trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'); };
+      var startIdx = DAY_ORDER.indexOf(normalize(parts[0]));
+      var endIdx = DAY_ORDER.indexOf(normalize(parts[1]));
+      if (startIdx === -1 || endIdx === -1) return [];
+      var days = [];
+      var i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    var normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    var dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  var segments = hoursStr.split(',');
+  for (var s = 0; s < segments.length; s++) {
+    var seg = segments[s].trim();
+    var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    var days = expandDays(timeMatch[1]);
+    var openMin = parseTime(timeMatch[2]);
+    var closeMin = parseTime(timeMatch[3]);
+    if (openMin === -1 || closeMin === -1) continue;
+
+    if (closeMin <= openMin) {
+      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin) return true;
+      var yesterday = (currentDay + 6) % 7;
+      if (days.indexOf(yesterday) !== -1 && currentMinutes < closeMin) return true;
+    } else {
+      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin && currentMinutes < closeMin) return true;
+    }
+  }
+  return false;
+}
+
 // ══════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ══════════════════════════════════════════════════════════════
@@ -841,6 +907,9 @@ let lastOrderCount = 0;
 let hasInteracted = false;
 let storeIsOpen = false;
 let storeOpenedAt = null;
+let storeOverrideActive = false;
+let scheduleStateAtOverride = null;
+let restaurantHours = '';
 let activeTimeFilter = 'today';
 
 // ══════════════════════════════════════════════════════════════
@@ -1633,22 +1702,68 @@ async function deleteProduct() {
 async function loadStoreStatus() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=is_open,opened_at,closed_at,opens_at',
+      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=*',
       { headers: sbGetHeaders() }, 10000
     );
     if (!res.ok) { dbg('⚠️ store_settings HTTP ' + res.status); return; }
     const data = await res.json();
+
+    var scheduleSaysOpen = isOpenBySchedule(restaurantHours);
+
     if (data.length > 0) {
-      storeIsOpen = data[0].is_open === true;
-      storeOpenedAt = data[0].opened_at || null;
+      var row = data[0];
+      var isOverride = row.schedule_override === true;
+      storeOpenedAt = row.opened_at || null;
+
+      // Check if override should reset: schedule state changed since override was set
+      if (isOverride && row.schedule_state_at_override !== null && row.schedule_state_at_override !== undefined && scheduleSaysOpen !== row.schedule_state_at_override) {
+        isOverride = false;
+        dbg('🔄 Override reseteado — horario cambió');
+        // Clear override and set to schedule state
+        fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+          method: 'PATCH', headers: sbWriteHeaders(),
+          body: JSON.stringify({ is_open: scheduleSaysOpen,
+            opened_at: scheduleSaysOpen ? new Date().toISOString() : row.opened_at,
+            closed_at: !scheduleSaysOpen ? new Date().toISOString() : row.closed_at })
+        });
+        // Clear override columns (may not exist — fire and forget)
+        fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+          method: 'PATCH', headers: sbWriteHeaders(),
+          body: JSON.stringify({ schedule_override: false, schedule_state_at_override: null })
+        }).catch(function() {});
+      }
+
+      if (isOverride) {
+        storeIsOpen = row.is_open === true;
+        storeOverrideActive = true;
+        scheduleStateAtOverride = row.schedule_state_at_override;
+      } else if (restaurantHours) {
+        storeIsOpen = scheduleSaysOpen;
+        storeOverrideActive = false;
+        scheduleStateAtOverride = null;
+        // Sync is_open to DB if it differs
+        if (row.is_open !== scheduleSaysOpen) {
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbWriteHeaders(),
+            body: JSON.stringify({ is_open: scheduleSaysOpen,
+              opened_at: scheduleSaysOpen ? new Date().toISOString() : row.opened_at,
+              closed_at: !scheduleSaysOpen ? new Date().toISOString() : row.closed_at })
+          });
+        }
+      } else {
+        // No schedule — use DB value as-is
+        storeIsOpen = row.is_open === true;
+        storeOverrideActive = false;
+      }
     } else {
-      // No store_settings row — default to open so new restaurants work
-      storeIsOpen = true;
+      // No store_settings row — use schedule or default open
+      storeIsOpen = restaurantHours ? scheduleSaysOpen : true;
       storeOpenedAt = null;
-      dbg('ℹ️ No store_settings row for ' + SLUG + ', defaulting to open');
+      storeOverrideActive = false;
+      dbg('ℹ️ No store_settings row for ' + SLUG);
     }
     updateStoreUI();
-    dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA'));
+    dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA') + (storeOverrideActive ? ' (manual)' : ' (auto)'));
   } catch (e) { dbg('⚠️ loadStoreStatus: ' + e.message); }
 }
 
@@ -1657,6 +1772,7 @@ function updateStoreUI() {
   const info = document.getElementById('storeOpenedInfo');
   const ordersContainer = document.getElementById('orders');
   const liveHeader = document.getElementById('liveOrdersHeader');
+  const modeLabel = document.getElementById('storeModeLabelEl');
 
   if (storeIsOpen) {
     btn.className = 'btn-store-toggle btn-store-close';
@@ -1675,12 +1791,27 @@ function updateStoreUI() {
     liveHeader.style.display = 'block';
     ordersContainer.innerHTML = '<div class="closed-notice">🔒 El negocio está cerrado. Abre el negocio para ver órdenes en vivo.</div>';
   }
+
+  // Show mode label
+  if (modeLabel) {
+    if (!restaurantHours) {
+      modeLabel.textContent = '';
+    } else if (storeOverrideActive) {
+      modeLabel.textContent = '⚙️ Manual';
+      modeLabel.style.color = '#f59e0b';
+    } else {
+      modeLabel.textContent = '🕐 Automático';
+      modeLabel.style.color = '#22c55e';
+    }
+  }
 }
 
 async function toggleStore() {
   const btn = document.getElementById('storeToggleBtn');
   const newState = !storeIsOpen;
   btn.disabled = true;
+
+  var scheduleSaysOpen = isOpenBySchedule(restaurantHours);
 
   const payload = { is_open: newState };
   if (newState) {
@@ -1694,6 +1825,11 @@ async function toggleStore() {
       SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG),
       { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload) }, 10000
     );
+    // Try to set schedule override (columns may not exist yet — fire and forget)
+    fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+      method: 'PATCH', headers: sbWriteHeaders(),
+      body: JSON.stringify({ schedule_override: true, schedule_state_at_override: scheduleSaysOpen })
+    }).catch(function() {});
     if (!res.ok) {
       showError('No se pudo actualizar el estado del negocio.');
       btn.disabled = false;
@@ -1701,9 +1837,11 @@ async function toggleStore() {
     }
     storeIsOpen = newState;
     storeOpenedAt = newState ? payload.opened_at : storeOpenedAt;
+    storeOverrideActive = true;
+    scheduleStateAtOverride = scheduleSaysOpen;
     updateStoreUI();
     if (newState) loadOrders();
-    dbg(newState ? '🟢 Negocio ABIERTO' : '🔴 Negocio CERRADO');
+    dbg(newState ? '🟢 Negocio ABIERTO (manual)' : '🔴 Negocio CERRADO (manual)');
   } catch (e) {
     showError('Error de conexión.');
     dbg('❌ toggleStore: ' + e.message);
@@ -2336,21 +2474,23 @@ async function initializeDashboard() {
     dbg('❌ Test de conexión falló: ' + e.message);
   }
 
-  // Fetch restaurant plan
+  // Fetch restaurant plan and hours
   var restaurantPlan = 'free';
   try {
     var planRes = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan,hours&limit=1',
       { headers: sbGetHeaders() }, 10000
     );
     if (planRes.ok) {
       var planRows = await planRes.json();
-      if (planRows.length > 0 && planRows[0].plan) {
-        restaurantPlan = planRows[0].plan;
+      if (planRows.length > 0) {
+        if (planRows[0].plan) restaurantPlan = planRows[0].plan;
+        if (planRows[0].hours) restaurantHours = planRows[0].hours;
       }
     }
   } catch (e) { dbg('Plan fetch error: ' + e.message); }
   applyDashboardPlanRestrictions(restaurantPlan);
+  if (restaurantHours) dbg('📅 Horario: ' + restaurantHours);
 
   updateCurrentDateDisplay();
   dailyCleanup();
@@ -2371,6 +2511,49 @@ async function initializeDashboard() {
 
   setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
   setInterval(loadProducts, 30000);
+
+  // Check schedule every 60s to auto-update state
+  if (restaurantHours) {
+    setInterval(function() {
+      var scheduleSaysOpen = isOpenBySchedule(restaurantHours);
+      if (storeOverrideActive) {
+        // Check if schedule transitioned — reset override
+        if (scheduleStateAtOverride !== null && scheduleSaysOpen !== scheduleStateAtOverride) {
+          storeOverrideActive = false;
+          scheduleStateAtOverride = null;
+          storeIsOpen = scheduleSaysOpen;
+          var payload = { is_open: scheduleSaysOpen };
+          if (scheduleSaysOpen) payload.opened_at = new Date().toISOString();
+          else payload.closed_at = new Date().toISOString();
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload)
+          });
+          // Clear override columns (may not exist — fire and forget)
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbWriteHeaders(),
+            body: JSON.stringify({ schedule_override: false, schedule_state_at_override: null })
+          }).catch(function() {});
+          updateStoreUI();
+          if (scheduleSaysOpen) loadOrders();
+          dbg('🔄 Override reseteado — ' + (scheduleSaysOpen ? 'auto-abierto' : 'auto-cerrado'));
+        }
+      } else {
+        // No override — keep in sync with schedule
+        if (scheduleSaysOpen !== storeIsOpen) {
+          storeIsOpen = scheduleSaysOpen;
+          var payload2 = { is_open: scheduleSaysOpen };
+          if (scheduleSaysOpen) payload2.opened_at = new Date().toISOString();
+          else payload2.closed_at = new Date().toISOString();
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload2)
+          });
+          updateStoreUI();
+          if (scheduleSaysOpen) loadOrders();
+          dbg(scheduleSaysOpen ? '🟢 Auto-abierto por horario' : '🔴 Auto-cerrado por horario');
+        }
+      }
+    }, 60000);
+  }
 
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
 

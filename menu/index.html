@@ -1911,6 +1911,22 @@
       font-size: 1.1em; opacity: 0.9;
     }
 
+    /* Closed banner (schedule-based) */
+    .closed-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #b91c1c;
+      color: white;
+      padding: 12px 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95em;
+      z-index: 9998;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .closed-banner.show { display: block; }
+
     /* Pincer Footer */
     .pincer-footer {
       background: #0F172A;
@@ -1970,6 +1986,8 @@
   </style>
 </head>
 <body>
+
+<div class="closed-banner" id="closedBanner"></div>
 
 <div class="closed-overlay" id="closedOverlay" style="display:none;">
   <div class="closed-overlay-logo">
@@ -2328,6 +2346,80 @@ const SLUG = window.location.pathname.split('/').filter(Boolean)[0] || '';
 if (!SLUG) {
   document.body.innerHTML = '<div style="text-align:center;padding:80px 20px;color:#64748b;"><h2>Restaurante no encontrado</h2><p>No se especificó un restaurante en la URL.</p><a href="https://www.pincerweb.com" style="color:#4338ca;">Ir a Pincer</a></div>';
   throw new Error('No slug in URL');
+}
+
+// ── DR timezone (UTC-4, no DST) ──
+function getDRDate() {
+  var now = new Date();
+  var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (-4 * 3600000));
+}
+
+// ── Schedule parser: check if restaurant is currently open ──
+function isOpenBySchedule(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return true;
+  var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var now = getDRDate();
+  var currentDay = now.getDay();
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    var match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    var h = parseInt(match[1]);
+    var m = parseInt(match[2]);
+    var ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      var parts = dayStr.split('-');
+      var startIdx = DAY_ORDER.indexOf(parts[0].trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'));
+      var endIdx = DAY_ORDER.indexOf(parts[1].trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'));
+      if (startIdx === -1 || endIdx === -1) return [];
+      var days = [];
+      var i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    var normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    var dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  var segments = hoursStr.split(',');
+  for (var s = 0; s < segments.length; s++) {
+    var seg = segments[s].trim();
+    // Match: "Lun-Vie 11:00 AM - 10:00 PM" or "Lun 11:00 AM - 10:00 PM"
+    var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    var days = expandDays(timeMatch[1]);
+    var openMin = parseTime(timeMatch[2]);
+    var closeMin = parseTime(timeMatch[3]);
+    if (openMin === -1 || closeMin === -1) continue;
+
+    // Handle overnight (e.g. 10:00 PM - 2:00 AM)
+    if (closeMin <= openMin) {
+      // Check if today matches and we're past open time
+      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin) return true;
+      // Check if yesterday matched and we're before close time
+      var yesterday = (currentDay + 6) % 7;
+      if (days.indexOf(yesterday) !== -1 && currentMinutes < closeMin) return true;
+    } else {
+      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin && currentMinutes < closeMin) return true;
+    }
+  }
+  return false;
 }
 
 // ── Restaurant data (loaded on init) ──
@@ -3212,6 +3304,7 @@ async function getNextOrderNumber() {
 // ══════════════════════════════════════════════════════════════
 
 async function placeOrder() {
+  if (storeClosed) { showError('Estamos cerrados en este momento.'); return; }
   if (order.length === 0) return;
 
   const placeOrderBtn = document.getElementById("placeOrderBtn");
@@ -4880,7 +4973,8 @@ async function sendToAI(userMessage) {
       browserLanguage: navigator.language || 'es',
       currentLanguage: currentLanguage,
       insights: restaurantInsights || undefined,
-      sessionId: chatSessionId
+      sessionId: chatSessionId,
+      storeClosed: storeClosed
     })
   };
 
@@ -4967,26 +5061,59 @@ let storeClosed = false;
 
 async function checkStoreOpen() {
   try {
-    const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=is_open,opens_at',
-      { headers: sbHeaders() }, 10000
-    );
-    if (!res.ok) return true; // Default open on error
-    const data = await res.json();
-    if (data.length > 0 && data[0].is_open === false) {
-      storeClosed = true;
-      const overlay = document.getElementById('closedOverlay');
-      const hoursDiv = document.getElementById('closedHours');
-      if (data[0].opens_at) {
-        hoursDiv.textContent = 'Abrimos a las ' + data[0].opens_at + ' 🕐';
-      } else {
-        hoursDiv.textContent = '';
+    // Fetch store_settings for manual override state
+    var storeSettings = null;
+    try {
+      var res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=*',
+        { headers: sbHeaders() }, 10000
+      );
+      if (res.ok) {
+        var data = await res.json();
+        if (data.length > 0) storeSettings = data[0];
       }
-      overlay.style.display = 'flex';
+    } catch (e) { /* continue without store_settings */ }
+
+    // Determine open/closed
+    var isOpen = true;
+    var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
+
+    if (storeSettings && storeSettings.schedule_override === true) {
+      // Manual override active — use store_settings.is_open
+      isOpen = storeSettings.is_open !== false;
+      dbg('📋 Estado: override manual → ' + (isOpen ? 'abierto' : 'cerrado'));
+    } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario') {
+      // Use schedule
+      isOpen = isOpenBySchedule(scheduleStr);
+      dbg('📋 Estado: horario automático → ' + (isOpen ? 'abierto' : 'cerrado'));
+    } else if (storeSettings) {
+      // No schedule — fall back to store_settings.is_open
+      isOpen = storeSettings.is_open !== false;
+    }
+
+    var banner = document.getElementById('closedBanner');
+    var overlay = document.getElementById('closedOverlay');
+    var orderBtn = document.getElementById('placeOrderBtn');
+
+    if (!isOpen) {
+      storeClosed = true;
+      // Show banner
+      banner.textContent = '🕐 Estamos cerrados. Nuestro horario es: ' + (scheduleStr || 'No disponible');
+      banner.classList.add('show');
+      // Hide full overlay (not used for schedule-based closing)
+      if (overlay) overlay.style.display = 'none';
+      // Disable order button
+      if (orderBtn) { orderBtn.disabled = true; orderBtn.textContent = 'Cerrado'; }
       dbg('🔒 Tienda cerrada');
       return false;
+    } else {
+      storeClosed = false;
+      banner.classList.remove('show');
+      if (overlay) overlay.style.display = 'none';
+      // Re-enable order button if there are items
+      if (orderBtn && order && order.length > 0) { orderBtn.disabled = false; orderBtn.textContent = 'Ordenar Ahora'; }
+      return true;
     }
-    return true;
   } catch (e) {
     dbg('⚠️ checkStoreOpen error: ' + e.message);
     return true; // Default open on error
@@ -5060,11 +5187,8 @@ async function init() {
   const connected = await testConnection();
 
   if (connected) {
-    const isOpen = await checkStoreOpen();
-    if (!isOpen) {
-      dbg('🔒 Menú bloqueado - tienda cerrada');
-      return;
-    }
+    // Check store open (shows banner if closed, but doesn't block menu)
+    await checkStoreOpen();
 
     const loaded = await loadMenuFromDB();
     if (loaded) {
@@ -5089,6 +5213,9 @@ async function init() {
     loadRestaurantInsights();
     initChatbot();
   }
+
+  // 9. Check schedule every 5 minutes
+  setInterval(checkStoreOpen, 5 * 60 * 1000);
 
   dbg('✅ ' + (restaurantData?.display_name || SLUG) + ' listo');
   track('page_view', { url: location.href, referrer: document.referrer });

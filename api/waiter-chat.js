@@ -42,6 +42,76 @@ const PERSONALITIES = {
   },
 };
 
+// ── DR timezone (UTC-4, no DST) ──
+function getDRDate() {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (-4 * 3600000));
+}
+
+// ── Schedule parser ──
+function isOpenBySchedule(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return true;
+  const DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  const DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  const now = getDRDate();
+  const currentDay = now.getDay();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    const match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    let h = parseInt(match[1]);
+    const m = parseInt(match[2]);
+    const ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      const parts = dayStr.split('-');
+      const normalize = s => s.trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+      const startIdx = DAY_ORDER.indexOf(normalize(parts[0]));
+      const endIdx = DAY_ORDER.indexOf(normalize(parts[1]));
+      if (startIdx === -1 || endIdx === -1) return [];
+      const days = [];
+      let i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    const normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    const dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  const segments = hoursStr.split(',');
+  for (const seg of segments) {
+    const timeMatch = seg.trim().match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    const days = expandDays(timeMatch[1]);
+    const openMin = parseTime(timeMatch[2]);
+    const closeMin = parseTime(timeMatch[3]);
+    if (openMin === -1 || closeMin === -1) continue;
+
+    if (closeMin <= openMin) {
+      if (days.includes(currentDay) && currentMinutes >= openMin) return true;
+      const yesterday = (currentDay + 6) % 7;
+      if (days.includes(yesterday) && currentMinutes < closeMin) return true;
+    } else {
+      if (days.includes(currentDay) && currentMinutes >= openMin && currentMinutes < closeMin) return true;
+    }
+  }
+  return false;
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
@@ -58,20 +128,21 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights, sessionId } = req.body;
+  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights, sessionId, storeClosed: clientStoreClosed } = req.body;
 
   try {
     const rName = restaurant_name || 'este restaurante';
 
-    // Fetch chatbot personality and plan from restaurant_users
+    // Fetch chatbot personality, plan, and hours from restaurant_users
     let personality = 'casual';
     let plan = 'premium'; // default to premium (legacy restaurants predate plan field)
+    let restaurantHours = '';
     if (restaurant_slug) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const pRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality,plan`,
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality,plan,hours`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -89,10 +160,39 @@ export default async function handler(req, res) {
             if (rows[0].plan) {
               plan = rows[0].plan;
             }
+            if (rows[0].hours) {
+              restaurantHours = rows[0].hours;
+            }
           }
         }
       } catch { /* fallback to casual + free */ }
     }
+
+    // Determine if restaurant is open (server-side check)
+    let storeOpen = true;
+    if (restaurant_slug) {
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const ssRes = await fetch(
+          `${supabaseUrl}/rest/v1/store_settings?id=eq.${encodeURIComponent(restaurant_slug)}&select=*`,
+          {
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+            signal: AbortSignal.timeout(3000),
+          }
+        );
+        if (ssRes.ok) {
+          const ssRows = await ssRes.json();
+          if (ssRows.length > 0 && ssRows[0].schedule_override) {
+            storeOpen = ssRows[0].is_open !== false;
+          } else if (restaurantHours) {
+            storeOpen = isOpenBySchedule(restaurantHours);
+          }
+        }
+      } catch { /* default open */ }
+    }
+    // Client-side flag as fallback
+    if (clientStoreClosed === true) storeOpen = false;
 
     // Fetch restaurant insights for smarter recommendations
     let insightsText = clientInsights || '';
@@ -256,7 +356,10 @@ REGLAS IMPORTANTES:
 - NUNCA inventes items o precios que no están en el menú
 - NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
 
-${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
+${ !storeOpen ? `ESTADO DEL RESTAURANTE: CERRADO
+REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
+Si el cliente intenta ordenar, responde: "En este momento estamos cerrados. Puedes ver el menu pero no podemos procesar ordenes ahora.${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''}"
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n` : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
 ${menuData}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
