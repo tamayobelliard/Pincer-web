@@ -836,16 +836,22 @@
       width: 64px;
       height: 64px;
       border-radius: 50%;
-      background: var(--primary);
+      background: white;
       border: none;
-      color: white;
-      font-size: 28px;
+      padding: 0;
       cursor: pointer;
-      box-shadow: 0 6px 24px rgba(220,38,38,0.35);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.2);
       transition: all 0.3s;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+    }
+
+    .pincer-chat-fab button img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
     }
 
     .pincer-chat-fab button:hover {
@@ -1387,7 +1393,7 @@
      CHATBOT
      ═══════════════════════════════ -->
 <div class="pincer-chat-fab" id="pincerChatFab">
-  <button onclick="openPincerChat()" aria-label="Abrir asistente">🤵</button>
+  <button onclick="openPincerChat()" aria-label="Abrir asistente"><img src="https://i.imgur.com/Dep2ZsJ.png" alt="Pincer"></button>
 </div>
 
 <div id="pincerChatModal">
