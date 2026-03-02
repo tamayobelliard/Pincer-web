@@ -4883,10 +4883,9 @@ function sendPinzerMessage() {
   var micBtn = document.getElementById('pinzerMicBtn');
   if (micBtn) micBtn.style.display = 'flex';
 
-  var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   var recognition = new SpeechRecognition();
   recognition.continuous = false;
-  recognition.interimResults = !isMobile;
+  recognition.interimResults = false;
   recognition.lang = (navigator.language || 'es');
 
   var isRecording = false;
@@ -4895,6 +4894,7 @@ function sendPinzerMessage() {
   var originalPlaceholder = '';
 
   function stopRecording() {
+    console.log('[voice] stopRecording called');
     clearTimeout(timeoutTimer);
     try { recognition.stop(); } catch(e) {}
     micBtn.classList.remove('recording');
@@ -4903,7 +4903,27 @@ function sendPinzerMessage() {
     input.placeholder = originalPlaceholder || 'Escríbele al mesero...';
   }
 
+  function startRecognition() {
+    console.log('[voice] startRecognition called');
+    recognition.lang = (navigator.language || 'es');
+    try {
+      recognition.start();
+      console.log('[voice] recognition.start() succeeded');
+      timeoutTimer = setTimeout(function() {
+        console.log('[voice] 10s timeout — no speech detected');
+        if (isRecording) stopRecording();
+      }, 10000);
+    } catch(e) {
+      console.error('[voice] recognition.start() threw:', e);
+      micBtn.classList.remove('recording');
+      isRecording = false;
+      var input = document.getElementById('pinzerInput');
+      input.placeholder = 'Toca el micrófono para hablar';
+    }
+  }
+
   window.togglePinzerVoice = function() {
+    console.log('[voice] togglePinzerVoice, isRecording:', isRecording);
     if (isRecording) {
       stopRecording();
       return;
@@ -4914,21 +4934,30 @@ function sendPinzerMessage() {
     input.value = '';
     micBtn.classList.add('recording');
     isRecording = true;
-    recognition.lang = (navigator.language || 'es');
-    try {
-      recognition.start();
-      timeoutTimer = setTimeout(function() {
-        if (isRecording) stopRecording();
-      }, 10000);
-    } catch(e) {
-      console.error('Speech recognition start error:', e);
-      micBtn.classList.remove('recording');
-      isRecording = false;
-      input.placeholder = 'Toca el micrófono para hablar';
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      console.log('[voice] requesting mic permission via getUserMedia');
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        console.log('[voice] mic permission granted');
+        stream.getTracks().forEach(function(t) { t.stop(); });
+        startRecognition();
+      }).catch(function(err) {
+        console.error('[voice] mic permission denied:', err);
+        micBtn.classList.remove('recording');
+        isRecording = false;
+        input.placeholder = 'Permite el acceso al micrófono en tu navegador';
+      });
+    } else {
+      startRecognition();
     }
   };
 
+  recognition.onstart = function() {
+    console.log('[voice] recognition.onstart fired');
+  };
+
   recognition.onresult = function(event) {
+    console.log('[voice] recognition.onresult fired, results:', event.results.length);
     clearTimeout(timeoutTimer);
     var transcript = '';
     for (var i = event.resultIndex; i < event.results.length; i++) {
@@ -4937,6 +4966,7 @@ function sendPinzerMessage() {
     var input = document.getElementById('pinzerInput');
     input.value = transcript;
     if (event.results[event.results.length - 1].isFinal) {
+      console.log('[voice] final transcript:', transcript);
       clearTimeout(autoSendTimer);
       autoSendTimer = setTimeout(function() {
         if (input.value.trim()) sendPinzerMessage();
@@ -4945,6 +4975,7 @@ function sendPinzerMessage() {
   };
 
   recognition.onend = function() {
+    console.log('[voice] recognition.onend fired');
     clearTimeout(timeoutTimer);
     micBtn.classList.remove('recording');
     isRecording = false;
@@ -4953,7 +4984,7 @@ function sendPinzerMessage() {
   };
 
   recognition.onerror = function(event) {
-    console.error('Speech recognition error:', event.error);
+    console.error('[voice] recognition.onerror:', event.error);
     clearTimeout(timeoutTimer);
     stopRecording();
   };
