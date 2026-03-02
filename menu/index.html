@@ -4505,6 +4505,9 @@ let chatHistory = []; // { role: 'user'|'assistant', content: string }
 let chatOpen = false;
 let welcomeShown = false;
 let currentLanguage = null; // null = not yet confirmed, 'es' = Spanish, 'en' = English, etc.
+const CHAT_SESSION_KEY = 'pincer_chat_session_' + SLUG;
+let chatSessionId = sessionStorage.getItem(CHAT_SESSION_KEY) || crypto.randomUUID();
+sessionStorage.setItem(CHAT_SESSION_KEY, chatSessionId);
 
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
@@ -4835,7 +4838,8 @@ async function sendToAI(userMessage) {
       restaurant_name: restaurantData?.display_name || SLUG,
       browserLanguage: navigator.language || 'es',
       currentLanguage: currentLanguage,
-      insights: restaurantInsights || undefined
+      insights: restaurantInsights || undefined,
+      sessionId: chatSessionId
     })
   };
 

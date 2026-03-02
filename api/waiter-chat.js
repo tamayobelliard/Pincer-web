@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights } = req.body;
+  const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights, sessionId } = req.body;
 
   try {
     const rName = restaurant_name || 'este restaurante';
@@ -284,6 +284,23 @@ ${menuData}`;
     const answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
     res.status(200).json({ answer });
+
+    // Save chat messages async (fire and forget)
+    if (sessionId && restaurant_slug) {
+      const lastUserMsg = messages[messages.length - 1];
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const rows = [
+        { session_id: sessionId, restaurant_slug, role: 'user', content: lastUserMsg?.content || '', browser_language: browserLanguage || null },
+        { session_id: sessionId, restaurant_slug, role: 'assistant', content: answer, browser_language: browserLanguage || null },
+      ];
+      fetch(`${supabaseUrl}/rest/v1/chat_messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(rows),
+        signal: AbortSignal.timeout(5000),
+      }).catch(e => console.error('chat_messages save error:', e.message));
+    }
 
   } catch (error) {
     console.error('waiter-chat error:', error);

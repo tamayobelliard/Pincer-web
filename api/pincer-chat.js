@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { messages, browserLanguage } = req.body;
+  const { messages, browserLanguage, sessionId } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages required' });
   }
@@ -140,7 +140,24 @@ ${restaurantList || '(No hay restaurantes activos actualmente)'}`;
     }
 
     const answer = data.content?.find(c => c.type === 'text')?.text || 'Ups, algo salio mal 😅';
-    return res.status(200).json({ answer });
+    res.status(200).json({ answer });
+
+    // Save chat messages async (fire and forget)
+    if (sessionId) {
+      const lastUserMsg = messages[messages.length - 1];
+      const rows = [
+        { session_id: sessionId, restaurant_slug: '_pincer_landing', role: 'user', content: lastUserMsg?.content || '', browser_language: browserLanguage || null },
+        { session_id: sessionId, restaurant_slug: '_pincer_landing', role: 'assistant', content: answer, browser_language: browserLanguage || null },
+      ];
+      fetch(`${supabaseUrl}/rest/v1/chat_messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(rows),
+        signal: AbortSignal.timeout(5000),
+      }).catch(e => console.error('chat_messages save error:', e.message));
+    }
+
+    return;
 
   } catch (error) {
     console.error('pincer-chat error:', error);
