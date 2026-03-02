@@ -475,6 +475,44 @@
       padding: 30px; text-align: center; color: rgba(255,255,255,0.8);
       font-size: 1.1em; backdrop-filter: blur(5px);
     }
+
+    /* New order alarm overlay */
+    #newOrderOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(220, 38, 38, 0.95);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: flashAlert 0.6s ease-in-out infinite;
+      cursor: pointer;
+    }
+    #newOrderOverlay.active { display: flex; }
+    #newOrderOverlay h1 {
+      font-size: 3em;
+      color: white;
+      text-align: center;
+      margin: 0 0 20px 0;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    }
+    #newOrderOverlay p {
+      font-size: 1.4em;
+      color: rgba(255,255,255,0.9);
+      margin: 0;
+    }
+    @keyframes flashAlert {
+      0%, 100% { background: rgba(220, 38, 38, 0.95); }
+      50% { background: rgba(255, 255, 255, 0.95); }
+    }
+    #newOrderOverlay.active h1 {
+      animation: pulseText 0.6s ease-in-out infinite;
+    }
+    @keyframes pulseText {
+      0%, 100% { color: white; }
+      50% { color: #dc2626; }
+    }
   </style>
 </head>
 <body>
@@ -555,6 +593,11 @@
 
 <div id="notification-banner" onclick="requestNotificationPermission()">
   🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
+</div>
+
+<div id="newOrderOverlay">
+  <h1>¡NUEVA ORDEN! 🔔</h1>
+  <p>Toca "Marcar como digitada" para continuar</p>
 </div>
 
 <div class="stats" id="stats">
@@ -809,11 +852,14 @@ let activeTimeFilter = 'today';
 // ══════════════════════════════════════════════════════════════
 
 let audioCtx = null;
+let audioUnlocked = false;
+
 function ensureAudioContext() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
+  audioUnlocked = true;
 }
-['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: true }));
+['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: false }));
 
 function playBeeps(freqs, volume = 0.4) {
   try {
@@ -831,8 +877,69 @@ function playBeeps(freqs, volume = 0.4) {
     });
   } catch (e) { /* silente */ }
 }
-function playNewOrderSound() { playBeeps([660, 880, 1100]); }
+
+// Loud alarm beep for new orders
+function playAlarmBeep() {
+  try {
+    if (!audioCtx || !audioUnlocked) return;
+    ensureAudioContext();
+    const now = audioCtx.currentTime;
+    [800, 1000, 800, 1000].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'square'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(1.0, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
+      osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.13);
+    });
+  } catch (e) { /* silente */ }
+}
+
+// Persistent alarm system
+let alarmInterval = null;
+let alarmActive = false;
+
+function startAlarm() {
+  if (alarmActive) return;
+  alarmActive = true;
+  dbg('🚨 Alarma activada');
+  document.getElementById('newOrderOverlay').classList.add('active');
+  playAlarmBeep();
+  alarmInterval = setInterval(playAlarmBeep, 3000);
+}
+
+function stopAlarm() {
+  if (!alarmActive) return;
+  alarmActive = false;
+  dbg('🔕 Alarma desactivada');
+  clearInterval(alarmInterval);
+  alarmInterval = null;
+  document.getElementById('newOrderOverlay').classList.remove('active');
+}
+
+function playNewOrderSound() { startAlarm(); }
 function playConfirmSound() { playBeeps([440, 660], 0.3); }
+
+// Wake Lock — keep tablet screen on
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      dbg('🔒 Wake lock activo');
+      wakeLock.addEventListener('release', () => {
+        dbg('🔓 Wake lock liberado');
+        wakeLock = null;
+      });
+    }
+  } catch (e) { dbg('⚠️ Wake lock error: ' + e.message); }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !wakeLock) requestWakeLock();
+});
 
 // ══════════════════════════════════════════════════════════════
 // FIREBASE CLOUD MESSAGING (FCM)
@@ -1805,9 +1912,14 @@ async function loadOrders() {
 
     if (hasInteracted && currentPending > lastOrderCount) {
       dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
-      playNewOrderSound();
+      startAlarm();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
       sendNotification("¡Nueva orden en Pincer!", `Tienes ${currentPending} orden(es) pendiente(s)`);
+    }
+
+    // Stop alarm if no pending orders remain
+    if (currentPending === 0 && alarmActive) {
+      stopAlarm();
     }
 
     lastOrderCount = currentPending;
@@ -1910,6 +2022,7 @@ async function loadOrders() {
 
 async function acceptOrder(id) {
   try {
+    stopAlarm();
     const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'accepted' })
@@ -2239,6 +2352,8 @@ async function initializeDashboard() {
   setInterval(loadProducts, 30000);
 
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
+
+  requestWakeLock();
 
   dbg('✅ Dashboard listo');
 }
