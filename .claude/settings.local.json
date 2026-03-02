@@ -4,7 +4,8 @@
       "Bash(claude mcp:*)",
       "WebFetch(domain:pincerweb.com)",
       "Bash(mv:*)",
-      "Bash(echo exit:$?:*)"
+      "Bash(echo exit:$?:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }

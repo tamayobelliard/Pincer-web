@@ -33,7 +33,8 @@ self.addEventListener('notificationclick', function(event) {
           return client.focus();
         }
       }
-      return clients.openWindow(self.location.origin + '/mrsandwich/dashboard');
+      // Fallback: open root (any dashboard tab will match above)
+      return clients.openWindow(self.location.origin);
     })
   );
 });

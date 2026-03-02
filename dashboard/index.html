@@ -478,10 +478,16 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
     }
     #newOrderOverlay.active {
       display: flex;
       animation: flashAlert 0.6s ease-in-out infinite;
+    }
+    #newOrderOverlay h1,
+    #newOrderOverlay p {
+      pointer-events: none;
     }
     #newOrderOverlay h1 {
       font-size: 3em;
@@ -580,8 +586,9 @@
 
 <div id="connection-status">🟢 Conectado</div>
 
-<div id="notification-banner" onclick="requestNotificationPermission()">
-  🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
+<div id="notification-banner">
+  🔔 Activa las notificaciones para recibir alertas de órdenes
+  <button onclick="requestNotificationPermission()" style="margin-left:12px;background:#78350f;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer">Activar</button>
 </div>
 
 <div id="newOrderOverlay" onclick="dismissOverlay()">
@@ -2372,19 +2379,11 @@ async function initializeDashboard() {
   // Register dashboard service worker for push notifications
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/dashboard-sw.js').then(function(reg) {
+      console.log('[dashboard] SW registered, scope:', reg.scope);
       dbg('✅ Dashboard SW registrado: ' + reg.scope);
-    }).catch(function(e) { dbg('⚠️ Dashboard SW error: ' + e.message); });
-  }
-
-  // Request notification permission proactively
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(function(perm) {
-      if (perm === 'granted') {
-        dbg('✅ Notificaciones habilitadas');
-        document.getElementById('notification-banner').classList.remove('show');
-      } else if (perm === 'denied') {
-        dbg('⚠️ Notificaciones denegadas');
-      }
+    }).catch(function(e) {
+      console.error('[dashboard] SW registration failed:', e);
+      dbg('⚠️ Dashboard SW error: ' + e.message);
     });
   }
 
