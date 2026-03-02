@@ -183,10 +183,14 @@ export default async function handler(req, res) {
         );
         if (ssRes.ok) {
           const ssRows = await ssRes.json();
-          if (ssRows.length > 0 && ssRows[0].schedule_override) {
-            storeOpen = ssRows[0].is_open !== false;
-          } else if (restaurantHours) {
-            storeOpen = isOpenBySchedule(restaurantHours);
+          if (ssRows.length > 0) {
+            if (ssRows[0].is_open === false) {
+              // DB says closed — always respect
+              storeOpen = false;
+            } else if (restaurantHours && !ssRows[0].schedule_override) {
+              // DB says open + no manual override → check schedule
+              storeOpen = isOpenBySchedule(restaurantHours);
+            }
           }
         }
       } catch { /* default open */ }

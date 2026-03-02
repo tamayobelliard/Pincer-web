@@ -5078,18 +5078,26 @@ async function checkStoreOpen() {
     var isOpen = true;
     var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
 
-    if (storeSettings && storeSettings.schedule_override === true) {
-      // Manual override active — use store_settings.is_open
-      isOpen = storeSettings.is_open !== false;
-      dbg('📋 Estado: override manual → ' + (isOpen ? 'abierto' : 'cerrado'));
+    if (storeSettings) {
+      if (storeSettings.is_open === false) {
+        // DB says closed (manual toggle or schedule sync) — always respect
+        isOpen = false;
+        console.log('[checkStoreOpen] DB is_open=false → cerrado');
+      } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario' && !storeSettings.schedule_override) {
+        // DB says open + no manual override → check schedule
+        isOpen = isOpenBySchedule(scheduleStr);
+        console.log('[checkStoreOpen] Schedule check →', isOpen ? 'abierto' : 'cerrado');
+      } else {
+        // DB says open + manual override or no schedule → open
+        isOpen = true;
+        console.log('[checkStoreOpen] DB is_open=true → abierto');
+      }
     } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario') {
-      // Use schedule
+      // No store_settings row — use schedule
       isOpen = isOpenBySchedule(scheduleStr);
-      dbg('📋 Estado: horario automático → ' + (isOpen ? 'abierto' : 'cerrado'));
-    } else if (storeSettings) {
-      // No schedule — fall back to store_settings.is_open
-      isOpen = storeSettings.is_open !== false;
+      console.log('[checkStoreOpen] No DB row, schedule →', isOpen ? 'abierto' : 'cerrado');
     }
+    console.log('[checkStoreOpen] Final: isOpen=' + isOpen, '| DB:', storeSettings ? storeSettings.is_open : 'no row', '| schedule_override:', storeSettings ? storeSettings.schedule_override : 'n/a');
 
     var banner = document.getElementById('closedBanner');
     var overlay = document.getElementById('closedOverlay');

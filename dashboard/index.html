@@ -1821,10 +1821,12 @@ async function toggleStore() {
   }
 
   try {
+    console.log('[toggleStore] Saving:', JSON.stringify(payload));
     const res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG),
       { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload) }, 10000
     );
+    console.log('[toggleStore] PATCH response:', res.status);
     // Try to set schedule override (columns may not exist yet — fire and forget)
     fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
