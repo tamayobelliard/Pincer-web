@@ -1025,6 +1025,37 @@
       background: var(--primary-dark);
     }
 
+    .pchat-mic-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      border: none;
+      color: #64748b;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .pchat-mic-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .pchat-mic-btn.recording {
+      background: #ef4444;
+      color: white;
+      animation: mic-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes mic-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
     .pchat-typing {
       display: flex;
       align-items: center;
@@ -1405,6 +1436,7 @@
   <div id="pincerChatReplies"></div>
   <div class="pchat-input-bar">
     <input type="text" id="pincerChatInput" placeholder="Escribe tu mensaje..." onkeydown="if(event.key==='Enter')sendPincerChat()">
+    <button class="pchat-mic-btn" id="pincerChatMicBtn" onclick="togglePincerVoice()" style="display:none" aria-label="Grabar voz">🎤</button>
     <button class="pchat-send-btn" onclick="sendPincerChat()">➤</button>
   </div>
 </div>
@@ -1460,6 +1492,69 @@
     showUserMessage(text);
     callAPI(text);
   };
+
+  // Voice input via Web Speech API
+  (function() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    var micBtn = document.getElementById('pincerChatMicBtn');
+    if (micBtn) micBtn.style.display = 'flex';
+
+    var recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = (navigator.language || 'es');
+
+    var isRecording = false;
+    var autoSendTimer = null;
+    var originalPlaceholder = '';
+
+    window.togglePincerVoice = function() {
+      if (isRecording) {
+        recognition.stop();
+        return;
+      }
+      var input = document.getElementById('pincerChatInput');
+      originalPlaceholder = input.placeholder;
+      input.placeholder = 'Escuchando...';
+      input.value = '';
+      micBtn.classList.add('recording');
+      isRecording = true;
+      recognition.lang = (navigator.language || 'es');
+      recognition.start();
+    };
+
+    recognition.onresult = function(event) {
+      var transcript = '';
+      for (var i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      var input = document.getElementById('pincerChatInput');
+      input.value = transcript;
+      if (event.results[event.results.length - 1].isFinal) {
+        clearTimeout(autoSendTimer);
+        autoSendTimer = setTimeout(function() {
+          if (input.value.trim()) window.sendPincerChat();
+        }, 1500);
+      }
+    };
+
+    recognition.onend = function() {
+      micBtn.classList.remove('recording');
+      isRecording = false;
+      var input = document.getElementById('pincerChatInput');
+      input.placeholder = originalPlaceholder || 'Escribe tu mensaje...';
+    };
+
+    recognition.onerror = function(event) {
+      console.error('Speech recognition error:', event.error);
+      micBtn.classList.remove('recording');
+      isRecording = false;
+      var input = document.getElementById('pincerChatInput');
+      input.placeholder = originalPlaceholder || 'Escribe tu mensaje...';
+    };
+  })();
 
   function showBotMessage(text) {
     const container = document.getElementById('pincerChatMessages');
