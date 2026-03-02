@@ -2487,6 +2487,7 @@ function buildCategoryTabs(cats) {
     btn.addEventListener('click', () => {
       const target = document.getElementById(btn.dataset.catId);
       if (!target) return;
+      track('menu_tab_click', { category_name: btn.textContent });
       const tabsHeight = wrap.offsetHeight + 12;
       const y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
       window.scrollTo({ top: y, behavior: 'smooth' });
@@ -2570,6 +2571,7 @@ function menuItemHTML(item) {
 // ══════════════════════════════════════════════════════════════
 
 function showNotesPopup(id, name, price, imageUrl = null) {
+  track('item_view', { item_id: id, item_name: name, price: price });
   pendingItem = { id, name, price, extras: [] };
   document.getElementById('notesItemName').textContent = name;
   document.getElementById('notesTextarea').value = '';
@@ -2722,10 +2724,14 @@ function addItem(id, name, price, notes = null) {
   } else {
     order.push({ id, name, price, qty: 1, notes });
   }
+  track('cart_add', { item_id: id, item_name: name, price: price, quantity: 1 });
   renderOrder();
 }
 
 function changeQty(index, delta) {
+  if (delta < 0 && order[index].qty + delta <= 0) {
+    track('cart_remove', { item_id: order[index].id });
+  }
   order[index].qty += delta;
   if (order[index].qty <= 0) order.splice(index, 1);
   renderOrder();
@@ -2802,6 +2808,7 @@ function renderOrder() {
       <span>RD$${total.toLocaleString()}</span>
     </div>`;
   totalDiv.style.display = 'block';
+  track('cart_view', { item_count: order.length, cart_total: total });
 
   updateMenuQtyBadges();
 }
@@ -2825,6 +2832,8 @@ async function placeOrder() {
   }
 
   // SEGUNDO PASO: Validar teléfono y enviar la orden
+  var checkoutTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+  track('checkout_start', { order_total: checkoutTotal, item_count: order.length });
   customerPhone = (document.getElementById('phoneInput').value || '').trim();
   if (!customerPhone) {
     document.getElementById('phoneInput').classList.add('invalid');
@@ -2966,6 +2975,7 @@ function handleOrderSuccess(data) {
   // Capture order items and total BEFORE clearing the cart
   const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
   const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+  track('order_complete', { order_total: receiptTotal, item_count: order.length });
 
   // Save order to session history before clearing cart
   sessionOrders.push({
@@ -3909,6 +3919,27 @@ const CHAT_SESSION_KEY = 'pincer_chat_session_mrsandwich';
 let chatSessionId = sessionStorage.getItem(CHAT_SESSION_KEY) || crypto.randomUUID();
 sessionStorage.setItem(CHAT_SESSION_KEY, chatSessionId);
 
+// Analytics tracking (fire and forget)
+const _pageLoadTime = Date.now();
+function track(eventType, eventData) {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: chatSessionId,
+      restaurant_slug: 'mrsandwich',
+      event_type: eventType,
+      event_data: eventData || {},
+      browser_language: navigator.language || 'es',
+      device_type: window.innerWidth <= 768 ? 'mobile' : 'desktop',
+    }),
+    keepalive: true,
+  }).catch(function(){});
+}
+window.addEventListener('beforeunload', function() {
+  track('page_exit', { time_on_page_seconds: Math.round((Date.now() - _pageLoadTime) / 1000), cart_items: order.length });
+});
+
 const clippyMessages = [
   { text: '¡Hola! ¿Te ayudo a elegir?', emoji: '👋' },
   { text: '¿No sabes qué pedir?', emoji: '🤔' },
@@ -4014,6 +4045,7 @@ function showPhotoInChat(itemId) {
 }
 
 function openPinzer() {
+  track('chat_open', {});
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
   chatOpen = true;
@@ -4032,6 +4064,7 @@ function openPinzer() {
 }
 
 function closePinzer() {
+  track('chat_close', {});
   document.getElementById('pinzer-modal').style.display = 'none';
   chatOpen = false;
   const clippy = document.querySelector('.chef-clippy');
@@ -4363,6 +4396,7 @@ async function init() {
   initChatbot();
 
   dbg('✅ Mr. Sandwich listo');
+  track('page_view', { url: location.href, referrer: document.referrer });
 }
 
 init();
