@@ -50,6 +50,7 @@ const THEMES = {
   'cafe-moderno':      { theme: 'cafe-moderno',      bg: '#faf6f1', primary: '#8B4513', text: '#2c1810', accent: '#d4a574' },
   'verde-fresco':      { theme: 'verde-fresco',      bg: '#f8fffe', primary: '#2d7a4f', text: '#1a3d2b', accent: '#4caf50' },
   'azul-profesional':  { theme: 'azul-profesional',  bg: '#f8faff', primary: '#1a4fa0', text: '#0d2748', accent: '#2196f3' },
+  'mr-sandwich':       { theme: 'mr-sandwich',       bg: 'linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%)', primary: '#4a7c2c', text: '#ffffff', accent: '#f4e4c1', primaryDark: '#2d5016' },
 };
 const DEFAULT_THEME = THEMES['rojo-clasico'];
 

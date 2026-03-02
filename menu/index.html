@@ -13,6 +13,7 @@
     :root {
       --primary: #E8191A;
       --primary-light: #E8191A;
+      --primary-dark: #E8191A;
       --accent: #ffffff;
     }
 
@@ -275,6 +276,9 @@
     }
     body.dark-bg .item-price {
       color: #000000;
+    }
+    body.dark-bg .category-title {
+      color: var(--accent);
     }
 
     .menu-item {
@@ -2455,6 +2459,7 @@ var THEMES = {
   'cafe-moderno':      { bg: '#faf6f1', primary: '#8B4513', text: '#2c1810', accent: '#d4a574' },
   'verde-fresco':      { bg: '#f8fffe', primary: '#2d7a4f', text: '#1a3d2b', accent: '#4caf50' },
   'azul-profesional':  { bg: '#f8faff', primary: '#1a4fa0', text: '#0d2748', accent: '#2196f3' },
+  'mr-sandwich':       { bg: 'linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%)', primary: '#4a7c2c', text: '#ffffff', accent: '#f4e4c1', primaryDark: '#2d5016' },
 };
 
 // Apply theme from menu_style
@@ -2462,24 +2467,27 @@ function applyTheme(style) {
   // Resolve theme: if style has a theme name, use predefined; otherwise use stored colors
   var resolved = style?.theme && THEMES[style.theme] ? THEMES[style.theme] : (style || THEMES['rojo-clasico']);
   var primary = resolved.primary || '#E8191A';
+  var primaryDark = resolved.primaryDark || primary;
   var bg = resolved.bg || '#1a1a1a';
   var accent = resolved.accent || '#ffffff';
   var textColor = resolved.text || '#ffffff';
 
   document.documentElement.style.setProperty('--primary', primary);
   document.documentElement.style.setProperty('--primary-light', primary);
+  document.documentElement.style.setProperty('--primary-dark', primaryDark);
   document.documentElement.style.setProperty('--accent', accent);
   document.body.style.background = bg;
 
   // Determine if background is dark (for card contrast)
-  var isDark = isDarkColor(bg);
+  var isGradient = bg.includes('gradient');
+  var isDark = isGradient || isDarkColor(bg);
   if (isDark) {
     document.body.classList.add('dark-bg');
   }
 
   var meta = document.createElement('meta');
   meta.name = 'theme-color';
-  meta.content = primary;
+  meta.content = primaryDark;
   document.head.appendChild(meta);
 }
 
