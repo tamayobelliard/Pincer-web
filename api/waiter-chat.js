@@ -177,7 +177,20 @@ LANGUAGE RULES:
       playful: isSpanish ? p.style : '- Fun, enthusiastic, energetic tone. Every dish is an adventure! Use 2-3 emojis per message.',
     }[personality] || (isSpanish ? p.style : '- Friendly, relaxed neutral tone.');
 
-    const systemPrompt = `REGLA ABSOLUTA: Responde SIEMPRE en español, sin excepcion, aunque el cliente escriba en otro idioma.
+    const browserLang = (browserLanguage || 'es').toLowerCase().split('-')[0];
+    const LANG_DISPLAY = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
+    const browserLangName = LANG_DISPLAY[browserLang] || browserLang;
+
+    const langRule = browserLang !== 'es'
+      ? `Idioma del browser del cliente: ${browserLangName}
+Regla de idioma:
+- Saluda siempre en español primero
+- En el primer mensaje pregunta: "Veo que tu dispositivo esta en ${browserLangName}. ¿Prefieres que te hable en ${browserLangName}?"
+- Si el cliente acepta, cambia a ese idioma para toda la conversacion
+- Si el cliente prefiere español, continua en español`
+      : 'Responde siempre en español.';
+
+    const systemPrompt = `${langRule}
 
 Eres el mesero virtual de ${rName}.
 ${langInstruction}

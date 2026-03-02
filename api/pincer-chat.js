@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { messages } = req.body;
+  const { messages, browserLanguage } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages required' });
   }
@@ -70,7 +70,20 @@ export default async function handler(req, res) {
 ${items ? '  Menu:\n' + items : '  (Sin menu cargado)'}`;
     }).join('\n\n');
 
-    const systemPrompt = `REGLA ABSOLUTA: Responde SIEMPRE en español, sin excepcion, aunque el usuario escriba en otro idioma.
+    const browserLang = (browserLanguage || 'es').toLowerCase().split('-')[0];
+    const LANG_DISPLAY = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
+    const browserLangName = LANG_DISPLAY[browserLang] || browserLang;
+
+    const langRule = browserLang !== 'es'
+      ? `Idioma del browser del cliente: ${browserLangName}
+Regla de idioma:
+- Saluda siempre en español primero
+- En el primer mensaje pregunta: "Veo que tu dispositivo esta en ${browserLangName}. ¿Prefieres que te hable en ${browserLangName}?"
+- Si el cliente acepta, cambia a ese idioma para toda la conversacion
+- Si el cliente prefiere español, continua en español`
+      : 'Responde siempre en español.';
+
+    const systemPrompt = `${langRule}
 
 Eres el asistente virtual de Pincer, plataforma dominicana de pedidos digitales por QR.
 Tu tono es amigable, profesional y conciso. Usas emojis con moderacion (1-2 por mensaje).
