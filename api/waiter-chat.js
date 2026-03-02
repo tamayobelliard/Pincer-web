@@ -132,6 +132,7 @@ export default async function handler(req, res) {
     const isSpanish = activeLang.startsWith('es');
 
     console.log('waiter-chat personality:', restaurant_slug, '->', personality, '| browser:', lang, '| confirmed:', confirmedLang);
+    console.log('browserLanguage received:', browserLanguage);
 
     const p = PERSONALITIES[personality] || PERSONALITIES.casual;
 

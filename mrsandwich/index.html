@@ -4040,35 +4040,13 @@ function showWelcomeMessages() {
     pinzerSay('¡Klk! Bienvenido a Mr. Sandwich 🔥 ¿Es tu primera vez por aquí?');
   }, 500);
 
-  // Proactive language offer based on browser language
-  var bLang = (navigator.language || 'es').toLowerCase();
-  var langKey = bLang.split('-')[0];
-  var langOffers = {
-    en: 'Would you like me to assist you in English? 🇺🇸',
-    fr: 'Souhaitez-vous que je vous réponde en français? 🇫🇷',
-    ht: 'Èske ou ta renmen m pale kreyòl avèk ou? 🇭🇹',
-    de: 'Möchten Sie, dass ich auf Deutsch antworte? 🇩🇪',
-    pt: 'Gostaria que eu respondesse em português? 🇧🇷'
-  };
-
-  if (langKey !== 'es' && langOffers[langKey]) {
-    setTimeout(() => {
-      pinzerSay(langOffers[langKey]);
-      setTimeout(() => {
-        pinzerShowReplies([
-          { label: '✅ Yes / Sí' },
-          { label: '🇪🇸 No, español' }
-        ]);
-      }, 300);
-    }, 1300);
-  } else {
-    setTimeout(() => {
-      pinzerShowReplies([
-        { label: '👋 Sí, primera vez' },
-        { label: '🔄 Ya he venido antes' }
-      ]);
-    }, 1200);
-  }
+  // Show initial buttons — language detection is handled by the AI via browserLanguage in system prompt
+  setTimeout(() => {
+    pinzerShowReplies([
+      { label: '👋 Sí, primera vez' },
+      { label: '🔄 Ya he venido antes' }
+    ]);
+  }, 1200);
 }
 
 function pinzerSay(message) {
