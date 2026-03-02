@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "WebFetch(domain:pincerweb.com)",
+      "Bash(mv:*)",
+      "Bash(echo exit:$?:*)"
     ]
   }
 }

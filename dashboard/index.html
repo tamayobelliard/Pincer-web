@@ -412,14 +412,6 @@
       max-height: 250px; overflow-y: auto;
     }
     .debug-panel.show { display: block; }
-    .debug-toggle {
-      text-align: center; margin-bottom: 10px;
-    }
-    .debug-toggle button {
-      background: rgba(255,255,255,0.2); color: white; border: none;
-      padding: 6px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;
-      margin: 0;
-    }
 
     /* Store Open/Close */
     .store-toggle-bar {
@@ -584,13 +576,7 @@
   <div class="analytics-card"><div class="analytics-value" id="analytics-top" style="font-size:1em;">-</div><div class="analytics-label">Más Vendido</div></div>
 </div>
 
-<!-- Debug toggle -->
-<div class="debug-toggle">
-  <button onclick="document.getElementById('debugPanel').classList.toggle('show')">🐛 Debug</button>
-  <button onclick="startAlarm()" style="margin-left:8px;background:#dc2626;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer">🔔 Test Alarma</button>
-  <button onclick="stopAlarm()" style="margin-left:4px;background:#16a34a;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer">🔕 Stop</button>
-</div>
-<div class="debug-panel" id="debugPanel"></div>
+<div class="debug-panel" id="debugPanel" style="display:none"></div>
 
 <div id="connection-status">🟢 Conectado</div>
 
@@ -598,9 +584,9 @@
   🔔 Haz click aquí para habilitar notificaciones de nuevas órdenes
 </div>
 
-<div id="newOrderOverlay">
+<div id="newOrderOverlay" onclick="dismissOverlay()">
   <h1>¡NUEVA ORDEN! 🔔</h1>
-  <p>Toca "Marcar como digitada" para continuar</p>
+  <p>Toca aquí para ver la orden</p>
 </div>
 
 <div class="stats" id="stats">
@@ -883,11 +869,9 @@ function playBeeps(freqs, volume = 0.4) {
 
 // Loud alarm beep for new orders
 function playAlarmBeep() {
-  console.log('[alarm] playAlarmBeep called, audioCtx:', !!audioCtx, 'audioUnlocked:', audioUnlocked);
   try {
-    // Try to create/unlock audio context on demand
     ensureAudioContext();
-    if (!audioCtx) { console.warn('[alarm] no audioCtx after ensure'); return; }
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
     [800, 1000, 800, 1000].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
@@ -898,8 +882,7 @@ function playAlarmBeep() {
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
       osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.13);
     });
-    console.log('[alarm] beep played successfully');
-  } catch (e) { console.error('[alarm] playAlarmBeep error:', e); }
+  } catch (e) { /* silente */ }
 }
 
 // Persistent alarm system
@@ -907,36 +890,36 @@ let alarmInterval = null;
 let alarmActive = false;
 
 function startAlarm() {
-  console.log('[alarm] startAlarm called, alarmActive:', alarmActive);
-  if (alarmActive) { console.log('[alarm] already active, skipping'); return; }
+  if (alarmActive) return;
   alarmActive = true;
   dbg('🚨 Alarma activada');
 
   var overlay = document.getElementById('newOrderOverlay');
-  console.log('[alarm] overlay element:', overlay);
-  if (overlay) {
-    overlay.classList.add('active');
-    console.log('[alarm] overlay classList:', overlay.classList.toString());
+  if (overlay) overlay.classList.add('active');
+
+  // Send push notification via service worker
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'NEW_ORDER', body: 'Tienes una nueva orden pendiente' });
   }
 
   playAlarmBeep();
-  alarmInterval = setInterval(function() {
-    console.log('[alarm] interval tick, alarmActive:', alarmActive);
-    playAlarmBeep();
-  }, 3000);
-  console.log('[alarm] interval started, id:', alarmInterval);
+  alarmInterval = setInterval(playAlarmBeep, 3000);
 }
 
 function stopAlarm() {
-  console.log('[alarm] stopAlarm called, alarmActive:', alarmActive);
-  if (!alarmActive) { console.log('[alarm] not active, skipping'); return; }
+  if (!alarmActive) return;
   alarmActive = false;
   dbg('🔕 Alarma desactivada');
   if (alarmInterval) {
     clearInterval(alarmInterval);
-    console.log('[alarm] interval cleared, id:', alarmInterval);
     alarmInterval = null;
   }
+  var overlay = document.getElementById('newOrderOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+// Dismiss overlay (tap to hide banner) but alarm keeps playing
+function dismissOverlay() {
   var overlay = document.getElementById('newOrderOverlay');
   if (overlay) overlay.classList.remove('active');
 }
@@ -1128,8 +1111,16 @@ async function requestNotificationPermission() {
 function sendNotification(title, body, tag) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    const n = new Notification(title, { body, tag: tag || ('pincer-' + Date.now()), requireInteraction: true });
-    n.onclick = function() { window.focus(); this.close(); };
+    // Use service worker for persistent lock-screen notifications
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'NEW_ORDER',
+        body: body || 'Toca para ver la orden'
+      });
+    } else {
+      const n = new Notification(title, { body, tag: tag || ('pincer-' + Date.now()), requireInteraction: true });
+      n.onclick = function() { window.focus(); this.close(); };
+    }
   } catch (e) { /* silente */ }
 }
 
@@ -1934,7 +1925,6 @@ async function loadOrders() {
     const currentPending = data.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
 
     if (hasInteracted && currentPending > lastOrderCount) {
-      console.log('[alarm] New order detected! pending:', currentPending, 'prev:', lastOrderCount);
       dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
       startAlarm();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
@@ -2378,6 +2368,25 @@ async function initializeDashboard() {
   document.addEventListener('click', () => { hasInteracted = true; ensureAudioContext(); }, { once: true });
 
   requestWakeLock();
+
+  // Register dashboard service worker for push notifications
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/dashboard-sw.js').then(function(reg) {
+      dbg('✅ Dashboard SW registrado: ' + reg.scope);
+    }).catch(function(e) { dbg('⚠️ Dashboard SW error: ' + e.message); });
+  }
+
+  // Request notification permission proactively
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(function(perm) {
+      if (perm === 'granted') {
+        dbg('✅ Notificaciones habilitadas');
+        document.getElementById('notification-banner').classList.remove('show');
+      } else if (perm === 'denied') {
+        dbg('⚠️ Notificaciones denegadas');
+      }
+    });
+  }
 
   dbg('✅ Dashboard listo');
 }
