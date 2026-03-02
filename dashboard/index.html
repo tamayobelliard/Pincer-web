@@ -482,20 +482,24 @@
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: rgba(220, 38, 38, 0.95);
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      animation: flashAlert 0.6s ease-in-out infinite;
       cursor: pointer;
     }
-    #newOrderOverlay.active { display: flex; }
+    #newOrderOverlay.active {
+      display: flex;
+      animation: flashAlert 0.6s ease-in-out infinite;
+    }
     #newOrderOverlay h1 {
       font-size: 3em;
       color: white;
       text-align: center;
       margin: 0 0 20px 0;
       text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    }
+    #newOrderOverlay.active h1 {
+      animation: pulseText 0.6s ease-in-out infinite;
     }
     #newOrderOverlay p {
       font-size: 1.4em;
@@ -505,9 +509,6 @@
     @keyframes flashAlert {
       0%, 100% { background: rgba(220, 38, 38, 0.95); }
       50% { background: rgba(255, 255, 255, 0.95); }
-    }
-    #newOrderOverlay.active h1 {
-      animation: pulseText 0.6s ease-in-out infinite;
     }
     @keyframes pulseText {
       0%, 100% { color: white; }
@@ -586,6 +587,8 @@
 <!-- Debug toggle -->
 <div class="debug-toggle">
   <button onclick="document.getElementById('debugPanel').classList.toggle('show')">🐛 Debug</button>
+  <button onclick="startAlarm()" style="margin-left:8px;background:#dc2626;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer">🔔 Test Alarma</button>
+  <button onclick="stopAlarm()" style="margin-left:4px;background:#16a34a;color:white;border:none;padding:6px 12px;border-radius:8px;cursor:pointer">🔕 Stop</button>
 </div>
 <div class="debug-panel" id="debugPanel"></div>
 
@@ -880,9 +883,11 @@ function playBeeps(freqs, volume = 0.4) {
 
 // Loud alarm beep for new orders
 function playAlarmBeep() {
+  console.log('[alarm] playAlarmBeep called, audioCtx:', !!audioCtx, 'audioUnlocked:', audioUnlocked);
   try {
-    if (!audioCtx || !audioUnlocked) return;
+    // Try to create/unlock audio context on demand
     ensureAudioContext();
+    if (!audioCtx) { console.warn('[alarm] no audioCtx after ensure'); return; }
     const now = audioCtx.currentTime;
     [800, 1000, 800, 1000].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
@@ -893,7 +898,8 @@ function playAlarmBeep() {
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
       osc.start(now + i * 0.15); osc.stop(now + i * 0.15 + 0.13);
     });
-  } catch (e) { /* silente */ }
+    console.log('[alarm] beep played successfully');
+  } catch (e) { console.error('[alarm] playAlarmBeep error:', e); }
 }
 
 // Persistent alarm system
@@ -901,21 +907,38 @@ let alarmInterval = null;
 let alarmActive = false;
 
 function startAlarm() {
-  if (alarmActive) return;
+  console.log('[alarm] startAlarm called, alarmActive:', alarmActive);
+  if (alarmActive) { console.log('[alarm] already active, skipping'); return; }
   alarmActive = true;
   dbg('🚨 Alarma activada');
-  document.getElementById('newOrderOverlay').classList.add('active');
+
+  var overlay = document.getElementById('newOrderOverlay');
+  console.log('[alarm] overlay element:', overlay);
+  if (overlay) {
+    overlay.classList.add('active');
+    console.log('[alarm] overlay classList:', overlay.classList.toString());
+  }
+
   playAlarmBeep();
-  alarmInterval = setInterval(playAlarmBeep, 3000);
+  alarmInterval = setInterval(function() {
+    console.log('[alarm] interval tick, alarmActive:', alarmActive);
+    playAlarmBeep();
+  }, 3000);
+  console.log('[alarm] interval started, id:', alarmInterval);
 }
 
 function stopAlarm() {
-  if (!alarmActive) return;
+  console.log('[alarm] stopAlarm called, alarmActive:', alarmActive);
+  if (!alarmActive) { console.log('[alarm] not active, skipping'); return; }
   alarmActive = false;
   dbg('🔕 Alarma desactivada');
-  clearInterval(alarmInterval);
-  alarmInterval = null;
-  document.getElementById('newOrderOverlay').classList.remove('active');
+  if (alarmInterval) {
+    clearInterval(alarmInterval);
+    console.log('[alarm] interval cleared, id:', alarmInterval);
+    alarmInterval = null;
+  }
+  var overlay = document.getElementById('newOrderOverlay');
+  if (overlay) overlay.classList.remove('active');
 }
 
 function playNewOrderSound() { startAlarm(); }
@@ -1911,6 +1934,7 @@ async function loadOrders() {
     const currentPending = data.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
 
     if (hasInteracted && currentPending > lastOrderCount) {
+      console.log('[alarm] New order detected! pending:', currentPending, 'prev:', lastOrderCount);
       dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
       startAlarm();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
