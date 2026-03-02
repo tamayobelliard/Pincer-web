@@ -1,7 +1,5 @@
 {
   "rewrites": [
-    { "source": "/mrsandwich", "destination": "/mrsandwich/index.html" },
-    { "source": "/mrsandwich/dashboard", "destination": "/mrsandwich/dashboard/index.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/login", "destination": "/login/index.html" },
     { "source": "/signup", "destination": "/signup/index.html" },
