@@ -4258,9 +4258,15 @@ async function sendToAI(userMessage) {
       const chatMsgs = document.getElementById('pinzer-messages');
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
     } else {
-      pinzerSay('Tardé un poco, intenta de nuevo 😅');
+      console.error('waiter-chat error:', res.status);
+      if (res.status === 403) {
+        pinzerSay('El chatbot no está disponible en este momento. Puedes ver el menú arriba 👆');
+      } else {
+        pinzerSay('Tardé un poco, intenta de nuevo 😅');
+      }
     }
   } catch (e) {
+    console.error('waiter-chat fetch error:', e);
     pinzerSay('Tardé un poco, intenta de nuevo 😅');
   }
 }

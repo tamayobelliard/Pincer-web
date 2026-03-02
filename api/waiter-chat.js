@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
     // Fetch chatbot personality and plan from restaurant_users
     let personality = 'casual';
-    let plan = 'free';
+    let plan = 'premium'; // default to premium (legacy restaurants predate plan field)
     if (restaurant_slug) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
