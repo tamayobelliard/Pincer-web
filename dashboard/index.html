@@ -45,11 +45,12 @@
     }
     .nav-item {
       display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
-      font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer;
+      font-size: 14px; font-weight: 500; color: #6b6b7a; cursor: pointer;
       transition: all 0.15s; text-decoration: none; margin-bottom: 2px; border: none; background: none;
+      width: 100%; text-align: left;
     }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
-    .nav-item.active { background: var(--red-light); color: var(--red); font-weight: 600; }
+    .nav-item.active { background: var(--red-light); color: #E8191A; font-weight: 600; }
     .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
     .nav-badge {
       margin-left: auto; background: var(--red); color: white;
@@ -314,7 +315,7 @@
 
     /* ORDERS CONTAINER */
     #orders {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 16px; margin-bottom: 28px;
     }
 
@@ -322,35 +323,48 @@
     .order {
       background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
       padding: 0; overflow: hidden; transition: all 0.2s;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.04); border-left: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04); border-left: 4px solid var(--border);
     }
     .order:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
-    .new { border-color: var(--red); }
-    .warning { border-color: #fbbf24; animation: none; }
-    .late { border-color: var(--red); animation: none; }
-    .accepted { border-color: var(--green); background: var(--bg2); color: var(--text); }
-    .ready { border-color: var(--green); background: var(--green-light); color: var(--text); }
-    .notified { border-color: #a78bfa; background: #faf5ff; color: var(--text); }
-    /* Remove dark-bg text overrides — all cards are light now */
-    .accepted .order-number, .notified .order-number { color: var(--text); background: var(--bg3); }
-    .accepted .order-status { background: #d1fae5; color: #065f46; }
-    .notified .order-status { background: #ede9fe; color: #5b21b6; }
-    .accepted .order-items-label, .notified .order-items-label { color: var(--muted); }
-    .accepted .order-item-row, .notified .order-item-row { background: var(--bg3); border-left-color: var(--border); }
-    .accepted .order-item-qty, .notified .order-item-qty { color: var(--red); }
-    .accepted .order-item-name, .notified .order-item-name { color: var(--text); }
-    .accepted .order-item-notes, .notified .order-item-notes { color: var(--muted); }
-    .accepted .order-total, .notified .order-total { background: var(--bg3); color: var(--text); }
-    .accepted .order-phone, .notified .order-phone { background: var(--bg3); color: var(--text); border-left-color: var(--border); }
-    .accepted .order-time, .notified .order-time { background: var(--bg3); color: var(--muted); }
-    .accepted .completed-badge, .notified .completed-badge { background: var(--green); color: white; }
-    .accepted .order-type-badge, .notified .order-type-badge { background: var(--bg3); color: var(--muted); }
-    .accepted .order-delivery-info, .notified .order-delivery-info { background: var(--bg3); border-color: var(--border); color: var(--text); }
-    .accepted .order-delivery-info a, .notified .order-delivery-info a { color: var(--red); }
 
-    @keyframes pulseWarning {
-      0%, 100% { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-      50% { box-shadow: 0 0 16px rgba(232,25,26,0.15); }
+    /* Pending — new (< 1 min): white card, red left border */
+    .order-new { border-left-color: #E8191A; }
+    /* Pending — warning (1-2 min): yellow pulse */
+    .order-warning { border-left-color: #f59e0b; background: #fffbeb; animation: pulseYellow 2s ease-in-out infinite; }
+    /* Pending — urgent (> 2 min): red pulse */
+    .order-urgent { border-left-color: #E8191A; background: #fff0f0; animation: pulseRed 2s ease-in-out infinite; }
+    /* Digitada (accepted): green */
+    .accepted { border-left-color: #22c55e; background: #f0fdf4; color: var(--text); }
+    /* Lista para retirar: blue */
+    .ready { border-left-color: #3b82f6; background: #eff6ff; color: var(--text); }
+    /* Notificada por WhatsApp: gray, dimmed */
+    .notified { border-left-color: #d1d5db; background: #f9fafb; color: var(--text); opacity: 0.8; }
+
+    /* Light card text overrides for accepted/notified/ready */
+    .accepted .order-number, .notified .order-number, .ready .order-number { color: var(--text); background: none; }
+    .accepted .order-status { background: #d1fae5; color: #065f46; }
+    .ready .order-status { background: #dbeafe; color: #1e40af; }
+    .notified .order-status { background: #f3f4f6; color: #6b7280; }
+    .accepted .order-items-label, .notified .order-items-label, .ready .order-items-label { color: var(--muted); }
+    .accepted .order-item-row, .notified .order-item-row, .ready .order-item-row { background: none; }
+    .accepted .order-item-qty, .notified .order-item-qty, .ready .order-item-qty { color: var(--red); }
+    .accepted .order-item-name, .notified .order-item-name, .ready .order-item-name { color: var(--text); }
+    .accepted .order-item-notes, .notified .order-item-notes, .ready .order-item-notes { color: var(--muted); }
+    .accepted .order-total, .notified .order-total, .ready .order-total { background: none; color: var(--text); }
+    .accepted .order-phone, .notified .order-phone, .ready .order-phone { background: var(--bg3); color: var(--text); border-left-color: var(--border); }
+    .accepted .order-time, .notified .order-time, .ready .order-time { color: var(--muted); }
+    .accepted .completed-badge, .notified .completed-badge, .ready .completed-badge { background: var(--green); color: white; }
+    .accepted .order-type-badge, .notified .order-type-badge, .ready .order-type-badge { background: var(--bg3); color: var(--muted); }
+    .accepted .order-delivery-info, .notified .order-delivery-info, .ready .order-delivery-info { background: var(--bg3); border-color: var(--border); color: var(--text); }
+    .accepted .order-delivery-info a, .notified .order-delivery-info a, .ready .order-delivery-info a { color: var(--red); }
+
+    @keyframes pulseYellow {
+      0%, 100% { border-color: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+      50% { border-color: #f59e0b; box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+    }
+    @keyframes pulseRed {
+      0%, 100% { border-color: #E8191A; box-shadow: 0 0 0 0 rgba(232,25,26,0.4); }
+      50% { border-color: #E8191A; box-shadow: 0 0 0 6px rgba(232,25,26,0); }
     }
 
     .order-number {
@@ -358,8 +372,8 @@
       display: inline-block; padding: 14px 16px; background: none; border-radius: 0;
       border-bottom: 1px solid var(--border); width: auto;
     }
-    .warning .order-number { background: var(--yellow-light); }
-    .late .order-number { background: var(--red-light); }
+    .order-warning .order-number { background: var(--yellow-light); }
+    .order-urgent .order-number { background: var(--red-light); }
     .order-items { margin: 0; padding: 14px 16px 0 16px; }
     .order-items-label { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .order-items-list { list-style: none; padding: 0; margin: 8px 0 0 0; }
@@ -396,8 +410,8 @@
       font-weight: 700; font-size: 12px; padding: 4px 16px; margin: 0;
       border-radius: 0; background: none; color: var(--muted); display: block;
     }
-    .timer-yellow { color: var(--yellow); background: none; animation: none; }
-    .timer-red { color: var(--red); background: none; animation: pulseWarning 2s infinite; }
+    .timer-yellow { color: #f59e0b; }
+    .timer-red { color: #E8191A; font-weight: 800; }
 
     .order-status {
       display: inline-block; padding: 3px 8px; border-radius: 4px;
@@ -441,6 +455,7 @@
     .wa-btn:hover { background: #20BA5A; }
 
     /* BUTTONS — order action area */
+    .order-actions { padding: 12px 16px 16px; }
     .order button, .order .wa-btn, .order .completed-badge {
       margin: 0;
     }
@@ -454,7 +469,7 @@
     }
     .btn-accept {
       background: var(--red); box-shadow: none;
-      flex: 1; padding: 9px;
+      width: 100%; display: block; padding: 11px 9px;
     }
     .btn-accept:hover { background: var(--red-dark); }
     .btn-ready { background: var(--green); box-shadow: none; }
@@ -655,6 +670,9 @@
     }
     .sidebar-overlay.show { display: block; opacity: 1; }
 
+    @media (max-width: 1100px) {
+      #orders { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 768px) {
       .mobile-menu-btn { display: block; }
       .sidebar {
@@ -728,6 +746,13 @@
   </button>
   <button class="nav-item" id="navMenu" onclick="document.getElementById('productsPanel').scrollIntoView({behavior:'smooth'})">
     <span class="icon">📦</span> Menú
+  </button>
+  <a class="nav-item" id="navQR" href="#" onclick="window.open('/' + SLUG, '_blank'); return false;">
+    <span class="icon">🔗</span> Ver QR
+  </a>
+  <div class="nav-section" style="margin-top:24px;">Configuración</div>
+  <button class="nav-item" id="navSettings" onclick="alert('Ajustes próximamente')">
+    <span class="icon">⚙️</span> Ajustes
   </button>
   <div class="sidebar-bottom">
     <div class="store-toggle-bar" id="storeToggleBar">
@@ -2422,12 +2447,12 @@ async function loadOrders() {
       const status = order.status || 'pending';
       const isPaid = status === 'paid' || !!order.azul_order_id;
 
-      let statusClass = 'new';
+      let statusClass = 'order-new';
       if (status === 'notified') statusClass = 'notified';
       else if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
-      else if (minutes >= 20) statusClass = 'late';
-      else if (minutes >= 10) statusClass = 'warning';
+      else if (minutes > 2) statusClass = 'order-urgent';
+      else if (minutes >= 1) statusClass = 'order-warning';
 
       let statusBadgeClass, statusText;
       if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
@@ -2481,16 +2506,17 @@ async function loadOrders() {
         ${order.customer_name ? `<div class="order-phone" style="border-left-color:#8b5cf6;">👤 ${order.customer_name}</div>` : ''}
         ${deliveryInfoHTML}
         ${(status === 'pending' || status === 'paid' || !status) ?
-          `<div class="order-wait-timer ${minutes >= 20 ? 'timer-red' : minutes >= 10 ? 'timer-yellow' : ''}">⏱ ${minutes} min esperando</div>` :
+          `<div class="order-wait-timer ${minutes > 2 ? 'timer-red' : minutes >= 1 ? 'timer-yellow' : ''}">⏱ ${minutes} min esperando</div>` :
           `<div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>`
         }
-        <br>
+        <div class="order-actions">
         ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button><button class="btn-revert" onclick="revertOrder(${order.id})">↩ Revertir</button>` : ''}
         ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waMsg)}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
         ${order.order_type === 'delivery' && order.phone ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
-        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}`;
+        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
+        </div>`;
       container.appendChild(div);
     });
 
