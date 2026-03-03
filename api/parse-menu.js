@@ -1,3 +1,5 @@
+import { rateLimit } from './rate-limit.js';
+
 export const config = { maxDuration: 60 };
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
@@ -81,6 +83,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rate limit: 10 menu parse requests per minute per IP
+  if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'parse-menu' })) return;
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -2,6 +2,7 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { rateLimit } from './rate-limit.js';
 
 // Cache SSL agent at module level (reused across warm invocations)
 let cachedAgent = null;
@@ -89,6 +90,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Rate limit: 5 payment attempts per minute per IP (anti card-testing)
+  if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'payment' })) return;
+
   try {
     const {
       cardNumber,
@@ -100,11 +104,52 @@ export default async function handler(req, res) {
       customerName,
       customerPhone,
       browserInfo,
+      orderItems,
+      restaurantSlug,
     } = req.body;
 
     // Validate required fields
     if (!cardNumber || !expiration || !cvc || !amount) {
       return res.status(400).json({ error: 'Missing required fields: cardNumber, expiration, cvc, amount' });
+    }
+
+    // ── Server-side amount validation ──
+    // Fetch product prices from Supabase and verify the submitted amount
+    if (Array.isArray(orderItems) && orderItems.length > 0 && restaurantSlug) {
+      const supabaseUrl = sbUrl();
+      const supabaseKey = sbKey();
+      if (supabaseKey) {
+        try {
+          const itemIds = orderItems.map(i => i.id).join(',');
+          const priceRes = await fetch(
+            `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&id=in.(${encodeURIComponent(itemIds)})&select=id,price`,
+            { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(5000) }
+          );
+          if (priceRes.ok) {
+            const products = await priceRes.json();
+            const priceMap = {};
+            for (const p of products) priceMap[p.id] = p.price;
+            let expectedTotal = 0;
+            for (const item of orderItems) {
+              const unitPrice = priceMap[item.id];
+              if (unitPrice != null) {
+                expectedTotal += unitPrice * (item.qty || 1);
+              }
+            }
+            // Amount is in cents (price * 100), expectedTotal is in pesos
+            const expectedCents = Math.round(expectedTotal * 100);
+            const submittedCents = parseInt(amount, 10);
+            // Allow 2% tolerance for delivery fees / rounding
+            if (expectedCents > 0 && Math.abs(submittedCents - expectedCents) > expectedCents * 0.02 + 500) {
+              console.error(`Payment amount mismatch: submitted=${submittedCents} expected=${expectedCents} slug=${restaurantSlug}`);
+              return res.status(400).json({ error: 'El monto del pago no coincide con la orden.' });
+            }
+          }
+        } catch (e) {
+          console.error('Amount validation error (non-blocking):', e.message);
+          // Non-blocking: if validation fails due to network, allow payment to proceed
+        }
+      }
     }
 
     // Generate unique session ID for 3DS tracking

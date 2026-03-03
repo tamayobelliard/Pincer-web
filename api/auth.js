@@ -1,5 +1,7 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { rateLimit } from './rate-limit.js';
+import { verifyRecaptcha } from './recaptcha.js';
 
 export default async function handler(req, res) {
   // CORS
@@ -10,10 +12,18 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { username, password } = req.body;
+  // Rate limit: 10 login attempts per minute per IP
+  if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'auth' })) return;
+
+  const { username, password, recaptchaToken } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ success: false, error: 'Username and password required' });
+  }
+
+  // Verify reCAPTCHA v3 (skipped if secret key not configured)
+  if (!await verifyRecaptcha(recaptchaToken, 'login')) {
+    return res.status(403).json({ success: false, error: 'Verificación de seguridad fallida. Intenta de nuevo.' });
   }
 
   try {

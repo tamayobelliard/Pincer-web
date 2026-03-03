@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
+import { rateLimit } from './rate-limit.js';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
@@ -415,6 +416,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Rate limit: 30 admin requests per minute per IP
+  if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'admin' })) return;
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

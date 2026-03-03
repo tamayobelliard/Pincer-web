@@ -1,3 +1,5 @@
+import { rateLimit } from './rate-limit.js';
+
 export const config = { maxDuration: 5 };
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
@@ -9,6 +11,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rate limit: 60 tracking events per minute per IP
+  if (rateLimit(req, res, { max: 60, windowMs: 60000, prefix: 'track' })) return;
 
   const { session_id, restaurant_slug, event_type, event_data, browser_language, device_type } = req.body;
 

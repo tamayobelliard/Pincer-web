@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { rateLimit } from './rate-limit.js';
 
 // Parse the private key — handles multiple formats from env vars
 function parsePrivateKey(raw) {
@@ -32,6 +33,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rate limit: 30 notifications per minute per IP
+  if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'notify' })) return;
 
   // Verify webhook secret
   const webhookSecret = req.headers['x-webhook-secret'];

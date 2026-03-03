@@ -1,3 +1,5 @@
+import { rateLimit } from './rate-limit.js';
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
@@ -13,6 +15,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: 20 chat requests per minute per IP
+  if (rateLimit(req, res, { max: 20, windowMs: 60000, prefix: 'chat' })) return;
 
   const { question, salesData } = req.body;
 

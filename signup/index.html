@@ -571,6 +571,7 @@
       .signup-section { padding: 40px 16px; }
     }
   </style>
+  <script src="https://www.google.com/recaptcha/api.js?render=RECAPTCHA_SITE_KEY_PLACEHOLDER" async defer></script>
 </head>
 <body>
 
@@ -1173,6 +1174,13 @@
     };
 
     try {
+      // Get reCAPTCHA v3 token
+      try {
+        if (window.grecaptcha) {
+          body.recaptchaToken = await grecaptcha.execute('RECAPTCHA_SITE_KEY_PLACEHOLDER', { action: 'signup' });
+        }
+      } catch (e) { console.warn('reCAPTCHA error:', e); }
+
       var res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

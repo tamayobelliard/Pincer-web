@@ -1,3 +1,5 @@
+import { rateLimit } from './rate-limit.js';
+
 const PERSONALITIES = {
   dominicano: {
     style: `- Hablas español dominicano auténtico: "klk", "manin", "tigre", "dime a ver", "ta to", "fuego"
@@ -220,6 +222,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limit: 20 chat requests per minute per IP
+  if (rateLimit(req, res, { max: 20, windowMs: 60000, prefix: 'waiter-chat' })) return;
 
   const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights, sessionId, storeClosed: clientStoreClosed } = req.body;
 

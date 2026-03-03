@@ -1,6 +1,8 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
+import { rateLimit } from './rate-limit.js';
+import { verifyRecaptcha } from './recaptcha.js';
 
 export const config = { maxDuration: 60 };
 
@@ -229,6 +231,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Rate limit: 5 signup attempts per minute per IP
+  if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'signup' })) return;
+
   // ── PATCH: update logo (base64) or file URLs after signup ──
   if (req.method === 'PATCH') {
     const { restaurant_slug, logo_base64, logo_url, menu_files } = req.body || {};
@@ -329,8 +334,13 @@ export default async function handler(req, res) {
   const {
     restaurant_name, owner_name, email, phone,
     business_type, address, hours, website, logo_url, chatbot_personality,
-    order_types, delivery_fee, notes,
+    order_types, delivery_fee, notes, recaptchaToken,
   } = req.body || {};
+
+  // Verify reCAPTCHA v3 (skipped if secret key not configured)
+  if (!await verifyRecaptcha(recaptchaToken, 'signup')) {
+    return res.status(403).json({ success: false, error: 'Verificación de seguridad fallida. Intenta de nuevo.' });
+  }
 
   // Validate required fields
   if (!restaurant_name) {

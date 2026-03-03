@@ -1,6 +1,7 @@
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
+import { rateLimit } from './rate-limit.js';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
@@ -383,6 +384,9 @@ async function handleStatus(req, res) {
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
+  // Rate limit: 10 3DS requests per minute per IP
+  if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: '3ds' })) return;
+
   const action = req.query.action;
 
   switch (action) {

@@ -125,6 +125,7 @@
     }
     .back-link:hover { color: var(--text-main); }
   </style>
+  <script src="https://www.google.com/recaptcha/api.js?render=RECAPTCHA_SITE_KEY_PLACEHOLDER" async defer></script>
 </head>
 <body>
 
@@ -167,10 +168,18 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   loginError.style.display = 'none';
 
   try {
+    // Get reCAPTCHA v3 token
+    let recaptchaToken = '';
+    try {
+      if (window.grecaptcha) {
+        recaptchaToken = await grecaptcha.execute('RECAPTCHA_SITE_KEY_PLACEHOLDER', { action: 'login' });
+      }
+    } catch (e) { console.warn('reCAPTCHA error:', e); }
+
     const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, recaptchaToken }),
     });
     const data = await res.json();
 

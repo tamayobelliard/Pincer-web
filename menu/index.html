@@ -2331,10 +2331,10 @@
     <button class="checkout-method" data-method="google" onclick="selectPayMethod('google')">Google Pay</button>
   </div>
   <div class="checkout-card-fields" id="checkoutCardFields">
-    <input type="text" id="cardNumber" placeholder="Número de tarjeta" maxlength="19" inputmode="numeric" oninput="formatCardNumber(this)">
+    <input type="text" id="cardNumber" placeholder="Número de tarjeta" maxlength="19" inputmode="numeric" autocomplete="off" data-lpignore="true" data-form-type="other" oninput="formatCardNumber(this)">
     <div class="checkout-card-row">
-      <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5" inputmode="numeric" oninput="formatExpiry(this)">
-      <input type="text" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric">
+      <input type="text" id="cardExpiry" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="off" data-lpignore="true" data-form-type="other" oninput="formatExpiry(this)">
+      <input type="text" id="cardCvv" placeholder="CVV" maxlength="4" inputmode="numeric" autocomplete="off" data-lpignore="true" data-form-type="other">
     </div>
   </div>
   <div class="checkout-terms">
@@ -3848,6 +3848,11 @@ function openCheckoutModal() {
 }
 
 function closeCheckoutModal() {
+  // Clear card fields immediately on close (defense in depth)
+  document.getElementById('cardNumber').value = '';
+  document.getElementById('cardExpiry').value = '';
+  document.getElementById('cardCvv').value = '';
+
   const modal = document.getElementById('checkoutModal');
   modal.style.transform = '';
   modal.classList.remove('show');
@@ -4137,6 +4142,8 @@ async function processPayment() {
           customerName: name,
           customerPhone: phone,
           browserInfo,
+          orderItems: order.map(i => ({ id: i.id, qty: i.qty })),
+          restaurantSlug: SLUG,
         })
       }, 45000);
 
