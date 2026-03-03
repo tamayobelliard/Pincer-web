@@ -329,11 +329,11 @@
 
     /* Pending pulse levels — ALL pending orders pulse from arrival */
     /* Level 1: < 1 min — soft red pulse, starts immediately */
-    .order-new { border: 2px solid #E8191A; animation: pulseLevel1 2s ease-in-out infinite; }
+    .order-new { border: 2px solid #E8191A; background: #fff5f5; animation: pulseLevel1 2s ease-in-out infinite; }
     /* Level 2: 1-2 min — medium red pulse, faster */
-    .order-warning { border: 2px solid #E8191A; background: #fff5f5; animation: pulseLevel2 1.2s ease-in-out infinite; }
+    .order-warning { border: 2px solid #E8191A; background: #fff0f0; animation: pulseLevel2 1.2s ease-in-out infinite; }
     /* Level 3: > 2 min — intense red pulse, fast */
-    .order-urgent { border: 3px solid #E8191A; background: #fff0f0; animation: pulseLevel3 0.7s ease-in-out infinite; }
+    .order-urgent { border: 3px solid #E8191A; background: #ffe4e4; animation: pulseLevel3 0.7s ease-in-out infinite; }
     /* Disable hover transform on pulsing cards — let animation own the effect */
     .order-new:hover, .order-warning:hover, .order-urgent:hover { transform: none; }
     /* Digitada (accepted): green */
@@ -379,8 +379,9 @@
       display: inline-block; padding: 14px 16px; background: none; border-radius: 0;
       border-bottom: 1px solid var(--border); width: auto;
     }
-    .order-warning .order-number { background: #fff5f5; }
-    .order-urgent .order-number { background: var(--red-light); }
+    .order-new .order-number { background: #fff0f0; }
+    .order-warning .order-number { background: #ffe4e4; }
+    .order-urgent .order-number { background: #fecaca; }
     .order-items { margin: 0; padding: 14px 16px 0 16px; }
     .order-items-label { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .order-items-list { list-style: none; padding: 0; margin: 8px 0 0 0; }
