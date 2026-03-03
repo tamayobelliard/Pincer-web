@@ -10,8 +10,9 @@ export async function verifyRecaptcha(token, expectedAction) {
     return true;
   }
   if (!token) {
-    console.warn('No reCAPTCHA token provided');
-    return false;
+    // Allow requests without token (e.g. dashboard PWA where reCAPTCHA can't load)
+    // Rate limiting on endpoints provides brute-force protection as fallback
+    return true;
   }
   try {
     const resp = await fetch('https://www.google.com/recaptcha/api/siteverify', {
