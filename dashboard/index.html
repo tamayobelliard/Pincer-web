@@ -1756,11 +1756,17 @@ async function loadStoreStatus() {
         storeOverrideActive = false;
       }
     } else {
-      // No store_settings row — use schedule or default open
+      // No store_settings row — create one and use schedule or default open
       storeIsOpen = restaurantHours ? scheduleSaysOpen : true;
       storeOpenedAt = null;
       storeOverrideActive = false;
-      dbg('ℹ️ No store_settings row for ' + SLUG);
+      dbg('ℹ️ No store_settings row for ' + SLUG + ' — creating one');
+      fetch(SUPABASE_URL + '/rest/v1/store_settings', {
+        method: 'POST', headers: sbWriteHeaders({ 'Prefer': 'return=minimal' }),
+        body: JSON.stringify({ id: SLUG, is_open: storeIsOpen, opened_at: storeIsOpen ? new Date().toISOString() : null })
+      }).then(function(r) {
+        console.log('[loadStoreStatus] Created store_settings row:', r.status);
+      }).catch(function() {});
     }
     updateStoreUI();
     dbg('✅ Estado tienda: ' + (storeIsOpen ? 'ABIERTA' : 'CERRADA') + (storeOverrideActive ? ' (manual)' : ' (auto)'));
@@ -1813,7 +1819,8 @@ async function toggleStore() {
 
   var scheduleSaysOpen = isOpenBySchedule(restaurantHours);
 
-  const payload = { is_open: newState };
+  // Use upsert (POST with on_conflict) so it works even if no row exists
+  const payload = { id: SLUG, is_open: newState };
   if (newState) {
     payload.opened_at = new Date().toISOString();
   } else {
@@ -1823,10 +1830,10 @@ async function toggleStore() {
   try {
     console.log('[toggleStore] Saving:', JSON.stringify(payload));
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG),
-      { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify(payload) }, 10000
+      SUPABASE_URL + '/rest/v1/store_settings',
+      { method: 'POST', headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }), body: JSON.stringify(payload) }, 10000
     );
-    console.log('[toggleStore] PATCH response:', res.status);
+    console.log('[toggleStore] UPSERT response:', res.status);
     // Try to set schedule override (columns may not exist yet — fire and forget)
     fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),

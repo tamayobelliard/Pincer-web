@@ -179,6 +179,18 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
       return res.status(500).json({ success: false, error: 'Error al crear usuario' });
     }
 
+    // Create store_settings row (default open) — fire and forget
+    fetch(`${supabaseUrl}/rest/v1/store_settings`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ id: username, is_open: true }),
+    }).catch(() => {});
+
     // Send welcome email if email was provided (fire and forget)
     if (email) {
       const dashboardUrl = `https://www.pincerweb.com/${username}/dashboard`;

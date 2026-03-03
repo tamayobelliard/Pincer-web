@@ -445,6 +445,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Error al crear la cuenta' });
     }
 
+    // Create store_settings row (default open)
+    fetch(`${supabaseUrl}/rest/v1/store_settings`, {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id: slug, is_open: true }),
+    }).catch(() => {});
+
     // Send welcome email + admin notification (await both before returning)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     const menuUrl = `https://www.pincerweb.com/${slug}`;
