@@ -1,11 +1,12 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { generateQRPdf } from './generate-qr-pdf.js';
 
 export const config = { maxDuration: 60 };
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, attachments = []) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('RESEND_API_KEY not set — skipping email to', to);
@@ -13,19 +14,16 @@ async function sendEmail(to, subject, html) {
   }
   console.log('Resend: sending to', to, '| subject:', subject.slice(0, 50));
   try {
+    const body = { from: 'Pincer <info@pincerweb.com>', to: [to], subject, html };
+    if (attachments.length) body.attachments = attachments;
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: 'Pincer <info@pincerweb.com>',
-        to: [to],
-        subject,
-        html,
-      }),
-      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
     });
     const respBody = await resp.text();
     if (!resp.ok) {
@@ -452,6 +450,15 @@ export default async function handler(req, res) {
       body: JSON.stringify({ id: slug, is_open: true }),
     }).catch(() => {});
 
+    // Generate QR PDF attachment
+    let qrAttachments = [];
+    try {
+      const qrPdfBase64 = await generateQRPdf(slug, restaurant_name, logo_url || null);
+      qrAttachments = [{ filename: `QR-${slug}.pdf`, content: qrPdfBase64 }];
+    } catch (e) {
+      console.error('QR PDF generation error:', e.message);
+    }
+
     // Send welcome email + admin notification (await both before returning)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     const menuUrl = `https://www.pincerweb.com/${slug}`;
@@ -480,7 +487,8 @@ export default async function handler(req, res) {
             <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
           </div>
           <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
-        </div>`
+        </div>`,
+        qrAttachments
       ),
       sendEmail(
         'info@pincerweb.com',

@@ -1,17 +1,20 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { generateQRPdf } from './generate-qr-pdf.js';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, attachments = []) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.warn('RESEND_API_KEY not set — skipping email to', to); return; }
   try {
+    const body = { from: 'Pincer <info@pincerweb.com>', to: [to], subject, html };
+    if (attachments.length) body.attachments = attachments;
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'Pincer <info@pincerweb.com>', to: [to], subject, html }),
-      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
     });
     if (!resp.ok) console.error('Resend API error:', resp.status, await resp.text());
     else console.log('Resend: sent OK to', to);
@@ -191,8 +194,16 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
       body: JSON.stringify({ id: username, is_open: true }),
     }).catch(() => {});
 
-    // Send welcome email if email was provided (fire and forget)
+    // Generate QR PDF and send welcome email if email was provided (fire and forget)
     if (email) {
+      let qrAttachments = [];
+      try {
+        const qrPdfBase64 = await generateQRPdf(username, name, logo_url || null);
+        qrAttachments = [{ filename: `QR-${username}.pdf`, content: qrPdfBase64 }];
+      } catch (e) {
+        console.error('QR PDF generation error:', e.message);
+      }
+
       const dashboardUrl = `https://www.pincerweb.com/${username}/dashboard`;
       const menuUrl = `https://www.pincerweb.com/${username}`;
       const expiryDate = new Date(trialExpires).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -219,7 +230,8 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
             <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
           </div>
           <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
-        </div>`
+        </div>`,
+        qrAttachments
       ).catch(e => console.error('Welcome email error:', e.message));
     }
 
