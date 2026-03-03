@@ -2277,6 +2277,7 @@
       <div class="receipt-order-id" id="receiptOrderId">#0000</div>
     </div>
     <div class="receipt-datetime" id="receiptDatetime"></div>
+    <div class="receipt-customer-name" id="receiptCustomerName" style="text-align:center;color:#475569;font-size:0.9em;margin-top:4px;display:none;"></div>
     <div class="receipt-section">
       <div class="receipt-section-title">Detalle del pedido</div>
       <div id="receiptItems"></div>
@@ -3909,7 +3910,7 @@ function handleOrderSuccess(data) {
     createdAt: new Date().toISOString()
   });
 
-  showReceipt(orderNumber, receiptItems, receiptTotal, lastPaymentInfo);
+  showReceipt(orderNumber, receiptItems, receiptTotal, lastPaymentInfo, record.customer_name || '');
 
   startSessionOrdersPoller();
 
@@ -4815,7 +4816,7 @@ function showSavedReceipt(index) {
   const r = receipts[index];
   if (!r) return;
   closeOrderHistory();
-  setTimeout(() => showReceipt(r.orderNumber || r.orderId, r.items, r.total, r.paymentInfo), 350);
+  setTimeout(() => showReceipt(r.orderNumber || r.orderId, r.items, r.total, r.paymentInfo, r.customerName), 350);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4824,11 +4825,11 @@ function showSavedReceipt(index) {
 
 let lastReceiptData = null;
 
-function showReceipt(orderNumber, items, total, paymentInfo) {
+function showReceipt(orderNumber, items, total, paymentInfo, customerName) {
   const pi = paymentInfo || {};
 
   // Store for WhatsApp sharing
-  lastReceiptData = { orderNumber, items, total, paymentInfo: pi };
+  lastReceiptData = { orderNumber, items, total, paymentInfo: pi, customerName: customerName || '' };
 
   // Order number
   document.getElementById('receiptOrderId').textContent = `#${orderNumber}`;
@@ -4838,6 +4839,15 @@ function showReceipt(orderNumber, items, total, paymentInfo) {
   const dateStr = now.toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
   document.getElementById('receiptDatetime').textContent = `${dateStr} — ${timeStr}`;
+
+  // Customer name
+  const nameEl = document.getElementById('receiptCustomerName');
+  if (customerName) {
+    nameEl.textContent = customerName;
+    nameEl.style.display = '';
+  } else {
+    nameEl.style.display = 'none';
+  }
 
   // Items
   let itemsHtml = '';
