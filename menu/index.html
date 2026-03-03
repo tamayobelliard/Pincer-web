@@ -44,6 +44,80 @@
       text-align: center;
       color: white;
       margin-bottom: 30px;
+      position: relative;
+    }
+    .receipt-history-btn {
+      display: none;
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 1.4em;
+      cursor: pointer;
+      z-index: 2;
+      backdrop-filter: blur(4px);
+    }
+    .receipt-history-btn.visible { display: flex; align-items: center; justify-content: center; }
+    .order-history-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9998;
+    }
+    .order-history-overlay.show { display: block; }
+    .order-history-modal {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      max-height: 80vh;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      z-index: 9999;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .order-history-modal.show { display: block; transform: translateY(0); }
+    .order-history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      position: sticky; top: 0;
+      background: #fff;
+      z-index: 1;
+    }
+    .order-history-header h3 { margin: 0; font-size: 1.1em; color: #1a1a1a; }
+    .order-history-close {
+      background: none; border: none;
+      font-size: 1.4em; cursor: pointer;
+      color: #64748b; padding: 4px 8px;
+    }
+    .order-history-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #94a3b8;
+    }
+    .order-history-row {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f5f5f5;
+      gap: 12px;
+    }
+    .order-history-info { flex: 1; min-width: 0; }
+    .order-history-num { font-weight: 700; color: #1a1a1a; font-size: 0.95em; }
+    .order-history-date { font-size: 0.78em; color: #94a3b8; margin-top: 2px; }
+    .order-history-total { font-weight: 700; color: #1a1a1a; font-size: 0.95em; white-space: nowrap; }
+    .order-history-receipt-btn {
+      background: none; border: none;
+      font-size: 1.3em; cursor: pointer;
+      padding: 6px;
     }
 
     .logo-container {
@@ -2076,6 +2150,7 @@
 
 <div class="container">
   <div class="header">
+    <button class="receipt-history-btn" id="receiptHistoryBtn" onclick="openOrderHistory()">🧾</button>
     <div class="logo-container">
       <span style="font-size:4em;">🍽️</span>
     </div>
@@ -2245,6 +2320,16 @@
     <button class="receipt-btn receipt-btn-whatsapp" onclick="shareReceiptWhatsApp()">📲 Enviar por WhatsApp</button>
     <button class="receipt-btn receipt-btn-close" onclick="closeReceipt()">Cerrar</button>
   </div>
+</div>
+
+<div class="order-history-overlay" id="orderHistoryOverlay" onclick="closeOrderHistory()"></div>
+<div class="order-history-modal" id="orderHistoryModal">
+  <div class="order-history-header">
+    <h3>Mis Órdenes</h3>
+    <button class="order-history-close" onclick="closeOrderHistory()">✕</button>
+  </div>
+  <div id="orderHistoryList"></div>
+  <div class="order-history-empty" id="orderHistoryEmpty">No tienes órdenes guardadas</div>
 </div>
 
 <div class="notes-popup" id="notesPopup">
@@ -2633,6 +2718,7 @@ let restaurantData = null;
 
 // ── Dynamic keys derived from slug ──
 const SESSION_KEY = 'pincer_orders_' + SLUG;
+const RECEIPTS_KEY = 'pincer_receipts_' + SLUG;
 const WELCOMED_KEY = 'pincer_welcomed_' + SLUG;
 const ORDER_PREFIX = SLUG.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4) + '-';
 
@@ -3741,7 +3827,7 @@ function handleOrderSuccess(data) {
 
   // Capture order items and total BEFORE clearing the cart
   const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
-  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
+  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0) + (record.delivery_fee || 0);
   track('order_complete', { order_total: receiptTotal, item_count: order.length });
 
   // Save order to session history before clearing cart
@@ -3755,6 +3841,19 @@ function handleOrderSuccess(data) {
   });
   saveSessionOrders();
   renderMisOrdenes();
+
+  // Save receipt to persistent localStorage
+  saveReceipt({
+    orderId: orderId,
+    orderNumber: orderNumber,
+    items: receiptItems,
+    total: receiptTotal,
+    orderType: record.order_type || selectedOrderType,
+    customerName: record.customer_name || '',
+    phone: customerPhone,
+    paymentInfo: lastPaymentInfo || null,
+    createdAt: new Date().toISOString()
+  });
 
   showReceipt(orderNumber, receiptItems, receiptTotal, lastPaymentInfo);
 
@@ -4587,6 +4686,78 @@ function startSessionOrdersPoller() {
       renderMisOrdenes();
     }
   }, 5000);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ORDER HISTORY (persistent localStorage receipts)
+// ══════════════════════════════════════════════════════════════
+
+function loadReceipts() {
+  try {
+    const saved = localStorage.getItem(RECEIPTS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) { return []; }
+}
+
+function saveReceipt(receipt) {
+  try {
+    const receipts = loadReceipts();
+    receipts.push(receipt);
+    // Keep only last 50
+    if (receipts.length > 50) receipts.splice(0, receipts.length - 50);
+    localStorage.setItem(RECEIPTS_KEY, JSON.stringify(receipts));
+    updateReceiptIcon();
+  } catch (e) { /* silente */ }
+}
+
+function updateReceiptIcon() {
+  const btn = document.getElementById('receiptHistoryBtn');
+  if (!btn) return;
+  const receipts = loadReceipts();
+  btn.classList.toggle('visible', receipts.length > 0);
+}
+
+function openOrderHistory() {
+  const receipts = loadReceipts();
+  const list = document.getElementById('orderHistoryList');
+  const empty = document.getElementById('orderHistoryEmpty');
+
+  if (receipts.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = receipts.slice().reverse().map((r, revIdx) => {
+      const idx = receipts.length - 1 - revIdx;
+      const d = new Date(r.createdAt);
+      const dateStr = d.toLocaleDateString('es-DO', { day: '2-digit', month: 'short' });
+      const timeStr = d.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `<div class="order-history-row">
+        <div class="order-history-info">
+          <div class="order-history-num">#${r.orderNumber || r.orderId}</div>
+          <div class="order-history-date">${dateStr} ${timeStr}</div>
+        </div>
+        <div class="order-history-total">RD$${(r.total || 0).toLocaleString()}</div>
+        <button class="order-history-receipt-btn" onclick="showSavedReceipt(${idx})" title="Ver recibo">🧾</button>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('orderHistoryOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('orderHistoryModal').classList.add('show'), 10);
+}
+
+function closeOrderHistory() {
+  document.getElementById('orderHistoryModal').classList.remove('show');
+  setTimeout(() => document.getElementById('orderHistoryOverlay').classList.remove('show'), 300);
+}
+
+function showSavedReceipt(index) {
+  const receipts = loadReceipts();
+  const r = receipts[index];
+  if (!r) return;
+  closeOrderHistory();
+  setTimeout(() => showReceipt(r.orderNumber || r.orderId, r.items, r.total, r.paymentInfo), 350);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5518,8 +5689,9 @@ async function init() {
     }
   }
 
-  // 5. Load session orders
+  // 5. Load session orders + receipt history icon
   loadSessionOrders();
+  updateReceiptIcon();
 
   // 6. Test connection
   const connected = await testConnection();
