@@ -328,24 +328,24 @@
     .order:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
     /* Pending pulse levels — ALL pending orders pulse from arrival */
-    /* Level 1: < 1 min — soft red pulse, starts immediately */
+    /* Level 1: < 1 min — soft red pulse */
     .order-new { border: 2px solid #E8191A; background: #fff5f5; animation: pulseLevel1 2s ease-in-out infinite; }
-    /* Level 2: 1-2 min — medium red pulse, faster */
-    .order-warning { border: 2px solid #E8191A; background: #fff0f0; animation: pulseLevel2 1.2s ease-in-out infinite; }
-    /* Level 3: > 2 min — intense red pulse, fast */
-    .order-urgent { border: 3px solid #E8191A; background: #ffe4e4; animation: pulseLevel3 0.7s ease-in-out infinite; }
-    /* Disable hover transform on pulsing cards — let animation own the effect */
+    /* Level 2: 1-2 min — medium red pulse */
+    .order-warning { border: 2px solid #E8191A; background: #ffecec; animation: pulseLevel2 1.2s ease-in-out infinite; }
+    /* Level 3: > 2 min — intense red pulse */
+    .order-urgent { border: 3px solid #E8191A; background: #ffe0e0; animation: pulseLevel3 0.7s ease-in-out infinite; }
+    /* Disable hover transform on pulsing cards */
     .order-new:hover, .order-warning:hover, .order-urgent:hover { transform: none; }
-    /* Digitada (accepted): green */
-    .accepted { border-left-color: #22c55e; background: #f0fdf4; color: var(--text); }
-    /* Lista para retirar: blue */
-    .ready { border-left-color: #3b82f6; background: #eff6ff; color: var(--text); }
-    /* Notificada por WhatsApp: gray, dimmed */
-    .notified { border-left-color: #d1d5db; background: #f9fafb; color: var(--text); opacity: 0.8; }
+    /* Digitada / En preparación: YELLOW */
+    .accepted { border-left-color: #f59e0b; background: #fffbeb; color: var(--text); }
+    /* Lista para retirar: GREEN */
+    .ready { border-left-color: #22c55e; background: #f0fdf4; color: var(--text); }
+    /* Notificada por WhatsApp: GRAY, dimmed */
+    .notified { border-left-color: #d1d5db; background: #f9fafb; color: var(--text); opacity: 0.75; }
 
     /* Light card text overrides for accepted/notified/ready */
     .accepted .order-number, .notified .order-number, .ready .order-number { color: var(--text); background: none; }
-    .accepted .order-status { background: #d1fae5; color: #065f46; }
+    .accepted .order-status { background: #fef3c7; color: #92400e; }
     .ready .order-status { background: #dbeafe; color: #1e40af; }
     .notified .order-status { background: #f3f4f6; color: #6b7280; }
     .accepted .order-items-label, .notified .order-items-label, .ready .order-items-label { color: var(--muted); }
@@ -379,8 +379,8 @@
       display: inline-block; padding: 14px 16px; background: none; border-radius: 0;
       border-bottom: 1px solid var(--border); width: auto;
     }
-    .order-new .order-number { background: #fff0f0; }
-    .order-warning .order-number { background: #ffe4e4; }
+    .order-new .order-number { background: #ffecec; }
+    .order-warning .order-number { background: #ffe0e0; }
     .order-urgent .order-number { background: #fecaca; }
     .order-items { margin: 0; padding: 14px 16px 0 16px; }
     .order-items-label { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -427,7 +427,7 @@
     }
     .status-pending { background: var(--red-light); color: var(--red); }
     .status-paid { background: #d1fae5; color: #065f46; }
-    .status-accepted { background: #d1fae5; color: var(--green); }
+    .status-accepted { background: #fef3c7; color: #92400e; }
     .status-ready { background: #d1fae5; color: #065f46; }
     .status-notified { background: #ede9fe; color: #5b21b6; }
 
@@ -2461,6 +2461,7 @@ async function loadOrders() {
       else if (status === 'accepted') statusClass = 'accepted';
       else if (minutes > 2) statusClass = 'order-urgent';
       else if (minutes >= 1) statusClass = 'order-warning';
+      console.log('[timer] order:', order.id, 'status:', status, 'minutes:', minutes, 'class:', statusClass);
 
       let statusBadgeClass, statusText;
       if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
@@ -2513,10 +2514,19 @@ async function loadOrders() {
         ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
         ${order.customer_name ? `<div class="order-phone" style="border-left-color:#8b5cf6;">👤 ${order.customer_name}</div>` : ''}
         ${deliveryInfoHTML}
-        ${(status === 'pending' || status === 'paid' || !status) ?
-          `<div class="order-wait-timer ${minutes > 2 ? 'timer-urgent' : minutes >= 1 ? 'timer-medium' : ''}">⏱ ${minutes} min esperando</div>` :
-          `<div class="order-time">⏱️ Hace ${minutes} minuto${minutes !== 1 ? 's' : ''}</div>`
-        }
+        ${(function() {
+          if (status === 'pending' || status === 'paid' || !status) {
+            return '<div class="order-wait-timer ' + (minutes > 2 ? 'timer-urgent' : minutes >= 1 ? 'timer-medium' : '') + '">⏱ ' + minutes + ' min esperando</div>';
+          } else if (status === 'accepted' && order.digitada_at) {
+            var prepMin = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 60000);
+            return '<div class="order-time">🍳 ' + prepMin + ' min en preparación</div>';
+          } else if ((status === 'ready' || status === 'notified') && order.lista_at) {
+            var readyMin = Math.floor((Date.now() - new Date(order.lista_at).getTime()) / 60000);
+            return '<div class="order-time">✅ Lista hace ' + readyMin + ' min</div>';
+          } else {
+            return '<div class="order-time">⏱️ Hace ' + minutes + ' minuto' + (minutes !== 1 ? 's' : '') + '</div>';
+          }
+        })()}
         <div class="order-actions">
         ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
@@ -2545,10 +2555,10 @@ async function acceptOrder(id) {
     stopAlarm();
     const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'accepted' })
+      body: JSON.stringify({ status: 'accepted', digitada_at: new Date().toISOString() })
     });
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
-    dbg('✅ Orden #' + id + ' → accepted');
+    dbg('✅ Orden #' + id + ' → accepted (digitada_at saved)');
     playConfirmSound();
     setTimeout(loadOrders, 150);
     loadDaySummary();
@@ -2559,10 +2569,10 @@ async function markReady(id) {
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'ready' })
+      body: JSON.stringify({ status: 'ready', lista_at: new Date().toISOString() })
     });
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
-    dbg('✅ Orden #' + id + ' → ready');
+    dbg('✅ Orden #' + id + ' → ready (lista_at saved)');
     playConfirmSound();
     setTimeout(loadOrders, 150);
     loadDaySummary();
@@ -2573,9 +2583,9 @@ async function markAsNotified(orderId) {
   try {
     await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'notified' })
+      body: JSON.stringify({ status: 'notified', notified_at: new Date().toISOString() })
     });
-    dbg('✅ Orden #' + orderId + ' → notified');
+    dbg('✅ Orden #' + orderId + ' → notified (notified_at saved)');
     setTimeout(loadOrders, 500);
   } catch (e) { dbg('⚠️ markAsNotified error: ' + e.message); }
 }
