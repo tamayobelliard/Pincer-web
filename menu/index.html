@@ -1877,55 +1877,48 @@
       object-fit: contain;
     }
 
-    /* Closed overlay */
-    .closed-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(45, 80, 22, 0.92);
-      z-index: 9999;
-      display: flex;
+    /* Closed page (full branded) */
+    .closed-page {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      flex-direction: column;
       text-align: center;
       color: white;
-      padding: 30px;
+      padding: 40px 30px;
     }
-    .closed-overlay-logo {
-      width: 140px; height: 140px; border-radius: 50%;
+    .closed-page.show {
+      display: flex;
+    }
+    .closed-page-logo {
+      width: 160px; height: 160px; border-radius: 50%;
       background: white; display: flex; align-items: center; justify-content: center;
-      margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      margin-bottom: 30px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       overflow: hidden; border: 5px solid var(--accent);
     }
-    .closed-overlay-logo img {
+    .closed-page-logo img {
       width: 100%; height: 100%; object-fit: cover;
     }
-    .closed-overlay h2 {
-      font-size: 2em; margin-bottom: 10px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    .closed-page-name {
+      font-size: 1.8em; font-weight: 800; margin-bottom: 20px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
     }
-    .closed-overlay .closed-hours {
-      font-size: 1.3em; margin-bottom: 15px; color: var(--accent);
+    .closed-page-status {
+      font-size: 1.5em; font-weight: 600; margin-bottom: 16px;
+      opacity: 0.95;
     }
-    .closed-overlay .closed-msg {
-      font-size: 1.1em; opacity: 0.9;
+    .closed-page-next {
+      font-size: 1.2em; margin-bottom: 12px; color: var(--accent);
+      font-weight: 500;
     }
-
-    /* Closed banner (schedule-based) */
-    .closed-banner {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: #b91c1c;
-      color: white;
-      padding: 12px 20px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 0.95em;
-      z-index: 9998;
-      display: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    .closed-page-schedule {
+      font-size: 0.95em; opacity: 0.7; margin-bottom: 30px;
+      line-height: 1.6;
     }
-    .closed-banner.show { display: block; }
+    .closed-page-footer {
+      font-size: 1em; opacity: 0.8;
+    }
 
     /* Pincer Footer */
     .pincer-footer {
@@ -1987,15 +1980,15 @@
 </head>
 <body>
 
-<div class="closed-banner" id="closedBanner"></div>
-
-<div class="closed-overlay" id="closedOverlay" style="display:none;">
-  <div class="closed-overlay-logo">
+<div class="closed-page" id="closedPage">
+  <div class="closed-page-logo" id="closedPageLogo">
     <span style="font-size:4em;">🍽️</span>
   </div>
-  <h2>Estamos cerrados</h2>
-  <div class="closed-hours" id="closedHours"></div>
-  <div class="closed-msg">¡Te esperamos!</div>
+  <div class="closed-page-name" id="closedPageName"></div>
+  <div class="closed-page-status">Actualmente estamos cerrados 🕐</div>
+  <div class="closed-page-next" id="closedPageNext"></div>
+  <div class="closed-page-schedule" id="closedPageSchedule"></div>
+  <div class="closed-page-footer">¡Te esperamos!</div>
 </div>
 
 <div class="container">
@@ -2420,6 +2413,102 @@ function isOpenBySchedule(hoursStr) {
     }
   }
   return false;
+}
+
+// ── Calculate next opening time from schedule ──
+function getNextOpenTime(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return null;
+  var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  var now = getDRDate();
+  var currentDay = now.getDay();
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    var match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    var h = parseInt(match[1]);
+    var m = parseInt(match[2]);
+    var ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      var parts = dayStr.split('-');
+      var normalize = function(s) { return s.trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'); };
+      var startIdx = DAY_ORDER.indexOf(normalize(parts[0]));
+      var endIdx = DAY_ORDER.indexOf(normalize(parts[1]));
+      if (startIdx === -1 || endIdx === -1) return [];
+      var days = [];
+      var i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    var normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    var dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  function formatMinutes(min) {
+    var h = Math.floor(min / 60);
+    var m = min % 60;
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  }
+
+  // Collect all (day, openMinutes, openTimeLabel) entries
+  var openings = [];
+  var segments = hoursStr.split(',');
+  for (var s = 0; s < segments.length; s++) {
+    var seg = segments[s].trim();
+    var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    var days = expandDays(timeMatch[1]);
+    var openMin = parseTime(timeMatch[2]);
+    if (openMin === -1) continue;
+    for (var d = 0; d < days.length; d++) {
+      openings.push({ day: days[d], min: openMin, label: formatMinutes(openMin) });
+    }
+  }
+  if (openings.length === 0) return null;
+
+  // Find the soonest opening from now (check today first, then next 7 days)
+  var best = null;
+  var bestDaysAway = 8;
+  for (var o = 0; o < openings.length; o++) {
+    var entry = openings[o];
+    var daysAway;
+    if (entry.day === currentDay && entry.min > currentMinutes) {
+      daysAway = 0; // Later today
+    } else if (entry.day === currentDay) {
+      daysAway = 7; // Same day but already passed → next week
+    } else {
+      daysAway = (entry.day - currentDay + 7) % 7;
+    }
+    if (daysAway < bestDaysAway || (daysAway === bestDaysAway && (!best || entry.min < best.min))) {
+      best = entry;
+      bestDaysAway = daysAway;
+    }
+  }
+  if (!best) return null;
+
+  if (bestDaysAway === 0) {
+    return { text: 'Abrimos hoy a las ' + best.label, time: best.label, isToday: true };
+  } else {
+    var targetDay = (currentDay + bestDaysAway) % 7;
+    return { text: 'Abrimos el ' + DAY_NAMES[targetDay] + ' a las ' + best.label, time: best.label, day: DAY_NAMES[targetDay], isToday: false };
+  }
 }
 
 // ── Restaurant data (loaded on init) ──
@@ -4779,6 +4868,19 @@ function closePinzer() {
 }
 
 async function showWelcomeMessages() {
+  // If store is closed, show closed message instead of normal welcome
+  if (storeClosed) {
+    var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
+    var nextOpen = getNextOpenTime(scheduleStr);
+    var closedMsg = 'Estamos cerrados en este momento.';
+    if (nextOpen) {
+      closedMsg += ' ' + nextOpen.text + '.';
+    }
+    closedMsg += ' Puedes ver el menu pero no podemos procesar ordenes ahora.';
+    pinzerSay(closedMsg);
+    return;
+  }
+
   showTypingIndicator();
   try {
     const res = await fetch('/api/waiter-chat', {
@@ -5099,25 +5201,52 @@ async function checkStoreOpen() {
     }
     console.log('[checkStoreOpen] Final: isOpen=' + isOpen, '| DB:', storeSettings ? storeSettings.is_open : 'no row', '| schedule_override:', storeSettings ? storeSettings.schedule_override : 'n/a');
 
-    var banner = document.getElementById('closedBanner');
-    var overlay = document.getElementById('closedOverlay');
+    var closedPage = document.getElementById('closedPage');
+    var container = document.querySelector('.container');
     var orderBtn = document.getElementById('placeOrderBtn');
+    var chatClippy = document.querySelector('.chef-clippy');
 
     if (!isOpen) {
       storeClosed = true;
-      // Show banner
-      banner.textContent = '🕐 Estamos cerrados. Nuestro horario es: ' + (scheduleStr || 'No disponible');
-      banner.classList.add('show');
-      // Hide full overlay (not used for schedule-based closing)
-      if (overlay) overlay.style.display = 'none';
-      // Disable order button
-      if (orderBtn) { orderBtn.disabled = true; orderBtn.textContent = 'Cerrado'; }
+      // Populate closed page with branding
+      var logoEl = document.getElementById('closedPageLogo');
+      var nameEl = document.getElementById('closedPageName');
+      var nextEl = document.getElementById('closedPageNext');
+      var schedEl = document.getElementById('closedPageSchedule');
+
+      if (restaurantData) {
+        nameEl.textContent = restaurantData.display_name || '';
+        if (restaurantData.logo_url) {
+          logoEl.innerHTML = '<img src="' + restaurantData.logo_url + '" alt="' + escHtml(restaurantData.display_name || '') + '">';
+        }
+      }
+
+      // Calculate next opening time
+      var nextOpen = getNextOpenTime(scheduleStr);
+      if (nextOpen) {
+        nextEl.textContent = nextOpen.text;
+      } else {
+        nextEl.textContent = '';
+      }
+
+      // Show full schedule
+      if (scheduleStr) {
+        schedEl.textContent = scheduleStr;
+      }
+
+      // Show closed page, hide menu
+      closedPage.classList.add('show');
+      if (container) container.style.display = 'none';
+      if (orderBtn) orderBtn.style.display = 'none';
+      if (chatClippy) chatClippy.style.display = 'none';
       dbg('🔒 Tienda cerrada');
       return false;
     } else {
       storeClosed = false;
-      banner.classList.remove('show');
-      if (overlay) overlay.style.display = 'none';
+      closedPage.classList.remove('show');
+      if (container) container.style.display = '';
+      if (orderBtn) orderBtn.style.display = '';
+      if (chatClippy) chatClippy.style.display = '';
       // Re-enable order button if there are items
       if (orderBtn && order && order.length > 0) { orderBtn.disabled = false; orderBtn.textContent = 'Ordenar Ahora'; }
       return true;

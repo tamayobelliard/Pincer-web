@@ -112,6 +112,76 @@ function isOpenBySchedule(hoursStr) {
   return false;
 }
 
+// ── Calculate next opening time from schedule ──
+function getNextOpenTime(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return null;
+  const DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  const DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const now = getDRDate();
+  const currentDay = now.getDay();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    const match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    let h = parseInt(match[1]); const m = parseInt(match[2]); const ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      const parts = dayStr.split('-');
+      const normalize = s => s.trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+      const startIdx = DAY_ORDER.indexOf(normalize(parts[0]));
+      const endIdx = DAY_ORDER.indexOf(normalize(parts[1]));
+      if (startIdx === -1 || endIdx === -1) return [];
+      const days = []; let i = startIdx;
+      while (true) { days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i); if (i === endIdx) break; i = (i + 1) % 7; }
+      return days;
+    }
+    const normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    const dayNum = DAY_MAP[normalized]; return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  function formatMinutes(min) {
+    const h = Math.floor(min / 60); const m = min % 60;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  }
+
+  const openings = [];
+  const segments = hoursStr.split(',');
+  for (const seg of segments) {
+    const timeMatch = seg.trim().match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    const days = expandDays(timeMatch[1]);
+    const openMin = parseTime(timeMatch[2]);
+    if (openMin === -1) continue;
+    for (const d of days) openings.push({ day: d, min: openMin, label: formatMinutes(openMin) });
+  }
+  if (openings.length === 0) return null;
+
+  let best = null; let bestDaysAway = 8;
+  for (const entry of openings) {
+    let daysAway;
+    if (entry.day === currentDay && entry.min > currentMinutes) daysAway = 0;
+    else if (entry.day === currentDay) daysAway = 7;
+    else daysAway = (entry.day - currentDay + 7) % 7;
+    if (daysAway < bestDaysAway || (daysAway === bestDaysAway && (!best || entry.min < best.min))) {
+      best = entry; bestDaysAway = daysAway;
+    }
+  }
+  if (!best) return null;
+  if (bestDaysAway === 0) return 'Abrimos hoy a las ' + best.label;
+  return 'Abrimos el ' + DAY_NAMES[(currentDay + bestDaysAway) % 7] + ' a las ' + best.label;
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
@@ -360,10 +430,10 @@ REGLAS IMPORTANTES:
 - NUNCA inventes items o precios que no están en el menú
 - NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
 
-${ !storeOpen ? `ESTADO DEL RESTAURANTE: CERRADO
+${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
 REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
-Si el cliente intenta ordenar, responde: "En este momento estamos cerrados. Puedes ver el menu pero no podemos procesar ordenes ahora.${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''}"
-Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n` : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
+Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
 ${menuData}`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
