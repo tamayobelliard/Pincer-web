@@ -26,6 +26,13 @@
       ]
     },
     {
+      "source": "/dashboard-manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "/dashboard-sw.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" },
