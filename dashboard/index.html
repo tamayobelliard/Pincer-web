@@ -998,6 +998,10 @@ if (!SLUG) {
 }
 let DISPLAY_NAME = SLUG;
 
+// Dynamic manifest so PWA start_url matches this restaurant's slug
+const manifestLink = document.querySelector('link[rel="manifest"]');
+if (manifestLink) manifestLink.href = '/api/dashboard-manifest?slug=' + encodeURIComponent(SLUG);
+
 // Set initial branding from slug
 document.getElementById('loginSubtitle').textContent = SLUG;
 document.getElementById('username').placeholder = SLUG;
