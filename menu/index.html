@@ -871,12 +871,6 @@
       transform: translate(-50%, -50%) scale(1);
     }
 
-    .notes-popup h3 {
-      color: var(--primary);
-      margin-bottom: 10px;
-      font-size: 1.3em;
-    }
-
     .notes-popup p {
       color: #6c757d;
       margin-bottom: 15px;
@@ -932,6 +926,95 @@
 
     .notes-popup .btn-add:hover {
       background: var(--primary);
+    }
+
+    /* Popup two-column top */
+    .popup-top {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: flex-start;
+    }
+    .popup-img-wrap {
+      width: 45%;
+      flex-shrink: 0;
+      position: relative;
+      cursor: pointer;
+    }
+    .popup-img-wrap img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: block;
+    }
+    .img-zoom-icon {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 0.75em;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .popup-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+    .popup-info .popup-item-name {
+      color: var(--primary);
+      font-size: 1.3em;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .popup-info .popup-item-desc {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin: 0;
+      line-height: 1.4;
+    }
+    .popup-info .popup-item-price {
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 1.2em;
+      margin-top: auto;
+    }
+    .notes-popup.popup-no-image .popup-top {
+      display: block;
+    }
+
+    /* Image lightbox */
+    #imgLightbox {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #imgLightbox.active {
+      display: flex;
+    }
+    #imgLightbox img {
+      max-width: 92%;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 8px;
     }
 
     .soldout-popup {
@@ -2165,13 +2248,20 @@
 </div>
 
 <div class="notes-popup" id="notesPopup">
-  <h3 id="notesItemName">Agregar item</h3>
-  <div id="notesItemImageContainer" style="text-align: center; margin: 10px 0;">
-    <img id="notesItemImage" src="" alt="" style="max-width: 200px; max-height: 150px; width: auto; height: auto; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; object-fit: cover;">
+  <div class="popup-top">
+    <div class="popup-img-wrap" id="popupImgWrap" onclick="openLightbox(this.querySelector('img').src)">
+      <img id="notesItemImage" src="" alt="">
+      <span class="img-zoom-icon">🔍</span>
+    </div>
+    <div class="popup-info">
+      <h3 class="popup-item-name" id="notesItemName">Agregar item</h3>
+      <p class="popup-item-desc" id="notesItemDesc"></p>
+      <div class="popup-item-price" id="notesItemPrice"></div>
+    </div>
   </div>
   <p>¿Alguna observación? (Opcional)</p>
   <textarea id="notesTextarea" placeholder="Ej: Sin cebolla, extra tomate..."></textarea>
-  
+
   <div class="extras-section" id="extrasSection">
     <h4>➕ Agregar extras (opcional)</h4>
     <div class="extras-list" id="extrasList"></div>
@@ -2181,6 +2271,10 @@
     <button class="btn-cancel" onclick="closeNotesPopup()">Cancelar</button>
     <button class="btn-add" onclick="addItemWithNotes()">Agregar</button>
   </div>
+</div>
+
+<div id="imgLightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
 </div>
 
 <div class="soldout-popup" id="soldoutPopup">
@@ -3119,7 +3213,7 @@ function menuItemHTML(item) {
     ` : ''}
     <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
-  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}')" style="cursor:pointer;"` : '';
+  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}', '${escHtml(item.desc || '')}')" style="cursor:pointer;"` : '';
 
   return `
     <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
@@ -3142,20 +3236,45 @@ function menuItemHTML(item) {
 // NOTES POPUP
 // ══════════════════════════════════════════════════════════════
 
-function showNotesPopup(id, name, price, imageUrl = null) {
+function openLightbox(src) {
+  var lb = document.getElementById('imgLightbox');
+  document.getElementById('lightboxImg').src = src;
+  lb.classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('imgLightbox').classList.remove('active');
+}
+
+function showNotesPopup(id, name, price, imageUrl, desc) {
   track('item_view', { item_id: id, item_name: name, price: price });
   pendingItem = { id, name, price, extras: [] };
   document.getElementById('notesItemName').textContent = name;
   document.getElementById('notesTextarea').value = '';
-  
-  const itemImage = document.getElementById('notesItemImage');
+
+  var popup = document.getElementById('notesPopup');
+  var imgWrap = document.getElementById('popupImgWrap');
+  var itemImage = document.getElementById('notesItemImage');
+  var descEl = document.getElementById('notesItemDesc');
+  var priceEl = document.getElementById('notesItemPrice');
+
   if (imageUrl) {
     itemImage.src = imageUrl;
     itemImage.alt = name;
-    itemImage.style.display = 'block';
+    imgWrap.style.display = '';
+    popup.classList.remove('popup-no-image');
   } else {
-    itemImage.style.display = 'none';
+    imgWrap.style.display = 'none';
+    popup.classList.add('popup-no-image');
   }
+
+  if (desc) {
+    descEl.textContent = desc;
+    descEl.style.display = '';
+  } else {
+    descEl.style.display = 'none';
+  }
+
+  priceEl.textContent = 'RD$' + price.toLocaleString();
   
   const extrasList = document.getElementById('extrasList');
   extrasList.innerHTML = getExtras().map(extra => {
@@ -3239,7 +3358,7 @@ function menuQtyChange(itemId, delta) {
   const currentQty = order.filter(o => o.id === itemId).reduce((s, o) => s + o.qty, 0);
 
   if (delta === 1 && currentQty === 0) {
-    showNotesPopup(itemId, menuItem.name, menuItem.price, menuItem.img);
+    showNotesPopup(itemId, menuItem.name, menuItem.price, menuItem.img, menuItem.desc);
     return;
   }
 
