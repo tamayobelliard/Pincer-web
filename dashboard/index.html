@@ -7,8 +7,11 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="manifest" href="/dashboard-manifest.json">
+  <link rel="manifest" id="pwa-manifest" href="/api/dashboard-manifest?slug=__SLUG__">
   <meta name="theme-color" content="#E8191A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -999,8 +1002,7 @@ if (!SLUG) {
 let DISPLAY_NAME = SLUG;
 
 // Dynamic manifest so PWA start_url matches this restaurant's slug
-const manifestLink = document.querySelector('link[rel="manifest"]');
-if (manifestLink) manifestLink.href = '/api/dashboard-manifest?slug=' + encodeURIComponent(SLUG);
+document.getElementById('pwa-manifest').href = '/api/dashboard-manifest?slug=' + encodeURIComponent(SLUG);
 
 // Set initial branding from slug
 document.getElementById('loginSubtitle').textContent = SLUG;
