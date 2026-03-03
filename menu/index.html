@@ -2353,9 +2353,12 @@ function isOpenBySchedule(hoursStr) {
   if (!hoursStr || hoursStr === 'Selecciona días y horario') return true;
   var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
   var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   var now = getDRDate();
   var currentDay = now.getDay();
   var currentMinutes = now.getHours() * 60 + now.getMinutes();
+  console.log('[isOpenBySchedule] DR time:', now.toLocaleTimeString(), '| Day:', DAY_NAMES[currentDay] + ' (' + currentDay + ')', '| Minutes:', currentMinutes);
+  console.log('[isOpenBySchedule] Schedule string:', JSON.stringify(hoursStr));
 
   function parseTime(str) {
     str = str.trim();
@@ -2395,23 +2398,30 @@ function isOpenBySchedule(hoursStr) {
     var seg = segments[s].trim();
     // Match: "Lun-Vie 11:00 AM - 10:00 PM" or "Lun 11:00 AM - 10:00 PM"
     var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
-    if (!timeMatch) continue;
+    if (!timeMatch) {
+      console.log('[isOpenBySchedule] Segment', s, 'NO MATCH:', JSON.stringify(seg));
+      continue;
+    }
     var days = expandDays(timeMatch[1]);
     var openMin = parseTime(timeMatch[2]);
     var closeMin = parseTime(timeMatch[3]);
+    console.log('[isOpenBySchedule] Segment', s, ':', JSON.stringify(seg), '→ days:', days, 'open:', openMin, 'close:', closeMin, '| today (' + currentDay + ') in days?', days.indexOf(currentDay) !== -1, '| currentMin:', currentMinutes);
     if (openMin === -1 || closeMin === -1) continue;
 
     // Handle overnight (e.g. 10:00 PM - 2:00 AM)
     if (closeMin <= openMin) {
-      // Check if today matches and we're past open time
-      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin) return true;
-      // Check if yesterday matched and we're before close time
+      var todayMatch = days.indexOf(currentDay) !== -1 && currentMinutes >= openMin;
       var yesterday = (currentDay + 6) % 7;
-      if (days.indexOf(yesterday) !== -1 && currentMinutes < closeMin) return true;
+      var yesterdayMatch = days.indexOf(yesterday) !== -1 && currentMinutes < closeMin;
+      console.log('[isOpenBySchedule] Overnight span. todayMatch:', todayMatch, '| yesterdayMatch:', yesterdayMatch);
+      if (todayMatch || yesterdayMatch) return true;
     } else {
-      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin && currentMinutes < closeMin) return true;
+      var inRange = days.indexOf(currentDay) !== -1 && currentMinutes >= openMin && currentMinutes < closeMin;
+      console.log('[isOpenBySchedule] Normal span. inRange:', inRange, '(need:', openMin, '<=', currentMinutes, '<', closeMin, ')');
+      if (inRange) return true;
     }
   }
+  console.log('[isOpenBySchedule] No segment matched → CLOSED');
   return false;
 }
 
@@ -5193,26 +5203,63 @@ async function checkStoreOpen() {
     var isOpen = true;
     var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
 
+    console.log('[checkStoreOpen] === START ===');
+    console.log('[checkStoreOpen] DR time:', getDRDate().toLocaleString());
+    console.log('[checkStoreOpen] SLUG:', SLUG);
+    console.log('[checkStoreOpen] Schedule from restaurantData:', JSON.stringify(scheduleStr));
+    console.log('[checkStoreOpen] store_settings row:', storeSettings ? JSON.stringify({is_open: storeSettings.is_open, schedule_override: storeSettings.schedule_override, schedule_state_at_override: storeSettings.schedule_state_at_override}) : 'NO ROW');
+
     if (storeSettings) {
-      if (storeSettings.is_open === false) {
-        // DB says closed (manual toggle or schedule sync) — always respect
+      // Check if manual override should auto-reset: schedule state changed since override was set
+      var hasOverride = storeSettings.schedule_override === true;
+      if (hasOverride && scheduleStr && scheduleStr !== 'Selecciona días y horario' &&
+          storeSettings.schedule_state_at_override !== null && storeSettings.schedule_state_at_override !== undefined) {
+        var currentScheduleState = isOpenBySchedule(scheduleStr);
+        if (currentScheduleState !== storeSettings.schedule_state_at_override) {
+          console.log('[checkStoreOpen] Override auto-reset: schedule changed from', storeSettings.schedule_state_at_override, 'to', currentScheduleState);
+          hasOverride = false;
+          // Sync DB: clear override and set is_open to schedule state (fire-and-forget)
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbHeaders(),
+            body: JSON.stringify({ is_open: currentScheduleState, schedule_override: false, schedule_state_at_override: null })
+          }).catch(function() {});
+        }
+      }
+
+      if (storeSettings.is_open === false && hasOverride) {
+        // Manual close override — always respect
         isOpen = false;
-        console.log('[checkStoreOpen] DB is_open=false → cerrado');
-      } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario' && !storeSettings.schedule_override) {
-        // DB says open + no manual override → check schedule
-        isOpen = isOpenBySchedule(scheduleStr);
-        console.log('[checkStoreOpen] Schedule check →', isOpen ? 'abierto' : 'cerrado');
+        console.log('[checkStoreOpen] DECISION: DB is_open=false + manual override → CLOSED');
+      } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario' && !hasOverride) {
+        // No manual override → check schedule
+        var scheduleResult = isOpenBySchedule(scheduleStr);
+        isOpen = scheduleResult;
+        console.log('[checkStoreOpen] DECISION: No override → schedule says:', scheduleResult ? 'OPEN' : 'CLOSED');
+        // Sync DB if needed (fire-and-forget)
+        if (storeSettings.is_open !== scheduleResult) {
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbHeaders(),
+            body: JSON.stringify({ is_open: scheduleResult })
+          }).catch(function() {});
+        }
+      } else if (!hasOverride && (!scheduleStr || scheduleStr === 'Selecciona días y horario')) {
+        // No override + no schedule → use DB value
+        isOpen = storeSettings.is_open !== false;
+        console.log('[checkStoreOpen] DECISION: No override, no schedule → DB is_open:', isOpen);
       } else {
-        // DB says open + manual override or no schedule → open
-        isOpen = true;
-        console.log('[checkStoreOpen] DB is_open=true → abierto');
+        // Manual override active — use DB is_open value directly
+        isOpen = storeSettings.is_open !== false;
+        console.log('[checkStoreOpen] DECISION: Manual override active → DB is_open:', isOpen);
       }
     } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario') {
       // No store_settings row — use schedule
-      isOpen = isOpenBySchedule(scheduleStr);
-      console.log('[checkStoreOpen] No DB row, schedule →', isOpen ? 'abierto' : 'cerrado');
+      var scheduleResult = isOpenBySchedule(scheduleStr);
+      isOpen = scheduleResult;
+      console.log('[checkStoreOpen] DECISION: No DB row → schedule says:', scheduleResult ? 'OPEN' : 'CLOSED');
+    } else {
+      console.log('[checkStoreOpen] DECISION: No DB row, no schedule → default OPEN');
     }
-    console.log('[checkStoreOpen] Final: isOpen=' + isOpen, '| DB:', storeSettings ? storeSettings.is_open : 'no row', '| schedule_override:', storeSettings ? storeSettings.schedule_override : 'n/a');
+    console.log('[checkStoreOpen] === FINAL: isOpen=' + isOpen + ' ===');
 
     var closedPage = document.getElementById('closedPage');
     var container = document.querySelector('.container');
