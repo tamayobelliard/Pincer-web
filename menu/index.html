@@ -4124,6 +4124,9 @@ async function processPayment() {
       timeZoneOffset: new Date().getTimezoneOffset(),
     };
 
+    // Capture last 4 digits BEFORE clearing fields
+    const cardLast4 = cardNum.slice(-4);
+
     payBtn.disabled = true;
     payBtn.textContent = 'Procesando pago...';
 
@@ -4147,6 +4150,11 @@ async function processPayment() {
         })
       }, 45000);
 
+      // Clear card data from DOM immediately after sending (never keep in DOM during 3DS)
+      document.getElementById('cardNumber').value = '';
+      document.getElementById('cardExpiry').value = '';
+      document.getElementById('cardCvv').value = '';
+
       const payData = await payRes.json();
       dbg('💳 Respuesta pago: ' + JSON.stringify(payData).substring(0, 300));
 
@@ -4157,7 +4165,7 @@ async function processPayment() {
         lastPaymentInfo = {
           authorizationCode: payData.authorizationCode || '',
           azulOrderId: payData.azulOrderId || customOrderId,
-          cardLast4: cardNum.slice(-4),
+          cardLast4: cardLast4,
         };
         await submitOrderToSupabase('paid', payData.azulOrderId || customOrderId, name);
         return;
@@ -4166,14 +4174,14 @@ async function processPayment() {
       if (payData.threeDSMethod) {
         // 3DS Method: inject hidden iframe, wait, then continue payment
         dbg('🔐 3DS Method requerido, inyectando iframe...');
-        await handle3DSMethod(payData, name, phone, total, customOrderId);
+        await handle3DSMethod(payData, name, phone, total, customOrderId, cardLast4);
         return;
       }
 
       if (payData.challengeRequired) {
         // Challenge: show bank authentication iframe
         dbg('🔐 3DS Challenge requerido, mostrando iframe...');
-        await handle3DSChallenge(payData, name, phone, total, customOrderId);
+        await handle3DSChallenge(payData, name, phone, total, customOrderId, cardLast4);
         return;
       }
 
@@ -4209,7 +4217,7 @@ function hide3DSOverlay() {
   document.getElementById('threeDSChallengeFrame').innerHTML = '';
 }
 
-async function handle3DSMethod(payData, customerName, phone, total, customOrderId) {
+async function handle3DSMethod(payData, customerName, phone, total, customOrderId, cardLast4) {
   const errorDiv = document.getElementById('checkoutError');
   const payBtn = document.getElementById('checkoutPayBtn');
 
@@ -4251,14 +4259,14 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
       lastPaymentInfo = {
         authorizationCode: continueData.authorizationCode || '',
         azulOrderId: continueData.azulOrderId || customOrderId,
-        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+        cardLast4: cardLast4,
       };
       await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
       return;
     }
 
     if (continueData.challengeRequired) {
-      await handle3DSChallenge(continueData, customerName, phone, total, customOrderId);
+      await handle3DSChallenge(continueData, customerName, phone, total, customOrderId, cardLast4);
       return;
     }
 
@@ -4278,7 +4286,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
   }
 }
 
-async function handle3DSChallenge(payData, customerName, phone, total, customOrderId) {
+async function handle3DSChallenge(payData, customerName, phone, total, customOrderId, cardLast4) {
   const errorDiv = document.getElementById('checkoutError');
   const payBtn = document.getElementById('checkoutPayBtn');
 
@@ -4371,7 +4379,7 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
       lastPaymentInfo = {
         authorizationCode: result.result?.authorizationCode || '',
         azulOrderId: result.result?.azulOrderId || customOrderId,
-        cardLast4: document.getElementById('cardNumber').value.replace(/\s/g, '').slice(-4),
+        cardLast4: cardLast4,
       };
       await submitOrderToSupabase('paid', result.result?.azulOrderId || customOrderId, customerName);
     } else {
