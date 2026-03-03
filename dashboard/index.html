@@ -322,17 +322,20 @@
     /* ORDER CARDS */
     .order {
       background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
-      padding: 0; overflow: hidden; transition: all 0.2s;
+      padding: 0; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
       box-shadow: 0 1px 4px rgba(0,0,0,0.04); border-left: 4px solid var(--border);
     }
     .order:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
-    /* Level 1: < 1 min — soft red pulse */
+    /* Pending pulse levels — ALL pending orders pulse from arrival */
+    /* Level 1: < 1 min — soft red pulse, starts immediately */
     .order-new { border: 2px solid #E8191A; animation: pulseLevel1 2s ease-in-out infinite; }
     /* Level 2: 1-2 min — medium red pulse, faster */
     .order-warning { border: 2px solid #E8191A; background: #fff5f5; animation: pulseLevel2 1.2s ease-in-out infinite; }
     /* Level 3: > 2 min — intense red pulse, fast */
     .order-urgent { border: 3px solid #E8191A; background: #fff0f0; animation: pulseLevel3 0.7s ease-in-out infinite; }
+    /* Disable hover transform on pulsing cards — let animation own the effect */
+    .order-new:hover, .order-warning:hover, .order-urgent:hover { transform: none; }
     /* Digitada (accepted): green */
     .accepted { border-left-color: #22c55e; background: #f0fdf4; color: var(--text); }
     /* Lista para retirar: blue */
