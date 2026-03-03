@@ -5294,12 +5294,19 @@ async function checkStoreOpen() {
         schedEl.textContent = scheduleStr;
       }
 
-      // Show closed page, hide menu
+      // Show closed page, hide menu — but keep chatbot accessible
       closedPage.classList.add('show');
       if (container) container.style.display = 'none';
       if (orderBtn) orderBtn.style.display = 'none';
-      if (chatClippy) chatClippy.style.display = 'none';
+      // Don't hide chatClippy — let user open chatbot to see closed message
       dbg('🔒 Tienda cerrada');
+
+      // Auto-open chatbot with closed message for ALL restaurants (not just premium)
+      var alreadyWelcomed = sessionStorage.getItem(WELCOMED_KEY);
+      if (!alreadyWelcomed) {
+        setTimeout(function() { openPinzer(); }, 1500);
+      }
+
       return false;
     } else {
       storeClosed = false;
@@ -5405,10 +5412,10 @@ async function init() {
   // 7. Start sold-out poller
   startSoldOutPoller();
 
-  // 8. Init chatbot (premium only)
+  // 8. Init chatbot (premium only — skip auto-open if store closed, already handled above)
   if (restaurantData.plan === 'premium') {
     loadRestaurantInsights();
-    initChatbot();
+    if (!storeClosed) initChatbot();
   }
 
   // 9. Check schedule every 5 minutes
