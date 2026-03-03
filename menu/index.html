@@ -3053,6 +3053,52 @@ async function testConnection() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// HISTORY API — Android back button closes popups
+// ══════════════════════════════════════════════════════════════
+
+var _popstateClosing = false;
+
+function pushPopupState() {
+  history.pushState({ popup: true }, '');
+}
+
+function popPopupState() {
+  if (!_popstateClosing && history.state && history.state.popup) {
+    history.back();
+  }
+}
+
+function getOpenPopup() {
+  if (document.getElementById('imgLightbox').classList.contains('active')) return 'lightbox';
+  if (document.getElementById('notesPopup').classList.contains('show')) return 'notes';
+  if (document.getElementById('soldoutPopup').classList.contains('show')) return 'soldout';
+  if (document.getElementById('errorPopup').classList.contains('show')) return 'error';
+  if (document.getElementById('checkoutModal').classList.contains('show')) return 'checkout';
+  if (document.getElementById('receiptModal').classList.contains('show')) return 'receipt';
+  if (document.getElementById('orderHistoryModal').classList.contains('show')) return 'history';
+  var pinzerModal = document.getElementById('pinzer-modal');
+  if (pinzerModal && pinzerModal.style.display === 'flex') return 'pinzer';
+  return null;
+}
+
+window.addEventListener('popstate', function() {
+  var open = getOpenPopup();
+  if (!open) return;
+  _popstateClosing = true;
+  switch (open) {
+    case 'lightbox': closeLightbox(); break;
+    case 'notes': closeNotesPopup(); break;
+    case 'soldout': closeSoldOutPopup(); break;
+    case 'error': closeErrorPopup(); break;
+    case 'checkout': closeCheckoutModal(); break;
+    case 'receipt': closeReceipt(); break;
+    case 'history': closeOrderHistory(); break;
+    case 'pinzer': closePinzer(); break;
+  }
+  _popstateClosing = false;
+});
+
+// ══════════════════════════════════════════════════════════════
 // FUNCIONES DE ERROR
 // ══════════════════════════════════════════════════════════════
 
@@ -3061,11 +3107,13 @@ function showError(title, message) {
   document.getElementById('errorMessage').textContent = message;
   document.getElementById('errorPopup').classList.add('show');
   document.getElementById('overlay').classList.add('show');
+  pushPopupState();
 }
 
 function closeErrorPopup() {
   document.getElementById('errorPopup').classList.remove('show');
   document.getElementById('overlay').classList.remove('show');
+  popPopupState();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3326,9 +3374,11 @@ function openLightbox(src) {
   var lb = document.getElementById('imgLightbox');
   document.getElementById('lightboxImg').src = src;
   lb.classList.add('active');
+  pushPopupState();
 }
 function closeLightbox() {
   document.getElementById('imgLightbox').classList.remove('active');
+  popPopupState();
 }
 
 function showNotesPopup(id, name, price, imageUrl, desc) {
@@ -3380,12 +3430,14 @@ function showNotesPopup(id, name, price, imageUrl, desc) {
   
   document.getElementById('notesPopup').classList.add('show');
   document.getElementById('overlay').classList.add('show');
+  pushPopupState();
 }
 
 function closeNotesPopup() {
   document.getElementById('notesPopup').classList.remove('show');
   document.getElementById('overlay').classList.remove('show');
   pendingItem = null;
+  popPopupState();
 }
 
 function toggleExtra(id, name, price, checked) {
@@ -3421,11 +3473,13 @@ function showSoldOutPopup(productName) {
   document.getElementById('soldoutProductName').textContent = productName || 'Este producto';
   document.getElementById('soldoutPopup').classList.add('show');
   document.getElementById('overlay').classList.add('show');
+  pushPopupState();
 }
 
 function closeSoldOutPopup() {
   document.getElementById('soldoutPopup').classList.remove('show');
   document.getElementById('overlay').classList.remove('show');
+  popPopupState();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3944,6 +3998,7 @@ function openCheckoutModal() {
   // Show modal
   document.getElementById('checkoutOverlay').classList.add('show');
   setTimeout(() => document.getElementById('checkoutModal').classList.add('show'), 10);
+  pushPopupState();
 }
 
 function closeCheckoutModal() {
@@ -3956,6 +4011,7 @@ function closeCheckoutModal() {
   modal.style.transform = '';
   modal.classList.remove('show');
   setTimeout(() => document.getElementById('checkoutOverlay').classList.remove('show'), 350);
+  popPopupState();
 }
 
 // Swipe-down to close checkout modal
@@ -4745,11 +4801,13 @@ function openOrderHistory() {
 
   document.getElementById('orderHistoryOverlay').classList.add('show');
   setTimeout(() => document.getElementById('orderHistoryModal').classList.add('show'), 10);
+  pushPopupState();
 }
 
 function closeOrderHistory() {
   document.getElementById('orderHistoryModal').classList.remove('show');
   setTimeout(() => document.getElementById('orderHistoryOverlay').classList.remove('show'), 300);
+  popPopupState();
 }
 
 function showSavedReceipt(index) {
@@ -4820,6 +4878,7 @@ function showReceipt(orderNumber, items, total, paymentInfo) {
   closeNotesPopup();
   document.getElementById('receiptOverlay').classList.add('show');
   document.getElementById('receiptModal').classList.add('show');
+  pushPopupState();
 
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});
@@ -4830,6 +4889,7 @@ function closeReceipt() {
   document.getElementById('receiptOverlay').classList.remove('show');
   document.getElementById('receiptModal').classList.remove('show');
   lastPaymentInfo = null;
+  popPopupState();
 }
 
 async function downloadReceipt() {
@@ -5178,6 +5238,7 @@ function openPinzer() {
   // Hide speech bubble when chat opens
   const bubble = document.getElementById('speechBubble');
   if (bubble) bubble.classList.remove('show');
+  pushPopupState();
 
   // Show welcome on first open
   if (!welcomeShown) {
@@ -5193,6 +5254,7 @@ function closePinzer() {
   chatOpen = false;
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
+  popPopupState();
 }
 
 async function showWelcomeMessages() {
