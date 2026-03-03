@@ -6,7 +6,8 @@
       "Bash(mv:*)",
       "Bash(echo exit:$?:*)",
       "Bash(mkdir:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(node:*)"
     ]
   }
 }
