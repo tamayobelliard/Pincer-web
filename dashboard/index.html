@@ -1243,10 +1243,9 @@ function stopAlarm() {
   if (overlay) overlay.classList.remove('active');
 }
 
-// Dismiss overlay (tap to hide banner) but alarm keeps playing
+// Dismiss overlay — tap to stop alarm and hide banner
 function dismissOverlay() {
-  var overlay = document.getElementById('newOrderOverlay');
-  if (overlay) overlay.classList.remove('active');
+  stopAlarm();
 }
 
 function playNewOrderSound() { startAlarm(); }
@@ -2552,7 +2551,6 @@ async function loadOrders() {
 
 async function acceptOrder(id) {
   try {
-    stopAlarm();
     const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
       body: JSON.stringify({ status: 'accepted', digitada_at: new Date().toISOString() })
