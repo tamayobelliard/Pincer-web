@@ -155,31 +155,54 @@ function getNextOpenTime(hoursStr) {
     return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
   }
 
-  const openings = [];
+  // Parse all schedule segments into (days[], openMinutes) pairs
+  const parsed = [];
   const segments = hoursStr.split(',');
   for (const seg of segments) {
     const timeMatch = seg.trim().match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
     if (!timeMatch) continue;
     const days = expandDays(timeMatch[1]);
     const openMin = parseTime(timeMatch[2]);
-    if (openMin === -1) continue;
-    for (const d of days) openings.push({ day: d, min: openMin, label: formatMinutes(openMin) });
+    if (openMin === -1 || days.length === 0) continue;
+    parsed.push({ days, openMin });
   }
-  if (openings.length === 0) return null;
+  if (parsed.length === 0) return null;
 
-  let best = null; let bestDaysAway = 8;
-  for (const entry of openings) {
-    let daysAway;
-    if (entry.day === currentDay && entry.min > currentMinutes) daysAway = 0;
-    else if (entry.day === currentDay) daysAway = 7;
-    else daysAway = (entry.day - currentDay + 7) % 7;
-    if (daysAway < bestDaysAway || (daysAway === bestDaysAway && (!best || entry.min < best.min))) {
-      best = entry; bestDaysAway = daysAway;
+  // Helper: get the earliest opening time for a given day number (0-6)
+  function earliestOpenForDay(dayNum) {
+    let earliest = -1;
+    for (const p of parsed) {
+      if (p.days.includes(dayNum) && (earliest === -1 || p.openMin < earliest)) {
+        earliest = p.openMin;
+      }
+    }
+    return earliest;
+  }
+
+  // Step 1: Check if today has any opening time still ahead
+  for (const p of parsed) {
+    if (p.days.includes(currentDay) && p.openMin > currentMinutes) {
+      // Find the earliest one today that's still ahead
+      let todayEarliest = -1;
+      for (const q of parsed) {
+        if (q.days.includes(currentDay) && q.openMin > currentMinutes) {
+          if (todayEarliest === -1 || q.openMin < todayEarliest) todayEarliest = q.openMin;
+        }
+      }
+      return 'Abrimos hoy a las ' + formatMinutes(todayEarliest);
     }
   }
-  if (!best) return null;
-  if (bestDaysAway === 0) return 'Abrimos hoy a las ' + best.label;
-  return 'Abrimos el ' + DAY_NAMES[(currentDay + bestDaysAway) % 7] + ' a las ' + best.label;
+
+  // Step 2: Iterate tomorrow through next 7 days to find next open day
+  for (let offset = 1; offset <= 7; offset++) {
+    const checkDay = (currentDay + offset) % 7;
+    const earliest = earliestOpenForDay(checkDay);
+    if (earliest !== -1) {
+      return 'Abrimos el ' + DAY_NAMES[checkDay] + ' a las ' + formatMinutes(earliest);
+    }
+  }
+
+  return null;
 }
 
 export default async function handler(req, res) {

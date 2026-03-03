@@ -2467,8 +2467,8 @@ function getNextOpenTime(hoursStr) {
     return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
   }
 
-  // Collect all (day, openMinutes, openTimeLabel) entries
-  var openings = [];
+  // Parse all schedule segments into (days[], openMinutes) pairs
+  var parsed = [];
   var segments = hoursStr.split(',');
   for (var s = 0; s < segments.length; s++) {
     var seg = segments[s].trim();
@@ -2476,39 +2476,52 @@ function getNextOpenTime(hoursStr) {
     if (!timeMatch) continue;
     var days = expandDays(timeMatch[1]);
     var openMin = parseTime(timeMatch[2]);
-    if (openMin === -1) continue;
-    for (var d = 0; d < days.length; d++) {
-      openings.push({ day: days[d], min: openMin, label: formatMinutes(openMin) });
-    }
+    if (openMin === -1 || days.length === 0) continue;
+    parsed.push({ days: days, openMin: openMin });
   }
-  if (openings.length === 0) return null;
+  if (parsed.length === 0) return null;
 
-  // Find the soonest opening from now (check today first, then next 7 days)
-  var best = null;
-  var bestDaysAway = 8;
-  for (var o = 0; o < openings.length; o++) {
-    var entry = openings[o];
-    var daysAway;
-    if (entry.day === currentDay && entry.min > currentMinutes) {
-      daysAway = 0; // Later today
-    } else if (entry.day === currentDay) {
-      daysAway = 7; // Same day but already passed → next week
-    } else {
-      daysAway = (entry.day - currentDay + 7) % 7;
+  // Helper: get the earliest opening time for a given day number (0-6)
+  function earliestOpenForDay(dayNum) {
+    var earliest = -1;
+    for (var p = 0; p < parsed.length; p++) {
+      if (parsed[p].days.indexOf(dayNum) !== -1) {
+        if (earliest === -1 || parsed[p].openMin < earliest) {
+          earliest = parsed[p].openMin;
+        }
+      }
     }
-    if (daysAway < bestDaysAway || (daysAway === bestDaysAway && (!best || entry.min < best.min))) {
-      best = entry;
-      bestDaysAway = daysAway;
-    }
+    return earliest;
   }
-  if (!best) return null;
 
-  if (bestDaysAway === 0) {
-    return { text: 'Abrimos hoy a las ' + best.label, time: best.label, isToday: true };
-  } else {
-    var targetDay = (currentDay + bestDaysAway) % 7;
-    return { text: 'Abrimos el ' + DAY_NAMES[targetDay] + ' a las ' + best.label, time: best.label, day: DAY_NAMES[targetDay], isToday: false };
+  // Step 1: Check if today has any opening time still ahead
+  for (var p = 0; p < parsed.length; p++) {
+    if (parsed[p].days.indexOf(currentDay) !== -1 && parsed[p].openMin > currentMinutes) {
+      // Find the earliest one today that's still ahead
+      var todayEarliest = -1;
+      for (var q = 0; q < parsed.length; q++) {
+        if (parsed[q].days.indexOf(currentDay) !== -1 && parsed[q].openMin > currentMinutes) {
+          if (todayEarliest === -1 || parsed[q].openMin < todayEarliest) {
+            todayEarliest = parsed[q].openMin;
+          }
+        }
+      }
+      var label = formatMinutes(todayEarliest);
+      return { text: 'Abrimos hoy a las ' + label, time: label, isToday: true };
+    }
   }
+
+  // Step 2: Iterate tomorrow through next 7 days to find next open day
+  for (var offset = 1; offset <= 7; offset++) {
+    var checkDay = (currentDay + offset) % 7;
+    var earliest = earliestOpenForDay(checkDay);
+    if (earliest !== -1) {
+      var label = formatMinutes(earliest);
+      return { text: 'Abrimos el ' + DAY_NAMES[checkDay] + ' a las ' + label, time: label, day: DAY_NAMES[checkDay], isToday: false };
+    }
+  }
+
+  return null;
 }
 
 // ── Restaurant data (loaded on init) ──
