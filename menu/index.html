@@ -5422,12 +5422,48 @@ function handleQuickReply(label) {
     return;
   }
 
+  // Returning customer — show sub-menu before going to AI
+  if (label === '🔄 Ya he venido antes' || label === '🔄 I\'ve been here before') {
+    pinzerUserSay(label);
+    var isEs3 = (label.includes('venido'));
+    pinzerSay(isEs3 ? '¡Bienvenido de vuelta! 👋 ¿Qué prefieres?' : 'Welcome back! 👋 What do you prefer?');
+    setTimeout(() => {
+      pinzerShowReplies(isEs3
+        ? [{ label: '🛒 Ayúdame con mi orden' }, { label: '👀 Prefiero ver el menú' }]
+        : [{ label: '🛒 Help me order' }, { label: '👀 I\'ll browse the menu' }]
+      );
+    }, 300);
+    return;
+  }
+
+  // "Prefiero ver el menú" — close chatbot
+  if (label === '👀 Prefiero ver el menú' || label === '👀 I\'ll browse the menu') {
+    pinzerUserSay(label);
+    var isEs4 = (label.includes('menú'));
+    pinzerSay(isEs4 ? '¡Perfecto! Aquí estoy si necesitas algo 😊' : 'Perfect! I\'m here if you need anything 😊');
+    setTimeout(() => {
+      closePinzer();
+      bubblePermanentlyClosed = false;
+      showBubble(isEs4 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
+    }, 1500);
+    return;
+  }
+
+  // "Ayúdame con mi orden" — continue normally with AI
+  if (label === '🛒 Ayúdame con mi orden' || label === '🛒 Help me order') {
+    pinzerUserSay(label);
+    sendToAI(label === '🛒 Ayúdame con mi orden' ? 'Ya he venido antes, ayúdame a hacer mi orden' : 'I\'ve been here before, help me place my order');
+    return;
+  }
+
   // Static mappings for welcome buttons (Spanish + English)
   const messageMap = {
     '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '🔄 Ya he venido antes': 'Ya he venido antes, ya conozco el menú',
     '👋 First time here': 'This is my first time here, I don\'t know the menu',
-    '🔄 I\'ve been here before': 'I\'ve been here before, I already know the menu'
   };
 
   const aiMessage = messageMap[label] || label;
