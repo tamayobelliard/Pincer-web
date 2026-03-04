@@ -6,7 +6,8 @@
  * If RECAPTCHA_SECRET_KEY is not set, skips verification (allows dev/staging).
  */
 export async function verifyRecaptcha(token, expectedAction) {
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+  // Use v2 secret key if available, fall back to v3 key
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY_V2 || process.env.RECAPTCHA_SECRET_KEY;
   if (!secretKey) {
     console.warn('RECAPTCHA_SECRET_KEY not set — skipping verification');
     return true;
