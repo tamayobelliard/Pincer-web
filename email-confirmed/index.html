@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Confirmado — Pincer</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      min-height: 100vh;
+      background: #F9FAFB;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 40px;
+      text-decoration: none;
+    }
+    .logo img { height: 36px; }
+    .logo span { font-size: 1.5em; font-weight: 800; color: #0F172A; }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 36px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+      border: 1px solid #E2E8F0;
+    }
+
+    .icon {
+      width: 64px;
+      height: 64px;
+      background: #F0FDF4;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 1.8em;
+      color: #16A34A;
+      border: 2px solid #BBF7D0;
+    }
+
+    .card h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      color: #64748B;
+      font-size: 0.9em;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .info-box {
+      background: #FFF7ED;
+      padding: 14px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid #FED7AA;
+    }
+    .info-box p {
+      color: #9A3412;
+      font-weight: 600;
+      font-size: 0.85em;
+      margin: 0;
+    }
+    .info-box .sub {
+      color: #C2410C;
+      font-weight: 400;
+      font-size: 0.8em;
+      margin-top: 4px;
+    }
+
+    .btn-login {
+      display: inline-block;
+      width: 100%;
+      padding: 14px;
+      background: #DC2626;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .btn-login:hover { background: #991B1B; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: #64748B;
+      font-size: 0.85em;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #0F172A; }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <a class="logo" href="/">
+    <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+    <span>Pincer</span>
+  </a>
+
+  <div class="card">
+    <div class="icon">&#10003;</div>
+    <h1>Email confirmado!</h1>
+    <p>Tu cuenta ha sido verificada exitosamente.</p>
+    <p>Te enviamos un email con tus credenciales de acceso al dashboard.</p>
+
+    <div class="info-box">
+      <p>Revisa tu bandeja de entrada</p>
+      <p class="sub">Si no lo ves, revisa tu carpeta de spam.</p>
+    </div>
+
+    <a class="btn-login" href="/login">Ir al login</a>
+  </div>
+
+  <a class="back-link" href="/">← Volver a Pincer</a>
+</div>
+
+</body>
+</html>

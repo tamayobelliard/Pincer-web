@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
     // Already verified
     if (user.email_verified) {
-      return res.writeHead(302, { Location: '/login?verified=1' }).end();
+      return res.writeHead(302, { Location: '/email-confirmed' }).end();
     }
 
     // Set email_verified = true and clear the token
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
     }
 
     // Redirect to login with success indicator
-    return res.writeHead(302, { Location: '/login?verified=1' }).end();
+    return res.writeHead(302, { Location: '/email-confirmed' }).end();
 
   } catch (error) {
     console.error('verify-email error:', error);

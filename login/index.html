@@ -79,6 +79,19 @@
       border: 1px solid #FECACA;
     }
 
+    .success-box {
+      display: none;
+      background: #F0FDF4;
+      color: #166534;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      border: 1px solid #BBF7D0;
+    }
+
     label {
       display: block;
       color: var(--text-main);
@@ -125,7 +138,6 @@
     }
     .back-link:hover { color: var(--text-main); }
   </style>
-  <script src="https://www.google.com/recaptcha/api.js?render=6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK" async defer></script>
 </head>
 <body>
 
@@ -139,7 +151,7 @@
     <h1>Iniciar sesión</h1>
     <p>Accede al dashboard de tu restaurante.</p>
 
-    <div class="success-box" id="loginSuccess" style="display:none;background:#F0FDF4;color:#166534;padding:12px;border-radius:8px;margin-bottom:20px;text-align:center;font-weight:600;font-size:0.9em;border:1px solid #BBF7D0;">Email verificado. Ya puedes iniciar sesion.</div>
+    <div class="success-box" id="loginSuccess"></div>
 
     <div class="error-box" id="loginError"></div>
 
@@ -160,9 +172,6 @@
 <script>
 // Show success messages from redirects
 var urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('verified') === '1') {
-  document.getElementById('loginSuccess').style.display = 'block';
-}
 if (urlParams.get('password_changed') === '1') {
   document.getElementById('loginSuccess').textContent = 'Contrasena actualizada. Inicia sesion con tu nueva contrasena.';
   document.getElementById('loginSuccess').style.display = 'block';
@@ -178,23 +187,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   loginBtn.disabled = true;
   loginBtn.textContent = 'Verificando...';
   loginError.style.display = 'none';
+  document.getElementById('loginSuccess').style.display = 'none';
 
   try {
-    // Get reCAPTCHA v3 token (use grecaptcha.ready to ensure API is loaded)
-    let recaptchaToken = '';
-    try {
-      recaptchaToken = await new Promise(function(resolve, reject) {
-        if (!window.grecaptcha) return resolve('');
-        grecaptcha.ready(function() {
-          grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'login' }).then(resolve).catch(reject);
-        });
-      });
-    } catch (e) { console.warn('reCAPTCHA error:', e); }
-
     const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, recaptchaToken }),
+      body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
 
