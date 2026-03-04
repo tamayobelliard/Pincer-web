@@ -409,6 +409,9 @@ export default async function handler(req, res) {
     }
     const password_hash = await bcrypt.hash(temp_password, 10);
 
+    // Email verification token
+    const emailVerificationToken = randomBytes(32).toString('hex');
+
     // Trial expiry: 30 days from now
     const trialExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -440,6 +443,8 @@ export default async function handler(req, res) {
           menu_style: DEFAULT_THEME,
           order_types: Array.isArray(order_types) && order_types.length > 0 ? order_types : ['dine_in'],
           delivery_fee: parseInt(delivery_fee) || 0,
+          email_verified: false,
+          email_verification_token: emailVerificationToken,
         }),
       }
     );
@@ -469,11 +474,31 @@ export default async function handler(req, res) {
       console.error('QR PDF generation error:', e.message);
     }
 
-    // Send welcome email + admin notification (await both before returning)
+    // Send verification email, welcome email + admin notification
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     const menuUrl = `https://www.pincerweb.com/${slug}`;
+    const verifyUrl = `https://www.pincerweb.com/api/verify-email?token=${emailVerificationToken}`;
     const expiryDate = new Date(trialExpires).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
     await Promise.allSettled([
+      // Verification email
+      sendEmail(
+        email,
+        `Confirma tu email — Pincer`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
+          </div>
+          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Confirma tu email</h1>
+          <p style="text-align:center;color:#64748B;">Haz clic en el boton para activar tu cuenta de <strong>${restaurant_name}</strong>.</p>
+          <div style="text-align:center;margin:32px 0;">
+            <a href="${verifyUrl}" style="display:inline-block;background:#E8191A;color:#fff;padding:16px 40px;border-radius:10px;font-weight:700;font-size:1.1em;text-decoration:none;">Confirmar email</a>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;text-align:center;">Si no creaste esta cuenta, ignora este mensaje.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <p style="color:#94a3b8;font-size:11px;text-align:center;">O copia y pega este enlace en tu navegador:<br>${verifyUrl}</p>
+        </div>`
+      ),
+      // Welcome email with credentials + QR
       sendEmail(
         email,
         `Bienvenido a Pincer — ${restaurant_name}`,

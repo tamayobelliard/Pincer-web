@@ -728,6 +728,10 @@
         <div class="check-icon">&#10003;</div>
         <h2 id="successTitle">Cuenta creada</h2>
         <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
+        <div id="verifyEmailNotice" style="background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:10px;padding:14px;margin-bottom:16px;">
+          <p style="color:#9A3412;font-weight:700;margin:0 0 4px;font-size:0.95em;">Revisa tu email</p>
+          <p style="color:#C2410C;font-size:0.82em;margin:0;">Te enviamos un enlace de confirmacion. Debes verificar tu email antes de iniciar sesion.</p>
+        </div>
 
         <div class="credentials-box">
           <div class="cred-row">
@@ -1174,11 +1178,14 @@
     };
 
     try {
-      // Get reCAPTCHA v3 token
+      // Get reCAPTCHA v3 token (use grecaptcha.ready to ensure API is loaded)
       try {
-        if (window.grecaptcha) {
-          body.recaptchaToken = await grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'signup' });
-        }
+        body.recaptchaToken = await new Promise(function(resolve, reject) {
+          if (!window.grecaptcha) return resolve('');
+          grecaptcha.ready(function() {
+            grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'signup' }).then(resolve).catch(reject);
+          });
+        });
       } catch (e) { console.warn('reCAPTCHA error:', e); }
 
       var res = await fetch('/api/signup', {
@@ -1207,16 +1214,9 @@
         document.getElementById('credDashboard').textContent = 'pincerweb.com/' + data.restaurant_slug + '/dashboard';
         document.getElementById('credMenu').textContent = 'pincerweb.com/' + data.restaurant_slug;
 
-        // Set links
+        // Set links (dashboard goes to login since email must be verified first)
         document.getElementById('linkMenu').href = '/' + data.restaurant_slug;
-        document.getElementById('linkDashboard').href = '/' + data.restaurant_slug + '/dashboard';
-
-        sessionStorage.setItem('dashboard_session', JSON.stringify({
-          role: 'restaurant',
-          restaurant_slug: data.restaurant_slug,
-          display_name: data.display_name,
-          username: data.restaurant_slug,
-        }));
+        document.getElementById('linkDashboard').href = '/login';
       } else {
         alertError.textContent = data.error || 'Error al registrar el negocio. Intenta de nuevo.';
         alertError.style.display = 'block';

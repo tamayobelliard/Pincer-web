@@ -61,6 +61,11 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, error: 'Usuario o contraseña incorrectos' });
     }
 
+    // Block login if email is not verified (skip for admin users)
+    if (user.role !== 'admin' && user.email_verified === false) {
+      return res.status(403).json({ success: false, error: 'Debes confirmar tu email antes de iniciar sesion. Revisa tu bandeja de entrada.' });
+    }
+
     const response = {
       success: true,
       role: user.role,

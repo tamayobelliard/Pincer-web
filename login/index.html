@@ -139,6 +139,8 @@
     <h1>Iniciar sesión</h1>
     <p>Accede al dashboard de tu restaurante.</p>
 
+    <div class="success-box" id="loginSuccess" style="display:none;background:#F0FDF4;color:#166534;padding:12px;border-radius:8px;margin-bottom:20px;text-align:center;font-weight:600;font-size:0.9em;border:1px solid #BBF7D0;">Email verificado. Ya puedes iniciar sesion.</div>
+
     <div class="error-box" id="loginError"></div>
 
     <form id="loginForm">
@@ -156,6 +158,11 @@
 </div>
 
 <script>
+// Show success message if redirected from email verification
+if (new URLSearchParams(window.location.search).get('verified') === '1') {
+  document.getElementById('loginSuccess').style.display = 'block';
+}
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const username = document.getElementById('username').value.trim();
@@ -168,12 +175,15 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   loginError.style.display = 'none';
 
   try {
-    // Get reCAPTCHA v3 token
+    // Get reCAPTCHA v3 token (use grecaptcha.ready to ensure API is loaded)
     let recaptchaToken = '';
     try {
-      if (window.grecaptcha) {
-        recaptchaToken = await grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'login' });
-      }
+      recaptchaToken = await new Promise(function(resolve, reject) {
+        if (!window.grecaptcha) return resolve('');
+        grecaptcha.ready(function() {
+          grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'login' }).then(resolve).catch(reject);
+        });
+      });
     } catch (e) { console.warn('reCAPTCHA error:', e); }
 
     const res = await fetch('/api/auth', {
