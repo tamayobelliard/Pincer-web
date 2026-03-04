@@ -725,56 +725,14 @@
       </div>
 
       <div class="success-view" id="successView">
-        <div class="check-icon">&#10003;</div>
-        <h2 id="successTitle">Cuenta creada</h2>
-        <p id="successMsg">Tu restaurante ha sido registrado exitosamente. Tu prueba gratuita de 30 dias ha comenzado.</p>
-        <div id="verifyEmailNotice" style="background:#FFF7ED;border:1.5px solid #FDBA74;border-radius:10px;padding:14px;margin-bottom:16px;">
-          <p style="color:#9A3412;font-weight:700;margin:0 0 4px;font-size:0.95em;">Revisa tu email</p>
-          <p style="color:#C2410C;font-size:0.82em;margin:0;">Te enviamos un enlace de confirmacion. Debes verificar tu email antes de iniciar sesion.</p>
+        <div class="check-icon" style="background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;font-size:32px;">&#9993;</div>
+        <h2>Revisa tu bandeja de entrada</h2>
+        <p id="successEmailMsg" style="color:var(--text-secondary);font-size:0.92em;margin-bottom:20px;">Te enviamos un email para confirmar tu cuenta. Debes confirmarlo antes de continuar.</p>
+        <div style="background:#EFF6FF;border:1.5px solid #93C5FD;border-radius:10px;padding:16px;margin-bottom:20px;">
+          <p style="color:#1E40AF;font-weight:700;margin:0 0 6px;font-size:0.95em;">Una vez confirmado, recibiras tus credenciales de acceso.</p>
+          <p style="color:#3B82F6;font-size:0.82em;margin:0;">Revisa tambien tu carpeta de spam si no ves el email.</p>
         </div>
-
-        <div class="credentials-box">
-          <div class="cred-row">
-            <span class="cred-label">Usuario</span>
-            <span class="cred-value" id="credUsername">---</span>
-          </div>
-          <div class="cred-row">
-            <span class="cred-label">Contrasena</span>
-            <span class="cred-value" id="credPassword">---</span>
-          </div>
-          <div class="cred-row">
-            <span class="cred-label">Dashboard</span>
-            <span class="cred-value" id="credDashboard" style="font-size:0.8em;">---</span>
-          </div>
-          <div class="cred-row">
-            <span class="cred-label">Menu</span>
-            <span class="cred-value" id="credMenu" style="font-size:0.8em;">---</span>
-          </div>
-        </div>
-
-        <p style="color:var(--text-secondary);font-size:0.82em;">Guarda estas credenciales. Tambien fueron enviadas a tu email.</p>
-
-        <!-- Menu upload section (post-creation, mandatory) -->
-        <div class="menu-upload-section">
-          <hr class="section-divider" style="margin:16px 0;">
-          <p style="font-weight:600;margin-bottom:8px;">Sube fotos de tu menu</p>
-          <p style="color:var(--text-secondary);font-size:0.82em;margin-bottom:12px;">La IA extraera los productos automaticamente.</p>
-          <div id="signupMenuIdle">
-            <button type="button" class="btn-upload-menu" onclick="triggerSignupMenuUpload()">Subir Foto de Menu</button>
-            <input type="file" id="signupMenuFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
-            <p style="color:#94A3B8;font-size:0.8em;margin-top:8px;">JPG, PNG o WebP</p>
-          </div>
-          <div class="menu-upload-loading" id="signupMenuLoading">
-            <div class="spinner"></div>
-            <p style="margin-top:10px;font-weight:600;">Procesando menu con IA...</p>
-          </div>
-          <div id="signupMenuPreview" style="display:none;"></div>
-        </div>
-
-        <div id="signupActionLinks" style="display:none;gap:10px;margin-top:16px;">
-          <a id="linkMenu" href="#" target="_blank" style="flex:1;text-align:center;padding:12px;background:var(--bg-light);border:1.5px solid var(--border);border-radius:10px;font-weight:600;font-size:0.9em;color:var(--text-main);text-decoration:none;">Ver menu</a>
-          <a id="linkDashboard" href="#" style="flex:1;text-align:center;padding:12px;background:var(--primary);border:none;border-radius:10px;font-weight:600;font-size:0.9em;color:white;text-decoration:none;">Ir al dashboard</a>
-        </div>
+        <a href="/login" style="display:inline-block;padding:12px 32px;background:var(--primary);color:white;border-radius:10px;font-weight:600;text-decoration:none;">Ir al login</a>
       </div>
     </div>
 
@@ -1198,7 +1156,7 @@
       if (data.success) {
         createdSlug = data.restaurant_slug;
 
-        // Upload logo in background
+        // Upload logo in background (needed for QR PDF generation after verification)
         if (logoFile) {
           btn.textContent = 'Subiendo logo...';
           try { await uploadLogo(data.restaurant_slug); } catch (e) { console.error('Logo upload error:', e); }
@@ -1206,17 +1164,10 @@
 
         formView.style.display = 'none';
         successView.style.display = 'block';
-        document.getElementById('successTitle').textContent = data.display_name || 'Cuenta creada';
 
-        // Show generated credentials
-        document.getElementById('credUsername').textContent = data.restaurant_slug;
-        document.getElementById('credPassword').textContent = data.temp_password;
-        document.getElementById('credDashboard').textContent = 'pincerweb.com/' + data.restaurant_slug + '/dashboard';
-        document.getElementById('credMenu').textContent = 'pincerweb.com/' + data.restaurant_slug;
-
-        // Set links (dashboard goes to login since email must be verified first)
-        document.getElementById('linkMenu').href = '/' + data.restaurant_slug;
-        document.getElementById('linkDashboard').href = '/login';
+        // Show the email address in the success message
+        var userEmail = document.getElementById('email').value.trim();
+        document.getElementById('successEmailMsg').textContent = 'Te enviamos un email a ' + userEmail + ' para confirmar tu cuenta. Debes confirmarlo antes de continuar.';
       } else {
         alertError.textContent = data.error || 'Error al registrar el negocio. Intenta de nuevo.';
         alertError.style.display = 'block';

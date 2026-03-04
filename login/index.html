@@ -158,8 +158,13 @@
 </div>
 
 <script>
-// Show success message if redirected from email verification
-if (new URLSearchParams(window.location.search).get('verified') === '1') {
+// Show success messages from redirects
+var urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('verified') === '1') {
+  document.getElementById('loginSuccess').style.display = 'block';
+}
+if (urlParams.get('password_changed') === '1') {
+  document.getElementById('loginSuccess').textContent = 'Contrasena actualizada. Inicia sesion con tu nueva contrasena.';
   document.getElementById('loginSuccess').style.display = 'block';
 }
 
@@ -200,6 +205,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         display_name: data.display_name,
         username: data.username,
       }));
+
+      // Force password change on first login
+      if (data.mustChangePassword) {
+        window.location.href = '/change-password';
+        return;
+      }
 
       if (data.role === 'admin') {
         window.location.href = '/admin';

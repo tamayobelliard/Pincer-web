@@ -75,6 +75,11 @@ export default async function handler(req, res) {
       plan: user.plan || 'free',
     };
 
+    // Force password change on first login
+    if (user.must_change_password) {
+      response.mustChangePassword = true;
+    }
+
     // For admin users, generate a unique session token (not the static API key)
     if (user.role === 'admin') {
       const sessionToken = randomBytes(32).toString('hex');

@@ -3,6 +3,7 @@
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/login", "destination": "/login/index.html" },
     { "source": "/signup", "destination": "/signup/index.html" },
+    { "source": "/change-password", "destination": "/change-password/index.html" },
     { "source": "/politicas/privacidad", "destination": "/politicas/privacidad.html" },
     { "source": "/politicas/devoluciones", "destination": "/politicas/devoluciones.html" },
     { "source": "/politicas/seguridad", "destination": "/politicas/seguridad.html" },

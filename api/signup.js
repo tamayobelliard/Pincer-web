@@ -1,42 +1,12 @@
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { generateQRPdf } from './generate-qr-pdf.js';
 import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
+import { sendEmail } from './send-email.js';
 
 export const config = { maxDuration: 60 };
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
-
-async function sendEmail(to, subject, html, attachments = []) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn('RESEND_API_KEY not set — skipping email to', to);
-    return;
-  }
-  console.log('Resend: sending to', to, '| subject:', subject.slice(0, 50));
-  try {
-    const body = { from: 'Pincer <info@pincerweb.com>', to: [to], subject, html };
-    if (attachments.length) body.attachments = attachments;
-    const resp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15000),
-    });
-    const respBody = await resp.text();
-    if (!resp.ok) {
-      console.error('Resend API error:', resp.status, respBody);
-    } else {
-      console.log('Resend: sent OK to', to, '| response:', respBody);
-    }
-  } catch (e) {
-    console.error('Resend email error:', e.message);
-  }
-}
 
 // ── Predefined themes (same as parse-menu.js) ──
 const THEMES = {
@@ -445,6 +415,8 @@ export default async function handler(req, res) {
           delivery_fee: parseInt(delivery_fee) || 0,
           email_verified: false,
           email_verification_token: emailVerificationToken,
+          must_change_password: true,
+          welcome_email_sent: false,
         }),
       }
     );
@@ -465,20 +437,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({ id: slug, is_open: true }),
     }).catch(() => {});
 
-    // Generate QR PDF attachment
-    let qrAttachments = [];
-    try {
-      const qrPdfBase64 = await generateQRPdf(slug, restaurant_name, logo_url || null);
-      qrAttachments = [{ filename: `QR-${slug}.pdf`, content: qrPdfBase64 }];
-    } catch (e) {
-      console.error('QR PDF generation error:', e.message);
-    }
-
-    // Send verification email, welcome email + admin notification
+    // Send ONLY confirmation email + admin notification (welcome email sent after verification)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     const menuUrl = `https://www.pincerweb.com/${slug}`;
     const verifyUrl = `https://www.pincerweb.com/api/verify-email?token=${emailVerificationToken}`;
-    const expiryDate = new Date(trialExpires).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
     await Promise.allSettled([
       // Verification email
       sendEmail(
@@ -498,33 +460,7 @@ export default async function handler(req, res) {
           <p style="color:#94a3b8;font-size:11px;text-align:center;">O copia y pega este enlace en tu navegador:<br>${verifyUrl}</p>
         </div>`
       ),
-      // Welcome email with credentials + QR
-      sendEmail(
-        email,
-        `Bienvenido a Pincer — ${restaurant_name}`,
-        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
-          <div style="text-align:center;margin-bottom:20px;">
-            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
-          </div>
-          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Bienvenido a Pincer!</h1>
-          <p style="text-align:center;color:#64748B;">Tu menu digital esta listo</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:8px 0;color:#64748B;">Restaurante</td><td style="padding:8px 0;font-weight:bold;">${restaurant_name}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748B;">Email de acceso</td><td style="padding:8px 0;font-weight:bold;">${email}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748B;">Contrasena</td><td style="padding:8px 0;font-weight:bold;font-family:monospace;font-size:16px;letter-spacing:1px;">${temp_password}</td></tr>
-            <tr><td style="padding:8px 0;color:#64748B;">Dashboard</td><td style="padding:8px 0;"><a href="${dashboardUrl}" style="color:#E8191A;font-weight:bold;">${dashboardUrl}</a></td></tr>
-            <tr><td style="padding:8px 0;color:#64748B;">Tu menu</td><td style="padding:8px 0;"><a href="${menuUrl}" style="color:#E8191A;font-weight:bold;">${menuUrl}</a></td></tr>
-          </table>
-          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <div style="background:#FFF3F3;padding:14px;border-radius:8px;text-align:center;">
-            <p style="color:#E8191A;font-weight:bold;margin:0;">Prueba gratuita de 30 dias</p>
-            <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
-          </div>
-          <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
-        </div>`,
-        qrAttachments
-      ),
+      // Admin notification
       sendEmail(
         'info@pincerweb.com',
         `Nuevo restaurante registrado: ${restaurant_name}`,
@@ -550,7 +486,6 @@ export default async function handler(req, res) {
       success: true,
       restaurant_slug: slug,
       display_name: restaurant_name.trim(),
-      temp_password,
     });
 
   } catch (error) {

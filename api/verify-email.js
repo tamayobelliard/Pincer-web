@@ -1,4 +1,10 @@
+import { randomBytes } from 'crypto';
+import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
+import { sendEmail } from './send-email.js';
+import { generateQRPdf } from './generate-qr-pdf.js';
+
+export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
   // Only GET allowed (user clicks link from email)
@@ -30,7 +36,7 @@ export default async function handler(req, res) {
   try {
     // Find user by verification token
     const findRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?email_verification_token=eq.${encodeURIComponent(token)}&select=id,email_verified,restaurant_slug,display_name&limit=1`,
+      `${supabaseUrl}/rest/v1/restaurant_users?email_verification_token=eq.${encodeURIComponent(token)}&select=id,email,email_verified,restaurant_slug,display_name,logo_url,trial_expires_at,welcome_email_sent&limit=1`,
       { headers: sbHeaders }
     );
 
@@ -71,6 +77,90 @@ export default async function handler(req, res) {
     }
 
     console.log('verify-email: verified', user.restaurant_slug);
+
+    // ── Generate fresh temp password for welcome email ──
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(8);
+    let temp_password = '';
+    for (let i = 0; i < 8; i++) {
+      temp_password += chars.charAt(bytes[i] % chars.length);
+    }
+    const password_hash = await bcrypt.hash(temp_password, 10);
+
+    // Update password_hash in DB
+    const pwPatchRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${user.id}`,
+      {
+        method: 'PATCH',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ password_hash }),
+      }
+    );
+    if (!pwPatchRes.ok) {
+      console.error('verify-email: password update error', pwPatchRes.status);
+      // Continue — email is verified, user can request password reset later
+    }
+
+    // ── Send welcome email with credentials + QR (only if not already sent) ──
+    if (!user.welcome_email_sent) {
+      const slug = user.restaurant_slug;
+      const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
+      const menuUrl = `https://www.pincerweb.com/${slug}`;
+      const expiryDate = user.trial_expires_at
+        ? new Date(user.trial_expires_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
+
+      // Generate QR PDF
+      let qrAttachments = [];
+      try {
+        const qrPdfBase64 = await generateQRPdf(slug, user.display_name, user.logo_url || null);
+        qrAttachments = [{ filename: `QR-${slug}.pdf`, content: qrPdfBase64 }];
+      } catch (e) {
+        console.error('verify-email: QR PDF error:', e.message);
+      }
+
+      // Send welcome email
+      await sendEmail(
+        user.email,
+        `Bienvenido a Pincer — ${user.display_name}`,
+        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
+          </div>
+          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Bienvenido a Pincer!</h1>
+          <p style="text-align:center;color:#64748B;">Tu menu digital esta listo</p>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#64748B;">Restaurante</td><td style="padding:8px 0;font-weight:bold;">${user.display_name}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Usuario</td><td style="padding:8px 0;font-weight:bold;">${slug}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Contrasena temporal</td><td style="padding:8px 0;font-weight:bold;font-family:monospace;font-size:16px;letter-spacing:1px;">${temp_password}</td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Dashboard</td><td style="padding:8px 0;"><a href="${dashboardUrl}" style="color:#E8191A;font-weight:bold;">${dashboardUrl}</a></td></tr>
+            <tr><td style="padding:8px 0;color:#64748B;">Tu menu</td><td style="padding:8px 0;"><a href="${menuUrl}" style="color:#E8191A;font-weight:bold;">${menuUrl}</a></td></tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          ${expiryDate ? `<div style="background:#FFF3F3;padding:14px;border-radius:8px;text-align:center;">
+            <p style="color:#E8191A;font-weight:bold;margin:0;">Prueba gratuita de 30 dias</p>
+            <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
+          </div>` : ''}
+          <div style="background:#FFF7ED;padding:14px;border-radius:8px;text-align:center;margin-top:12px;">
+            <p style="color:#9A3412;font-weight:bold;margin:0;">Cambia tu contrasena</p>
+            <p style="color:#C2410C;font-size:13px;margin:4px 0 0;">Al iniciar sesion por primera vez, se te pedira crear una contrasena nueva.</p>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
+        </div>`,
+        qrAttachments
+      );
+
+      // Mark welcome email as sent
+      fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${user.id}`,
+        {
+          method: 'PATCH',
+          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ welcome_email_sent: true }),
+        }
+      ).catch(e => console.error('verify-email: welcome_email_sent patch error:', e.message));
+    }
 
     // Redirect to login with success indicator
     return res.writeHead(302, { Location: '/login?verified=1' }).end();

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cambiar contrasena — Pincer</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #DC2626;
+      --primary-dark: #991B1B;
+      --text-main: #0F172A;
+      --text-secondary: #64748B;
+      --border: #E2E8F0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      min-height: 100vh;
+      background: #F9FAFB;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 40px;
+      text-decoration: none;
+    }
+    .logo img { height: 36px; }
+    .logo span { font-size: 1.5em; font-weight: 800; color: var(--text-main); }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 36px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
+    }
+
+    .card h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .card p {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin-bottom: 28px;
+    }
+
+    .error-box {
+      display: none;
+      background: #FEF2F2;
+      color: #991B1B;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      border: 1px solid #FECACA;
+    }
+
+    .success-box {
+      display: none;
+      background: #F0FDF4;
+      color: #166534;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      border: 1px solid #BBF7D0;
+    }
+
+    label {
+      display: block;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 0.85em;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95em;
+      margin-bottom: 18px;
+      transition: border-color 0.2s;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus { border-color: var(--primary); }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-submit:hover { background: var(--primary-dark); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: var(--text-secondary);
+      font-size: 0.85em;
+      text-decoration: none;
+    }
+    .back-link:hover { color: var(--text-main); }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <a class="logo" href="/">
+    <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+    <span>Pincer</span>
+  </a>
+
+  <div class="card">
+    <h1>Crea tu nueva contrasena</h1>
+    <p>Elige una contrasena segura para tu cuenta.</p>
+
+    <div class="success-box" id="successBox"></div>
+    <div class="error-box" id="errorBox"></div>
+
+    <form id="changeForm">
+      <label for="newPassword">Nueva contrasena</label>
+      <input type="password" id="newPassword" required placeholder="Minimo 8 caracteres" minlength="8">
+
+      <label for="confirmPassword">Confirmar contrasena</label>
+      <input type="password" id="confirmPassword" required placeholder="Repite tu contrasena" minlength="8">
+
+      <button type="submit" class="btn-submit" id="submitBtn">Guardar contrasena</button>
+    </form>
+  </div>
+
+  <a class="back-link" href="/login">Volver al login</a>
+</div>
+
+<script>
+// Read username from sessionStorage (set by login page)
+var session = JSON.parse(sessionStorage.getItem('dashboard_session') || '{}');
+var username = session.username;
+
+if (!username) {
+  window.location.href = '/login';
+}
+
+var form = document.getElementById('changeForm');
+var btn = document.getElementById('submitBtn');
+var errorBox = document.getElementById('errorBox');
+var successBox = document.getElementById('successBox');
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+  successBox.style.display = 'none';
+}
+
+function showSuccess(msg) {
+  successBox.textContent = msg;
+  successBox.style.display = 'block';
+  errorBox.style.display = 'none';
+}
+
+form.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var newPassword = document.getElementById('newPassword').value;
+  var confirmPassword = document.getElementById('confirmPassword').value;
+
+  errorBox.style.display = 'none';
+  successBox.style.display = 'none';
+
+  if (newPassword.length < 8) {
+    showError('La contrasena debe tener al menos 8 caracteres');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showError('Las contrasenas no coinciden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    var res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, newPassword: newPassword }),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      showSuccess('Contrasena actualizada. Redirigiendo...');
+      sessionStorage.removeItem('dashboard_session');
+      setTimeout(function() {
+        window.location.href = '/login?password_changed=1';
+      }, 1500);
+    } else {
+      showError(data.error || 'Error al cambiar la contrasena');
+      btn.disabled = false;
+      btn.textContent = 'Guardar contrasena';
+    }
+  } catch (err) {
+    showError('Error de conexion. Intenta de nuevo.');
+    btn.disabled = false;
+    btn.textContent = 'Guardar contrasena';
+  }
+});
+</script>
+</body>
+</html>
