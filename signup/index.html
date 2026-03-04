@@ -730,14 +730,48 @@
       </div>
 
       <div class="success-view" id="successView">
-        <div class="check-icon" style="background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;font-size:32px;">&#9993;</div>
-        <h2>Revisa tu bandeja de entrada</h2>
-        <p id="successEmailMsg" style="color:var(--text-secondary);font-size:0.92em;margin-bottom:20px;">Te enviamos un email para confirmar tu cuenta. Debes confirmarlo antes de continuar.</p>
-        <div style="background:#EFF6FF;border:1.5px solid #93C5FD;border-radius:10px;padding:16px;margin-bottom:20px;">
-          <p style="color:#1E40AF;font-weight:700;margin:0 0 6px;font-size:0.95em;">Una vez confirmado, recibiras tus credenciales de acceso.</p>
-          <p style="color:#3B82F6;font-size:0.82em;margin:0;">Revisa tambien tu carpeta de spam si no ves el email.</p>
+        <!-- Step 1: Menu Upload -->
+        <div id="menuUploadStep">
+          <div class="check-icon" style="background:#F0FDF4;border-color:#BBF7D0;color:#166534;">&#10003;</div>
+          <h2>Negocio registrado!</h2>
+          <p style="color:var(--text-secondary);font-size:0.92em;margin-bottom:24px;">Ahora sube una foto de tu menu para extraer los productos automaticamente.</p>
+
+          <div class="menu-upload-area" id="signupMenuUploadArea" onclick="document.getElementById('menuFileInput').click()">
+            <div style="font-size:2em;margin-bottom:8px;">📷</div>
+            <p style="font-weight:600;color:var(--text-main);margin-bottom:4px;">Toca para subir foto del menu</p>
+            <p style="font-size:0.8em;color:var(--text-secondary);">JPG, PNG o WebP</p>
+            <input type="file" id="menuFileInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="handleMenuUpload(this)">
+          </div>
+
+          <div class="menu-upload-loading" id="menuUploadLoading">
+            <div class="spinner"></div>
+            <p style="margin-top:10px;font-weight:600;">Extrayendo productos...</p>
+            <p style="font-size:0.82em;color:var(--text-secondary);">Esto puede tomar unos segundos</p>
+          </div>
+
+          <div id="menuUploadResult" style="display:none;margin-top:16px;">
+            <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:16px;">
+              <p style="color:#166534;font-weight:700;margin:0;font-size:0.95em;" id="menuResultText">0 productos extraidos</p>
+              <p style="color:#16A34A;font-size:0.82em;margin:4px 0 0;">Podras editarlos en el dashboard despues.</p>
+            </div>
+          </div>
+
+          <button id="menuContinueBtn" style="display:none;width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:10px;font-size:1em;font-weight:700;cursor:pointer;margin-top:16px;font-family:inherit;" onclick="sendConfirmationAndShowEmail()">Continuar</button>
+
+          <button id="menuSkipBtn" style="display:block;width:100%;padding:12px;background:none;border:1.5px solid var(--border);border-radius:10px;font-size:0.9em;font-weight:600;cursor:pointer;margin-top:12px;color:var(--text-secondary);font-family:inherit;" onclick="sendConfirmationAndShowEmail()">Saltar por ahora</button>
         </div>
-        <a href="/login" style="display:inline-block;padding:12px 32px;background:var(--primary);color:white;border-radius:10px;font-weight:600;text-decoration:none;">Ir al login</a>
+
+        <!-- Step 2: Check Email -->
+        <div id="checkEmailStep" style="display:none;">
+          <div class="check-icon" style="background:#EFF6FF;border-color:#93C5FD;color:#1D4ED8;font-size:32px;">&#9993;</div>
+          <h2>Revisa tu bandeja de entrada</h2>
+          <p id="successEmailMsg" style="color:var(--text-secondary);font-size:0.92em;margin-bottom:20px;">Te enviamos un email para confirmar tu cuenta.</p>
+          <div style="background:#EFF6FF;border:1.5px solid #93C5FD;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="color:#1E40AF;font-weight:700;margin:0 0 6px;font-size:0.95em;">Una vez confirmado, recibiras tus credenciales de acceso.</p>
+            <p style="color:#3B82F6;font-size:0.82em;margin:0;">Revisa tambien tu carpeta de spam si no ves el email.</p>
+          </div>
+          <a href="/login" style="display:inline-block;padding:12px 32px;background:var(--primary);color:white;border-radius:10px;font-weight:600;text-decoration:none;">Ir al login</a>
+        </div>
       </div>
     </div>
 
@@ -787,6 +821,7 @@
   // ── File state ──
   var logoFile = null;
   var createdSlug = null; // set after successful signup, used for menu upload
+  var createdToken = null; // email verification token from signup response
   var accumulatedItems = [];
   var photoCount = 0;
 
@@ -1040,6 +1075,7 @@
 
       if (data.success) {
         createdSlug = data.restaurant_slug;
+        createdToken = data.email_verification_token;
 
         // Upload logo in background (needed for QR PDF generation after verification)
         if (logoFile) {
@@ -1049,10 +1085,6 @@
 
         formView.style.display = 'none';
         successView.style.display = 'block';
-
-        // Show the email address in the success message
-        var userEmail = document.getElementById('email').value.trim();
-        document.getElementById('successEmailMsg').textContent = 'Te enviamos un email a ' + userEmail + ' para confirmar tu cuenta. Debes confirmarlo antes de continuar.';
       } else {
         alertError.textContent = data.error || 'Error al registrar el negocio. Intenta de nuevo.';
         alertError.style.display = 'block';
@@ -1065,6 +1097,86 @@
       btn.textContent = 'Registrar negocio';
     }
   });
+
+  // ══════════════════════════════
+  // MENU UPLOAD (post-signup step)
+  // ══════════════════════════════
+
+  window.handleMenuUpload = async function(input) {
+    var files = input.files;
+    if (!files || files.length === 0) return;
+    if (!createdSlug) return;
+
+    var uploadArea = document.getElementById('signupMenuUploadArea');
+    var loading = document.getElementById('menuUploadLoading');
+    var result = document.getElementById('menuUploadResult');
+    var continueBtn = document.getElementById('menuContinueBtn');
+    var skipBtn = document.getElementById('menuSkipBtn');
+
+    uploadArea.style.display = 'none';
+    loading.classList.add('active');
+    skipBtn.style.display = 'none';
+
+    try {
+      var menuFiles = [];
+      for (var i = 0; i < files.length; i++) {
+        var dataUri = await compressToBase64(files[i], 1200);
+        menuFiles.push({ url: dataUri, type: 'image' });
+      }
+
+      var patchRes = await fetch('/api/signup', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_slug: createdSlug, menu_files: menuFiles }),
+      });
+
+      loading.classList.remove('active');
+
+      if (patchRes.ok) {
+        result.style.display = 'block';
+        document.getElementById('menuResultText').textContent = 'Productos extraidos exitosamente';
+        continueBtn.style.display = 'block';
+      } else {
+        result.style.display = 'block';
+        document.getElementById('menuResultText').textContent = 'Error al procesar el menu';
+        result.querySelector('div').style.background = '#FEF2F2';
+        result.querySelector('div').style.borderColor = '#FECACA';
+        result.querySelector('p').style.color = '#991B1B';
+        continueBtn.style.display = 'block';
+        continueBtn.textContent = 'Continuar de todos modos';
+      }
+    } catch (e) {
+      console.error('Menu upload error:', e);
+      loading.classList.remove('active');
+      uploadArea.style.display = 'block';
+      skipBtn.style.display = 'block';
+      alert('Error al subir el menu. Puedes intentar de nuevo o saltar este paso.');
+    }
+  };
+
+  window.sendConfirmationAndShowEmail = async function() {
+    var continueBtn = document.getElementById('menuContinueBtn');
+    var skipBtn = document.getElementById('menuSkipBtn');
+    if (continueBtn) { continueBtn.disabled = true; continueBtn.textContent = 'Enviando email...'; }
+    if (skipBtn) { skipBtn.disabled = true; }
+
+    try {
+      await fetch('/api/send-confirmation-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_slug: createdSlug, token: createdToken }),
+      });
+    } catch (e) {
+      console.error('Confirmation email error:', e);
+    }
+
+    // Show check email step
+    document.getElementById('menuUploadStep').style.display = 'none';
+    document.getElementById('checkEmailStep').style.display = 'block';
+
+    var userEmail = document.getElementById('email').value.trim();
+    document.getElementById('successEmailMsg').textContent = 'Te enviamos un email a ' + userEmail + ' para confirmar tu cuenta. Debes confirmarlo antes de continuar.';
+  };
 })();
 </script>
 </body>

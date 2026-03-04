@@ -205,10 +205,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         username: data.username,
       }));
 
-      // Force password change on first login
+      // Flag for forced password change (dashboard will show modal)
       if (data.mustChangePassword) {
-        window.location.href = '/change-password';
-        return;
+        sessionStorage.setItem('mustChangePassword', 'true');
       }
 
       if (data.role === 'admin') {

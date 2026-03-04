@@ -59,13 +59,24 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 
   for (const file of imageFiles) {
     try {
-      console.log('extractMenu: fetching image:', file.url);
-      const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
-      if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url, 'status:', imgRes.status); continue; }
-      const imgBuffer = await imgRes.arrayBuffer();
-      const base64 = Buffer.from(imgBuffer).toString('base64');
-      const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-      console.log('extractMenu: image fetched, base64 length:', base64.length);
+      let base64, contentType;
+
+      // Handle data URIs directly (from signup menu upload)
+      if (file.url && file.url.startsWith('data:')) {
+        const match = file.url.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!match) { console.error('extractMenu: invalid data URI'); continue; }
+        contentType = match[1];
+        base64 = match[2];
+        console.log('extractMenu: parsed data URI, base64 length:', base64.length);
+      } else {
+        console.log('extractMenu: fetching image:', file.url);
+        const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
+        if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url, 'status:', imgRes.status); continue; }
+        const imgBuffer = await imgRes.arrayBuffer();
+        base64 = Buffer.from(imgBuffer).toString('base64');
+        contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        console.log('extractMenu: image fetched, base64 length:', base64.length);
+      }
 
       const imageContent = { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } };
 
@@ -437,55 +448,34 @@ export default async function handler(req, res) {
       body: JSON.stringify({ id: slug, is_open: true }),
     }).catch(() => {});
 
-    // Send ONLY confirmation email + admin notification (welcome email sent after verification)
+    // Send admin notification only (confirmation email sent by client after menu upload)
     const dashboardUrl = `https://www.pincerweb.com/${slug}/dashboard`;
     const menuUrl = `https://www.pincerweb.com/${slug}`;
-    const verifyUrl = `https://www.pincerweb.com/api/verify-email?token=${emailVerificationToken}`;
-    await Promise.allSettled([
-      // Verification email
-      sendEmail(
-        email,
-        `Confirma tu email — Pincer`,
-        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
-          <div style="text-align:center;margin-bottom:20px;">
-            <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
-          </div>
-          <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Confirma tu email</h1>
-          <p style="text-align:center;color:#64748B;">Haz clic en el boton para activar tu cuenta de <strong>${restaurant_name}</strong>.</p>
-          <div style="text-align:center;margin:32px 0;">
-            <a href="${verifyUrl}" style="display:inline-block;background:#E8191A;color:#fff;padding:16px 40px;border-radius:10px;font-weight:700;font-size:1.1em;text-decoration:none;">Confirmar email</a>
-          </div>
-          <p style="color:#94a3b8;font-size:12px;text-align:center;">Si no creaste esta cuenta, ignora este mensaje.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <p style="color:#94a3b8;font-size:11px;text-align:center;">O copia y pega este enlace en tu navegador:<br>${verifyUrl}</p>
-        </div>`
-      ),
-      // Admin notification
-      sendEmail(
-        'info@pincerweb.com',
-        `Nuevo restaurante registrado: ${restaurant_name}`,
-        `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
-          <h2>Nuevo registro</h2>
-          <ul>
-            <li><strong>Restaurante:</strong> ${restaurant_name}</li>
-            <li><strong>Tipo:</strong> ${business_type || 'N/A'}</li>
-            <li><strong>Contacto:</strong> ${owner_name}</li>
-            <li><strong>Email:</strong> ${email}</li>
-            <li><strong>Telefono:</strong> ${phone}</li>
-            <li><strong>Direccion:</strong> ${address || 'N/A'}</li>
-            <li><strong>Website:</strong> ${website || 'N/A'}</li>
-            <li><strong>Slug:</strong> ${slug}</li>
-            <li><strong>Menu:</strong> <a href="${menuUrl}">${menuUrl}</a></li>
-            <li><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></li>
-          </ul>
-        </div>`
-      ),
-    ]);
+    sendEmail(
+      'info@pincerweb.com',
+      `Nuevo restaurante registrado: ${restaurant_name}`,
+      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2>Nuevo registro</h2>
+        <ul>
+          <li><strong>Restaurante:</strong> ${restaurant_name}</li>
+          <li><strong>Tipo:</strong> ${business_type || 'N/A'}</li>
+          <li><strong>Contacto:</strong> ${owner_name}</li>
+          <li><strong>Email:</strong> ${email}</li>
+          <li><strong>Telefono:</strong> ${phone}</li>
+          <li><strong>Direccion:</strong> ${address || 'N/A'}</li>
+          <li><strong>Website:</strong> ${website || 'N/A'}</li>
+          <li><strong>Slug:</strong> ${slug}</li>
+          <li><strong>Menu:</strong> <a href="${menuUrl}">${menuUrl}</a></li>
+          <li><strong>Dashboard:</strong> <a href="${dashboardUrl}">${dashboardUrl}</a></li>
+        </ul>
+      </div>`
+    ).catch(e => console.error('Admin notification error:', e.message));
 
     return res.status(200).json({
       success: true,
       restaurant_slug: slug,
       display_name: restaurant_name.trim(),
+      email_verification_token: emailVerificationToken,
     });
 
   } catch (error) {

@@ -598,6 +598,53 @@
     }
     .btn-confirm-close:hover { background: var(--red-dark); }
 
+    /* CHANGE PASSWORD MODAL */
+    .change-pw-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 9990;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .change-pw-overlay.show { opacity: 1; visibility: visible; }
+    .change-pw-modal {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+      background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 420px;
+      z-index: 9991; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .change-pw-modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+    .change-pw-modal h2 { margin: 0 0 4px 0; font-size: 1.1em; color: var(--text); }
+    .change-pw-modal .pw-field { margin-bottom: 14px; }
+    .change-pw-modal .pw-field label { display: block; font-size: 0.85em; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .change-pw-modal .pw-field input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.95em; font-family: var(--font); outline: none; transition: border-color 0.2s;
+    }
+    .change-pw-modal .pw-field input:focus { border-color: var(--red); }
+    .change-pw-modal .pw-buttons { display: flex; gap: 10px; margin-top: 18px; }
+    .change-pw-modal .pw-buttons button {
+      flex: 1; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em;
+      cursor: pointer; font-family: var(--font); transition: all 0.2s;
+    }
+    .change-pw-modal .btn-pw-cancel {
+      background: var(--bg2); border: 1px solid var(--border); color: var(--muted);
+    }
+    .change-pw-modal .btn-pw-cancel:hover { background: var(--bg3); }
+    .change-pw-modal .btn-pw-save {
+      background: var(--red); border: none; color: white;
+    }
+    .change-pw-modal .btn-pw-save:hover { background: var(--red-dark); }
+    .change-pw-modal .btn-pw-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* TOAST */
+    .toast-notification {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: #166534; color: white; padding: 14px 28px; border-radius: 10px;
+      font-weight: 600; font-size: 0.9em; font-family: var(--font);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 10000;
+      opacity: 0; transition: all 0.3s ease;
+    }
+    .toast-notification.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
     /* HISTORIAL */
     .historial-filters {
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;
@@ -762,8 +809,8 @@
     <span class="icon">🔗</span> Ver QR
   </a>
   <div class="nav-section" style="margin-top:24px;">Configuración</div>
-  <button class="nav-item" id="navSettings" onclick="alert('Ajustes próximamente')">
-    <span class="icon">⚙️</span> Ajustes
+  <button class="nav-item" id="navChangePassword" onclick="openChangePwModal(false)">
+    <span class="icon">🔒</span> Cambiar contrasena
   </button>
   <div class="sidebar-bottom">
     <div class="store-toggle-bar" id="storeToggleBar">
@@ -932,6 +979,34 @@
     <button class="btn-confirm-close" onclick="confirmCloseDay()">✅ Confirmar cierre</button>
   </div>
 </div>
+
+<!-- Change Password Modal -->
+<div class="change-pw-overlay" id="changePwOverlay" onclick="dismissChangePwModal()"></div>
+<div class="change-pw-modal" id="changePwModal">
+  <button class="btn-modal-x" onclick="dismissChangePwModal()">✕</button>
+  <h2 id="changePwTitle">Cambia tu contrasena temporal</h2>
+  <p style="color:#64748B;font-size:0.88em;margin-bottom:18px;" id="changePwSubtitle">Crea una contrasena nueva para tu cuenta.</p>
+  <div id="changePwError" style="display:none;background:#FEF2F2;color:#991B1B;padding:10px;border-radius:8px;margin-bottom:14px;font-weight:600;font-size:0.88em;border:1px solid #FECACA;"></div>
+  <div class="pw-field" id="changePwCurrentField" style="display:none;">
+    <label>Contrasena actual</label>
+    <input type="password" id="changePwCurrent" placeholder="Tu contrasena actual">
+  </div>
+  <div class="pw-field">
+    <label>Nueva contrasena</label>
+    <input type="password" id="changePwNew" placeholder="Minimo 8 caracteres">
+  </div>
+  <div class="pw-field">
+    <label>Confirmar contrasena</label>
+    <input type="password" id="changePwConfirm" placeholder="Repite la contrasena">
+  </div>
+  <div class="pw-buttons">
+    <button class="btn-pw-cancel" id="changePwDismissBtn" onclick="dismissChangePwModal()">Recordarme despues</button>
+    <button class="btn-pw-save" id="changePwSaveBtn" onclick="submitPasswordChange()">Cambiar</button>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast-notification" id="toastNotification"></div>
 
 <!-- AI Assistant Chatbot -->
 <div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
@@ -2655,6 +2730,11 @@ async function handleLogin(e) {
       updateTopbarDate();
       document.getElementById('loginScreen').style.display = 'none';
       initializeDashboard();
+      // Show password change modal if forced
+      if (data.mustChangePassword) {
+        sessionStorage.setItem('mustChangePassword', 'true');
+        setTimeout(function() { openChangePwModal(true); }, 500);
+      }
     } else {
       loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
       loginError.style.display = 'block';
@@ -2970,10 +3050,126 @@ async function initializeDashboard() {
   dbg('✅ Dashboard listo');
 }
 
+// ══════════════════════════════════════════════════════════════
+// CHANGE PASSWORD MODAL
+// ══════════════════════════════════════════════════════════════
+
+var changePwForced = false;
+
+function openChangePwModal(forced) {
+  changePwForced = forced;
+  var title = document.getElementById('changePwTitle');
+  var subtitle = document.getElementById('changePwSubtitle');
+  var currentField = document.getElementById('changePwCurrentField');
+  var dismissBtn = document.getElementById('changePwDismissBtn');
+  var errorEl = document.getElementById('changePwError');
+
+  errorEl.style.display = 'none';
+  document.getElementById('changePwNew').value = '';
+  document.getElementById('changePwConfirm').value = '';
+  document.getElementById('changePwCurrent').value = '';
+
+  if (forced) {
+    title.textContent = 'Cambia tu contrasena temporal';
+    subtitle.textContent = 'Crea una contrasena nueva para tu cuenta.';
+    currentField.style.display = 'none';
+    dismissBtn.textContent = 'Recordarme despues';
+  } else {
+    title.textContent = 'Cambiar contrasena';
+    subtitle.textContent = 'Ingresa tu contrasena actual y la nueva.';
+    currentField.style.display = 'block';
+    dismissBtn.textContent = 'Cancelar';
+  }
+
+  document.getElementById('changePwOverlay').classList.add('show');
+  document.getElementById('changePwModal').classList.add('show');
+}
+
+function dismissChangePwModal() {
+  if (changePwForced) {
+    sessionStorage.removeItem('mustChangePassword');
+  }
+  document.getElementById('changePwOverlay').classList.remove('show');
+  document.getElementById('changePwModal').classList.remove('show');
+}
+
+async function submitPasswordChange() {
+  var newPw = document.getElementById('changePwNew').value;
+  var confirmPw = document.getElementById('changePwConfirm').value;
+  var currentPw = document.getElementById('changePwCurrent').value;
+  var errorEl = document.getElementById('changePwError');
+  var saveBtn = document.getElementById('changePwSaveBtn');
+
+  errorEl.style.display = 'none';
+
+  if (newPw.length < 8) {
+    errorEl.textContent = 'La contrasena debe tener al menos 8 caracteres';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (newPw !== confirmPw) {
+    errorEl.textContent = 'Las contrasenas no coinciden';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (!changePwForced && !currentPw) {
+    errorEl.textContent = 'Ingresa tu contrasena actual';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // Get username from session
+  var sessionStr = sessionStorage.getItem('dashboard_session_' + SLUG) || sessionStorage.getItem('dashboard_session');
+  var username = '';
+  try { username = JSON.parse(sessionStr).username; } catch (e) {}
+  if (!username) { username = SLUG; }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Guardando...';
+
+  try {
+    var body = { username: username, newPassword: newPw };
+    if (!changePwForced) { body.currentPassword = currentPw; }
+
+    var res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      sessionStorage.removeItem('mustChangePassword');
+      dismissChangePwModal();
+      showToast('Contrasena actualizada');
+    } else {
+      errorEl.textContent = data.error || 'Error al cambiar la contrasena';
+      errorEl.style.display = 'block';
+    }
+  } catch (e) {
+    errorEl.textContent = 'Error de conexion. Intenta de nuevo.';
+    errorEl.style.display = 'block';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Cambiar';
+  }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toastNotification');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (checkSession()) {
     document.getElementById('loginScreen').style.display = 'none';
     initializeDashboard();
+    // Check forced password change
+    if (sessionStorage.getItem('mustChangePassword') === 'true') {
+      setTimeout(function() { openChangePwModal(true); }, 500);
+    }
   }
 });
 </script>
