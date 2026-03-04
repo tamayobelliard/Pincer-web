@@ -571,7 +571,7 @@
       .signup-section { padding: 40px 16px; }
     }
   </style>
-  <script src="https://www.google.com/recaptcha/api.js?render=6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK" async defer></script>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
 
@@ -718,6 +718,11 @@
           <div class="form-group" id="deliveryFeeField" style="display:none;">
             <label for="delivery_fee">Costo de delivery (RD$)</label>
             <input type="number" id="delivery_fee" placeholder="0" min="0" step="1">
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px;">
+            <div class="g-recaptcha" data-sitekey="RECAPTCHA_V2_SITE_KEY"></div>
+            <div id="captchaError" style="display:none;color:#991B1B;font-size:0.82em;margin-top:6px;font-weight:600;">Por favor completa el captcha</div>
           </div>
 
           <button type="submit" class="btn-signup" id="signupBtn">Registrar negocio</button>
@@ -889,131 +894,6 @@
     reader.readAsDataURL(file);
   });
 
-  // ══════════════════════════════
-  // POST-CREATION MENU UPLOAD (calls /api/parse-menu like admin)
-  // ══════════════════════════════
-  window.triggerSignupMenuUpload = function() {
-    document.getElementById('signupMenuFileInput').click();
-  };
-
-  document.getElementById('signupMenuFileInput').addEventListener('change', function(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      alert('Formato no soportado. Usa JPG, PNG o WebP.');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('La imagen es muy grande. Maximo 10MB.');
-      return;
-    }
-    event.target.value = '';
-
-    // Resize if over 1MB
-    if (file.size > 1 * 1024 * 1024) {
-      var img = new Image();
-      img.onload = function() {
-        var MAX_W = 1200;
-        var w = img.width, h = img.height;
-        if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
-        var canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        uploadSignupMenuPhoto(canvas.toDataURL('image/jpeg', 0.8));
-      };
-      img.src = URL.createObjectURL(file);
-      return;
-    }
-
-    var reader = new FileReader();
-    reader.onload = function(e) { uploadSignupMenuPhoto(e.target.result); };
-    reader.readAsDataURL(file);
-  });
-
-  async function uploadSignupMenuPhoto(dataUri) {
-    if (!createdSlug) { alert('Error: restaurante no creado aun'); return; }
-
-    showSignupMenuLoading(true);
-
-    try {
-      var res = await fetch('/api/parse-menu', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-signup-slug': createdSlug,
-        },
-        body: JSON.stringify({
-          image: dataUri,
-          restaurant_slug: createdSlug,
-          start_order: accumulatedItems.length,
-        }),
-      });
-      var data = await res.json();
-
-      if (data.success) {
-        accumulatedItems = accumulatedItems.concat(data.items);
-        photoCount++;
-        showSignupMenuPreview(accumulatedItems, accumulatedItems.length, photoCount, !!data.menuStyle);
-      } else {
-        alert((data.error || 'Error al procesar la imagen') + (data.details ? '\nDetalle: ' + data.details : ''));
-        showSignupMenuLoading(false);
-      }
-    } catch (err) {
-      alert('Error de conexion al procesar menu');
-      showSignupMenuLoading(false);
-    }
-  }
-
-  function showSignupMenuLoading(show) {
-    var idle = document.getElementById('signupMenuIdle');
-    var loading = document.getElementById('signupMenuLoading');
-    if (idle) idle.style.display = show ? 'none' : '';
-    if (loading) loading.classList.toggle('active', show);
-    if (show) {
-      var preview = document.getElementById('signupMenuPreview');
-      if (preview) preview.style.display = 'none';
-    }
-  }
-
-  function showSignupMenuPreview(items, count, photos, styleSaved) {
-    showSignupMenuLoading(false);
-
-    var counterText = photos > 1
-      ? count + ' items extraidos de ' + photos + ' fotos'
-      : count + ' items extraidos';
-
-    var itemsHtml = '';
-    items.forEach(function(item) {
-      itemsHtml += '<div class="menu-preview-item"><div><span class="item-name">' + escapeHtml(item.name) + '</span>' +
-        (item.description ? '<br><span style="font-size:0.8em;color:#94a3b8;">' + escapeHtml(item.description) + '</span>' : '') +
-        '</div><div style="display:flex;gap:8px;align-items:center;"><span class="item-category">' + escapeHtml(item.category) +
-        '</span><span class="item-price">RD$' + item.price + '</span></div></div>';
-    });
-
-    var previewHtml = '<div class="menu-preview-header"><h4>' + counterText + '</h4>' +
-      (styleSaved ? '<span style="font-size:0.75em;color:#059669;">Estilo guardado</span>' : '') + '</div>' +
-      '<div class="menu-preview">' + itemsHtml + '</div>' +
-      '<div style="display:flex;gap:10px;margin-top:10px;">' +
-      '<button type="button" class="btn-upload-menu" style="flex:1;" onclick="triggerSignupMenuUpload()">Subir Otra Foto</button>' +
-      '<button type="button" style="flex:1;padding:10px;background:var(--primary);color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;" onclick="confirmSignupMenu()">Listo</button></div>';
-
-    var container = document.getElementById('signupMenuPreview');
-    container.innerHTML = previewHtml;
-    container.style.display = 'block';
-    document.getElementById('signupMenuIdle').style.display = 'none';
-  }
-
-  window.confirmSignupMenu = function() {
-    var count = accumulatedItems.length;
-    var container = document.getElementById('signupMenuPreview');
-    container.innerHTML = '<div class="menu-preview-header"><h4 style="color:#166534;">&#10003; ' + count + ' items guardados</h4>' +
-      '<span style="font-size:0.75em;color:#94a3b8;">' + photoCount + ' foto' + (photoCount > 1 ? 's' : '') + '</span></div>';
-    // Show action links now that menu is confirmed
-    document.getElementById('signupActionLinks').style.display = 'flex';
-  };
-
   // ── Delivery fee toggle ──
   document.getElementById('chkDelivery').addEventListener('change', function() {
     document.getElementById('deliveryFeeField').style.display = this.checked ? 'block' : 'none';
@@ -1135,17 +1015,22 @@
       notes: document.getElementById('notes').value.trim(),
     };
 
-    try {
-      // Get reCAPTCHA v3 token (use grecaptcha.ready to ensure API is loaded)
-      try {
-        body.recaptchaToken = await new Promise(function(resolve, reject) {
-          if (!window.grecaptcha) return resolve('');
-          grecaptcha.ready(function() {
-            grecaptcha.execute('6LeWy34sAAAAAA-xYkx_W-sqKPOmVLGbbxTbCDkK', { action: 'signup' }).then(resolve).catch(reject);
-          });
-        });
-      } catch (e) { console.warn('reCAPTCHA error:', e); }
+    // Validate reCAPTCHA v2 checkbox
+    var captchaError = document.getElementById('captchaError');
+    captchaError.style.display = 'none';
+    var recaptchaToken = '';
+    if (window.grecaptcha) {
+      recaptchaToken = grecaptcha.getResponse();
+    }
+    if (!recaptchaToken) {
+      captchaError.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Registrar negocio';
+      return;
+    }
+    body.recaptchaToken = recaptchaToken;
 
+    try {
       var res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
