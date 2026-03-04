@@ -645,6 +645,66 @@
     }
     .toast-notification.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+    /* SETTINGS */
+    .settings-section { padding: 0 0 40px; max-width: 600px; }
+    .settings-section h3 { font-size: 1.1em; color: var(--text); margin-bottom: 20px; }
+    .settings-field { margin-bottom: 16px; }
+    .settings-field label {
+      display: block; font-size: 0.85em; font-weight: 600; color: var(--text); margin-bottom: 4px;
+    }
+    .settings-field input, .settings-field select, .settings-field textarea {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: var(--font); font-size: 0.9em; background: var(--bg2); color: var(--text);
+      outline: none; transition: border-color 0.2s;
+    }
+    .settings-field input:focus, .settings-field select:focus, .settings-field textarea:focus {
+      border-color: var(--red);
+    }
+    .settings-field input[readonly] {
+      background: #F3F4F6; color: #9CA3AF; cursor: not-allowed;
+    }
+    .settings-field input[readonly]:focus { border-color: var(--border); }
+    .settings-field textarea { resize: vertical; min-height: 60px; }
+    .settings-field .field-hint {
+      font-size: 0.78em; color: var(--muted); margin-top: 2px;
+    }
+    .settings-row { display: flex; gap: 12px; }
+    .settings-row > .settings-field { flex: 1; }
+    @media (max-width: 500px) { .settings-row { flex-direction: column; gap: 0; } }
+    .settings-checkboxes {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px;
+    }
+    .settings-checkboxes label {
+      display: flex; align-items: center; gap: 5px; font-weight: 400; font-size: 0.9em;
+    }
+    .settings-logo-preview {
+      width: 80px; height: 80px; border-radius: 12px; object-fit: cover;
+      border: 2px solid var(--border); margin-bottom: 8px;
+    }
+    .settings-upload-area {
+      padding: 24px 16px; border: 2px dashed var(--border); border-radius: 12px;
+      text-align: center; background: var(--bg); cursor: pointer; transition: all 0.2s;
+    }
+    .settings-upload-area:hover { border-color: var(--red); background: #fff0f0; }
+    .settings-upload-loading { display: none; padding: 16px; text-align: center; color: var(--muted); }
+    .settings-upload-loading.active { display: block; }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--red);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-settings-save {
+      width: 100%; padding: 14px; background: var(--red); color: white; border: none;
+      border-radius: 10px; font-size: 1em; font-weight: 700; cursor: pointer;
+      font-family: var(--font); transition: all 0.2s; margin-top: 8px;
+    }
+    .btn-settings-save:hover { background: var(--red-dark); }
+    .btn-settings-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .settings-divider {
+      border: none; border-top: 1px solid var(--border); margin: 24px 0;
+    }
+
     /* HISTORIAL */
     .historial-filters {
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;
@@ -809,6 +869,9 @@
     <span class="icon">🔗</span> Ver QR
   </a>
   <div class="nav-section" style="margin-top:24px;">Configuración</div>
+  <button class="nav-item" id="navSettings" onclick="showSettings()">
+    <span class="icon">⚙️</span> Ajustes
+  </button>
   <button class="nav-item" id="navChangePassword" onclick="openChangePwModal(false)">
     <span class="icon">🔒</span> Cambiar contrasena
   </button>
@@ -878,6 +941,134 @@
         <button class="btn-historial-close" onclick="hideHistorial()">✕ Cerrar</button>
       </div>
       <div id="historialContent"></div>
+    </div>
+
+    <!-- Settings Section -->
+    <div id="settingsSection" style="display:none;">
+      <div class="section-header">⚙️ Ajustes del Negocio
+        <button class="btn-historial-close" onclick="hideSettings()" style="float:right;">✕ Cerrar</button>
+      </div>
+      <div class="settings-section">
+        <div id="settingsError" style="display:none;background:#FEF2F2;color:#991B1B;padding:10px;border-radius:8px;margin-bottom:16px;font-weight:600;font-size:0.88em;border:1px solid #FECACA;"></div>
+
+        <div class="settings-field">
+          <label>🔒 Nombre del negocio</label>
+          <input type="text" id="sName" readonly>
+        </div>
+        <div class="settings-field">
+          <label>🔒 Email</label>
+          <input type="text" id="sEmail" readonly>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-field">
+          <label>Logo</label>
+          <div id="sLogoPreviewWrap" style="display:none;margin-bottom:8px;">
+            <img id="sLogoPreview" class="settings-logo-preview" src="" alt="Logo">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" onclick="document.getElementById('sLogoFile').click()" style="background:var(--bg2);border:1.5px solid var(--border);padding:8px 16px;border-radius:8px;font-weight:600;font-size:0.85em;cursor:pointer;font-family:var(--font);">📷 Cambiar logo</button>
+            <span id="sLogoStatus" style="font-size:0.8em;color:var(--muted);"></span>
+            <input type="file" id="sLogoFile" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleSettingsLogoFile(this)">
+          </div>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-row">
+          <div class="settings-field">
+            <label>Tipo de negocio</label>
+            <select id="sType">
+              <option value="">Seleccionar...</option>
+              <option value="food_truck">Food Truck</option>
+              <option value="restaurant">Restaurante</option>
+              <option value="food_park">Food Park</option>
+              <option value="cafeteria">Cafeteria</option>
+              <option value="bar">Bar</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="settings-field">
+            <label>Telefono</label>
+            <input type="text" id="sPhone" placeholder="809-000-0000">
+          </div>
+        </div>
+
+        <div class="settings-field">
+          <label>Direccion</label>
+          <input type="text" id="sAddress" placeholder="Calle, ciudad">
+        </div>
+
+        <div class="settings-field">
+          <label>Persona de contacto</label>
+          <input type="text" id="sContact" placeholder="Nombre del propietario">
+        </div>
+
+        <div class="settings-field">
+          <label>Horario</label>
+          <textarea id="sHours" placeholder="Ej: Lun-Vie 11am-9pm, Sab 12pm-10pm"></textarea>
+          <div class="field-hint">Escribe tu horario como texto libre</div>
+        </div>
+
+        <div class="settings-field">
+          <label>Website / Instagram</label>
+          <input type="text" id="sWebsite" placeholder="https://... o @tu_instagram">
+        </div>
+
+        <div class="settings-field">
+          <label>Notas</label>
+          <textarea id="sNotes" placeholder="Notas internas, instrucciones especiales..."></textarea>
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-field">
+          <label>Personalidad del chatbot</label>
+          <select id="sPersonality">
+            <option value="casual">Casual y amigable (neutro)</option>
+            <option value="dominicano">Dominicano autentico</option>
+            <option value="habibi">Arabe caribeno (habibi)</option>
+            <option value="formal">Profesional y formal</option>
+            <option value="playful">Divertido y jugueton</option>
+          </select>
+        </div>
+
+        <div class="settings-field">
+          <label>Tipos de orden habilitados</label>
+          <div class="settings-checkboxes">
+            <label><input type="checkbox" id="sChkDineIn" value="dine_in"> Comer aqui</label>
+            <label><input type="checkbox" id="sChkTakeOut" value="take_out"> Para Llevar</label>
+            <label><input type="checkbox" id="sChkDelivery" value="delivery" onchange="document.getElementById('sDeliveryFeeWrap').style.display=this.checked?'block':'none'"> Delivery</label>
+          </div>
+        </div>
+
+        <div class="settings-field" id="sDeliveryFeeWrap" style="display:none;">
+          <label>Costo de delivery (RD$)</label>
+          <input type="number" id="sDeliveryFee" placeholder="0" min="0" step="1">
+        </div>
+
+        <hr class="settings-divider">
+
+        <div class="settings-field">
+          <label>Subir menu (foto)</label>
+          <div class="settings-upload-area" id="sMenuUploadArea" onclick="document.getElementById('sMenuFile').click()">
+            <div style="font-size:2em;margin-bottom:6px;">📁</div>
+            <p style="font-weight:600;color:var(--text);margin:0 0 2px;font-size:0.9em;">Arrastra tu menu aqui</p>
+            <p style="font-size:0.8em;color:var(--muted);margin:0;">o haz click para seleccionar (JPG, PNG, WebP)</p>
+            <input type="file" id="sMenuFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="handleSettingsMenuUpload(this)">
+          </div>
+          <div class="settings-upload-loading" id="sMenuLoading">
+            <div class="spinner"></div>
+            <p style="margin-top:8px;font-weight:600;">Extrayendo productos...</p>
+          </div>
+          <div id="sMenuResult" style="display:none;margin-top:10px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;padding:12px;text-align:center;">
+            <p style="color:#166534;font-weight:600;margin:0;font-size:0.9em;" id="sMenuResultText"></p>
+          </div>
+        </div>
+
+        <button class="btn-settings-save" id="settingsSaveBtn" onclick="saveSettings()">Guardar cambios</button>
+      </div>
     </div>
 
     <div class="products-panel" id="productsPanel">
@@ -3049,6 +3240,279 @@ async function initializeDashboard() {
 
   dbg('✅ Dashboard listo');
 }
+
+// ══════════════════════════════════════════════════════════════
+// SETTINGS SECTION
+// ══════════════════════════════════════════════════════════════
+
+var settingsLogoFile = null;
+var settingsLoaded = false;
+
+function showSettings() {
+  document.getElementById('historialSection').style.display = 'none';
+  var section = document.getElementById('settingsSection');
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth' });
+  if (!settingsLoaded) loadSettings();
+  // Close mobile sidebar
+  if (window.innerWidth <= 768) toggleMobileMenu();
+}
+
+function hideSettings() {
+  document.getElementById('settingsSection').style.display = 'none';
+}
+
+async function loadSettings() {
+  try {
+    var res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,email,business_type,address,phone,contact_name,hours,website,notes,chatbot_personality,order_types,delivery_fee,logo_url&limit=1',
+      { headers: sbGetHeaders() }, 10000
+    );
+    if (!res.ok) return;
+    var rows = await res.json();
+    if (rows.length === 0) return;
+    var r = rows[0];
+
+    document.getElementById('sName').value = r.display_name || '';
+    document.getElementById('sEmail').value = r.email || '';
+    document.getElementById('sType').value = r.business_type || '';
+    document.getElementById('sPhone').value = r.phone || '';
+    document.getElementById('sAddress').value = r.address || '';
+    document.getElementById('sContact').value = r.contact_name || '';
+    document.getElementById('sHours').value = r.hours || '';
+    document.getElementById('sWebsite').value = r.website || '';
+    document.getElementById('sNotes').value = r.notes || '';
+    document.getElementById('sPersonality').value = r.chatbot_personality || 'casual';
+    document.getElementById('sDeliveryFee').value = r.delivery_fee || 0;
+
+    var types = r.order_types || ['dine_in'];
+    document.getElementById('sChkDineIn').checked = types.includes('dine_in');
+    document.getElementById('sChkTakeOut').checked = types.includes('take_out');
+    document.getElementById('sChkDelivery').checked = types.includes('delivery');
+    document.getElementById('sDeliveryFeeWrap').style.display = types.includes('delivery') ? 'block' : 'none';
+
+    if (r.logo_url) {
+      document.getElementById('sLogoPreview').src = r.logo_url;
+      document.getElementById('sLogoPreviewWrap').style.display = 'block';
+    }
+
+    settingsLoaded = true;
+  } catch (e) {
+    dbg('Settings load error: ' + e.message);
+  }
+}
+
+function handleSettingsLogoFile(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    document.getElementById('sLogoStatus').textContent = 'Solo JPG, PNG o WebP';
+    return;
+  }
+  settingsLogoFile = file;
+  document.getElementById('sLogoStatus').textContent = file.name;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('sLogoPreview').src = e.target.result;
+    document.getElementById('sLogoPreviewWrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function compressSettingsLogo(file, maxWidth) {
+  maxWidth = maxWidth || 400;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', 0.8);
+    };
+    img.onerror = function() { reject(new Error('Error al leer imagen')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function uploadSettingsLogo() {
+  if (!settingsLogoFile) return null;
+  try {
+    var blob = await compressSettingsLogo(settingsLogoFile, 400);
+    var path = 'logos/' + SLUG + '.jpg';
+    var res = await fetch(SUPABASE_URL + '/storage/v1/object/product-images/' + path, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'image/jpeg',
+        'x-upsert': 'true',
+      },
+      body: blob,
+    });
+    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    settingsLogoFile = null;
+    document.getElementById('sLogoStatus').textContent = '';
+    return SUPABASE_URL + '/storage/v1/object/public/product-images/' + path + '?t=' + Date.now();
+  } catch (e) {
+    console.error('Settings logo upload error:', e);
+    return null;
+  }
+}
+
+async function saveSettings() {
+  var btn = document.getElementById('settingsSaveBtn');
+  var errorEl = document.getElementById('settingsError');
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    // Upload logo first if changed
+    var logoUrl = await uploadSettingsLogo();
+
+    var orderTypes = [];
+    if (document.getElementById('sChkDineIn').checked) orderTypes.push('dine_in');
+    if (document.getElementById('sChkTakeOut').checked) orderTypes.push('take_out');
+    if (document.getElementById('sChkDelivery').checked) orderTypes.push('delivery');
+    if (orderTypes.length === 0) orderTypes.push('dine_in');
+
+    var body = {
+      restaurant_slug: SLUG,
+      business_type: document.getElementById('sType').value || null,
+      address: document.getElementById('sAddress').value.trim() || null,
+      phone: document.getElementById('sPhone').value.trim() || null,
+      contact_name: document.getElementById('sContact').value.trim() || null,
+      hours: document.getElementById('sHours').value.trim() || null,
+      website: document.getElementById('sWebsite').value.trim() || null,
+      notes: document.getElementById('sNotes').value.trim() || null,
+      chatbot_personality: document.getElementById('sPersonality').value || 'casual',
+      order_types: orderTypes,
+      delivery_fee: parseInt(document.getElementById('sDeliveryFee').value) || 0,
+    };
+
+    if (logoUrl) body.logo_url = logoUrl;
+
+    var res = await fetch('/api/update-settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      showToast('Cambios guardados');
+    } else {
+      errorEl.textContent = data.error || 'Error al guardar';
+      errorEl.style.display = 'block';
+    }
+  } catch (e) {
+    errorEl.textContent = 'Error de conexion. Intenta de nuevo.';
+    errorEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar cambios';
+  }
+}
+
+// Menu upload in settings (reuses PATCH /api/signup)
+function compressSettingsImage(file, maxWidth) {
+  maxWidth = maxWidth || 1200;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = function() { reject(new Error('Error al leer imagen')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function handleSettingsMenuUpload(input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+
+  var area = document.getElementById('sMenuUploadArea');
+  var loading = document.getElementById('sMenuLoading');
+  var result = document.getElementById('sMenuResult');
+
+  area.style.display = 'none';
+  loading.classList.add('active');
+  result.style.display = 'none';
+
+  try {
+    var menuFiles = [];
+    for (var i = 0; i < files.length; i++) {
+      var dataUri = await compressSettingsImage(files[i], 1200);
+      menuFiles.push({ url: dataUri, type: 'image' });
+    }
+
+    var res = await fetch('/api/signup', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurant_slug: SLUG, menu_files: menuFiles }),
+    });
+
+    loading.classList.remove('active');
+
+    if (res.ok) {
+      result.style.display = 'block';
+      document.getElementById('sMenuResultText').textContent = 'Productos extraidos exitosamente';
+      result.style.background = '#F0FDF4';
+      result.style.borderColor = '#BBF7D0';
+      showToast('Menu procesado');
+      // Reload products panel
+      if (typeof loadProducts === 'function') loadProducts();
+    } else {
+      result.style.display = 'block';
+      document.getElementById('sMenuResultText').textContent = 'Error al procesar el menu';
+      result.style.background = '#FEF2F2';
+      result.style.borderColor = '#FECACA';
+    }
+    area.style.display = 'block';
+  } catch (e) {
+    console.error('Settings menu upload error:', e);
+    loading.classList.remove('active');
+    area.style.display = 'block';
+  }
+  // Reset file input
+  input.value = '';
+}
+
+// Drag and drop for settings menu upload
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var area = document.getElementById('sMenuUploadArea');
+    if (!area) return;
+    ['dragenter', 'dragover'].forEach(function(evt) {
+      area.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        area.style.borderColor = '#E8191A';
+        area.style.background = '#fff0f0';
+      });
+    });
+    ['dragleave', 'drop'].forEach(function(evt) {
+      area.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        area.style.borderColor = '';
+        area.style.background = '';
+      });
+    });
+    area.addEventListener('drop', function(e) {
+      var dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        document.getElementById('sMenuFile').files = dt.files;
+        handleSettingsMenuUpload(document.getElementById('sMenuFile'));
+      }
+    });
+  });
+})();
 
 // ══════════════════════════════════════════════════════════════
 // CHANGE PASSWORD MODAL
