@@ -1051,16 +1051,16 @@
         <hr class="settings-divider">
 
         <div class="settings-field">
-          <label>Subir menu (foto)</label>
+          <label>Subir menu (foto o PDF)</label>
           <div class="settings-upload-area" id="sMenuUploadArea" onclick="document.getElementById('sMenuFile').click()">
             <div style="font-size:2em;margin-bottom:6px;">📁</div>
             <p style="font-weight:600;color:var(--text);margin:0 0 2px;font-size:0.9em;">Arrastra tu menu aqui</p>
-            <p style="font-size:0.8em;color:var(--muted);margin:0;">o haz click para seleccionar (JPG, PNG, WebP)</p>
-            <input type="file" id="sMenuFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="handleSettingsMenuUpload(this)">
+            <p style="font-size:0.8em;color:var(--muted);margin:0;">o haz click para seleccionar (JPG, PNG, WebP, PDF)</p>
+            <input type="file" id="sMenuFile" accept="image/jpeg,image/png,image/webp,application/pdf" multiple style="display:none;" onchange="handleSettingsMenuUpload(this)">
           </div>
           <div class="settings-upload-loading" id="sMenuLoading">
             <div class="spinner"></div>
-            <p style="margin-top:8px;font-weight:600;">Extrayendo productos...</p>
+            <p style="margin-top:8px;font-weight:600;">Extrayendo productos con IA...</p>
           </div>
           <div id="sMenuResult" style="display:none;margin-top:10px;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;padding:12px;text-align:center;">
             <p style="color:#166534;font-weight:600;margin:0;font-size:0.9em;" id="sMenuResultText"></p>
@@ -3266,12 +3266,13 @@ async function loadSettings() {
   try {
     var res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,email,business_type,address,phone,contact_name,hours,website,notes,chatbot_personality,order_types,delivery_fee,logo_url&limit=1',
-      { headers: sbGetHeaders() }, 10000
+      { headers: { ...sbGetHeaders(), 'Cache-Control': 'no-cache' } }, 10000
     );
-    if (!res.ok) return;
+    if (!res.ok) { console.error('[loadSettings] fetch error:', res.status); return; }
     var rows = await res.json();
-    if (rows.length === 0) return;
+    if (rows.length === 0) { console.warn('[loadSettings] no rows found for slug:', SLUG); return; }
     var r = rows[0];
+    console.log('[loadSettings] loaded data:', JSON.stringify(r));
 
     document.getElementById('sName').value = r.display_name || '';
     document.getElementById('sEmail').value = r.email || '';
@@ -3329,34 +3330,23 @@ function compressSettingsLogo(file, maxWidth) {
       var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(function(blob) { resolve(blob); }, 'image/jpeg', 0.8);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
     img.onerror = function() { reject(new Error('Error al leer imagen')); };
     img.src = URL.createObjectURL(file);
   });
 }
 
-async function uploadSettingsLogo() {
+async function getSettingsLogoBase64() {
   if (!settingsLogoFile) return null;
   try {
-    var blob = await compressSettingsLogo(settingsLogoFile, 400);
-    var path = 'logos/' + SLUG + '.jpg';
-    var res = await fetch(SUPABASE_URL + '/storage/v1/object/product-images/' + path, {
-      method: 'PUT',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-        'Content-Type': 'image/jpeg',
-        'x-upsert': 'true',
-      },
-      body: blob,
-    });
-    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    var base64 = await compressSettingsLogo(settingsLogoFile, 400);
+    console.log('[settings] logo base64 length:', base64.length);
     settingsLogoFile = null;
     document.getElementById('sLogoStatus').textContent = '';
-    return SUPABASE_URL + '/storage/v1/object/public/product-images/' + path + '?t=' + Date.now();
+    return base64;
   } catch (e) {
-    console.error('Settings logo upload error:', e);
+    console.error('Settings logo compress error:', e);
     return null;
   }
 }
@@ -3369,8 +3359,8 @@ async function saveSettings() {
   btn.textContent = 'Guardando...';
 
   try {
-    // Upload logo first if changed
-    var logoUrl = await uploadSettingsLogo();
+    // Compress logo to base64 if changed (server will upload to Storage)
+    var logoBase64 = await getSettingsLogoBase64();
 
     var orderTypes = [];
     if (document.getElementById('sChkDineIn').checked) orderTypes.push('dine_in');
@@ -3392,22 +3382,33 @@ async function saveSettings() {
       delivery_fee: parseInt(document.getElementById('sDeliveryFee').value) || 0,
     };
 
-    if (logoUrl) body.logo_url = logoUrl;
+    if (logoBase64) body.logo_base64 = logoBase64;
+
+    console.log('[saveSettings] SLUG:', SLUG);
+    console.log('[saveSettings] logo in payload:', !!body.logo_base64);
+    console.log('[saveSettings] payload keys:', Object.keys(body).join(', '));
 
     var res = await fetch('/api/update-settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+
+    console.log('[saveSettings] response status:', res.status);
     var data = await res.json();
+    console.log('[saveSettings] response body:', JSON.stringify(data));
 
     if (data.success) {
       showToast('Cambios guardados');
+      // Reload settings from DB to verify persistence
+      settingsLoaded = false;
+      loadSettings();
     } else {
       errorEl.textContent = data.error || 'Error al guardar';
       errorEl.style.display = 'block';
     }
   } catch (e) {
+    console.error('[saveSettings] error:', e);
     errorEl.textContent = 'Error de conexion. Intenta de nuevo.';
     errorEl.style.display = 'block';
   } finally {
@@ -3434,6 +3435,15 @@ function compressSettingsImage(file, maxWidth) {
   });
 }
 
+function readFileAsDataUri(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result); };
+    reader.onerror = function() { reject(new Error('Error al leer archivo')); };
+    reader.readAsDataURL(file);
+  });
+}
+
 async function handleSettingsMenuUpload(input) {
   var files = input.files;
   if (!files || files.length === 0) return;
@@ -3449,8 +3459,17 @@ async function handleSettingsMenuUpload(input) {
   try {
     var menuFiles = [];
     for (var i = 0; i < files.length; i++) {
-      var dataUri = await compressSettingsImage(files[i], 1200);
-      menuFiles.push({ url: dataUri, type: 'image' });
+      var file = files[i];
+      if (file.type === 'application/pdf') {
+        // PDF: read as base64 data URI without compression
+        var pdfDataUri = await readFileAsDataUri(file);
+        menuFiles.push({ url: pdfDataUri, type: 'pdf' });
+        console.log('[settings] PDF file added, size:', pdfDataUri.length);
+      } else {
+        // Image: compress via canvas
+        var dataUri = await compressSettingsImage(file, 1200);
+        menuFiles.push({ url: dataUri, type: 'image' });
+      }
     }
 
     var res = await fetch('/api/signup', {

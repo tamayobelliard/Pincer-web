@@ -1,5 +1,7 @@
 import { rateLimit } from './rate-limit.js';
 
+export const config = { maxDuration: 30 };
+
 export default async function handler(req, res) {
   const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
@@ -13,7 +15,10 @@ export default async function handler(req, res) {
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'settings' })) return;
 
   const body = req.body || {};
-  const { restaurant_slug } = body;
+  const { restaurant_slug, logo_base64 } = body;
+
+  console.log('update-settings: received body keys:', Object.keys(body).join(', '));
+  console.log('update-settings: restaurant_slug:', restaurant_slug, '| logo_base64:', !!logo_base64);
 
   if (!restaurant_slug) {
     return res.status(400).json({ success: false, error: 'restaurant_slug requerido' });
@@ -51,6 +56,44 @@ export default async function handler(req, res) {
 
     const restaurantId = rows[0].id;
 
+    // Upload logo to Supabase Storage if base64 provided
+    if (logo_base64) {
+      try {
+        const match = logo_base64.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (!match) {
+          console.error('update-settings: invalid logo_base64 format');
+          return res.status(400).json({ success: false, error: 'Formato de logo invalido' });
+        }
+        const contentType = match[1];
+        const buffer = Buffer.from(match[2], 'base64');
+        const storagePath = `logos/${restaurant_slug}.jpg`;
+
+        console.log('update-settings: uploading logo to Storage, size:', buffer.length);
+        const uploadRes = await fetch(
+          `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': contentType,
+              'x-upsert': 'true',
+            },
+            body: buffer,
+          }
+        );
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          console.error('update-settings: Storage upload failed:', uploadRes.status, errText);
+        } else {
+          body.logo_url = `${supabaseUrl}/storage/v1/object/public/product-images/${storagePath}?t=${Date.now()}`;
+          console.log('update-settings: logo uploaded, URL:', body.logo_url);
+        }
+      } catch (e) {
+        console.error('update-settings: logo upload error:', e.message);
+      }
+    }
+
     // Whitelist of allowed fields
     const ALLOWED = [
       'business_type', 'address', 'phone', 'contact_name',
@@ -65,6 +108,8 @@ export default async function handler(req, res) {
       }
     }
 
+    console.log('update-settings: fields to update:', JSON.stringify(update));
+
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ success: false, error: 'No hay campos para actualizar' });
     }
@@ -78,13 +123,15 @@ export default async function handler(req, res) {
       }
     );
 
+    console.log('update-settings: Supabase PATCH status:', patchRes.status);
+
     if (!patchRes.ok) {
       const errText = await patchRes.text();
       console.error('update-settings: patch error', patchRes.status, errText);
       return res.status(500).json({ success: false, error: 'Error al guardar los cambios' });
     }
 
-    console.log('update-settings: updated', restaurant_slug, Object.keys(update).join(', '));
+    console.log('update-settings: SUCCESS for', restaurant_slug, '- fields:', Object.keys(update).join(', '));
     return res.status(200).json({ success: true });
 
   } catch (error) {

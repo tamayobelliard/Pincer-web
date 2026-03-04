@@ -39,7 +39,7 @@ function callClaude(apiKey, imageContent, textPrompt, maxTokens) {
   });
 }
 
-// Extract menu products + style from uploaded images using Claude Vision
+// Extract menu products + style from uploaded images/PDFs using Claude Vision
 async function extractMenuFromImages(restaurant_slug, menu_files) {
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,48 +49,67 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
     return;
   }
 
-  const imageFiles = menu_files.filter(f => f.type === 'image');
-  if (imageFiles.length === 0) return;
+  const supportedFiles = menu_files.filter(f => f.type === 'image' || f.type === 'pdf');
+  if (supportedFiles.length === 0) return;
 
-  console.log(`extractMenu: processing ${imageFiles.length} image(s) for ${restaurant_slug}`);
+  console.log(`extractMenu: processing ${supportedFiles.length} file(s) for ${restaurant_slug} (images: ${supportedFiles.filter(f=>f.type==='image').length}, PDFs: ${supportedFiles.filter(f=>f.type==='pdf').length})`);
 
   let allItems = [];
   let menuStyle = null;
 
-  for (const file of imageFiles) {
+  for (const file of supportedFiles) {
     try {
-      let base64, contentType;
+      let claudeContent; // The content block to send to Claude (image or document)
 
-      // Handle data URIs directly (from signup menu upload)
-      if (file.url && file.url.startsWith('data:')) {
-        const match = file.url.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (!match) { console.error('extractMenu: invalid data URI'); continue; }
-        contentType = match[1];
-        base64 = match[2];
-        console.log('extractMenu: parsed data URI, base64 length:', base64.length);
+      if (file.type === 'pdf') {
+        // Handle PDF files
+        let base64;
+        if (file.url && file.url.startsWith('data:')) {
+          const match = file.url.match(/^data:application\/pdf;base64,(.+)$/);
+          if (!match) { console.error('extractMenu: invalid PDF data URI'); continue; }
+          base64 = match[1];
+          console.log('extractMenu: parsed PDF data URI, base64 length:', base64.length);
+        } else {
+          console.log('extractMenu: fetching PDF:', file.url);
+          const pdfRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
+          if (!pdfRes.ok) { console.error('extractMenu: failed to fetch PDF', file.url, 'status:', pdfRes.status); continue; }
+          const pdfBuffer = await pdfRes.arrayBuffer();
+          base64 = Buffer.from(pdfBuffer).toString('base64');
+          console.log('extractMenu: PDF fetched, base64 length:', base64.length);
+        }
+        claudeContent = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } };
       } else {
-        console.log('extractMenu: fetching image:', file.url);
-        const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
-        if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url, 'status:', imgRes.status); continue; }
-        const imgBuffer = await imgRes.arrayBuffer();
-        base64 = Buffer.from(imgBuffer).toString('base64');
-        contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-        console.log('extractMenu: image fetched, base64 length:', base64.length);
+        // Handle image files
+        let base64, contentType;
+        if (file.url && file.url.startsWith('data:')) {
+          const match = file.url.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (!match) { console.error('extractMenu: invalid image data URI'); continue; }
+          contentType = match[1];
+          base64 = match[2];
+          console.log('extractMenu: parsed image data URI, base64 length:', base64.length);
+        } else {
+          console.log('extractMenu: fetching image:', file.url);
+          const imgRes = await fetch(file.url, { signal: AbortSignal.timeout(15000) });
+          if (!imgRes.ok) { console.error('extractMenu: failed to fetch image', file.url, 'status:', imgRes.status); continue; }
+          const imgBuffer = await imgRes.arrayBuffer();
+          base64 = Buffer.from(imgBuffer).toString('base64');
+          contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+          console.log('extractMenu: image fetched, base64 length:', base64.length);
+        }
+        claudeContent = { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } };
       }
 
-      const imageContent = { type: 'image', source: { type: 'base64', media_type: contentType, data: base64 } };
-
-      // Items extraction + theme picking in parallel (theme only for first image)
+      // Items extraction + theme picking in parallel (theme only for first image, skip for PDFs)
       const requests = [
-        callClaude(anthropicKey, imageContent,
-          'Extract all menu items from this image. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.',
+        callClaude(anthropicKey, claudeContent,
+          'Extract all menu items from this ' + (file.type === 'pdf' ? 'PDF document' : 'image') + '. Return ONLY a JSON array with no extra text. Format: [{"name": "Item Name", "price": 350, "category": "Section Name", "description": "Brief description"}]. Price must be an integer in DOP (Dominican Pesos). If no price visible, use 0.',
           2000,
         ),
       ];
 
-      if (!menuStyle) {
+      if (!menuStyle && file.type === 'image') {
         requests.push(
-          callClaude(anthropicKey, imageContent,
+          callClaude(anthropicKey, claudeContent,
             'Look at the dominant colors in this restaurant menu image. Choose the BEST matching theme from this list:\n- rojo-clasico (red/dark, bold restaurant)\n- negro-elegante (black/dark, upscale)\n- cafe-moderno (warm browns, coffee/bakery)\n- verde-fresco (greens, healthy/fresh)\n- azul-profesional (blues, professional/corporate)\nReturn ONLY the theme name, nothing else.',
             100,
           ),
@@ -110,10 +129,10 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
       const items = JSON.parse(jsonMatch[0]);
       if (Array.isArray(items)) {
         allItems.push(...items);
-        console.log(`extractMenu: extracted ${items.length} items from image`);
+        console.log(`extractMenu: extracted ${items.length} items from ${file.type}`);
       }
 
-      // Parse theme response (only for first image)
+      // Parse theme response (only for images)
       if (results[1] && !menuStyle) {
         try {
           if (results[1].ok) {
@@ -137,7 +156,7 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
         }
       }
     } catch (e) {
-      console.error('extractMenu: error processing image:', e.message);
+      console.error('extractMenu: error processing file:', e.message);
     }
   }
 
@@ -293,8 +312,8 @@ export default async function handler(req, res) {
       }
       console.log('PATCH: successfully updated', restaurant_slug, '| fields:', Object.keys(updates).join(', '));
 
-      // Extract menu products + style from uploaded images
-      if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image')) {
+      // Extract menu products + style from uploaded images/PDFs
+      if (Array.isArray(menu_files) && menu_files.some(f => f.type === 'image' || f.type === 'pdf')) {
         try {
           await extractMenuFromImages(restaurant_slug, menu_files);
         } catch (e) {
