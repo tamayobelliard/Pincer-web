@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #DC2626;
-      --primary-dark: #991B1B;
+      --primary: #E8191A;
+      --primary-dark: #C41415;
       --text-main: #0F172A;
       --text-secondary: #64748B;
       --border: #E2E8F0;
@@ -21,7 +21,7 @@
 
     body {
       min-height: 100vh;
-      background: #F9FAFB;
+      background: #FFFFFF;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -42,14 +42,14 @@
       margin-bottom: 40px;
       text-decoration: none;
     }
-    .logo img { height: 36px; }
-    .logo span { font-size: 1.5em; font-weight: 800; color: var(--text-main); }
+    .logo img { height: 40px; }
+    .logo span { font-size: 1.6em; font-weight: 800; color: var(--text-main); }
 
     .card {
-      background: white;
-      border-radius: 16px;
+      background: #FFFFFF;
+      border-radius: 12px;
       padding: 36px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
       border: 1px solid var(--border);
     }
 
@@ -60,7 +60,7 @@
       margin-bottom: 6px;
     }
 
-    .card p {
+    .card .subtitle {
       color: var(--text-secondary);
       font-size: 0.9em;
       margin-bottom: 28px;
@@ -75,7 +75,7 @@
       margin-bottom: 20px;
       text-align: center;
       font-weight: 600;
-      font-size: 0.9em;
+      font-size: 0.88em;
       border: 1px solid #FECACA;
     }
 
@@ -88,11 +88,15 @@
       margin-bottom: 20px;
       text-align: center;
       font-weight: 600;
-      font-size: 0.9em;
+      font-size: 0.88em;
       border: 1px solid #BBF7D0;
     }
 
-    label {
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
       display: block;
       color: var(--text-main);
       font-weight: 600;
@@ -100,18 +104,23 @@
       margin-bottom: 6px;
     }
 
-    input {
+    .form-group input {
       width: 100%;
       padding: 12px 14px;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 0.95em;
-      margin-bottom: 18px;
       transition: border-color 0.2s;
       outline: none;
       font-family: inherit;
+      background: #F9FAFB;
+      color: var(--text-main);
     }
-    input:focus { border-color: var(--primary); }
+    .form-group input:focus {
+      border-color: var(--primary);
+      background: #FFFFFF;
+    }
+    .form-group input::placeholder { color: #CBD5E1; }
 
     .btn-login {
       width: 100%;
@@ -124,19 +133,25 @@
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
+      font-family: inherit;
+      margin-top: 4px;
     }
     .btn-login:hover { background: var(--primary-dark); }
     .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .back-link {
+    .signup-link {
       display: block;
       text-align: center;
       margin-top: 24px;
       color: var(--text-secondary);
-      font-size: 0.85em;
+      font-size: 0.88em;
+    }
+    .signup-link a {
+      color: var(--primary);
+      font-weight: 600;
       text-decoration: none;
     }
-    .back-link:hover { color: var(--text-main); }
+    .signup-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -148,25 +163,29 @@
   </a>
 
   <div class="card">
-    <h1>Iniciar sesión</h1>
-    <p>Accede al dashboard de tu restaurante.</p>
+    <h1>Iniciar sesion</h1>
+    <p class="subtitle">Accede al dashboard de tu restaurante.</p>
 
     <div class="success-box" id="loginSuccess"></div>
 
     <div class="error-box" id="loginError"></div>
 
     <form id="loginForm">
-      <label for="username">Usuario</label>
-      <input type="text" id="username" required placeholder="tu usuario">
+      <div class="form-group">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" required placeholder="tu usuario">
+      </div>
 
-      <label for="password">Contraseña</label>
-      <input type="password" id="password" required placeholder="••••••••">
+      <div class="form-group">
+        <label for="password">Contrasena</label>
+        <input type="password" id="password" required placeholder="••••••••">
+      </div>
 
-      <button type="submit" class="btn-login" id="loginBtn">Iniciar Sesión</button>
+      <button type="submit" class="btn-login" id="loginBtn">Iniciar sesion</button>
     </form>
   </div>
 
-  <a class="back-link" href="/">← Volver a Pincer</a>
+  <p class="signup-link">No tienes cuenta? <a href="/signup">Registrate</a></p>
 </div>
 
 <script>
@@ -216,7 +235,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         window.location.href = '/' + data.restaurant_slug + '/dashboard';
       }
     } else {
-      loginError.textContent = data.error || 'Usuario o contraseña incorrectos';
+      loginError.textContent = data.error || 'Usuario o contrasena incorrectos';
       loginError.style.display = 'block';
     }
   } catch (err) {
@@ -224,7 +243,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     loginError.style.display = 'block';
   } finally {
     loginBtn.disabled = false;
-    loginBtn.textContent = 'Iniciar Sesión';
+    loginBtn.textContent = 'Iniciar sesion';
   }
 });
 </script>
