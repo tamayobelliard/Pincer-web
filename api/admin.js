@@ -110,7 +110,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
 async function handleCreate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee } = req.body;
+  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee, azul_merchant_id } = req.body;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'El nombre es requerido' });
@@ -170,6 +170,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           logo_url: logo_url || null,
           order_types: order_types || ["dine_in"],
           delivery_fee: delivery_fee || 0,
+          azul_merchant_id: azul_merchant_id || null,
         }),
       }
     );
@@ -255,7 +256,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee } = req.body;
+  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee, azul_merchant_id } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'id is required' });
@@ -276,6 +277,7 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (logo_url !== undefined) update.logo_url = logo_url || null;
   if (order_types !== undefined) update.order_types = order_types;
   if (delivery_fee !== undefined) update.delivery_fee = delivery_fee;
+  if (azul_merchant_id !== undefined) update.azul_merchant_id = azul_merchant_id || null;
 
   if (Object.keys(update).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });

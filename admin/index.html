@@ -431,6 +431,11 @@
         <option value="formal">Profesional y formal</option>
         <option value="playful">Divertido y juguetón</option>
       </select>
+      <div class="form-group" id="merchantIdGroup" style="margin-top:12px;">
+        <label>Merchant ID (Azul)</label>
+        <input type="text" id="fieldMerchantId" placeholder="Ej: 39038540035">
+        <small style="color:#94a3b8;">Solo visible para administradores Pincer</small>
+      </div>
       <label style="margin-top:12px;">Tipos de orden habilitados</label>
       <div id="orderTypesCheckboxes" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
         <label style="display:flex;align-items:center;gap:4px;font-weight:400;font-size:0.9em;cursor:pointer;">
@@ -1085,6 +1090,7 @@ function openEditModal(id) {
   document.getElementById('fieldNotes').value = r.notes || '';
   document.getElementById('fieldPersonality').value = r.chatbot_personality || 'casual';
   document.getElementById('fieldLogoUrl').value = r.logo_url || '';
+  document.getElementById('fieldMerchantId').value = r.azul_merchant_id || '';
   adminLogoFile = null;
   document.getElementById('logoFileInput').value = '';
   previewLogo();
@@ -1181,6 +1187,7 @@ async function updateRestaurant() {
   body.chatbot_personality = document.getElementById('fieldPersonality').value;
   body.order_types = getOrderTypes();
   body.delivery_fee = parseInt(document.getElementById('fieldDeliveryFee').value) || 0;
+  body.azul_merchant_id = document.getElementById('fieldMerchantId').value.trim() || null;
 
   // Upload logo if new file selected, otherwise keep existing URL
   if (adminLogoFile && editingRestaurantSlug) {
@@ -1265,6 +1272,7 @@ async function createRestaurant() {
         logo_url: document.getElementById('fieldLogoUrl').value || '',
         order_types: getOrderTypes(),
         delivery_fee: parseInt(document.getElementById('fieldDeliveryFee').value) || 0,
+        azul_merchant_id: document.getElementById('fieldMerchantId').value.trim() || null,
       }),
     });
     const data = await res.json();

@@ -2723,8 +2723,8 @@ const RECEIPTS_KEY = 'pincer_receipts_' + SLUG;
 const WELCOMED_KEY = 'pincer_welcomed_' + SLUG;
 const ORDER_PREFIX = SLUG.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4) + '-';
 
-// ── Payment toggle (set to true when Azul is active) ──
-const PAYMENT_ENABLED = false; // TODO: reactivar con credenciales de producción Azul
+// ── Payment toggle (set dynamically based on restaurant's azul_merchant_id) ──
+var PAYMENT_ENABLED = false;
 
 // ── Debug logger ──
 let debugLogs = [];
@@ -2826,7 +2826,7 @@ async function loadRestaurantInsights() {
 async function loadRestaurantData() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,azul_merchant_id&limit=1',
       { headers: sbHeaders() }, 10000
     );
     if (!res.ok) return null;
@@ -4303,6 +4303,7 @@ async function processPayment() {
           browserInfo,
           orderItems: order.map(i => ({ id: i.id, qty: i.qty })),
           restaurantSlug: SLUG,
+          merchantId: restaurantData.azul_merchant_id,
         })
       }, 45000);
 
@@ -5756,6 +5757,7 @@ async function init() {
   if (typeof rawOT === 'string') { try { rawOT = JSON.parse(rawOT); } catch(e) { rawOT = null; } }
   enabledOrderTypes = Array.isArray(rawOT) && rawOT.length > 0 ? rawOT : ['dine_in'];
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
+  PAYMENT_ENABLED = !!(restaurantData.azul_merchant_id);
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';
   console.log('order_types:', restaurantData.order_types, '-> enabledOrderTypes:', enabledOrderTypes);
 

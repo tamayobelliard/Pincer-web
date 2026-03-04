@@ -106,11 +106,17 @@ export default async function handler(req, res) {
       browserInfo,
       orderItems,
       restaurantSlug,
+      merchantId,
     } = req.body;
 
     // Validate required fields
     if (!cardNumber || !expiration || !cvc || !amount) {
       return res.status(400).json({ error: 'Missing required fields: cardNumber, expiration, cvc, amount' });
+    }
+
+    // Validate merchant ID availability
+    if (!merchantId && !process.env.AZUL_MERCHANT_ID) {
+      return res.status(400).json({ error: 'Payment not configured for this restaurant' });
     }
 
     // ── Server-side amount validation ──
@@ -170,7 +176,7 @@ export default async function handler(req, res) {
     // Build Azul request with 3DS
     const azulRequest = {
       Channel: "EC",
-      Store: process.env.AZUL_MERCHANT_ID,
+      Store: merchantId || process.env.AZUL_MERCHANT_ID,
       CardNumber: cardNumber.replace(/\s/g, ''),
       Expiration: expiration,
       CVC: cvc,
