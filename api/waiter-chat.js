@@ -533,14 +533,24 @@ REGLAS IMPORTANTES:
 ${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
 REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
 Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
-Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
 ${compressMenuData(menuData, messages)}`;
+
+    // Trim messages to last 6 to prevent timeouts on long conversations
+    const trimmedMessages = (messages || []).slice(-6);
+
+    // Cap system prompt to ~3000 tokens (~12000 chars) to prevent oversized requests
+    const cappedSystem = systemPrompt.length > 12000
+      ? systemPrompt.substring(0, 12000) + '\n[... menú truncado por tamaño]'
+      : systemPrompt;
+
+    console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
 
     const claudeBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      system: systemPrompt,
-      messages: messages.slice(-10)
+      max_tokens: 400,
+      system: cappedSystem,
+      messages: trimmedMessages
     });
     const claudeHeaders = {
       'Content-Type': 'application/json',
