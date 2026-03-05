@@ -2949,9 +2949,10 @@ function getExtras() {
 // Load restaurant insights for chatbot
 var restaurantInsights = null;
 async function loadRestaurantInsights() {
+  if (!restaurantData || !restaurantData.id) return;
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=summary_text&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_id=eq.' + encodeURIComponent(restaurantData.id) + '&select=summary_text&limit=1',
       { headers: sbHeaders() }, 5000
     );
     if (!res.ok) return;
@@ -2967,13 +2968,13 @@ async function loadRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id,display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
     if (!res.ok) {
       res = await fetchWithTimeout(
-        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
+        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id,display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
         { headers: sbHeaders() }, 10000
       );
     }
