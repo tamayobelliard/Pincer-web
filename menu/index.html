@@ -5505,10 +5505,30 @@ function buildMenuData() {
 }
 
 function findMenuItem(itemId) {
+  if (!itemId) return null;
+  const cleanId = itemId.trim();
+  // Exact match
   for (const [cat, items] of Object.entries(MENU_DATA)) {
-    const found = items.find(i => i.id === itemId);
+    const found = items.find(i => i.id === cleanId);
     if (found) return found;
   }
+  // Case-insensitive match
+  const lower = cleanId.toLowerCase();
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const found = items.find(i => i.id.toLowerCase() === lower);
+    if (found) { console.log('[chatbot] case-insensitive match:', cleanId, '->', found.id); return found; }
+  }
+  // Partial match (chatbot may omit restaurant prefix e.g. "cranberry" instead of "squareone_cranberry")
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const found = items.find(i => i.id.toLowerCase().endsWith('_' + lower) || i.id.toLowerCase() === lower.replace(/\s+/g, '_'));
+    if (found) { console.log('[chatbot] partial match:', cleanId, '->', found.id); return found; }
+  }
+  // Name match (chatbot may use the item name instead of id)
+  for (const [cat, items] of Object.entries(MENU_DATA)) {
+    const found = items.find(i => i.name.toLowerCase() === lower);
+    if (found) { console.log('[chatbot] name match:', cleanId, '->', found.id); return found; }
+  }
+  console.warn('[chatbot] item not found:', cleanId);
   return null;
 }
 
@@ -5874,13 +5894,21 @@ async function sendToAI(userMessage) {
 
       // Handle ADD_TO_CART actions (supports multiple items per response)
       parsed.cartItems.forEach(function(ci) {
+        console.log('[chatbot] ADD_TO_CART received:', ci.id, 'qty:', ci.qty, 'note:', ci.note);
         const item = findMenuItem(ci.id);
         if (item && !soldOutSet.has(item.id)) {
           const qty = ci.qty || 1;
+          console.log('[chatbot] adding to cart:', item.name, 'qty:', qty);
           addItem(item.id, item.name, item.price, ci.note, qty);
           const qtyText = qty > 1 ? `${qty}x ` : '';
           const noteText = ci.note ? ` (${ci.note})` : '';
           pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
+        } else if (!item) {
+          console.error('[chatbot] item not found for ADD_TO_CART:', ci.id);
+          pinzerSay(`⚠️ No pude agregar "${ci.id}" — no se encontró en el menú.`);
+        } else {
+          console.log('[chatbot] item sold out:', ci.id);
+          pinzerSay(`⚠️ ${item.name} está agotado.`);
         }
       });
 
