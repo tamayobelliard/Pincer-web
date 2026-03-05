@@ -567,8 +567,8 @@ ${compressMenuData(menuData, messages)}`;
       data = await response.json();
     } catch (e1) {
       console.error('[waiter-chat] Claude API attempt 1 failed:', e1.message);
-      // Retry once after 1 second
-      await new Promise(r => setTimeout(r, 1000));
+      console.log('[waiter-chat] retrying after error:', e1.message);
+      await new Promise(r => setTimeout(r, 1500));
       try {
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', headers: claudeHeaders, body: claudeBody,
@@ -585,7 +585,8 @@ ${compressMenuData(menuData, messages)}`;
       console.error('[waiter-chat] Claude API error:', response.status, JSON.stringify(data));
       // Retry once on 429 (rate limit) or 529 (overloaded)
       if (response.status === 429 || response.status === 529) {
-        await new Promise(r => setTimeout(r, 1500));
+        console.log('[waiter-chat] retrying after', response.status, '(overloaded/rate-limited)');
+        await new Promise(r => setTimeout(r, 3000));
         try {
           const retryRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST', headers: claudeHeaders, body: claudeBody,
