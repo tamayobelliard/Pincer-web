@@ -289,31 +289,30 @@
       border-radius: 6px;
       border: none;
       background: transparent;
-      color: var(--primary);
+      color: var(--primary, #E8191A);
       font-weight: 500;
       font-size: 0.8em;
       cursor: pointer;
       white-space: nowrap;
-      transition: all 0.2s;
       font-family: inherit;
       border-bottom: 2px solid transparent;
     }
     .subcategory-tab:hover { background: rgba(0,0,0,0.03); }
     .subcategory-tab.active {
-      border-bottom: 2px solid var(--primary);
-      color: var(--primary);
+      border-bottom: 2px solid var(--primary, #E8191A);
+      color: var(--primary, #E8191A);
       font-weight: 700;
     }
 
     /* Parent category header (hierarchy mode) */
     .category-parent-title {
-      font-size: 1.4em;
-      color: var(--primary);
+      font-size: 1.1rem;
+      color: var(--primary, #E8191A);
       margin: 30px 0 12px 0;
-      font-weight: 800;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      border-left: 5px solid var(--primary-light);
+      border-left: 5px solid var(--primary-light, #E8191A);
       padding-left: 14px;
     }
     .category-parent-title:first-of-type {
@@ -322,14 +321,14 @@
 
     /* Subcategory divider (hierarchy mode) */
     .category-sub-title {
-      font-size: 1.05em;
-      color: var(--primary);
+      font-size: 0.95rem;
+      color: var(--primary, #E8191A);
       margin: 18px 0 10px 0;
       font-weight: 600;
       letter-spacing: 0;
       padding-left: 16px;
       opacity: 0.8;
-      border-left: 3px solid var(--primary-light);
+      border-left: 3px solid var(--primary-light, #E8191A);
     }
 
     /* Menu group selector (multi-menu) */
@@ -438,10 +437,10 @@
       color: white;
     }
     body.dark-bg .category-parent-title {
-      color: var(--accent);
+      color: var(--accent, #ffffff);
     }
     body.dark-bg .category-sub-title {
-      color: var(--accent);
+      color: var(--accent, #ffffff);
       opacity: 0.7;
     }
 
@@ -3495,8 +3494,11 @@ function setActiveParent(parentLabel) {
   var subContainer = document.getElementById('subcategoryTabs');
   var parent = categoryHierarchy.find(function(p) { return p.label === parentLabel; });
 
+  // Immediately hide old subcategory bar before any changes
+  subWrap.style.display = 'none';
+  subContainer.innerHTML = '';
+
   if (!parent || parent.subcategories.length === 0) {
-    subWrap.style.display = 'none';
     currentActiveParent = parentLabel;
     updateSubcategoryTabsPosition();
     return;
