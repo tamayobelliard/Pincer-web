@@ -7,7 +7,15 @@
       "Bash(echo exit:$?:*)",
       "Bash(mkdir:*)",
       "Bash(curl:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(npx vercel:*)",
+      "Bash(cygpath:*)",
+      "Bash(python3:*)",
+      "Bash(/c/Python314/python.exe:*)"
     ]
   }
 }

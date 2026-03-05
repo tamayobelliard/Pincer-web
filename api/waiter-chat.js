@@ -224,12 +224,13 @@ export default async function handler(req, res) {
     let personality = 'casual';
     let plan = 'premium'; // default to premium (legacy restaurants predate plan field)
     let restaurantHours = '';
+    let restaurantId = null;
     if (restaurant_slug) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const pRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality,plan,hours`,
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=id,chatbot_personality,plan,hours`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -241,6 +242,7 @@ export default async function handler(req, res) {
         if (pRes.ok) {
           const rows = await pRes.json();
           if (rows.length > 0) {
+            restaurantId = rows[0].id || null;
             if (rows[0].chatbot_personality) {
               personality = rows[0].chatbot_personality;
             }
@@ -287,12 +289,12 @@ export default async function handler(req, res) {
 
     // Fetch restaurant insights for smarter recommendations
     let insightsText = clientInsights || '';
-    if (restaurant_slug && !insightsText) {
+    if (restaurantId && !insightsText) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const iRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=summary_text&limit=1`,
+          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=summary_text&limit=1`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -306,6 +308,8 @@ export default async function handler(req, res) {
           if (iRows.length > 0 && iRows[0].summary_text) {
             insightsText = iRows[0].summary_text;
           }
+        } else {
+          console.warn('[waiter-chat] insights query returned', iRes.status, '- continuing without insights');
         }
       } catch (e) { console.error('[waiter-chat] insights fetch error:', e.message); }
     }

@@ -6,3 +6,5 @@ pincer-azul.key
 .env.*
 .env.local
 certs/
+.vercel
+.env*.local
