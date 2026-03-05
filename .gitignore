@@ -8,3 +8,4 @@ pincer-azul.key
 certs/
 .vercel
 .env*.local
+node_modules/
