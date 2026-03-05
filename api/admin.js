@@ -110,7 +110,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
 async function handleCreate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee, azul_merchant_id } = req.body;
+  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id } = req.body;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'El nombre es requerido' });
@@ -133,6 +133,39 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
     }
 
     const password_hash = await bcrypt.hash(temp_password, 10);
+
+    // Upload logo from base64 if provided
+    let finalLogoUrl = logo_url || null;
+    if (logo_base64) {
+      try {
+        const match = logo_base64.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          const contentType = match[1];
+          const buffer = Buffer.from(match[2], 'base64');
+          const storagePath = `logos/${username}.jpg`;
+          const uploadRes = await fetch(
+            `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
+            {
+              method: 'PUT',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': contentType,
+                'x-upsert': 'true',
+              },
+              body: buffer,
+            }
+          );
+          if (uploadRes.ok) {
+            finalLogoUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${storagePath}?t=${Date.now()}`;
+          } else {
+            console.error('Logo upload failed:', uploadRes.status);
+          }
+        }
+      } catch (e) {
+        console.error('Logo upload error:', e.message);
+      }
+    }
 
     // Trial expiry: 30 days from now
     const trialExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -167,7 +200,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           website: website || null,
           notes: notes || null,
           chatbot_personality: chatbot_personality || 'casual',
-          logo_url: logo_url || null,
+          logo_url: finalLogoUrl,
           order_types: order_types || ["dine_in"],
           delivery_fee: delivery_fee || 0,
           azul_merchant_id: azul_merchant_id || null,
@@ -256,10 +289,51 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, order_types, delivery_fee, azul_merchant_id } = req.body;
+  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'id is required' });
+  }
+
+  // Upload logo from base64 if provided
+  let resolvedLogoUrl = logo_url;
+  if (logo_base64) {
+    try {
+      const match = logo_base64.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (match) {
+        // Look up restaurant_slug for the storage path
+        const slugRes = await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}&select=restaurant_slug&limit=1`,
+          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+        );
+        const slugRows = slugRes.ok ? await slugRes.json() : [];
+        const slug = slugRows.length > 0 ? slugRows[0].restaurant_slug : id;
+
+        const contentType = match[1];
+        const buffer = Buffer.from(match[2], 'base64');
+        const storagePath = `logos/${slug}.jpg`;
+        const uploadRes = await fetch(
+          `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
+          {
+            method: 'PUT',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': contentType,
+              'x-upsert': 'true',
+            },
+            body: buffer,
+          }
+        );
+        if (uploadRes.ok) {
+          resolvedLogoUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${storagePath}?t=${Date.now()}`;
+        } else {
+          console.error('Logo upload failed:', uploadRes.status);
+        }
+      }
+    } catch (e) {
+      console.error('Logo upload error:', e.message);
+    }
   }
 
   // Build partial update object from provided fields only
@@ -274,7 +348,7 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (website !== undefined) update.website = website || null;
   if (notes !== undefined) update.notes = notes || null;
   if (chatbot_personality !== undefined) update.chatbot_personality = chatbot_personality || 'casual';
-  if (logo_url !== undefined) update.logo_url = logo_url || null;
+  if (resolvedLogoUrl !== undefined) update.logo_url = resolvedLogoUrl || null;
   if (order_types !== undefined) update.order_types = order_types;
   if (delivery_fee !== undefined) update.delivery_fee = delivery_fee;
   if (azul_merchant_id !== undefined) update.azul_merchant_id = azul_merchant_id || null;
