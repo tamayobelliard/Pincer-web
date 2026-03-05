@@ -217,13 +217,19 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (data.success) {
-      sessionStorage.setItem('dashboard_session', JSON.stringify({
+      var sessionData = JSON.stringify({
         role: data.role,
         restaurant_slug: data.restaurant_slug,
         display_name: data.display_name,
         username: data.username,
         sessionToken: data.sessionToken || '',
-      }));
+        adminToken: data.adminToken || '',
+      });
+      sessionStorage.setItem('dashboard_session', sessionData);
+      // Also store slug-specific key so dashboard finds it immediately
+      if (data.role === 'restaurant' && data.restaurant_slug) {
+        sessionStorage.setItem('dashboard_session_' + data.restaurant_slug, sessionData);
+      }
 
       // Flag for forced password change (dashboard will show modal)
       if (data.mustChangePassword) {
@@ -232,8 +238,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 
       if (data.role === 'admin') {
         window.location.href = '/admin';
-      } else {
+      } else if (data.restaurant_slug) {
         window.location.href = '/' + data.restaurant_slug + '/dashboard';
+      } else {
+        window.location.href = '/login';
       }
     } else {
       loginError.textContent = data.error || 'Usuario o contrasena incorrectos';
