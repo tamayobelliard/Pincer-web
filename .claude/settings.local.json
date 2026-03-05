@@ -15,7 +15,8 @@
       "Bash(npx vercel:*)",
       "Bash(cygpath:*)",
       "Bash(python3:*)",
-      "Bash(/c/Python314/python.exe:*)"
+      "Bash(/c/Python314/python.exe:*)",
+      "Bash(npx supabase:*)"
     ]
   }
 }
