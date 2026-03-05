@@ -3239,6 +3239,25 @@ function renderMenu() {
   buildMenuGroupSelector();
 }
 
+// Delegated click handler for menu item cards (more reliable on mobile than inline onclick)
+(function() {
+  var menuSection = document.getElementById('menuSection');
+  if (!menuSection) return;
+  menuSection.addEventListener('click', function(e) {
+    // Don't interfere with qty buttons
+    if (e.target.closest('.menu-qty-btn') || e.target.closest('.menu-qty-wrap')) return;
+    var card = e.target.closest('.menu-item[data-clickable="1"]');
+    if (!card) return;
+    var itemId = card.getAttribute('data-item-id');
+    if (!itemId) return;
+    var allItems = Object.values(MENU_DATA).flat();
+    var item = allItems.find(function(i) { return i.id === itemId; });
+    if (!item) return;
+    if (soldOutSet.has(itemId)) { showSoldOutPopup(item.name); return; }
+    showNotesPopup(itemId, item.name, item.price, item.img || '', item.desc || '');
+  });
+})();
+
 function buildCategoryTabs(categoryOrder) {
   const wrap = document.getElementById('categoryTabsWrap');
   const tabsContainer = document.getElementById('categoryTabs');
@@ -3356,10 +3375,10 @@ function menuItemHTML(item) {
     ` : ''}
     <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
-  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}', '${escHtml(item.desc || '')}')" style="cursor:pointer;"` : '';
+  const clickable = !isSoldOut && !isExtra;
 
   return `
-    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${clickable ? 'data-clickable="1"' : ''} ${clickable ? 'style="cursor:pointer;"' : ''}>
       ${soldOutBadge}
       ${imgHTML}
       <div class="item-info">
