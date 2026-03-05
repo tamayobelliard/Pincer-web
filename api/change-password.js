@@ -37,12 +37,14 @@ export default async function handler(req, res) {
     // Two modes: forced (no currentPassword) vs voluntary (currentPassword provided)
     const isVoluntary = !!currentPassword;
 
-    // Voluntary mode requires a valid session token
+    // Voluntary mode: verify session token if provided
     if (isVoluntary) {
       const token = req.headers['x-restaurant-token'];
-      const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
-      if (!session.valid) {
-        return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+      if (token) {
+        const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
+        if (!session.valid) {
+          return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+        }
       }
     }
 

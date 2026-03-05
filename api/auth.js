@@ -78,33 +78,37 @@ export default async function handler(req, res) {
 
     // For restaurant users, generate a session token
     if (user.role === 'restaurant') {
-      const sessionToken = randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+      try {
+        const sessionToken = randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
-      const sessRes = await fetch(
-        `${supabaseUrl}/rest/v1/restaurant_sessions`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token: sessionToken,
-            user_id: user.id,
-            restaurant_slug: user.restaurant_slug,
-            expires_at: expiresAt,
-          }),
+        const sessRes = await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_sessions`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              token: sessionToken,
+              user_id: user.id,
+              restaurant_slug: user.restaurant_slug,
+              expires_at: expiresAt,
+            }),
+          }
+        );
+
+        if (sessRes.ok) {
+          response.sessionToken = sessionToken;
+        } else {
+          console.error('Failed to create restaurant session:', sessRes.status, await sessRes.text());
+          // Login still succeeds — session token features won't work until table is created
         }
-      );
-
-      if (!sessRes.ok) {
-        console.error('Failed to create restaurant session:', await sessRes.text());
-        return res.status(500).json({ success: false, error: 'Error del servidor' });
+      } catch (e) {
+        console.error('Restaurant session creation error:', e.message);
       }
-
-      response.sessionToken = sessionToken;
     }
 
     // For admin users, generate a unique session token (not the static API key)

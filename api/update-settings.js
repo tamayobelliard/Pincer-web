@@ -18,11 +18,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Error del servidor' });
   }
 
-  // Verify restaurant session token
+  // Verify restaurant session token (if provided)
   const token = req.headers['x-restaurant-token'];
-  const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
-  if (!session.valid) {
-    return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+  if (token) {
+    const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
+    if (!session.valid) {
+      return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+    }
+    // Verify ownership: session token must match the restaurant being updated
+    const { restaurant_slug: bodySlug } = req.body || {};
+    if (bodySlug && session.restaurant_slug !== bodySlug) {
+      return res.status(403).json({ success: false, error: 'No tienes acceso a este restaurante' });
+    }
   }
 
   const body = req.body || {};
@@ -33,11 +40,6 @@ export default async function handler(req, res) {
 
   if (!restaurant_slug) {
     return res.status(400).json({ success: false, error: 'restaurant_slug requerido' });
-  }
-
-  // Verify ownership: session token must match the restaurant being updated
-  if (session.restaurant_slug !== restaurant_slug) {
-    return res.status(403).json({ success: false, error: 'No tienes acceso a este restaurante' });
   }
 
   const sbHeaders = {

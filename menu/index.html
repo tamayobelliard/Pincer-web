@@ -259,6 +259,79 @@
       color: white;
     }
 
+    /* Subcategory tabs navigation (second level) */
+    .subcategory-tabs-wrap {
+      position: sticky;
+      top: 48px;
+      z-index: 88;
+      max-width: 500px;
+      margin: 0 auto 8px auto;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 0 0 12px 12px;
+      padding: 4px 4px;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .subcategory-tabs {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-behavior: smooth;
+    }
+    .subcategory-tabs::-webkit-scrollbar { display: none; }
+    .subcategory-tab {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--primary);
+      font-weight: 500;
+      font-size: 0.8em;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+      border-bottom: 2px solid transparent;
+    }
+    .subcategory-tab:hover { background: rgba(0,0,0,0.03); }
+    .subcategory-tab.active {
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Parent category header (hierarchy mode) */
+    .category-parent-title {
+      font-size: 1.4em;
+      color: var(--primary);
+      margin: 30px 0 12px 0;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-left: 5px solid var(--primary-light);
+      padding-left: 14px;
+    }
+    .category-parent-title:first-of-type {
+      margin-top: 10px;
+    }
+
+    /* Subcategory divider (hierarchy mode) */
+    .category-sub-title {
+      font-size: 1.05em;
+      color: var(--primary);
+      margin: 18px 0 10px 0;
+      font-weight: 600;
+      letter-spacing: 0;
+      padding-left: 16px;
+      opacity: 0.8;
+      border-left: 3px solid var(--primary-light);
+    }
+
     /* Menu group selector (multi-menu) */
     .menu-group-wrap {
       position: sticky;
@@ -353,6 +426,23 @@
     }
     body.dark-bg .category-title {
       color: var(--accent);
+    }
+    body.dark-bg .subcategory-tabs-wrap {
+      background: rgba(30,30,30,0.92);
+    }
+    body.dark-bg .subcategory-tab {
+      color: white;
+    }
+    body.dark-bg .subcategory-tab.active {
+      border-bottom-color: var(--primary);
+      color: white;
+    }
+    body.dark-bg .category-parent-title {
+      color: var(--accent);
+    }
+    body.dark-bg .category-sub-title {
+      color: var(--accent);
+      opacity: 0.7;
     }
 
     .menu-item {
@@ -2173,6 +2263,9 @@
   <div class="category-tabs-wrap" id="categoryTabsWrap">
     <div class="category-tabs" id="categoryTabs"></div>
   </div>
+  <div class="subcategory-tabs-wrap" id="subcategoryTabsWrap" style="display:none;">
+    <div class="subcategory-tabs" id="subcategoryTabs"></div>
+  </div>
 
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
@@ -2798,6 +2891,44 @@ function getCategoryOrder() {
   return ordered;
 }
 
+// Category hierarchy for two-level navigation
+let categoryHierarchy = [];
+let currentActiveParent = null;
+
+function buildCategoryHierarchy(categoryOrder) {
+  var SEP = ' - ';
+  var parentMap = {};
+  var orderedParents = [];
+
+  categoryOrder.forEach(function(cat) {
+    var items = MENU_DATA[cat];
+    if (!items || !items.length) return;
+    var sepIdx = cat.indexOf(SEP);
+    if (sepIdx === -1) {
+      if (!parentMap[cat]) {
+        parentMap[cat] = { label: cat, subcategories: [], standaloneKey: cat };
+        orderedParents.push(cat);
+      } else {
+        parentMap[cat].standaloneKey = cat;
+      }
+    } else {
+      var parent = cat.substring(0, sepIdx);
+      var child = cat.substring(sepIdx + SEP.length);
+      if (!parentMap[parent]) {
+        parentMap[parent] = { label: parent, subcategories: [], standaloneKey: null };
+        orderedParents.push(parent);
+      }
+      parentMap[parent].subcategories.push({ label: child, fullKey: cat });
+    }
+  });
+
+  return orderedParents.map(function(p) { return parentMap[p]; });
+}
+
+function hasSubcategories(hierarchy) {
+  return hierarchy.some(function(p) { return p.subcategories.length > 0; });
+}
+
 // Find extras category dynamically (for notes popup)
 function getExtras() {
   for (const [cat, items] of Object.entries(MENU_DATA)) {
@@ -3226,13 +3357,33 @@ function renderMenu() {
   let html = title;
 
   const categoryOrder = getCategoryOrder();
-  categoryOrder.forEach(cat => {
-    const items = MENU_DATA[cat];
-    if (!items || !items.length) return;
-    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    html += `<div class="category-title" id="${catId}">${escHtml(cat.toUpperCase())}</div>`;
-    items.forEach(item => { html += menuItemHTML(item); });
-  });
+  categoryHierarchy = buildCategoryHierarchy(categoryOrder);
+  var useHierarchy = hasSubcategories(categoryHierarchy);
+
+  if (useHierarchy) {
+    categoryHierarchy.forEach(function(parent) {
+      var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      html += '<div class="category-parent-title" id="' + parentId + '">' + escHtml(parent.label.toUpperCase()) + '</div>';
+      if (parent.standaloneKey && MENU_DATA[parent.standaloneKey]) {
+        MENU_DATA[parent.standaloneKey].forEach(function(item) { html += menuItemHTML(item); });
+      }
+      parent.subcategories.forEach(function(sub) {
+        var subId = 'sub-' + sub.fullKey.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        html += '<div class="category-sub-title" id="' + subId + '">' + escHtml(sub.label) + '</div>';
+        if (MENU_DATA[sub.fullKey]) {
+          MENU_DATA[sub.fullKey].forEach(function(item) { html += menuItemHTML(item); });
+        }
+      });
+    });
+  } else {
+    categoryOrder.forEach(function(cat) {
+      var items = MENU_DATA[cat];
+      if (!items || !items.length) return;
+      var catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      html += '<div class="category-title" id="' + catId + '">' + escHtml(cat.toUpperCase()) + '</div>';
+      items.forEach(function(item) { html += menuItemHTML(item); });
+    });
+  }
 
   container.innerHTML = html;
   buildCategoryTabs(categoryOrder);
@@ -3259,60 +3410,195 @@ function renderMenu() {
 })();
 
 function buildCategoryTabs(categoryOrder) {
-  const wrap = document.getElementById('categoryTabsWrap');
-  const tabsContainer = document.getElementById('categoryTabs');
-  const cats = categoryOrder.filter(c => MENU_DATA[c] && MENU_DATA[c].length);
-  if (cats.length < 2) { wrap.style.display = 'none'; return; }
+  var wrap = document.getElementById('categoryTabsWrap');
+  var tabsContainer = document.getElementById('categoryTabs');
+  var subWrap = document.getElementById('subcategoryTabsWrap');
+  var subContainer = document.getElementById('subcategoryTabs');
+  var useHierarchy = hasSubcategories(categoryHierarchy);
 
-  tabsContainer.innerHTML = cats.map(cat => {
-    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return `<button class="category-tab" data-cat-id="${catId}">${escHtml(cat.charAt(0).toUpperCase() + cat.slice(1))}</button>`;
+  if (!useHierarchy) {
+    // === FLAT MODE (original behavior) ===
+    subWrap.style.display = 'none';
+    currentActiveParent = null;
+    var cats = categoryOrder.filter(function(c) { return MENU_DATA[c] && MENU_DATA[c].length; });
+    if (cats.length < 2) { wrap.style.display = 'none'; return; }
+
+    tabsContainer.innerHTML = cats.map(function(cat) {
+      var catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return '<button class="category-tab" data-cat-id="' + catId + '">' + escHtml(cat.charAt(0).toUpperCase() + cat.slice(1)) + '</button>';
+    }).join('');
+    wrap.style.display = 'block';
+
+    tabsContainer.querySelectorAll('.category-tab').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var target = document.getElementById(btn.dataset.catId);
+        if (!target) return;
+        track('menu_tab_click', { category_name: btn.textContent });
+        var tabsHeight = wrap.offsetHeight + 12;
+        var y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      });
+    });
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+      if (scrollTicking) return;
+      scrollTicking = true;
+      requestAnimationFrame(function() {
+        updateActiveTabFlat(wrap, tabsContainer);
+        scrollTicking = false;
+      });
+    });
+    updateActiveTabFlat(wrap, tabsContainer);
+    return;
+  }
+
+  // === HIERARCHY MODE ===
+  if (categoryHierarchy.length < 2) { wrap.style.display = 'none'; subWrap.style.display = 'none'; return; }
+
+  tabsContainer.innerHTML = categoryHierarchy.map(function(parent) {
+    var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return '<button class="category-tab" data-parent-id="' + parentId + '" data-parent-label="' + escHtml(parent.label) + '">' + escHtml(parent.label) + '</button>';
   }).join('');
-
   wrap.style.display = 'block';
 
-  // Click → smooth scroll to section
-  tabsContainer.querySelectorAll('.category-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = document.getElementById(btn.dataset.catId);
+  tabsContainer.querySelectorAll('.category-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = document.getElementById(btn.dataset.parentId);
       if (!target) return;
       track('menu_tab_click', { category_name: btn.textContent });
-      const tabsHeight = wrap.offsetHeight + 12;
-      const y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
+      setActiveParent(btn.dataset.parentLabel);
+      var totalOffset = wrap.offsetHeight + (subWrap.style.display !== 'none' ? subWrap.offsetHeight : 0) + 12;
+      var y = target.getBoundingClientRect().top + window.scrollY - totalOffset;
       window.scrollTo({ top: y, behavior: 'smooth' });
     });
   });
 
-  // Scroll → highlight active tab
-  let scrollTicking = false;
-  window.addEventListener('scroll', () => {
-    if (scrollTicking) return;
-    scrollTicking = true;
-    requestAnimationFrame(() => {
-      updateActiveTab(wrap, tabsContainer);
-      scrollTicking = false;
+  if (categoryHierarchy.length) {
+    setActiveParent(categoryHierarchy[0].label);
+  }
+
+  var scrollTicking2 = false;
+  window.addEventListener('scroll', function() {
+    if (scrollTicking2) return;
+    scrollTicking2 = true;
+    requestAnimationFrame(function() {
+      updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer);
+      scrollTicking2 = false;
     });
   });
-  updateActiveTab(wrap, tabsContainer);
+  updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer);
 }
 
-function updateActiveTab(wrap, tabsContainer) {
-  const tabs = tabsContainer.querySelectorAll('.category-tab');
-  const offset = wrap.offsetHeight + 30;
-  let activeIdx = 0;
-  tabs.forEach((tab, i) => {
-    const section = document.getElementById(tab.dataset.catId);
+function setActiveParent(parentLabel) {
+  var subWrap = document.getElementById('subcategoryTabsWrap');
+  var subContainer = document.getElementById('subcategoryTabs');
+  var parent = categoryHierarchy.find(function(p) { return p.label === parentLabel; });
+
+  if (!parent || parent.subcategories.length === 0) {
+    subWrap.style.display = 'none';
+    currentActiveParent = parentLabel;
+    updateSubcategoryTabsPosition();
+    return;
+  }
+
+  currentActiveParent = parentLabel;
+  var buttons = [];
+  if (parent.standaloneKey) {
+    var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    buttons.push('<button class="subcategory-tab" data-sub-id="' + parentId + '">Todo</button>');
+  }
+  parent.subcategories.forEach(function(sub) {
+    var subId = 'sub-' + sub.fullKey.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    buttons.push('<button class="subcategory-tab" data-sub-id="' + subId + '">' + escHtml(sub.label) + '</button>');
+  });
+  subContainer.innerHTML = buttons.join('');
+  subWrap.style.display = 'block';
+
+  subContainer.querySelectorAll('.subcategory-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = document.getElementById(btn.dataset.subId);
+      if (!target) return;
+      var wrap = document.getElementById('categoryTabsWrap');
+      var totalOffset = wrap.offsetHeight + subWrap.offsetHeight + 12;
+      var y = target.getBoundingClientRect().top + window.scrollY - totalOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+  });
+
+  updateSubcategoryTabsPosition();
+}
+
+function updateSubcategoryTabsPosition() {
+  var wrap = document.getElementById('categoryTabsWrap');
+  var subWrap = document.getElementById('subcategoryTabsWrap');
+  var menuGroupWrap = document.getElementById('menuGroupWrap');
+  var topOffset = 0;
+  if (menuGroupWrap && menuGroupWrap.style.display !== 'none') {
+    topOffset += menuGroupWrap.offsetHeight + 4;
+  }
+  wrap.style.top = topOffset + 'px';
+  if (subWrap.style.display !== 'none') {
+    subWrap.style.top = (topOffset + wrap.offsetHeight + 2) + 'px';
+  }
+}
+
+function updateActiveTabFlat(wrap, tabsContainer) {
+  var tabs = tabsContainer.querySelectorAll('.category-tab');
+  var offset = wrap.offsetHeight + 30;
+  var activeIdx = 0;
+  tabs.forEach(function(tab, i) {
+    var section = document.getElementById(tab.dataset.catId);
     if (section && section.getBoundingClientRect().top <= offset) {
       activeIdx = i;
     }
   });
-  tabs.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
-  // Scroll active tab into view within the tab bar
-  const activeTab = tabs[activeIdx];
+  tabs.forEach(function(t, i) { t.classList.toggle('active', i === activeIdx); });
+  var activeTab = tabs[activeIdx];
   if (activeTab) {
-    const container = tabsContainer;
-    const scrollLeft = activeTab.offsetLeft - container.offsetWidth / 2 + activeTab.offsetWidth / 2;
-    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    var scrollLeft = activeTab.offsetLeft - tabsContainer.offsetWidth / 2 + activeTab.offsetWidth / 2;
+    tabsContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }
+}
+
+function updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer) {
+  var parentTabs = tabsContainer.querySelectorAll('.category-tab');
+  var totalOffset = wrap.offsetHeight + (subWrap.style.display !== 'none' ? subWrap.offsetHeight : 0) + 30;
+
+  var activeParentIdx = 0;
+  parentTabs.forEach(function(tab, i) {
+    var section = document.getElementById(tab.dataset.parentId);
+    if (section && section.getBoundingClientRect().top <= totalOffset) {
+      activeParentIdx = i;
+    }
+  });
+  parentTabs.forEach(function(t, i) { t.classList.toggle('active', i === activeParentIdx); });
+
+  var activeParentTab = parentTabs[activeParentIdx];
+  if (activeParentTab) {
+    var scrollLeft = activeParentTab.offsetLeft - tabsContainer.offsetWidth / 2 + activeParentTab.offsetWidth / 2;
+    tabsContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }
+
+  var parentLabel = activeParentTab ? activeParentTab.dataset.parentLabel : null;
+  if (parentLabel && parentLabel !== currentActiveParent) {
+    setActiveParent(parentLabel);
+  }
+
+  var subTabs = subContainer.querySelectorAll('.subcategory-tab');
+  if (subTabs.length === 0) return;
+  var activeSubIdx = 0;
+  subTabs.forEach(function(tab, i) {
+    var section = document.getElementById(tab.dataset.subId);
+    if (section && section.getBoundingClientRect().top <= totalOffset) {
+      activeSubIdx = i;
+    }
+  });
+  subTabs.forEach(function(t, i) { t.classList.toggle('active', i === activeSubIdx); });
+  var activeSubTab = subTabs[activeSubIdx];
+  if (activeSubTab) {
+    var scrollLeft2 = activeSubTab.offsetLeft - subContainer.offsetWidth / 2 + activeSubTab.offsetWidth / 2;
+    subContainer.scrollTo({ left: scrollLeft2, behavior: 'smooth' });
   }
 }
 
@@ -3325,6 +3611,7 @@ function buildMenuGroupSelector() {
   if (!menuGroups || !menuGroups.length || !activeMenuGroup) {
     wrap.style.display = 'none';
     catWrap.style.top = '0px';
+    updateSubcategoryTabsPosition();
     return;
   }
 
@@ -3340,6 +3627,7 @@ function buildMenuGroupSelector() {
 
   requestAnimationFrame(function() {
     catWrap.style.top = (wrap.offsetHeight + 4) + 'px';
+    updateSubcategoryTabsPosition();
   });
 
   pillsContainer.querySelectorAll('.menu-group-pill').forEach(function(btn) {
