@@ -208,6 +208,85 @@ function getNextOpenTime(hoursStr) {
   return null;
 }
 
+// ── Compress large menus: category directory + active category items only ──
+function compressMenuData(menuData, messages) {
+  if (!menuData) return '';
+  const lines = menuData.split('\n').filter(l => l.trim());
+  if (lines.length <= 40) return menuData; // small menu, send everything
+
+  // Parse into categories: { "Bebidas - Agua": [line, line], "Breakfast": [line] }
+  const categories = {};
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const cat = line.substring(0, colonIdx).trim();
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(line);
+  }
+
+  const catNames = Object.keys(categories);
+
+  // Find categories mentioned in recent messages (last 6 user+assistant turns)
+  const recentText = (messages || []).slice(-6).map(m => (m.content || '').toLowerCase()).join(' ');
+  const activeCats = new Set();
+  for (const cat of catNames) {
+    const catLower = cat.toLowerCase();
+    // Match full category name or parent part (before " - ")
+    if (recentText.includes(catLower)) {
+      activeCats.add(cat);
+    } else {
+      const dash = cat.indexOf(' - ');
+      if (dash !== -1) {
+        const parent = cat.substring(0, dash).toLowerCase();
+        const child = cat.substring(dash + 3).toLowerCase();
+        if (recentText.includes(parent) || recentText.includes(child)) {
+          activeCats.add(cat);
+        }
+      }
+    }
+  }
+
+  // Build compressed version
+  const result = [];
+  result.push('CATEGORÍAS DISPONIBLES (' + catNames.length + ' categorías, ' + lines.length + ' items total):');
+
+  // Category directory: name (count items)
+  const catSummary = catNames.map(c => c + ' (' + categories[c].length + ')');
+  result.push(catSummary.join(', '));
+  result.push('');
+
+  // Full details for active categories (max 3 categories to keep prompt manageable)
+  const activeList = [...activeCats].slice(0, 3);
+  if (activeList.length > 0) {
+    result.push('ITEMS EN CATEGORÍAS ACTIVAS:');
+    for (const cat of activeList) {
+      result.push(...categories[cat]);
+    }
+    result.push('');
+  }
+
+  // Condensed list for remaining categories: just names and prices, no descriptions
+  const remainingCats = catNames.filter(c => !activeCats.has(c));
+  if (remainingCats.length > 0) {
+    result.push('OTROS ITEMS (nombre y precio):');
+    for (const cat of remainingCats) {
+      for (const line of categories[cat]) {
+        // "Category: [id:xxx] Name - RD$100 - description [AGOTADO]"
+        // → "Category: [id:xxx] Name - RD$100"
+        const match = line.match(/^(.+?:\s*\[id:[^\]]+\]\s*[^-]+- RD\$\d+)/);
+        if (match) {
+          const agotado = line.includes('[AGOTADO]') ? ' [AGOTADO]' : '';
+          result.push(match[1] + agotado);
+        } else {
+          result.push(line);
+        }
+      }
+    }
+  }
+
+  return result.join('\n');
+}
+
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -455,7 +534,7 @@ ${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `E
 REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
 Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
 Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
-${menuData}`;
+${compressMenuData(menuData, messages)}`;
 
     const claudeBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
@@ -473,7 +552,7 @@ ${menuData}`;
     try {
       response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: claudeHeaders, body: claudeBody,
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(20000),
       });
       data = await response.json();
     } catch (e1) {
@@ -483,7 +562,7 @@ ${menuData}`;
       try {
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', headers: claudeHeaders, body: claudeBody,
-          signal: AbortSignal.timeout(25000),
+          signal: AbortSignal.timeout(20000),
         });
         data = await response.json();
       } catch (e2) {
@@ -500,7 +579,7 @@ ${menuData}`;
         try {
           const retryRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST', headers: claudeHeaders, body: claudeBody,
-            signal: AbortSignal.timeout(25000),
+            signal: AbortSignal.timeout(20000),
           });
           const retryData = await retryRes.json();
           if (retryRes.ok) {
