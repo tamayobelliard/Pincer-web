@@ -2912,7 +2912,8 @@ async function handleLogin(e) {
       }
       sessionStorage.setItem('dashboard_session_' + SLUG, JSON.stringify({
         role: data.role, restaurant_slug: data.restaurant_slug,
-        display_name: data.display_name, username: data.username
+        display_name: data.display_name, username: data.username,
+        sessionToken: data.sessionToken || ''
       }));
       DISPLAY_NAME = data.display_name;
       document.getElementById('loginSubtitle').textContent = DISPLAY_NAME;
@@ -2954,6 +2955,19 @@ function checkSession() {
     updateTopbarDate();
     return true;
   } catch (e) { return false; }
+}
+
+function getSessionToken() {
+  try {
+    var s = sessionStorage.getItem('dashboard_session_' + SLUG) || sessionStorage.getItem('dashboard_session');
+    return JSON.parse(s).sessionToken || '';
+  } catch (e) { return ''; }
+}
+
+function handleSessionExpired() {
+  sessionStorage.removeItem('dashboard_session_' + SLUG);
+  sessionStorage.removeItem('dashboard_session');
+  window.location.reload();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3390,9 +3404,11 @@ async function saveSettings() {
 
     var res = await fetch('/api/update-settings', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() },
       body: JSON.stringify(body),
     });
+
+    if (res.status === 403) { handleSessionExpired(); return; }
 
     console.log('[saveSettings] response status:', res.status);
     var data = await res.json();
@@ -3616,9 +3632,11 @@ async function submitPasswordChange() {
 
     var res = await fetch('/api/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() },
       body: JSON.stringify(body),
     });
+
+    if (res.status === 403) { handleSessionExpired(); return; }
     var data = await res.json();
 
     if (data.success) {

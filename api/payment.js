@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { rateLimit } from './rate-limit.js';
+import { handleCors } from './cors.js';
 
 // Cache SSL agent at module level (reused across warm invocations)
 let cachedAgent = null;
@@ -82,12 +83,7 @@ async function supabasePostAwait(table, data) {
 }
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Rate limit: 5 payment attempts per minute per IP (anti card-testing)
@@ -106,7 +102,6 @@ export default async function handler(req, res) {
       browserInfo,
       orderItems,
       restaurantSlug,
-      merchantId,
     } = req.body;
 
     // Validate required fields
@@ -114,8 +109,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields: cardNumber, expiration, cvc, amount' });
     }
 
-    // Validate merchant ID availability
-    if (!merchantId && !process.env.AZUL_MERCHANT_ID) {
+    // Look up merchant ID server-side (never trust client-sent merchant IDs)
+    let merchantId = process.env.AZUL_MERCHANT_ID || null;
+    if (restaurantSlug) {
+      try {
+        const supabaseUrl = sbUrl();
+        const supabaseKey = sbKey();
+        const mRes = await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&status=eq.active&select=azul_merchant_id&limit=1`,
+          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(3000) }
+        );
+        if (mRes.ok) {
+          const rows = await mRes.json();
+          if (rows.length > 0 && rows[0].azul_merchant_id) {
+            merchantId = rows[0].azul_merchant_id;
+          }
+        }
+      } catch (e) {
+        console.error('Merchant ID lookup error:', e.message);
+      }
+    }
+
+    if (!merchantId) {
       return res.status(400).json({ error: 'Payment not configured for this restaurant' });
     }
 

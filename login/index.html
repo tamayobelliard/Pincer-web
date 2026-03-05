@@ -222,6 +222,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         restaurant_slug: data.restaurant_slug,
         display_name: data.display_name,
         username: data.username,
+        sessionToken: data.sessionToken || '',
       }));
 
       // Flag for forced password change (dashboard will show modal)

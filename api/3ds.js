@@ -2,6 +2,7 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import { rateLimit } from './rate-limit.js';
+import { handleCors } from './cors.js';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
@@ -69,13 +70,6 @@ function escJs(s) {
 // ACTION: callback
 // ══════════════════════════════════════════════════════════════
 async function handleCallback(req, res) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
-  }
-
   const sessionId = req.query.session;
   if (!sessionId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
     return res.status(400).send('Invalid session');
@@ -186,11 +180,6 @@ async function handleCallback(req, res) {
 // ACTION: continue
 // ══════════════════════════════════════════════════════════════
 async function handleContinue(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { sessionId, azulOrderId } = req.body;
@@ -281,13 +270,6 @@ async function handleContinue(req, res) {
 // ACTION: method-notify
 // ══════════════════════════════════════════════════════════════
 async function handleMethodNotify(req, res) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
-  }
-
   const sessionId = req.query.session;
   if (!sessionId) {
     return res.status(400).send('Missing session');
@@ -325,12 +307,6 @@ async function handleMethodNotify(req, res) {
 // ACTION: status
 // ══════════════════════════════════════════════════════════════
 async function handleStatus(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
   const sessionId = req.query.session;
   if (!sessionId) {
     return res.status(400).json({ error: 'Missing session' });
@@ -384,6 +360,7 @@ async function handleStatus(req, res) {
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
+  if (handleCors(req, res, { methods: 'GET, POST, OPTIONS', allowNoOrigin: true })) return;
   // Rate limit: 10 3DS requests per minute per IP
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: '3ds' })) return;
 

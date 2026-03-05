@@ -1,5 +1,6 @@
 import admin from 'firebase-admin';
 import { rateLimit } from './rate-limit.js';
+import { handleCors } from './cors.js';
 
 // Parse the private key — handles multiple formats from env vars
 function parsePrivateKey(raw) {
@@ -26,12 +27,7 @@ if (!admin.apps.length) {
 }
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res, { allowNoOrigin: true })) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Rate limit: 30 notifications per minute per IP

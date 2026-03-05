@@ -1,18 +1,29 @@
 import { rateLimit } from './rate-limit.js';
+import { handleCors } from './cors.js';
+import { verifyRestaurantSession } from './verify-session.js';
 
 export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
-  const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res, { methods: 'PATCH, OPTIONS', headers: 'Content-Type, x-restaurant-token' })) return;
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
   // Rate limit: 10 per minute per IP
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'settings' })) return;
+
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseKey) {
+    return res.status(500).json({ success: false, error: 'Error del servidor' });
+  }
+
+  // Verify restaurant session token
+  const token = req.headers['x-restaurant-token'];
+  const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
+  if (!session.valid) {
+    return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+  }
 
   const body = req.body || {};
   const { restaurant_slug, logo_base64 } = body;
@@ -24,11 +35,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'restaurant_slug requerido' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseKey) {
-    return res.status(500).json({ success: false, error: 'Error del servidor' });
+  // Verify ownership: session token must match the restaurant being updated
+  if (session.restaurant_slug !== restaurant_slug) {
+    return res.status(403).json({ success: false, error: 'No tienes acceso a este restaurante' });
   }
 
   const sbHeaders = {

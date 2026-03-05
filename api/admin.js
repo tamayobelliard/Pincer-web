@@ -2,8 +2,8 @@ import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
 import { rateLimit } from './rate-limit.js';
-
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
+import { handleCors } from './cors.js';
+import { sanitizeRestaurant } from './sanitize.js';
 
 async function sendEmail(to, subject, html, attachments = []) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -63,7 +63,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
         return res.status(r.status).json({ error: 'Failed to load restaurants' });
       }
       const raw = await r.json();
-      const data = raw.map(({ password_hash, ...rest }) => rest);
+      const data = raw.map(sanitizeRestaurant);
       return res.status(200).json(data);
     } catch (error) {
       console.error('restaurants GET error:', error);
@@ -413,11 +413,7 @@ async function handleDelete(req, res, supabaseUrl, supabaseKey) {
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res, { methods: 'GET, POST, PATCH, DELETE, OPTIONS', headers: 'Content-Type, x-admin-key' })) return;
 
   // Rate limit: 30 admin requests per minute per IP
   if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'admin' })) return;

@@ -3,10 +3,9 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { sendEmail } from './send-email.js';
+import { handleCors } from './cors.js';
 
 export const config = { maxDuration: 60 };
-
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
 // ── Predefined themes (same as parse-menu.js) ──
 const THEMES = {
@@ -225,11 +224,7 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res, { methods: 'POST, PATCH, OPTIONS' })) return;
 
   // Rate limit: 5 signup attempts per minute per IP
   if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'signup' })) return;

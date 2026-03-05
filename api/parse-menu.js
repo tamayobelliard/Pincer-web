@@ -1,8 +1,7 @@
 import { rateLimit } from './rate-limit.js';
+import { handleCors } from './cors.js';
 
 export const config = { maxDuration: 60 };
-
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://www.pincerweb.com';
 
 // Verify admin session token against Supabase
 async function verifyAdmin(token, supabaseUrl, supabaseKey) {
@@ -77,11 +76,7 @@ function callClaude(apiKey, imageContent, textPrompt) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key, x-signup-slug');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (handleCors(req, res, { headers: 'Content-Type, x-admin-key, x-signup-slug, x-restaurant-token' })) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Rate limit: 10 menu parse requests per minute per IP
