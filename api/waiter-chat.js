@@ -252,7 +252,7 @@ export default async function handler(req, res) {
             }
           }
         }
-      } catch { /* fallback to casual + free */ }
+      } catch (e) { console.error('[waiter-chat] personality/plan fetch error:', e.message); }
     }
 
     // Determine if restaurant is open (server-side check)
@@ -280,7 +280,7 @@ export default async function handler(req, res) {
             }
           }
         }
-      } catch { /* default open */ }
+      } catch (e) { console.error('[waiter-chat] store_settings fetch error:', e.message); }
     }
     // Client-side flag as fallback
     if (clientStoreClosed === true) storeOpen = false;
@@ -307,7 +307,7 @@ export default async function handler(req, res) {
             insightsText = iRows[0].summary_text;
           }
         }
-      } catch { /* no insights available — continue without */ }
+      } catch (e) { console.error('[waiter-chat] insights fetch error:', e.message); }
     }
 
     // Block free-plan restaurants from using chatbot
@@ -453,25 +453,62 @@ Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt
 Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
 ${menuData}`;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
-        system: systemPrompt,
-        messages: messages.slice(-10)
-      })
+    const claudeBody = JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      system: systemPrompt,
+      messages: messages.slice(-10)
     });
+    const claudeHeaders = {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    };
 
-    const data = await response.json();
+    let response, data;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: claudeHeaders, body: claudeBody,
+        signal: AbortSignal.timeout(25000),
+      });
+      data = await response.json();
+    } catch (e1) {
+      console.error('[waiter-chat] Claude API attempt 1 failed:', e1.message);
+      // Retry once after 1 second
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST', headers: claudeHeaders, body: claudeBody,
+          signal: AbortSignal.timeout(25000),
+        });
+        data = await response.json();
+      } catch (e2) {
+        console.error('[waiter-chat] Claude API attempt 2 failed:', e2.message);
+        return res.status(200).json({ answer: p.error });
+      }
+    }
 
     if (!response.ok) {
-      console.error('Claude API error:', data);
+      console.error('[waiter-chat] Claude API error:', response.status, JSON.stringify(data));
+      // Retry once on 429 (rate limit) or 529 (overloaded)
+      if (response.status === 429 || response.status === 529) {
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+          const retryRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST', headers: claudeHeaders, body: claudeBody,
+            signal: AbortSignal.timeout(25000),
+          });
+          const retryData = await retryRes.json();
+          if (retryRes.ok) {
+            const retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
+            res.status(200).json({ answer: retryAnswer });
+            return;
+          }
+          console.error('[waiter-chat] Claude API retry failed:', retryRes.status);
+        } catch (e) {
+          console.error('[waiter-chat] Claude API retry error:', e.message);
+        }
+      }
       return res.status(200).json({ answer: p.error });
     }
 
@@ -497,9 +534,9 @@ ${menuData}`;
     }
 
   } catch (error) {
-    console.error('waiter-chat error:', error);
+    console.error('[waiter-chat] unhandled error:', error.message, error.stack);
     const p = PERSONALITIES.casual;
-    res.status(500).json({ answer: p.error });
+    res.status(200).json({ answer: p.error });
   }
 }
 
