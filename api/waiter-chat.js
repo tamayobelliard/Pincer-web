@@ -209,82 +209,11 @@ function getNextOpenTime(hoursStr) {
 }
 
 // ── Compress large menus: category directory + active category items only ──
-function compressMenuData(menuData, messages) {
+function formatMenuData(menuData) {
   if (!menuData) return '';
-  const lines = menuData.split('\n').filter(l => l.trim());
-  if (lines.length <= 40) return menuData; // small menu, send everything
-
-  // Parse into categories: { "Bebidas - Agua": [line, line], "Breakfast": [line] }
-  const categories = {};
-  for (const line of lines) {
-    const colonIdx = line.indexOf(':');
-    if (colonIdx === -1) continue;
-    const cat = line.substring(0, colonIdx).trim();
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push(line);
-  }
-
-  const catNames = Object.keys(categories);
-
-  // Find categories mentioned in recent messages (last 6 user+assistant turns)
-  const recentText = (messages || []).slice(-6).map(m => (m.content || '').toLowerCase()).join(' ');
-  const activeCats = new Set();
-  for (const cat of catNames) {
-    const catLower = cat.toLowerCase();
-    // Match full category name or parent part (before " - ")
-    if (recentText.includes(catLower)) {
-      activeCats.add(cat);
-    } else {
-      const dash = cat.indexOf(' - ');
-      if (dash !== -1) {
-        const parent = cat.substring(0, dash).toLowerCase();
-        const child = cat.substring(dash + 3).toLowerCase();
-        if (recentText.includes(parent) || recentText.includes(child)) {
-          activeCats.add(cat);
-        }
-      }
-    }
-  }
-
-  // Build compressed version
-  const result = [];
-  result.push('CATEGORÍAS DISPONIBLES (' + catNames.length + ' categorías, ' + lines.length + ' items total):');
-
-  // Category directory: name (count items)
-  const catSummary = catNames.map(c => c + ' (' + categories[c].length + ')');
-  result.push(catSummary.join(', '));
-  result.push('');
-
-  // Full details for active categories (max 3 categories to keep prompt manageable)
-  const activeList = [...activeCats].slice(0, 3);
-  if (activeList.length > 0) {
-    result.push('ITEMS EN CATEGORÍAS ACTIVAS:');
-    for (const cat of activeList) {
-      result.push(...categories[cat]);
-    }
-    result.push('');
-  }
-
-  // Condensed list for remaining categories: just names and prices, no descriptions
-  const remainingCats = catNames.filter(c => !activeCats.has(c));
-  if (remainingCats.length > 0) {
-    result.push('OTROS ITEMS (nombre y precio):');
-    for (const cat of remainingCats) {
-      for (const line of categories[cat]) {
-        // "Category: [id:xxx] Name - RD$100 - description [AGOTADO]"
-        // → "Category: [id:xxx] Name - RD$100"
-        const match = line.match(/^(.+?:\s*\[id:[^\]]+\]\s*[^-]+- RD\$\d+)/);
-        if (match) {
-          const agotado = line.includes('[AGOTADO]') ? ' [AGOTADO]' : '';
-          result.push(match[1] + agotado);
-        } else {
-          result.push(line);
-        }
-      }
-    }
-  }
-
-  return result.join('\n');
+  // Pass through ALL items exactly as received — no compression, no omissions.
+  // Frontend sends: "Category: [id:xxx] Name - RD$price - description [AGOTADO]"
+  return menuData;
 }
 
 export default async function handler(req, res) {
@@ -533,16 +462,31 @@ REGLAS IMPORTANTES:
 ${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
 REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
 Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
-Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
-${compressMenuData(menuData, messages)}`;
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }=== MENÚ COMPLETO ===
+The ONLY items you can mention or recommend are the ones listed below.
+If a customer asks for something not in this list, say you don't have it and suggest the closest available item.
+NEVER invent or suggest items outside this list. Every item has an [id:xxx] — use that exact ID for [ADD_TO_CART:].
+
+${formatMenuData(menuData)}`;
 
     // Trim messages to last 6 to prevent timeouts on long conversations
     const trimmedMessages = (messages || []).slice(-6);
 
-    // Cap system prompt to ~3000 tokens (~12000 chars) to prevent oversized requests
-    const cappedSystem = systemPrompt.length > 12000
-      ? systemPrompt.substring(0, 12000) + '\n[... menú truncado por tamaño]'
-      : systemPrompt;
+    // Cap system prompt but NEVER truncate the menu section
+    const menuMarker = '=== MENÚ COMPLETO ===';
+    const menuIdx = systemPrompt.indexOf(menuMarker);
+    const maxPromptChars = 16000;
+    let cappedSystem;
+    if (systemPrompt.length <= maxPromptChars) {
+      cappedSystem = systemPrompt;
+    } else if (menuIdx > 0) {
+      // Truncate instructions before menu, keep full menu intact
+      const menuSection = systemPrompt.substring(menuIdx);
+      const available = maxPromptChars - menuSection.length;
+      cappedSystem = systemPrompt.substring(0, Math.max(available, 2000)) + '\n...\n' + menuSection;
+    } else {
+      cappedSystem = systemPrompt.substring(0, maxPromptChars);
+    }
 
     console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
 
