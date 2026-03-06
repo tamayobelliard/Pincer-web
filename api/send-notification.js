@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'No devices registered' });
     }
 
-    // Send push with both notification (for OS-level delivery) and data (for SW/foreground)
+    // Send data-only push (SW's push event handler controls display + sound)
     const dashboardUrl = `/${restaurantSlug}/dashboard/`;
     const message = {
       data: {
@@ -119,19 +119,6 @@ export default async function handler(req, res) {
       webpush: {
         headers: {
           Urgency: 'high',
-          TTL: '60',
-        },
-        notification: {
-          title: notificationTitle,
-          body: notificationBody,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          tag: 'pincer-order-' + orderId,
-          renotify: true,
-          requireInteraction: true,
-          vibrate: [300, 100, 300, 100, 300, 100, 300],
-          actions: [{ action: 'open', title: 'Ver orden' }],
-          data: { url: dashboardUrl, orderId: String(orderId) },
         },
         fcmOptions: {
           link: dashboardUrl,
