@@ -1060,6 +1060,26 @@
           <input type="number" id="sDeliveryFee" placeholder="0" min="0" step="1">
         </div>
 
+        <div class="settings-field" id="promoSettingsBlock" style="display:none;">
+          <label style="font-weight:700;font-size:0.95em;">Promocion del dia</label>
+          <div id="promoPreviewCard" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;">
+            <div style="display:flex;gap:12px;align-items:center;">
+              <img id="promoPreviewImg" src="" style="width:60px;height:60px;border-radius:10px;object-fit:cover;display:none;">
+              <div style="flex:1;">
+                <div id="promoPreviewTitle" style="font-weight:700;color:#1e293b;font-size:0.95em;"></div>
+                <div id="promoPreviewDesc" style="color:#64748b;font-size:0.82em;margin-top:2px;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label class="toggle-switch">
+              <input type="checkbox" id="promoActiveToggle" onchange="togglePromo(this.checked)">
+              <span class="toggle-slider" style="background:#22c55e;"></span>
+            </label>
+            <span id="promoToggleLabel" style="font-size:0.85em;font-weight:600;color:#64748b;">Visible en el menu</span>
+          </div>
+        </div>
+
         <hr class="settings-divider">
 
         <div class="settings-field">
@@ -3393,8 +3413,58 @@ async function loadSettings() {
     }
 
     settingsLoaded = true;
+    loadPromoStatus();
   } catch (e) {
     dbg('Settings load error: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PROMO MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+async function loadPromoStatus() {
+  try {
+    var res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/promotions?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
+        '&order=created_at.desc&limit=1&select=id,title,description,image_url,is_active',
+      { headers: { ...sbGetHeaders(), 'Cache-Control': 'no-cache' } }, 8000
+    );
+    if (!res.ok) return;
+    var rows = await res.json();
+    if (!rows.length) return;
+
+    var promo = rows[0];
+    document.getElementById('promoSettingsBlock').style.display = 'block';
+    document.getElementById('promoPreviewTitle').textContent = promo.title || 'Sin titulo';
+    document.getElementById('promoPreviewDesc').textContent = promo.description || '';
+    document.getElementById('promoActiveToggle').checked = promo.is_active;
+    document.getElementById('promoToggleLabel').textContent = promo.is_active ? 'Visible en el menu' : 'Oculta (no visible)';
+
+    if (promo.image_url) {
+      document.getElementById('promoPreviewImg').src = promo.image_url;
+      document.getElementById('promoPreviewImg').style.display = 'block';
+    }
+  } catch (e) {
+    console.log('[promo] loadPromoStatus error:', e.message);
+  }
+}
+
+async function togglePromo(isActive) {
+  var label = document.getElementById('promoToggleLabel');
+  label.textContent = isActive ? 'Activando...' : 'Desactivando...';
+  try {
+    var res = await fetch('/api/toggle-promo', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() },
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    if (res.status === 403) { handleSessionExpired(); return; }
+    label.textContent = isActive ? 'Visible en el menu' : 'Oculta (no visible)';
+    showToast(isActive ? 'Promo activada' : 'Promo desactivada');
+  } catch (e) {
+    label.textContent = 'Error';
+    document.getElementById('promoActiveToggle').checked = !isActive;
   }
 }
 

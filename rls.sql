@@ -203,6 +203,48 @@ CREATE POLICY "deny_anon_delete_restaurant_insights"
 
 
 -- ──────────────────────────────────────────────────────────────
+-- 11. promotions — WhatsApp promo popup data
+-- ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS promotions (
+  id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  restaurant_slug text NOT NULL,
+  is_active       boolean NOT NULL DEFAULT true,
+  title           text NOT NULL,
+  description     text,
+  price           integer,
+  original_price  integer,
+  cta_text        text DEFAULT 'Ordenar Ahora',
+  badge_text      text DEFAULT 'NUEVO',
+  image_url       text,
+  source_phone    text,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  expires_at      timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS idx_promotions_active
+  ON promotions (restaurant_slug) WHERE is_active = true;
+
+ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_select_promotions"
+  ON promotions FOR SELECT TO anon
+  USING (true);
+
+CREATE POLICY "deny_anon_insert_promotions"
+  ON promotions FOR INSERT TO anon
+  WITH CHECK (false);
+
+CREATE POLICY "deny_anon_update_promotions"
+  ON promotions FOR UPDATE TO anon
+  USING (false);
+
+CREATE POLICY "deny_anon_delete_promotions"
+  ON promotions FOR DELETE TO anon
+  USING (false);
+
+
+-- ──────────────────────────────────────────────────────────────
 -- Cleanup: Delete expired sessions (run periodically or add to cron)
 -- ──────────────────────────────────────────────────────────────
 -- DELETE FROM restaurant_sessions WHERE expires_at < now();
