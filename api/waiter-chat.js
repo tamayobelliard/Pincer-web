@@ -404,15 +404,17 @@ ${personalityTone}
 - Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
 - NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
+REGLA CRÍTICA — CARRITO:
+- La ÚNICA forma de agregar items al carrito es con el tag [ADD_TO_CART: item_id]. Sin este tag, NADA se agrega.
+- NUNCA digas "agregado al carrito", "listo en el carrito", o similar sin incluir [ADD_TO_CART: item_id] en el mismo mensaje.
+- Ejemplo CORRECTO: "¡Perfecto! Agregado al carrito [ADD_TO_CART: squareone_smash_burger] ¿Algo más?"
+- Ejemplo INCORRECTO: "¡Listo, ya está en tu carrito!" (sin tag = el item NO se agrega)
+- Con cantidad: [ADD_TO_CART: item_id | 2] — Con nota: [ADD_TO_CART: item_id | sin cebolla] — Ambos: [ADD_TO_CART: item_id | 2 | sin cebolla]
+
 FORMATO DE RESPUESTA:
-- Al final de CADA mensaje, incluye opciones para el cliente en este formato exacto:
-  [BUTTONS: opción1 | opción2 | opción3]
-- Los botones deben ser relevantes al momento de la conversación
-- Máximo 4 botones por mensaje. Si necesitas más, envía los primeros 4 y agrega "Y también tenemos:" con más botones en la misma respuesta.
-- SIEMPRE incluye [BUTTONS:] al final de cada mensaje, sin excepción
-- Para mostrar la foto de un item usa: [SHOW_PHOTO: item_id]
-- Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
-- IMPORTANTE: Si el cliente pide una cantidad específica (ej: "quiero 2 cervezas", "agrégame 3"), SIEMPRE incluye la cantidad como número después del item_id
+- Al final de CADA mensaje, incluye opciones como botones: [BUTTONS: opción1 | opción2 | opción3]
+- Máximo 4 botones por mensaje. SIEMPRE incluye [BUTTONS:] al final.
+- Foto de un item: [SHOW_PHOTO: item_id]
 
 FLUJO DE ORDERING (sigue este flujo natural):
 
@@ -433,14 +435,11 @@ FLUJO DE ORDERING (sigue este flujo natural):
    [SHOW_PHOTO: item_id]
    ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
-6. NOTAS: Si el cliente dice "Agregar al carrito", ANTES de agregar pregunta por notas:
-   ${isSpanish ? '"¿Alguna nota especial? Ej: sin vegetales, extra queso..."' : '"Any special notes? E.g. no veggies, extra cheese..."'}
-   ${isSpanish ? '[BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]' : '[BUTTONS: 👌 No changes, it\'s perfect | ✏️ I want to customize]'}
-   - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id] (o con cantidad: [ADD_TO_CART: item_id | 2])
-   - Si dice "Quiero hacer un cambio": dile que escriba qué quiere cambiar
-   - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió] (o con cantidad: [ADD_TO_CART: item_id | 2 | la nota])
+6. AGREGAR: Cuando el cliente confirma que quiere un item, DEBES incluir [ADD_TO_CART: item_id] en tu respuesta.
+   - Sin notas: [ADD_TO_CART: item_id] — Con nota: [ADD_TO_CART: item_id | la nota]
+   - REPITO: Sin el tag [ADD_TO_CART:], el item NO se agrega al carrito. SIEMPRE inclúyelo.
    Después de agregar, ofrece:
-   ${isSpanish ? '[BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🍟 Add a side | 🥤 Something else | ✅ That\'s all]'}
+   ${isSpanish ? '[BUTTONS: 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🥤 Something else | ✅ That\'s all]'}
 
 7. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
 
@@ -550,7 +549,16 @@ ${formatMenuData(menuData)}`;
       return res.status(200).json({ answer: p.error });
     }
 
-    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
+    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
+
+    // Safety net: if AI claims it added to cart but forgot the tag, strip the false claim
+    const claimsCart = /agregado|agregué|añadido|added|listo.*carrito|en tu carrito/i.test(answer);
+    const hasCartTag = /\[ADD_TO_CART:/i.test(answer);
+    if (claimsCart && !hasCartTag) {
+      console.warn('[waiter-chat] AI claimed cart add without [ADD_TO_CART:] tag — stripping false claim');
+      answer = answer.replace(/[✅🛒]\s*(.*(?:agregado|agregué|añadido|added|listo.*carrito|en tu carrito).*?)([.!?\n]|$)/gi, '$2').trim();
+      if (!answer) answer = '¿Qué te gustaría ordenar?';
+    }
 
     res.status(200).json({ answer });
 
