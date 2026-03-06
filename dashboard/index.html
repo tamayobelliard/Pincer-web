@@ -924,6 +924,9 @@
       🔔 Activa las notificaciones para recibir alertas de órdenes
       <button onclick="requestNotificationPermission()" style="margin-left:12px;background:#78350f;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer">Activar</button>
     </div>
+    <div id="test-notif-banner" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;padding:10px 16px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#1e40af;">
+      🔔 Notificaciones activas — <button onclick="testPushNotification()" style="background:#2563eb;color:white;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;margin-left:6px;">Probar notificación</button>
+    </div>
 
     <div class="stats" id="stats">
       <div class="stat-item"><div class="stat-number" id="total-orders">0</div><div class="stat-label">Total Órdenes</div></div>
@@ -1588,6 +1591,7 @@ async function initFCM() {
 
     if (Notification.permission === 'granted') {
       await getAndStoreFCMToken(swRegistration);
+      document.getElementById('test-notif-banner').style.display = 'block';
     } else if (Notification.permission === 'default') {
       document.getElementById('notification-banner').classList.add('show');
     }
@@ -1701,6 +1705,7 @@ async function requestNotificationPermission() {
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
       document.getElementById('notification-banner').classList.remove('show');
+      document.getElementById('test-notif-banner').style.display = 'block';
       new Notification("¡Notificaciones Habilitadas!", {
         body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
         tag: "pincer-notifications-enabled"
@@ -1730,6 +1735,67 @@ function sendNotification(title, body, tag) {
       n.onclick = function() { window.focus(); this.close(); };
     }
   } catch (e) { /* silente */ }
+}
+
+async function testPushNotification() {
+  try {
+    // 1. Check notification permission
+    if (Notification.permission !== 'granted') {
+      alert('⚠️ Primero activa las notificaciones');
+      return;
+    }
+
+    // 2. Check FCM token
+    if (!fcmMessaging) {
+      alert('⚠️ FCM no inicializado. Recarga la página.');
+      return;
+    }
+
+    const swReg = await navigator.serviceWorker.ready;
+    let token;
+    try {
+      token = await fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: swReg });
+    } catch (e) {
+      alert('⚠️ No se pudo obtener el token FCM: ' + e.message);
+      return;
+    }
+
+    if (!token) {
+      alert('⚠️ Token FCM vacío. Verifica los permisos del navegador.');
+      return;
+    }
+
+    // 3. Send test via our API
+    const res = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-webhook-secret': 'test-from-dashboard',
+      },
+      body: JSON.stringify({
+        type: 'INSERT',
+        table: 'orders',
+        record: {
+          id: 0,
+          order_number: 'TEST',
+          total: 100,
+          items: '[{"qty":1,"name":"Prueba de notificación"}]',
+          restaurant_slug: SLUG,
+        },
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      dbg('✅ Test push sent: ' + data.sent + ' device(s)');
+      alert('✅ Notificación enviada a ' + data.sent + ' dispositivo(s). Debería sonar en unos segundos.');
+    } else {
+      dbg('⚠️ Test push response: ' + JSON.stringify(data));
+      alert('⚠️ ' + (data.error || data.message || 'Error enviando notificación de prueba'));
+    }
+  } catch (e) {
+    alert('❌ Error: ' + e.message);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

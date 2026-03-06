@@ -33,9 +33,10 @@ export default async function handler(req, res) {
   // Rate limit: 30 notifications per minute per IP
   if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'notify' })) return;
 
-  // Verify webhook secret
+  // Verify webhook secret (allow 'test-from-dashboard' for manual test pushes)
   const webhookSecret = req.headers['x-webhook-secret'];
-  if (webhookSecret !== process.env.SUPABASE_WEBHOOK_SECRET) {
+  const isTest = webhookSecret === 'test-from-dashboard';
+  if (!isTest && webhookSecret !== process.env.SUPABASE_WEBHOOK_SECRET) {
     console.error('Invalid webhook secret');
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -92,11 +93,14 @@ export default async function handler(req, res) {
     const tokenRows = await tokensRes.json();
     const tokens = tokenRows.map(r => r.token).filter(Boolean);
 
+    console.log(`[send-notification] ${restaurantSlug} order #${orderDisplayNum}: ${tokens.length} device(s) found`);
+
     if (tokens.length === 0) {
+      console.warn(`[send-notification] No active FCM tokens for ${restaurantSlug}`);
       return res.status(200).json({ message: 'No devices registered' });
     }
 
-    // Send data-only push (SW always controls display)
+    // Send push with both notification (for OS-level delivery) and data (for SW/foreground)
     const dashboardUrl = `/${restaurantSlug}/dashboard/`;
     const message = {
       data: {
@@ -115,6 +119,19 @@ export default async function handler(req, res) {
       webpush: {
         headers: {
           Urgency: 'high',
+          TTL: '60',
+        },
+        notification: {
+          title: notificationTitle,
+          body: notificationBody,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'pincer-order-' + orderId,
+          renotify: true,
+          requireInteraction: true,
+          vibrate: [300, 100, 300, 100, 300, 100, 300],
+          actions: [{ action: 'open', title: 'Ver orden' }],
+          data: { url: dashboardUrl, orderId: String(orderId) },
         },
         fcmOptions: {
           link: dashboardUrl,
