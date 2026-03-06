@@ -3980,7 +3980,15 @@ function openCheckoutModal() {
   // Pre-fill phone from existing field
   const existingPhone = (document.getElementById('phoneInput').value || '').trim();
   document.getElementById('checkoutPhone').value = existingPhone;
-  document.getElementById('checkoutName').value = '';
+
+  // Pre-fill name from main flow (takeout or delivery)
+  var prefillName = '';
+  if (selectedOrderType === 'delivery') {
+    prefillName = (document.getElementById('deliveryName').value || '').trim();
+  } else {
+    prefillName = (document.getElementById('takeoutName').value || '').trim();
+  }
+  document.getElementById('checkoutName').value = prefillName;
 
   // Render order type selector in checkout (only if more than 1 type enabled)
   var checkoutOTSection = document.getElementById('checkoutOrderTypeSection');
@@ -3990,10 +3998,15 @@ function openCheckoutModal() {
     selectOrderType(selectedOrderType);
   }
 
-  // Pre-fill delivery address if captured in main flow
+  // Pre-fill delivery address and GPS if captured in main flow
   if (selectedOrderType === 'delivery') {
     var mainAddr = (document.getElementById('deliveryAddress') || {}).value || '';
     if (mainAddr.trim()) document.getElementById('checkoutDeliveryAddress').value = mainAddr.trim();
+    // If GPS was already captured, show it in checkout too
+    if (customerGpsLink) {
+      var chkGpsStatus = document.getElementById('checkoutGpsStatus');
+      if (chkGpsStatus) chkGpsStatus.innerHTML = '✅ Ubicación capturada — <a href="' + customerGpsLink + '" target="_blank" style="color:var(--primary-light);">Ver en mapa</a>';
+    }
   }
 
   // Reset payment method to card
