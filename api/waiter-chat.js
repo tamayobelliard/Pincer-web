@@ -505,7 +505,12 @@ FLUJO:
 3. ITEMS: Al elegir categoría, muestra items como botones.
 4. DETALLE: Describe brevemente (1 oración) + [SHOW_PHOTO: item_id]
    ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar | 👀 Otra opción | ⬅️ Categorías]' : '[BUTTONS: 📸 Photo | ✅ Add | 👀 Other | ⬅️ Categories]'}
-5. NOTAS: Antes de agregar pregunta notas. Sin cambios → [ADD_TO_CART: item_id]. Con nota → [ADD_TO_CART: item_id | la nota]
+5. NOTAS: Antes de agregar pregunta notas.
+   - CRÍTICO: Cuando el cliente confirma (dice "normal", "sin cambios", "así está bien", o cualquier confirmación), DEBES incluir [ADD_TO_CART: item_id] en tu respuesta. NUNCA digas "listo en el carrito" sin el tag [ADD_TO_CART:].
+   - Sin cambios → responde con [ADD_TO_CART: item_id] incluido en el mensaje
+   - Con nota → responde con [ADD_TO_CART: item_id | la nota] incluido en el mensaje
+   - Ejemplo correcto: "Perfecto, agregado [ADD_TO_CART: squareone_pierna] ¿Algo más?"
+   - Ejemplo INCORRECTO: "Listo, está en el carrito" (sin [ADD_TO_CART:] → el item NO se agrega)
 6. CIERRE: "Eso es todo" → despedida breve. ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
 
 REGLAS:

@@ -5613,6 +5613,11 @@ function closePinzer() {
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
   popPopupState();
+  // Scroll to order section if cart has items
+  if (order.length > 0) {
+    var orderEl = document.getElementById('orderList');
+    if (orderEl) orderEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 async function showWelcomeMessages() {
