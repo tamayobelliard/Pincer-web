@@ -134,6 +134,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Payment not configured for this restaurant' });
     }
 
+    // ── TEST MODE: simulate successful payment without hitting Azul ──
+    if (merchantId === 'SQUAREONE_TEST') {
+      const fakeOrderId = 'TEST-' + crypto.randomUUID().substring(0, 8).toUpperCase();
+      const fakeAuthCode = String(Math.floor(100000 + Math.random() * 900000));
+      console.log(`[payment] TEST MODE for ${restaurantSlug}: fakeOrderId=${fakeOrderId}`);
+      return res.status(200).json({
+        success: true,
+        approved: true,
+        authorizationCode: fakeAuthCode,
+        azulOrderId: fakeOrderId,
+        customOrderId: customOrderId || '',
+        message: 'APROBADA',
+        rrn: null,
+        ticket: null,
+        testMode: true,
+      });
+    }
+
     // ── Server-side amount validation ──
     // Fetch product prices from Supabase and verify the submitted amount
     if (Array.isArray(orderItems) && orderItems.length > 0 && restaurantSlug) {
