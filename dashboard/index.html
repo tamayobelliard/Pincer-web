@@ -464,6 +464,15 @@
       -webkit-tap-highlight-color: transparent;
     }
     .wa-btn:hover { background: #20BA5A; }
+    .wa-btn-receipt { background: #128C7E; margin-top: 8px; }
+    .wa-btn-receipt:hover { background: #0e7a6d; }
+    .wa-share-mini {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #25D366; color: white; text-decoration: none;
+      width: 26px; height: 26px; border-radius: 50%; font-size: 14px;
+      margin-left: 6px; vertical-align: middle; transition: background 0.15s;
+    }
+    .wa-share-mini:hover { background: #20BA5A; }
 
     /* BUTTONS — order action area */
     .order-actions { padding: 12px 16px 16px; }
@@ -2755,14 +2764,19 @@ async function loadOrders() {
       const orderTypeBadge = order.order_type ? '<span class="order-type-badge type-' + order.order_type + '">' + (orderTypeLabels[order.order_type] || order.order_type) + '</span>' : '';
 
       let deliveryInfoHTML = '';
+      let mapUrl = '';
       if (order.order_type === 'delivery' && order.customer_address) {
         let addrDisplay = order.customer_address;
         const mapMatch = addrDisplay.match(/(https:\/\/www\.google\.com\/maps\?q=[^\s|]+)/);
         if (mapMatch) {
+          mapUrl = mapMatch[1];
           addrDisplay = addrDisplay.replace(' | ' + mapMatch[1], '').replace(mapMatch[1], '');
           addrDisplay = (addrDisplay.trim() || 'Ver ubicación') + ' — <a href="' + mapMatch[1] + '" target="_blank">📍 Ver en mapa</a>';
         }
         deliveryInfoHTML = '<div class="order-delivery-info">📍 ' + addrDisplay;
+        if (mapUrl) {
+          deliveryInfoHTML += ' <a class="wa-share-mini" href="https://wa.me/?text=' + encodeURIComponent('📍 Ubicación para orden #' + orderNum + ' de ' + DISPLAY_NAME + ':\n' + mapUrl) + '" target="_blank" title="Enviar ubicación por WhatsApp">💬</a>';
+        }
         if (order.delivery_fee) deliveryInfoHTML += '<br>🛵 Delivery: RD$' + order.delivery_fee.toLocaleString();
         deliveryInfoHTML += '</div>';
       }
@@ -2804,6 +2818,7 @@ async function loadOrders() {
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button><button class="btn-revert" onclick="revertOrder(${order.id})">↩ Revertir</button>` : ''}
         ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waMsg)}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
         ${order.order_type === 'delivery' && order.phone ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
+        ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
         </div>`;
       container.appendChild(div);
