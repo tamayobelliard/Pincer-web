@@ -5571,23 +5571,6 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
-  // Fallback: if chatbot used [BUTTONS:] on empty line + individual [Item] lines, parse those too
-  if (buttons.length === 0) {
-    const singleBtnRegex = /^\[([^\[\]]{3,60})\]\s*$/gm;
-    let sbm;
-    while ((sbm = singleBtnRegex.exec(cleanText)) !== null) {
-      const val = sbm[1].trim();
-      // Skip known action tags
-      if (/^(ADD_TO_CART|SHOW_PHOTO|BUTTONS)/i.test(val)) continue;
-      buttons.push(val);
-    }
-    if (buttons.length > 0) {
-      cleanText = cleanText.replace(/^\[([^\[\]]{3,60})\]\s*$/gm, '').trim();
-      // Also remove the empty [BUTTONS:] tag
-      cleanText = cleanText.replace(/\[BUTTONS:\s*\]/g, '').trim();
-    }
-  }
-
   return { cleanText, buttons, cartItems, showPhotos };
 }
 
@@ -5630,11 +5613,6 @@ function closePinzer() {
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
   popPopupState();
-  // Scroll to order section if cart has items
-  if (order.length > 0) {
-    var orderEl = document.getElementById('orderList');
-    if (orderEl) orderEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 }
 
 async function showWelcomeMessages() {
@@ -5732,9 +5710,7 @@ function pinzerShowReplies(replies) {
     const btn = document.createElement('button');
     btn.className = 'pinzer-reply-btn';
     if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
-    // Strip price from display (e.g. "Pizza Pepperoni RD$480" → "Pizza Pepperoni")
-    btn.textContent = r.label.replace(/\s*RD\$\d[\d,.]*/g, '').trim();
-    // Send full label (with price) back to AI for context
+    btn.textContent = r.label;
     btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
   });

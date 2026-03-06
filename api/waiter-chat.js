@@ -208,13 +208,13 @@ function getNextOpenTime(hoursStr) {
   return null;
 }
 
-// ── Compress large menus: ALL items always included, active categories get full detail ──
+// ── Compress large menus: category directory + active category items only ──
 function compressMenuData(menuData, messages) {
   if (!menuData) return '';
   const lines = menuData.split('\n').filter(l => l.trim());
   if (lines.length <= 40) return menuData; // small menu, send everything
 
-  // Parse into categories: { "Bebidas - Agua": [line, line], ... }
+  // Parse into categories: { "Bebidas - Agua": [line, line], "Breakfast": [line] }
   const categories = {};
   for (const line of lines) {
     const colonIdx = line.indexOf(':');
@@ -231,6 +231,7 @@ function compressMenuData(menuData, messages) {
   const activeCats = new Set();
   for (const cat of catNames) {
     const catLower = cat.toLowerCase();
+    // Match full category name or parent part (before " - ")
     if (recentText.includes(catLower)) {
       activeCats.add(cat);
     } else {
@@ -245,50 +246,45 @@ function compressMenuData(menuData, messages) {
     }
   }
 
+  // Build compressed version
   const result = [];
+  result.push('CATEGORÍAS DISPONIBLES (' + catNames.length + ' categorías, ' + lines.length + ' items total):');
 
-  // Active categories: full detail (one item per line with descriptions)
+  // Category directory: name (count items)
+  const catSummary = catNames.map(c => c + ' (' + categories[c].length + ')');
+  result.push(catSummary.join(', '));
+  result.push('');
+
+  // Full details for active categories (max 3 categories to keep prompt manageable)
   const activeList = [...activeCats].slice(0, 3);
   if (activeList.length > 0) {
+    result.push('ITEMS EN CATEGORÍAS ACTIVAS:');
     for (const cat of activeList) {
       result.push(...categories[cat]);
     }
     result.push('');
   }
 
-  // ALL other categories: one compact line per category with every item name, ID, and price
-  // Format: "CATEGORY: [id:xxx] Name RD$100 | [id:yyy] Name2 RD$200 | ..."
+  // Condensed list for remaining categories: just names and prices, no descriptions
   const remainingCats = catNames.filter(c => !activeCats.has(c));
-  for (const cat of remainingCats) {
-    const items = categories[cat].map(line => {
-      // Extract: [id:xxx] Name - RD$100
-      const m = line.match(/\[id:[^\]]+\]\s*(.+?)\s*-\s*(RD\$\d+)/);
-      if (m) {
-        const idMatch = line.match(/(\[id:[^\]]+\])/);
-        const agotado = line.includes('[AGOTADO]') ? ' AGOTADO' : '';
-        return idMatch[1] + ' ' + m[1].trim() + ' ' + m[2] + agotado;
+  if (remainingCats.length > 0) {
+    result.push('OTROS ITEMS (nombre y precio):');
+    for (const cat of remainingCats) {
+      for (const line of categories[cat]) {
+        // "Category: [id:xxx] Name - RD$100 - description [AGOTADO]"
+        // → "Category: [id:xxx] Name - RD$100"
+        const match = line.match(/^(.+?:\s*\[id:[^\]]+\]\s*[^-]+- RD\$\d+)/);
+        if (match) {
+          const agotado = line.includes('[AGOTADO]') ? ' [AGOTADO]' : '';
+          result.push(match[1] + agotado);
+        } else {
+          result.push(line);
+        }
       }
-      return null;
-    }).filter(Boolean);
-    if (items.length > 0) {
-      result.push(cat + ': ' + items.join(' | '));
     }
   }
 
   return result.join('\n');
-}
-
-// ── Extract all known item names from menu data for validation ──
-function extractMenuItemNames(menuData) {
-  if (!menuData) return new Set();
-  const names = new Set();
-  const lines = menuData.split('\n');
-  for (const line of lines) {
-    // Match: [id:xxx] ItemName - RD$price
-    const m = line.match(/\[id:[^\]]+\]\s*(.+?)\s*-\s*RD\$/);
-    if (m) names.add(m[1].trim().toLowerCase());
-  }
-  return names;
 }
 
 export default async function handler(req, res) {
@@ -469,98 +465,91 @@ Regla de idioma:
 - Si el cliente prefiere español, continua en español`
       : 'Responde siempre en español.';
 
-    // Time-aware suggestions based on DR time (UTC-4)
-    const drNow = getDRDate();
-    const drHour = drNow.getHours();
-    let timeHint = '';
-    if (drHour >= 6 && drHour < 11) timeHint = 'Es la mañana, prioriza sugerir desayunos y cafés.';
-    else if (drHour >= 11 && drHour < 15) timeHint = 'Es mediodía, prioriza sugerir almuerzos y platos del día.';
-    else if (drHour >= 15 && drHour < 23) timeHint = 'Es la tarde/noche, prioriza sugerir cenas y platos principales.';
-    else timeHint = 'Es tarde en la noche, sugiere opciones disponibles a esta hora.';
-
     const systemPrompt = `${langRule}
 
 Eres el mesero virtual de ${rName}.
 ${langInstruction}
-${timeHint}
-
 ESTILO DE CONVERSACIÓN:
-- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat.
+- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
 ${personalityTone}
-- Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Como WhatsApp, no como email.
-- NUNCA sueltes todo el menú de golpe. Guía paso a paso.
-
-CRÍTICO — ITEMS Y PRECIOS:
-- NUNCA inventes platos, precios, descripciones ni información que no esté en el menú de abajo.
-- SOLO puedes mencionar items que aparecen en el MENÚ ACTUAL proporcionado.
-- Si el cliente pide algo que no está en el menú, dile: "Eso no lo tenemos en el menú, pero te puedo ofrecer [alternativa del menú]."
-- Cada item del menú tiene un ID con formato [id:xxx]. SIEMPRE usa ese ID exacto en [ADD_TO_CART:] y [SHOW_PHOTO:].
-- NUNCA uses el nombre del item en [ADD_TO_CART:]. SOLO el ID. Ejemplo correcto: [ADD_TO_CART: squareone_smash_burger], ejemplo INCORRECTO: [ADD_TO_CART: Smash Burger].
+- Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
+- NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
 FORMATO DE RESPUESTA:
-- SIEMPRE usa [BUTTONS: opción1 | opción2 | opción3] en UNA SOLA LÍNEA separado por | para dar opciones. NUNCA listes items como texto plano ni en líneas separadas.
-- Formato CORRECTO: [BUTTONS: Pizza Pepperoni RD$480 | Pizza Meat Lovers RD$540 | Smash Burger RD$450 | Ver más opciones]
-- Formato INCORRECTO: [BUTTONS:] seguido de líneas separadas con corchetes
-- Máximo 4 opciones por [BUTTONS:]. Si hay más items, muestra los 4 más relevantes + "Ver más opciones".
-- Al listar items incluye el precio: [BUTTONS: Cranberry RD$270 | Agua Perrier RD$110 | Red Bull RD$170 | Ver más bebidas]
-- Foto de un item: [SHOW_PHOTO: item_id]
-- Agregar al carrito: [ADD_TO_CART: item_id] o [ADD_TO_CART: item_id | 2] o [ADD_TO_CART: item_id | nota] o [ADD_TO_CART: item_id | 2 | nota]
-- Si el cliente pide cantidad específica, SIEMPRE incluye el número: [ADD_TO_CART: item_id | 2]
+- Al final de CADA mensaje, incluye opciones para el cliente en este formato exacto:
+  [BUTTONS: opción1 | opción2 | opción3]
+- Los botones deben ser relevantes al momento de la conversación
+- Máximo 4 botones por mensaje. Si necesitas más, envía los primeros 4 y agrega "Y también tenemos:" con más botones en la misma respuesta.
+- SIEMPRE incluye [BUTTONS:] al final de cada mensaje, sin excepción
+- Para mostrar la foto de un item usa: [SHOW_PHOTO: item_id]
+- Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
+- IMPORTANTE: Si el cliente pide una cantidad específica (ej: "quiero 2 cervezas", "agrégame 3"), SIEMPRE incluye la cantidad como número después del item_id
 
-FLUJO:
-1. SALUDO: Ya fue saludado. Si primera vez: guía por menú. Si ya vino: muestra categorías.
-2. CATEGORÍAS: Muestra como botones (nombres exactos del menú).
-3. ITEMS: Al elegir categoría, muestra items como botones con precio. Si hay más de 4, muestra los 4 más relevantes + botón "Ver más".
-4. DETALLE: Describe brevemente (1 oración) + [SHOW_PHOTO: item_id]
-   ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar | 👀 Otra opción | ⬅️ Categorías]' : '[BUTTONS: 📸 Photo | ✅ Add | 👀 Other | ⬅️ Categories]'}
-5. NOTAS: Antes de agregar pregunta notas.
-   - CRÍTICO: Cuando el cliente confirma (dice "normal", "sin cambios", "así está bien", o cualquier confirmación), DEBES incluir [ADD_TO_CART: item_id] en tu respuesta. NUNCA digas "listo en el carrito" sin el tag [ADD_TO_CART:].
-   - Sin cambios → responde con [ADD_TO_CART: item_id] incluido en el mensaje
-   - Con nota → responde con [ADD_TO_CART: item_id | la nota] incluido en el mensaje
-   - Ejemplo correcto: "Perfecto, agregado [ADD_TO_CART: squareone_pierna] ¿Algo más?"
-   - Ejemplo INCORRECTO: "Listo, está en el carrito" (sin [ADD_TO_CART:] → el item NO se agrega)
-6. CIERRE: "Eso es todo" → despedida breve. ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
+FLUJO DE ORDERING (sigue este flujo natural):
 
-REGLAS:
-- CONVERSACIONAL: intercambio real, no monólogo
-- Solo recomienda del menú actual. Precios en RD$
-- [AGOTADO] = agotado, sugiere alternativa
-- Nunca confirmes plato libre de alérgenos. Si mencionan alergia → nota en la orden.
+1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
+   Si dice primera vez: "${isSpanish ? p.greeting_first + ' 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?' : 'Respond warmly and offer to guide them through the menu or let them browse.'}"
+   ${isSpanish ? '[BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]' : '[BUTTONS: 🍽️ Guide me | 👀 I\'ll browse the menu]'}
+   Si ya ha venido: "${isSpanish ? p.greeting_return : 'Welcome them back warmly'}" y muestra las categorías del menú como botones.
 
-${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO: CERRADO. NO uses [ADD_TO_CART:]. Responde: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ COMPLETO — SOLO estos items existen. Si un plato NO aparece abajo, NO existe en el restaurante. NUNCA inventes items fuera de esta lista:
-${compressMenuData(menuData, messages)}
+2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
 
-RECORDATORIO FORMATO (OBLIGATORIO):
-- Opciones → [BUTTONS: opción1 RD$precio | opción2 RD$precio | opción3] en UNA línea, separadas por |
-- Agregar → [ADD_TO_CART: item_id] (usa el ID exacto del menú, NUNCA el nombre)
-- Foto → [SHOW_PHOTO: item_id]
-- Confirma orden → SIEMPRE incluye [ADD_TO_CART: item_id], nunca solo texto`;
+3. ITEMS: Cuando elija categoría, muestra TODOS los items disponibles de esa categoría como botones. Nunca omitas items del menú. Si hay más de 4, usa múltiples líneas de botones.
+
+4. DETALLE: Cuando elija un item, describe brevemente qué trae (1 oración) y ofrece ver la foto:
+   [SHOW_PHOTO: item_id]
+   ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: 📸 See photo | ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
+
+5. FOTO: Si el cliente pide ver la foto, responde breve y vuelve a ofrecer agregar:
+   [SHOW_PHOTO: item_id]
+   ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
+
+6. NOTAS: Si el cliente dice "Agregar al carrito", ANTES de agregar pregunta por notas:
+   ${isSpanish ? '"¿Alguna nota especial? Ej: sin vegetales, extra queso..."' : '"Any special notes? E.g. no veggies, extra cheese..."'}
+   ${isSpanish ? '[BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]' : '[BUTTONS: 👌 No changes, it\'s perfect | ✏️ I want to customize]'}
+   - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id] (o con cantidad: [ADD_TO_CART: item_id | 2])
+   - Si dice "Quiero hacer un cambio": dile que escriba qué quiere cambiar
+   - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió] (o con cantidad: [ADD_TO_CART: item_id | 2 | la nota])
+   Después de agregar, ofrece:
+   ${isSpanish ? '[BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🍟 Add a side | 🥤 Something else | ✅ That\'s all]'}
+
+7. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
+
+8. CIERRE: Si dice "Eso es todo", despídete brevemente:
+   ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
+
+REGLAS IMPORTANTES:
+- Los item_ids están en el menú con formato [id:xxx]. Usa EXACTAMENTE esos IDs en [ADD_TO_CART:]
+- CONVERSACIONAL: Cada mensaje debe sentirse como un intercambio real, no un monólogo
+- Si el cliente dice "no sé qué pedir", hazle UNA pregunta sobre sus preferencias
+- Si el cliente muestra interés en algo, profundiza y sugiere complementos
+- Solo recomienda items del menú actual
+- Si un item está [AGOTADO], di que se acabó y sugiere alternativa
+- Precios en RD$
+- Si preguntan algo fuera del restaurante, redirige amablemente a la comida
+- NUNCA inventes items o precios que no están en el menú
+- NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
+
+${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
+REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
+Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
+${compressMenuData(menuData, messages)}`;
 
     // Trim messages to last 6 to prevent timeouts on long conversations
     const trimmedMessages = (messages || []).slice(-6);
 
-    // Cap system prompt — but never truncate the menu section
-    const menuMarker = 'MENÚ COMPLETO';
-    const menuIdx = systemPrompt.indexOf(menuMarker);
-    const maxPromptChars = 16000;
-    let cappedSystem;
-    if (systemPrompt.length <= maxPromptChars) {
-      cappedSystem = systemPrompt;
-    } else if (menuIdx > 0) {
-      // Truncate instructions before menu, keep full menu intact
-      const menuSection = systemPrompt.substring(menuIdx);
-      const available = maxPromptChars - menuSection.length;
-      cappedSystem = systemPrompt.substring(0, Math.max(available, 2000)) + '\n...\n' + menuSection;
-    } else {
-      cappedSystem = systemPrompt.substring(0, maxPromptChars);
-    }
+    // Cap system prompt to ~3000 tokens (~12000 chars) to prevent oversized requests
+    const cappedSystem = systemPrompt.length > 12000
+      ? systemPrompt.substring(0, 12000) + '\n[... menú truncado por tamaño]'
+      : systemPrompt;
 
-    console.log('[waiter-chat] prompt size:', cappedSystem.length, 'sys +', JSON.stringify(trimmedMessages).length, 'msgs | BUTTONS in prompt:', cappedSystem.includes('[BUTTONS:'));
+    console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
 
     const claudeBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
-      system: [{ type: 'text', text: cappedSystem, cache_control: { type: 'ephemeral' } }],
+      system: cappedSystem,
       messages: trimmedMessages
     });
     const claudeHeaders = {
@@ -605,20 +594,7 @@ RECORDATORIO FORMATO (OBLIGATORIO):
           });
           const retryData = await retryRes.json();
           if (retryRes.ok) {
-            let retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
-            // Validate ADD_TO_CART on retry too
-            if (menuData && retryAnswer.includes('ADD_TO_CART')) {
-              const knownIds2 = new Set();
-              const idRegex2 = /\[id:([^\]]+)\]/g;
-              let idm2;
-              while ((idm2 = idRegex2.exec(menuData)) !== null) knownIds2.add(idm2[1].trim());
-              retryAnswer = retryAnswer.replace(/\[ADD_TO_CART:\s*([^\]|]+)([^\]]*)\]/g, (full, rawId, rest) => {
-                const id = rawId.trim();
-                if (knownIds2.has(id)) return full;
-                console.warn('[waiter-chat] blocked invented ADD_TO_CART (retry):', id);
-                return '';
-              });
-            }
+            const retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
             res.status(200).json({ answer: retryAnswer });
             return;
           }
@@ -630,23 +606,7 @@ RECORDATORIO FORMATO (OBLIGATORIO):
       return res.status(200).json({ answer: p.error });
     }
 
-    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
-
-    console.log('[waiter-chat] raw response:', answer.substring(0, 500));
-
-    // Validate: strip ADD_TO_CART for item IDs not in menu data
-    if (menuData && answer.includes('ADD_TO_CART')) {
-      const knownIds = new Set();
-      const idRegex = /\[id:([^\]]+)\]/g;
-      let idm;
-      while ((idm = idRegex.exec(menuData)) !== null) knownIds.add(idm[1].trim());
-      answer = answer.replace(/\[ADD_TO_CART:\s*([^\]|]+)([^\]]*)\]/g, (full, rawId, rest) => {
-        const id = rawId.trim();
-        if (knownIds.has(id)) return full; // valid
-        console.warn('[waiter-chat] blocked invented ADD_TO_CART:', id);
-        return ''; // strip invented item
-      });
-    }
+    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
     res.status(200).json({ answer });
 
