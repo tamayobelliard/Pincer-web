@@ -5578,6 +5578,77 @@ function parseBotResponse(text) {
   return { cleanText, buttons, cartItems, showPhotos, orderComplete };
 }
 
+function generateContextButtons(botMessage, parsed) {
+  // If the AI already included buttons, use those
+  if (parsed.buttons.length > 0) return parsed.buttons.map(b => ({ label: b }));
+
+  var msg = (botMessage || '').toLowerCase();
+  var isEs = !currentLanguage || currentLanguage === 'es';
+
+  // After adding to cart
+  if (parsed.cartItems.length > 0) {
+    return isEs
+      ? [{ label: '🍽️ Pedir algo más' }, { label: '✅ Eso es todo' }]
+      : [{ label: '🍽️ Order more' }, { label: '✅ That\'s all' }];
+  }
+
+  // Order complete
+  if (parsed.orderComplete) {
+    return isEs ? [{ label: '👋 Cerrar' }] : [{ label: '👋 Close' }];
+  }
+
+  // Asking about modifications/observations
+  if (/observaci[oó]n|modificaci[oó]n|tal cual|cambios|especial|extra salsa|sin vegetales/i.test(msg)) {
+    return isEs
+      ? [{ label: '👌 Tal cual' }, { label: '✏️ Con cambios' }]
+      : [{ label: '👌 As is' }, { label: '✏️ Customize' }];
+  }
+
+  // Asking "algo más" / offering more
+  if (/algo m[aá]s|something else|¿qué más|¿deseas algo/i.test(msg)) {
+    return isEs
+      ? [{ label: '🍽️ Pedir algo más' }, { label: '✅ Eso es todo' }]
+      : [{ label: '🍽️ Order more' }, { label: '✅ That\'s all' }];
+  }
+
+  // Mentions a specific item name from the menu → offer to add
+  if (typeof MENU_DATA === 'object') {
+    for (var cat in MENU_DATA) {
+      var items = MENU_DATA[cat];
+      for (var i = 0; i < items.length; i++) {
+        if (msg.includes(items[i].name.toLowerCase())) {
+          return isEs
+            ? [{ label: '✅ Agregar al carrito' }, { label: '📸 Ver foto' }, { label: '👀 Otra opción' }, { label: '⬅️ Categorías' }]
+            : [{ label: '✅ Add to cart' }, { label: '📸 Photo' }, { label: '👀 Other' }, { label: '⬅️ Categories' }];
+        }
+      }
+    }
+  }
+
+  // Mentions category names → show matching categories as buttons
+  if (typeof MENU_DATA === 'object') {
+    var cats = Object.keys(MENU_DATA);
+    var matchedCats = [];
+    for (var c = 0; c < cats.length; c++) {
+      // Match parent category (before " - ") for subcategory menus
+      var parentCat = cats[c].indexOf(' - ') !== -1 ? cats[c].substring(0, cats[c].indexOf(' - ')) : cats[c];
+      if (msg.includes(parentCat.toLowerCase()) && matchedCats.indexOf(parentCat) === -1) {
+        matchedCats.push(parentCat);
+      }
+    }
+    if (matchedCats.length > 0) {
+      var btns = matchedCats.slice(0, 3).map(function(c) { return { label: c }; });
+      btns.push(isEs ? { label: '📋 Ver todo el menú' } : { label: '📋 Full menu' });
+      return btns;
+    }
+  }
+
+  // Default fallback — always show something useful
+  return isEs
+    ? [{ label: '📋 Ver el menú' }, { label: '🛒 Ayúdame a ordenar' }, { label: '❓ Tengo una pregunta' }]
+    : [{ label: '📋 See the menu' }, { label: '🛒 Help me order' }, { label: '❓ I have a question' }];
+}
+
 function showPhotoInChat(itemId) {
   const item = findMenuItem(itemId);
   if (!item || !item.img) return;
@@ -5658,7 +5729,17 @@ async function showWelcomeMessages() {
     pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
   }
 
-  // Proactive language offer based on browser language
+  // Proactive language offer based on browser language (skip if already confirmed)
+  if (currentLanguage) {
+    // Language already confirmed — show standard welcome buttons
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 500);
+    return;
+  }
   var bLang = (navigator.language || 'es').toLowerCase();
   var langKey = bLang.split('-')[0];
   var langOffers = {
@@ -5680,6 +5761,7 @@ async function showWelcomeMessages() {
       }, 300);
     }, 800);
   } else {
+    currentLanguage = 'es'; // Spanish browser — confirm language immediately
     setTimeout(() => {
       pinzerShowReplies([
         { label: '👋 Sí, primera vez' },
@@ -5916,9 +5998,10 @@ async function sendToAI(userMessage) {
         }
       });
 
-      // Show parsed buttons
-      if (parsed.buttons.length > 0) {
-        pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
+      // Generate and show context-aware buttons (always, regardless of AI output)
+      var contextButtons = generateContextButtons(parsed.cleanText, parsed);
+      if (contextButtons.length > 0) {
+        pinzerShowReplies(contextButtons);
       }
 
       // Handle ORDER_COMPLETE: close chatbot and scroll to order summary

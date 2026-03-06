@@ -385,14 +385,16 @@ LANGUAGE RULES:
     const LANG_DISPLAY = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
     const browserLangName = LANG_DISPLAY[browserLang] || browserLang;
 
-    const langRule = browserLang !== 'es'
-      ? `Idioma del browser del cliente: ${browserLangName}
+    const langRule = confirmedLang
+      ? (isSpanish ? 'Responde siempre en español.' : `Responde siempre en ${LANG_DISPLAY[confirmedLang] || confirmedLang}. El cliente ya eligió este idioma.`)
+      : (browserLang !== 'es'
+        ? `Idioma del browser del cliente: ${browserLangName}
 Regla de idioma:
 - Saluda siempre en español primero
 - En el primer mensaje pregunta: "Veo que tu dispositivo esta en ${browserLangName}. ¿Prefieres que te hable en ${browserLangName}?"
 - Si el cliente acepta, cambia a ese idioma para toda la conversacion
 - Si el cliente prefiere español, continua en español`
-      : 'Responde siempre en español.';
+        : 'Responde siempre en español.');
 
     const systemPrompt = `${langRule}
 
@@ -404,84 +406,25 @@ ${personalityTone}
 - Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
 - NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
-REGLA CRÍTICA — CARRITO (2 PASOS OBLIGATORIOS):
+CARRITO — REGLAS:
+- Para agregar al carrito: [ADD_TO_CART: item_id] o [ADD_TO_CART: item_id | nota] o [ADD_TO_CART: item_id | 2 | nota]
 - NUNCA incluyas [ADD_TO_CART:] en el mismo mensaje donde el cliente dice que quiere un item.
-- SIEMPRE pregunta por observaciones/modificaciones PRIMERO en un mensaje separado.
-- Solo incluye [ADD_TO_CART:] DESPUÉS de que el cliente responda sobre observaciones.
-- Sin el tag [ADD_TO_CART: item_id], NADA se agrega al carrito.
-- Con nota: [ADD_TO_CART: item_id | sin cebolla] — Con cantidad: [ADD_TO_CART: item_id | 2] — Ambos: [ADD_TO_CART: item_id | 2 | sin cebolla]
+- PRIMERO pregunta "¿Alguna observación? (sin vegetales, extra salsa, etc.) o tal cual?"
+- Solo incluye [ADD_TO_CART:] DESPUÉS de que el cliente responda (ej: "tal cual" o "sin cebolla").
+- Ejemplo: Cliente dice "sin cebolla" → "¡Listo! [ADD_TO_CART: squareone_smash_burger | sin cebolla] ¿Algo más?"
+- Sin el tag [ADD_TO_CART:], NADA se agrega al carrito. NUNCA digas "agregado" sin incluirlo.
+- Para fotos: [SHOW_PHOTO: item_id]
 
-EJEMPLO CORRECTO (2 mensajes):
-  Cliente: "Quiero la Smash Burger"
-  Bot: "¡Buena elección! ¿Alguna observación? (sin vegetales, extra salsa, etc.) o tal cual? [BUTTONS: 👌 Tal cual | ✏️ Con cambios]"
-  Cliente: "Sin cebolla"
-  Bot: "¡Listo! [ADD_TO_CART: squareone_smash_burger | sin cebolla] ¿Algo más? [BUTTONS: 🥤 Algo más | ✅ Eso es todo]"
+CIERRE:
+- Si dice "eso es todo", "nada más", "quiero pagar", "listo": despídete e incluye [ORDER_COMPLETE]
 
-EJEMPLO INCORRECTO (1 mensaje — PROHIBIDO):
-  Cliente: "Quiero la Smash Burger"
-  Bot: "¡Agregada! [ADD_TO_CART: squareone_smash_burger]" ← MAL: no preguntó observaciones
-
-REGLA CRÍTICA — BOTONES:
-ALWAYS end EVERY response with [BUTTONS:] containing 2-4 options. NO EXCEPTIONS — greetings, clarifications, off-topic, errors, ALL must end with buttons.
-Format: [BUTTONS: Option 1 | Option 2 | Option 3]
-Ejemplos por contexto:
-- Saludo/off-topic: [BUTTONS: 🛒 Ayúdame con mi orden | 📋 Ver el menú | ❓ Tengo una pregunta]
-- Categorías: [BUTTONS: Sándwiches | Bebidas | Postres | Ver todo]
-- Items de categoría: [BUTTONS: Item1 | Item2 | Item3 | Volver a categorías]
-- Observaciones: [BUTTONS: 👌 Tal cual | ✏️ Con cambios]
-- Después de agregar: [BUTTONS: 🍽️ Pedir algo más | ✅ Eso es todo]
-
-FORMATO ADICIONAL:
-- Foto de un item: [SHOW_PHOTO: item_id]
-
-FLUJO DE ORDERING (sigue este flujo natural):
-
-1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
-   Si dice primera vez: "${isSpanish ? p.greeting_first + ' 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?' : 'Respond warmly and offer to guide them through the menu or let them browse.'}"
-   ${isSpanish ? '[BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]' : '[BUTTONS: 🍽️ Guide me | 👀 I\'ll browse the menu]'}
-   Si ya ha venido: "${isSpanish ? p.greeting_return : 'Welcome them back warmly'}" y muestra las categorías del menú como botones.
-
-2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
-
-3. ITEMS: Cuando elija categoría, muestra TODOS los items disponibles de esa categoría como botones. Nunca omitas items del menú. Si hay más de 4, usa múltiples líneas de botones.
-
-4. DETALLE: Cuando elija un item, describe brevemente qué trae (1 oración) y ofrece ver la foto:
-   [SHOW_PHOTO: item_id]
-   ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: 📸 See photo | ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
-
-5. FOTO: Si el cliente pide ver la foto, responde breve y vuelve a ofrecer agregar:
-   [SHOW_PHOTO: item_id]
-   ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
-
-6. OBSERVACIONES (OBLIGATORIO): Cuando el cliente dice que quiere un item, tu respuesta SOLO debe preguntar por observaciones. NO incluyas [ADD_TO_CART:] en este mensaje.
-   ${isSpanish ? '"¿Alguna observación? (sin vegetales, extra salsa, punto de cocción, etc.) o lo dejamos tal cual?"' : '"Any modifications? (no veggies, extra sauce, etc.) or keep it as is?"'}
-   ${isSpanish ? '[BUTTONS: 👌 Tal cual | ✏️ Con cambios]' : '[BUTTONS: 👌 As is | ✏️ Customize]'}
-
-7. AGREGAR (solo después del paso 6): Cuando el cliente RESPONDE sobre observaciones, AHORA sí incluye [ADD_TO_CART:]:
-   - "Tal cual" / sin cambios → [ADD_TO_CART: item_id]
-   - Con modificación (ej: "sin cebolla") → [ADD_TO_CART: item_id | sin cebolla]
-   - NUNCA llegues a este paso sin haber pasado por el paso 6 primero.
-   Después de agregar, ofrece:
-   ${isSpanish ? '[BUTTONS: 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🥤 Something else | ✅ That\'s all]'}
-
-8. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
-
-9. CIERRE: Si dice "Eso es todo", "nada más", "quiero pagar", "listo":
-   - Despídete: ${isSpanish ? '"¡Perfecto! Tu orden está lista 🎉 Te llevo al resumen para que puedas revisar y pagar."' : '"Perfect! Your order is ready 🎉 Taking you to the summary to review and pay."'}
-   - SIEMPRE incluye el tag [ORDER_COMPLETE] al final del mensaje de cierre.
-   ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
-
-REGLAS IMPORTANTES:
-- Los item_ids están en el menú con formato [id:xxx]. Usa EXACTAMENTE esos IDs en [ADD_TO_CART:]
-- CONVERSACIONAL: Cada mensaje debe sentirse como un intercambio real, no un monólogo
-- Si el cliente dice "no sé qué pedir", hazle UNA pregunta sobre sus preferencias
-- Si el cliente muestra interés en algo, profundiza y sugiere complementos
-- Solo recomienda items del menú actual
-- Si un item está [AGOTADO], di que se acabó y sugiere alternativa
-- Precios en RD$
-- Si preguntan algo fuera del restaurante, redirige amablemente a la comida
-- NUNCA inventes items o precios que no están en el menú
-- NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
+REGLAS:
+- Los item_ids están en el menú con formato [id:xxx]. Usa esos IDs exactos.
+- Respuestas CORTAS: 1-2 oraciones máximo.
+- Solo recomienda items del menú actual. Si está [AGOTADO], sugiere alternativa.
+- NUNCA inventes items o precios. Precios en RD$.
+- Si mencionan alergia, inclúyelo como nota en la orden.
+- NO incluyas [BUTTONS:] en tus respuestas — los botones se generan automáticamente.
 
 ${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
 REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
