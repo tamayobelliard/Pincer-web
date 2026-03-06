@@ -5571,7 +5571,11 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
-  return { cleanText, buttons, cartItems, showPhotos };
+  // Detect [ORDER_COMPLETE] tag
+  const orderComplete = /\[ORDER_COMPLETE\]/i.test(cleanText);
+  cleanText = cleanText.replace(/\[ORDER_COMPLETE\]/gi, '').trim();
+
+  return { cleanText, buttons, cartItems, showPhotos, orderComplete };
 }
 
 function showPhotoInChat(itemId) {
@@ -5915,6 +5919,17 @@ async function sendToAI(userMessage) {
       // Show parsed buttons
       if (parsed.buttons.length > 0) {
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
+      }
+
+      // Handle ORDER_COMPLETE: close chatbot and scroll to order summary
+      if (parsed.orderComplete && order.length > 0) {
+        setTimeout(() => {
+          closePinzer();
+          setTimeout(() => {
+            const orderSummary = document.querySelector('.order-summary');
+            if (orderSummary) orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 300);
+        }, 1500);
       }
 
       // Scroll to bottom after all content is rendered

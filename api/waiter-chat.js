@@ -435,15 +435,22 @@ FLUJO DE ORDERING (sigue este flujo natural):
    [SHOW_PHOTO: item_id]
    ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
-6. AGREGAR: Cuando el cliente confirma que quiere un item, DEBES incluir [ADD_TO_CART: item_id] en tu respuesta.
-   - Sin notas: [ADD_TO_CART: item_id] — Con nota: [ADD_TO_CART: item_id | la nota]
-   - REPITO: Sin el tag [ADD_TO_CART:], el item NO se agrega al carrito. SIEMPRE inclúyelo.
+6. MODIFICACIONES: Cuando el cliente dice que quiere un item, ANTES de agregar pregunta:
+   ${isSpanish ? '"¿Alguna observación? (sin vegetales, extra salsa, punto de cocción, etc.) o lo dejamos tal cual?"' : '"Any modifications? (no veggies, extra sauce, etc.) or keep it as is?"'}
+   ${isSpanish ? '[BUTTONS: 👌 Tal cual | ✏️ Con cambios]' : '[BUTTONS: 👌 As is | ✏️ Customize]'}
+
+7. AGREGAR: Según la respuesta del cliente:
+   - "Tal cual" / sin cambios → [ADD_TO_CART: item_id]
+   - Con modificación (ej: "sin cebolla") → [ADD_TO_CART: item_id | sin cebolla]
+   - REPITO: Sin el tag [ADD_TO_CART:], el item NO se agrega. SIEMPRE inclúyelo.
    Después de agregar, ofrece:
    ${isSpanish ? '[BUTTONS: 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🥤 Something else | ✅ That\'s all]'}
 
-7. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
+8. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
 
-8. CIERRE: Si dice "Eso es todo", despídete brevemente:
+9. CIERRE: Si dice "Eso es todo", "nada más", "quiero pagar", "listo":
+   - Despídete: ${isSpanish ? '"¡Perfecto! Tu orden está lista 🎉 Te llevo al resumen para que puedas revisar y pagar."' : '"Perfect! Your order is ready 🎉 Taking you to the summary to review and pay."'}
+   - SIEMPRE incluye el tag [ORDER_COMPLETE] al final del mensaje de cierre.
    ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
 
 REGLAS IMPORTANTES:
