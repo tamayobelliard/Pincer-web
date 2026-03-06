@@ -1146,10 +1146,10 @@
       background: var(--primary);
     }
 
-    /* ── Promo Popup ── */
+    /* ── Promo Popup (flyer style — photo dominant) ── */
     .promo-overlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.65);
       z-index: 9998;
       opacity: 0; visibility: hidden;
       transition: opacity 0.3s, visibility 0.3s;
@@ -1157,54 +1157,76 @@
     .promo-overlay.show { opacity: 1; visibility: visible; }
     .promo-popup {
       position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%) scale(0.8);
-      background: white; border-radius: 20px;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
-      z-index: 9999; max-width: 92%; width: 380px;
+      transform: translate(-50%, -50%) scale(0.85);
+      background: #fff; border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      z-index: 9999; width: 340px; max-width: 90vw;
+      max-height: 85vh;
       overflow: hidden; opacity: 0; visibility: hidden;
       transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex; flex-direction: column;
     }
     .promo-popup.show {
       transform: translate(-50%, -50%) scale(1);
       opacity: 1; visibility: visible;
     }
     .promo-popup-badge {
-      position: absolute; top: 16px; right: 16px;
+      position: absolute; top: 14px; right: 14px;
       background: var(--primary, #E8191A); color: white;
-      padding: 4px 14px; border-radius: 20px;
-      font-size: 0.75em; font-weight: 800; letter-spacing: 1px; z-index: 2;
+      padding: 3px 12px; border-radius: 20px;
+      font-size: 0.7em; font-weight: 800; letter-spacing: 1px; z-index: 2;
+      text-transform: uppercase;
     }
     .promo-popup-close {
-      position: absolute; top: 12px; left: 12px;
-      width: 32px; height: 32px; border-radius: 50%;
-      background: rgba(0,0,0,0.5); color: white; border: none;
+      position: absolute; top: 10px; left: 10px;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(0,0,0,0.45); color: white; border: none;
       font-size: 1.1em; display: flex; align-items: center; justify-content: center;
       cursor: pointer; z-index: 2; -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(4px);
+    }
+    .promo-popup-img-wrap {
+      position: relative; width: 100%; flex: 1 1 auto;
+      min-height: 280px; max-height: 65vh;
     }
     .promo-popup-img {
-      width: 100%; height: 180px; object-fit: cover; display: block;
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .promo-popup-img-wrap::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.15));
+      pointer-events: none;
     }
     .promo-popup-body {
-      padding: 16px 20px 20px; text-align: center;
+      padding: 12px 16px 14px; text-align: left;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0;
+      flex-shrink: 0;
     }
     .promo-popup-title {
-      font-size: 1.15em; font-weight: 800; color: #1e293b; margin-bottom: 6px;
-    }
-    .promo-popup-desc {
-      font-size: 0.88em; color: #64748b; line-height: 1.5; margin-bottom: 10px;
+      font-size: 1.05em; font-weight: 800; color: #1e293b;
+      flex: 1 1 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .promo-popup-price {
-      font-size: 1.4em; font-weight: 800; color: var(--primary, #E8191A); margin-bottom: 16px;
+      font-size: 1.1em; font-weight: 800; color: var(--primary, #4a7c2c);
+      text-align: right; flex: 0 0 auto;
     }
     .promo-popup-price .promo-old-price {
-      font-size: 0.7em; color: #94a3b8; text-decoration: line-through; margin-right: 8px; font-weight: 600;
+      font-size: 0.7em; color: #94a3b8; text-decoration: line-through;
+      margin-right: 6px; font-weight: 600;
+    }
+    .promo-popup-desc {
+      font-size: 0.8em; color: #64748b; line-height: 1.4;
+      width: 100%; margin-bottom: 0;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .promo-popup-cta {
-      display: inline-block; background: var(--primary, #E8191A); color: white; border: none;
-      padding: 11px 30px; border-radius: 12px; font-size: 1.05em; font-weight: 700;
+      display: block; width: 100%; background: var(--primary, #E8191A); color: white; border: none;
+      padding: 12px; border-radius: 10px; font-size: 1em; font-weight: 700;
       cursor: pointer; transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
+      margin-top: 10px; text-align: center; flex-shrink: 0;
     }
-    .promo-popup-cta:active { transform: scale(0.96); }
+    .promo-popup-cta:active { transform: scale(0.97); }
 
     .extras-section {
       margin: 15px 0 10px 0;
@@ -2425,13 +2447,15 @@
 
 <div class="promo-overlay" id="promoOverlay" onclick="closePromoPopup()"></div>
 <div class="promo-popup" id="promoPopup" data-product-id="">
-  <button class="promo-popup-close" onclick="closePromoPopup()">&times;</button>
-  <span class="promo-popup-badge" id="promoBadge">NUEVO</span>
-  <img class="promo-popup-img" id="promoImage" src="" alt="Promo">
+  <div class="promo-popup-img-wrap">
+    <button class="promo-popup-close" onclick="closePromoPopup()">&times;</button>
+    <span class="promo-popup-badge" id="promoBadge">NUEVO</span>
+    <img class="promo-popup-img" id="promoImage" src="" alt="Promo">
+  </div>
   <div class="promo-popup-body">
     <div class="promo-popup-title" id="promoTitle"></div>
-    <div class="promo-popup-desc" id="promoDesc"></div>
     <div class="promo-popup-price" id="promoPrice" style="display:none;"></div>
+    <div class="promo-popup-desc" id="promoDesc"></div>
     <button class="promo-popup-cta" id="promoCta" onclick="promoCtaClick()">¡Pruébalo Ya!</button>
   </div>
 </div>
