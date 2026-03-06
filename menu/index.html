@@ -1158,7 +1158,7 @@
     .promo-popup {
       position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%) scale(0.85);
-      background: #111; border-radius: 18px;
+      background: #fff; border-radius: 18px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       z-index: 9999; width: 340px; max-width: 90vw;
       height: 480px; max-height: 80vh;
@@ -1193,21 +1193,19 @@
     .promo-popup-body {
       height: 25%; box-sizing: border-box;
       padding: 10px 16px 12px;
-      background: rgba(0,0,0,0.85);
+      background: #fff;
       display: flex; flex-direction: column; justify-content: center;
+      align-items: center; text-align: center;
     }
     .promo-popup-info {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 8px; text-align: center;
     }
     .promo-popup-title {
-      font-size: 1.05em; font-weight: 800; color: #fff;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      margin-right: 10px;
+      font-size: 1.05em; font-weight: 800; color: #1e293b;
+      margin-bottom: 2px;
     }
     .promo-popup-price {
       font-size: 1.1em; font-weight: 800; color: var(--primary, #4a7c2c);
-      flex-shrink: 0;
     }
     .promo-popup-price .promo-old-price {
       font-size: 0.7em; color: #94a3b8; text-decoration: line-through;
