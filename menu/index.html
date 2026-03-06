@@ -5571,6 +5571,23 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
+  // Fallback: if chatbot used [BUTTONS:] on empty line + individual [Item] lines, parse those too
+  if (buttons.length === 0) {
+    const singleBtnRegex = /^\[([^\[\]]{3,60})\]\s*$/gm;
+    let sbm;
+    while ((sbm = singleBtnRegex.exec(cleanText)) !== null) {
+      const val = sbm[1].trim();
+      // Skip known action tags
+      if (/^(ADD_TO_CART|SHOW_PHOTO|BUTTONS)/i.test(val)) continue;
+      buttons.push(val);
+    }
+    if (buttons.length > 0) {
+      cleanText = cleanText.replace(/^\[([^\[\]]{3,60})\]\s*$/gm, '').trim();
+      // Also remove the empty [BUTTONS:] tag
+      cleanText = cleanText.replace(/\[BUTTONS:\s*\]/g, '').trim();
+    }
+  }
+
   return { cleanText, buttons, cartItems, showPhotos };
 }
 
