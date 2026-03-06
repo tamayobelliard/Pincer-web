@@ -284,11 +284,22 @@ Responde SOLO con JSON válido:
           console.error('[wa] Product upsert error:', prodRes.status, await prodRes.text().catch(() => ''));
         }
 
-        // Deactivate previous promos
-        await fetch(
+        // Deactivate previous promos and their products
+        const oldPromoRes = await fetch(
           `${supabaseUrl}/rest/v1/promotions?restaurant_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true`,
-          { method: 'PATCH', headers, body: JSON.stringify({ is_active: false }), signal: AbortSignal.timeout(5000) }
-        ).catch(() => {});
+          { method: 'PATCH', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify({ is_active: false }), signal: AbortSignal.timeout(5000) }
+        ).catch(() => null);
+        if (oldPromoRes && oldPromoRes.ok) {
+          const oldPromos = await oldPromoRes.json().catch(() => []);
+          const oldProductIds = oldPromos.map(p => p.product_id).filter(Boolean);
+          if (oldProductIds.length) {
+            await fetch(
+              `${supabaseUrl}/rest/v1/products?id=in.(${oldProductIds.map(id => encodeURIComponent(id)).join(',')})`,
+              { method: 'PATCH', headers, body: JSON.stringify({ active: false }), signal: AbortSignal.timeout(5000) }
+            ).catch(() => {});
+            console.log(`[wa] Deactivated old promo products: ${oldProductIds.join(', ')}`);
+          }
+        }
 
         // Calculate expires_at (end of day DR timezone UTC-4)
         const now = new Date();
