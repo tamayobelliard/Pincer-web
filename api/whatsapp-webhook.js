@@ -21,7 +21,10 @@ function twiml(msg) {
 
 // Check if text is an affirmation
 function isConfirmation(text) {
-  return /^(si|sí|ok|listo|dale|perfecto|publicar|yes|confirmar|va|claro)\b/i.test(text.trim());
+  const clean = text.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // sí → si
+    .replace(/[^a-z0-9\s]/g, ''); // strip punctuation
+  return /^(si|ok|listo|dale|perfecto|publicar|yes|confirmar|va|claro|correcto|bueno|bien)$/.test(clean);
 }
 
 // Parse corrections from owner text: "nombre: X, precio: Y, desc: Z"
@@ -105,6 +108,7 @@ export default async function handler(req, res) {
     );
     const pendingRows = pendingRes.ok ? await pendingRes.json() : [];
     const pending = pendingRows.length > 0 ? pendingRows[0] : null;
+    console.log(`[wa] ${slug} | media=${numMedia} | text="${bodyText.slice(0, 30)}" | pending=${pending ? pending.id : 'none'}`);
 
     // ═══════════════════════════════════════════════════════════
     // CASE 1: New photo received (start new or replace pending)
@@ -188,7 +192,7 @@ Responde SOLO con JSON válido:
 
       // If there's a pending promo, update it; otherwise insert new
       if (pending) {
-        await fetch(
+        const patchR = await fetch(
           `${supabaseUrl}/rest/v1/promotions?id=eq.${pending.id}`,
           {
             method: 'PATCH', headers,
@@ -201,8 +205,9 @@ Responde SOLO con JSON válido:
             signal: AbortSignal.timeout(5000),
           }
         );
+        if (!patchR.ok) console.error('[wa] Patch pending promo error:', patchR.status, await patchR.text().catch(() => ''));
       } else {
-        await fetch(`${supabaseUrl}/rest/v1/promotions`, {
+        const insertR = await fetch(`${supabaseUrl}/rest/v1/promotions`, {
           method: 'POST',
           headers: { ...headers, 'Prefer': 'return=representation' },
           body: JSON.stringify({
@@ -219,6 +224,12 @@ Responde SOLO con JSON válido:
           }),
           signal: AbortSignal.timeout(5000),
         });
+        if (!insertR.ok) {
+          const errText = await insertR.text().catch(() => '');
+          console.error('[wa] Insert promo error:', insertR.status, errText);
+          return res.status(200).send(twiml('Error guardando la promo. Verifica que la tabla promotions tenga las columnas wa_status y product_id.'));
+        }
+        console.log(`[wa] Promo saved for ${slug}, wa_status=awaiting_details`);
       }
 
       const priceText = suggestion.price ? `RD$${suggestion.price.toLocaleString()}` : '(sin precio)';
@@ -238,6 +249,7 @@ Responde SOLO con JSON válido:
     if (pending && bodyText) {
 
       // --- Confirmation → publish ---
+      console.log(`[wa] CASE 2: isConfirmation("${bodyText}")=${isConfirmation(bodyText)}`);
       if (isConfirmation(bodyText)) {
         if (!pending.price) {
           return res.status(200).send(twiml(
@@ -261,12 +273,16 @@ Responde SOLO con JSON válido:
         };
 
         // Upsert product (in case it already exists)
-        await fetch(`${supabaseUrl}/rest/v1/products`, {
+        console.log(`[wa] Creating product: ${productId}, price=${pending.price}`);
+        const prodRes = await fetch(`${supabaseUrl}/rest/v1/products`, {
           method: 'POST',
           headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=representation' },
           body: JSON.stringify(productPayload),
           signal: AbortSignal.timeout(5000),
         });
+        if (!prodRes.ok) {
+          console.error('[wa] Product upsert error:', prodRes.status, await prodRes.text().catch(() => ''));
+        }
 
         // Deactivate previous promos
         await fetch(
