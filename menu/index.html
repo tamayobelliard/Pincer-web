@@ -4161,14 +4161,30 @@ function updateTotalWithDeliveryFee() {
   }
 }
 
+function isInAppBrowser() {
+  var ua = navigator.userAgent || '';
+  return /FBAN|FBAV|Instagram|Line\/|Twitter|WhatsApp|Snapchat|GSA\/|NAVER|Puffin/i.test(ua);
+}
+
 function captureGPS(context) {
   var statusId = context === 'checkout' ? 'checkoutGpsStatus' : 'gpsStatus';
   var addressId = context === 'checkout' ? 'checkoutDeliveryAddress' : 'deliveryAddress';
   var statusEl = document.getElementById(statusId);
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   if (!navigator.geolocation) {
-    statusEl.textContent = 'Tu navegador no soporta geolocalización';
+    if (isInAppBrowser()) {
+      statusEl.innerHTML = '⚠️ Este navegador no soporta ubicación.<br><b>Abre en Safari:</b> toca el menú (⋯) y selecciona "Abrir en Safari"';
+    } else {
+      statusEl.textContent = 'Tu navegador no soporta geolocalización';
+    }
     return;
+  }
+
+  // Detect in-app browser on iOS (often silently fails)
+  if (isIOS && isInAppBrowser()) {
+    statusEl.innerHTML = '⚠️ Para compartir ubicación, abre en Safari.<br>Toca el ícono (⋯) o "Abrir en navegador" arriba.';
+    // Still try — some in-app browsers support it
   }
 
   statusEl.textContent = 'Obteniendo ubicación...';
@@ -4185,10 +4201,25 @@ function captureGPS(context) {
       }
     },
     function(err) {
-      statusEl.textContent = 'No se pudo obtener ubicación: ' + err.message;
       customerGpsLink = '';
+      // err.code: 1=PERMISSION_DENIED, 2=POSITION_UNAVAILABLE, 3=TIMEOUT
+      if (err.code === 1) {
+        if (isIOS) {
+          statusEl.innerHTML = '⚠️ Ubicación bloqueada. Para activarla:<br>' +
+            '1. Abre <b>Configuración</b> del iPhone<br>' +
+            '2. Ve a <b>Safari</b> (o <b>Privacidad > Localización</b>)<br>' +
+            '3. Activa ubicación para este sitio<br>' +
+            '<span style="font-size:0.75em;color:#94a3b8;">Luego regresa aquí y toca el botón otra vez.</span>';
+        } else {
+          statusEl.innerHTML = '⚠️ Permiso de ubicación denegado.<br>Toca el ícono 🔒 en la barra de direcciones y permite la ubicación.';
+        }
+      } else if (err.code === 3) {
+        statusEl.textContent = '⏳ Se agotó el tiempo. Verifica tu señal GPS e intenta de nuevo.';
+      } else {
+        statusEl.textContent = 'No se pudo obtener ubicación. Intenta de nuevo.';
+      }
     },
-    { enableHighAccuracy: true, timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 15000 }
   );
 }
 
