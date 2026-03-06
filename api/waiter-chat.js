@@ -549,7 +549,7 @@ ${compressMenuData(menuData, messages)}`;
       cappedSystem = systemPrompt.substring(0, maxPromptChars);
     }
 
-    console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
+    console.log('[waiter-chat] prompt size:', cappedSystem.length, 'sys +', JSON.stringify(trimmedMessages).length, 'msgs | BUTTONS in prompt:', cappedSystem.includes('[BUTTONS:'));
 
     const claudeBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
@@ -612,6 +612,8 @@ ${compressMenuData(menuData, messages)}`;
     }
 
     let answer = data.content.find(c => c.type === 'text')?.text || p.error;
+
+    console.log('[waiter-chat] raw response:', answer.substring(0, 500));
 
     // Validate: strip ADD_TO_CART for item IDs not in menu data
     if (menuData && answer.includes('ADD_TO_CART')) {
