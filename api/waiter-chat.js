@@ -528,7 +528,13 @@ REGLAS:
 - Nunca confirmes plato libre de alérgenos. Si mencionan alergia → nota en la orden.
 
 ${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO: CERRADO. NO uses [ADD_TO_CART:]. Responde: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ COMPLETO — SOLO estos items existen. Si un plato NO aparece abajo, NO existe en el restaurante. NUNCA inventes items fuera de esta lista:
-${compressMenuData(menuData, messages)}`;
+${compressMenuData(menuData, messages)}
+
+RECORDATORIO FORMATO (OBLIGATORIO):
+- Opciones → [BUTTONS: opción1 RD$precio | opción2 RD$precio | opción3] en UNA línea, separadas por |
+- Agregar → [ADD_TO_CART: item_id] (usa el ID exacto del menú, NUNCA el nombre)
+- Foto → [SHOW_PHOTO: item_id]
+- Confirma orden → SIEMPRE incluye [ADD_TO_CART: item_id], nunca solo texto`;
 
     // Trim messages to last 6 to prevent timeouts on long conversations
     const trimmedMessages = (messages || []).slice(-6);
@@ -544,7 +550,7 @@ ${compressMenuData(menuData, messages)}`;
       // Truncate instructions before menu, keep full menu intact
       const menuSection = systemPrompt.substring(menuIdx);
       const available = maxPromptChars - menuSection.length;
-      cappedSystem = systemPrompt.substring(0, Math.max(available, 1500)) + '\n...\n' + menuSection;
+      cappedSystem = systemPrompt.substring(0, Math.max(available, 2000)) + '\n...\n' + menuSection;
     } else {
       cappedSystem = systemPrompt.substring(0, maxPromptChars);
     }
@@ -599,7 +605,20 @@ ${compressMenuData(menuData, messages)}`;
           });
           const retryData = await retryRes.json();
           if (retryRes.ok) {
-            const retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
+            let retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
+            // Validate ADD_TO_CART on retry too
+            if (menuData && retryAnswer.includes('ADD_TO_CART')) {
+              const knownIds2 = new Set();
+              const idRegex2 = /\[id:([^\]]+)\]/g;
+              let idm2;
+              while ((idm2 = idRegex2.exec(menuData)) !== null) knownIds2.add(idm2[1].trim());
+              retryAnswer = retryAnswer.replace(/\[ADD_TO_CART:\s*([^\]|]+)([^\]]*)\]/g, (full, rawId, rest) => {
+                const id = rawId.trim();
+                if (knownIds2.has(id)) return full;
+                console.warn('[waiter-chat] blocked invented ADD_TO_CART (retry):', id);
+                return '';
+              });
+            }
             res.status(200).json({ answer: retryAnswer });
             return;
           }
