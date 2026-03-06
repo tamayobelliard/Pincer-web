@@ -554,7 +554,7 @@ ${compressMenuData(menuData, messages)}`;
     const claudeBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
-      system: cappedSystem,
+      system: [{ type: 'text', text: cappedSystem, cache_control: { type: 'ephemeral' } }],
       messages: trimmedMessages
     });
     const claudeHeaders = {
