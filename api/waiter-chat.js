@@ -529,10 +529,21 @@ ${compressMenuData(menuData, messages)}`;
     // Trim messages to last 6 to prevent timeouts on long conversations
     const trimmedMessages = (messages || []).slice(-6);
 
-    // Cap system prompt to ~3000 tokens (~12000 chars) to prevent oversized requests
-    const cappedSystem = systemPrompt.length > 12000
-      ? systemPrompt.substring(0, 12000) + '\n[... menú truncado por tamaño]'
-      : systemPrompt;
+    // Cap system prompt — but never truncate the menu section
+    const menuMarker = 'MENÚ COMPLETO';
+    const menuIdx = systemPrompt.indexOf(menuMarker);
+    const maxPromptChars = 16000;
+    let cappedSystem;
+    if (systemPrompt.length <= maxPromptChars) {
+      cappedSystem = systemPrompt;
+    } else if (menuIdx > 0) {
+      // Truncate instructions before menu, keep full menu intact
+      const menuSection = systemPrompt.substring(menuIdx);
+      const available = maxPromptChars - menuSection.length;
+      cappedSystem = systemPrompt.substring(0, Math.max(available, 1500)) + '\n...\n' + menuSection;
+    } else {
+      cappedSystem = systemPrompt.substring(0, maxPromptChars);
+    }
 
     console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
 
