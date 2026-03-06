@@ -208,14 +208,6 @@ function getNextOpenTime(hoursStr) {
   return null;
 }
 
-// ── Compress large menus: category directory + active category items only ──
-function formatMenuData(menuData) {
-  if (!menuData) return '';
-  // Pass through ALL items exactly as received — no compression, no omissions.
-  // Frontend sends: "Category: [id:xxx] Name - RD$price - description [AGOTADO]"
-  return menuData;
-}
-
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -232,13 +224,12 @@ export default async function handler(req, res) {
     let personality = 'casual';
     let plan = 'premium'; // default to premium (legacy restaurants predate plan field)
     let restaurantHours = '';
-    let restaurantId = null;
     if (restaurant_slug) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const pRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=id,chatbot_personality,plan,hours`,
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=chatbot_personality,plan,hours`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -250,7 +241,6 @@ export default async function handler(req, res) {
         if (pRes.ok) {
           const rows = await pRes.json();
           if (rows.length > 0) {
-            restaurantId = rows[0].id || null;
             if (rows[0].chatbot_personality) {
               personality = rows[0].chatbot_personality;
             }
@@ -262,7 +252,7 @@ export default async function handler(req, res) {
             }
           }
         }
-      } catch (e) { console.error('[waiter-chat] personality/plan fetch error:', e.message); }
+      } catch { /* fallback to casual + free */ }
     }
 
     // Determine if restaurant is open (server-side check)
@@ -290,19 +280,19 @@ export default async function handler(req, res) {
             }
           }
         }
-      } catch (e) { console.error('[waiter-chat] store_settings fetch error:', e.message); }
+      } catch { /* default open */ }
     }
     // Client-side flag as fallback
     if (clientStoreClosed === true) storeOpen = false;
 
     // Fetch restaurant insights for smarter recommendations
     let insightsText = clientInsights || '';
-    if (restaurantId && !insightsText) {
+    if (restaurant_slug && !insightsText) {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const iRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=summary_text&limit=1`,
+          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=summary_text&limit=1`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -316,10 +306,8 @@ export default async function handler(req, res) {
           if (iRows.length > 0 && iRows[0].summary_text) {
             insightsText = iRows[0].summary_text;
           }
-        } else {
-          console.warn('[waiter-chat] insights query returned', iRes.status, '- continuing without insights');
         }
-      } catch (e) { console.error('[waiter-chat] insights fetch error:', e.message); }
+      } catch { /* no insights available — continue without */ }
     }
 
     // Block free-plan restaurants from using chatbot
@@ -342,166 +330,152 @@ export default async function handler(req, res) {
     // Language name mapping for the offer prompt
     const LANG_NAMES = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
 
+    // Welcome-only request: return greeting without calling Claude (always in Spanish)
+    if (req.body.welcome) {
+      const rName = restaurant_name || 'nuestro restaurante';
+      const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
+      const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
+      const sep = emoji ? ' ' + emoji + ' ' : '. ';
+      const greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
+      return res.status(200).json({ answer: greeting });
+    }
+
+    // Build language-specific prompt sections
+    let langInstruction;
+    if (confirmedLang && !isSpanish) {
+      // Language already confirmed as non-Spanish — respond in that language
+      const confirmedName = LANG_NAMES[confirmedLang] || confirmedLang;
+      langInstruction = `
+LANGUAGE RULES:
+- The customer has chosen to be served in ${confirmedName}. You MUST respond in ${confirmedName}.
+- NEVER switch languages unless the customer explicitly asks.
+- Translate menu item names and descriptions naturally, keeping the original Spanish name in parentheses on first mention.
+- Keep ALL prices in RD$ always.${confirmedLang === 'en' ? `
+- Highlight Dominican dishes with brief cultural context (e.g. "Mangú — a beloved Dominican mashed plantain dish").` : ''}${confirmedLang === 'ht' ? `
+- Use a warm, respectful tone in Kreyòl. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
+- For totals over RD$500, show USD equivalent in parentheses (use approximate rate: 1 USD = 60 RD$).
+- Buttons text must also be in ${confirmedName}.
+`;
+    } else {
+      // Spanish confirmed or browser is Spanish — no language rules needed
+      langInstruction = '';
+    }
+
+    const personalityTone = {
+      dominicano: isSpanish ? p.style : '- Warm, lively tone with Dominican flavor adapted to the customer\'s language. Friendly and confident like a great host.',
+      habibi: isSpanish ? p.style : '- Warm, generous Middle Eastern hospitality adapted to the customer\'s language. The customer is sacred.',
+      casual: isSpanish ? p.style : '- Friendly, relaxed neutral tone. Like a friend recommending food.',
+      formal: isSpanish ? p.style : '- Professional, polished tone. Use formal register of the customer\'s language (e.g. "vous" in French, formal "you" in English).',
+      playful: isSpanish ? p.style : '- Fun, enthusiastic, energetic tone. Every dish is an adventure! Use 2-3 emojis per message.',
+    }[personality] || (isSpanish ? p.style : '- Friendly, relaxed neutral tone.');
+
     const browserLang = (browserLanguage || 'es').toLowerCase().split('-')[0];
     const LANG_DISPLAY = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
     const browserLangName = LANG_DISPLAY[browserLang] || browserLang;
 
-    // Language instruction for the system prompt
-    let langLine;
-    if (confirmedLang && !isSpanish) {
-      langLine = `The customer chose ${LANG_DISPLAY[confirmedLang] || confirmedLang}. Respond in that language. Keep prices in RD$. Buttons text also in that language.`;
-    } else if (!confirmedLang && browserLang !== 'es') {
-      langLine = `Browser language: ${browserLangName}. In STEP 1 greeting, after the Spanish greeting, also offer: "I see your device is in ${browserLangName} — would you prefer I help you in ${browserLangName}?" Add that language as a button option.`;
-    } else {
-      langLine = 'Respond in Spanish.';
-    }
+    const langRule = browserLang !== 'es'
+      ? `Idioma del browser del cliente: ${browserLangName}
+Regla de idioma:
+- Saluda siempre en español primero
+- En el primer mensaje pregunta: "Veo que tu dispositivo esta en ${browserLangName}. ¿Prefieres que te hable en ${browserLangName}?"
+- Si el cliente acepta, cambia a ese idioma para toda la conversacion
+- Si el cliente prefiere español, continua en español`
+      : 'Responde siempre en español.';
 
-    const systemPrompt = `You are the virtual waiter for ${rName}. You guide customers through ordering naturally, like a real waiter would.
+    const systemPrompt = `${langRule}
 
-${langLine}
-${p.style}
+Eres el mesero virtual de ${rName}.
+${langInstruction}
+ESTILO DE CONVERSACIÓN:
+- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
+${personalityTone}
+- Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
+- NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
 
-CONVERSATION FLOW — follow this exact sequence:
+FORMATO DE RESPUESTA:
+- Al final de CADA mensaje, incluye opciones para el cliente en este formato exacto:
+  [BUTTONS: opción1 | opción2 | opción3]
+- Los botones deben ser relevantes al momento de la conversación
+- Máximo 4 botones por mensaje. Si necesitas más, envía los primeros 4 y agrega "Y también tenemos:" con más botones en la misma respuesta.
+- SIEMPRE incluye [BUTTONS:] al final de cada mensaje, sin excepción
+- Para mostrar la foto de un item usa: [SHOW_PHOTO: item_id]
+- Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
+- IMPORTANTE: Si el cliente pide una cantidad específica (ej: "quiero 2 cervezas", "agrégame 3"), SIEMPRE incluye la cantidad como número después del item_id
 
-STEP 1 — GREETING (only when first message is "__START__")
-- Greet warmly in Spanish
-- Ask if it's their first time
-- End with: [BUTTONS: 👋 Primera vez | 🔄 Ya he venido antes]
+FLUJO DE ORDERING (sigue este flujo natural):
 
-STEP 2 — OFFER HELP
-- If first time: brief warm welcome + one-line description of the restaurant
-- If returning: welcome back warmly
-- Ask what they'd like to do
-- End with: [BUTTONS: 🛒 Ayúdame a ordenar | 📋 Prefiero ver el menú solo]
+1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
+   Si dice primera vez: "${isSpanish ? p.greeting_first + ' 💪 ¿Quieres que te guíe por el menú o prefieres verlo tú directamente ahí arriba?' : 'Respond warmly and offer to guide them through the menu or let them browse.'}"
+   ${isSpanish ? '[BUTTONS: 🍽️ Guíame tú | 👀 Voy a ver el menú]' : '[BUTTONS: 🍽️ Guide me | 👀 I\'ll browse the menu]'}
+   Si ya ha venido: "${isSpanish ? p.greeting_return : 'Welcome them back warmly'}" y muestra las categorías del menú como botones.
 
-STEP 3a — CUSTOMER WANTS TO BROWSE ALONE
-- Say something warm like "¡Claro! Estaré aquí si necesitas algo 😊"
-- End with: [CLOSE_CHAT]
+2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
 
-STEP 3b — CUSTOMER WANTS HELP ORDERING
-- Guide them like a real waiter — ask what they're in the mood for
-- Use the menu to suggest specific items, do upselling naturally
-- End every message with [BUTTONS:] showing 2-4 relevant options
+3. ITEMS: Cuando elija categoría, muestra TODOS los items disponibles de esa categoría como botones. Nunca omitas items del menú. Si hay más de 4, usa múltiples líneas de botones.
 
-STEP 4 — ITEM SELECTED
-- Describe the item briefly and enthusiastically
-- Ask about modifications in the SAME message: "¿Lo quieres así o alguna observación? (sin tomate, extra salsa...)"
-- End with: [BUTTONS: ✅ Así está bien | ❌ Sin tomate | ❌ Sin cebolla | ✏️ Otra cosa]
-- NEVER include [ADD_TO_CART:] in this message
+4. DETALLE: Cuando elija un item, describe brevemente qué trae (1 oración) y ofrece ver la foto:
+   [SHOW_PHOTO: item_id]
+   ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: 📸 See photo | ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
-STEP 5 — CONFIRMATION RECEIVED
-- Add to cart: [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | modification]
-- Do natural upselling: suggest a drink, a side, or a complement
-- End with: [BUTTONS: 🍽️ Pedir algo más | ✅ Eso es todo]
+5. FOTO: Si el cliente pide ver la foto, responde breve y vuelve a ofrecer agregar:
+   [SHOW_PHOTO: item_id]
+   ${isSpanish ? '[BUTTONS: ✅ Agregar al carrito | 👀 Ver otra opción | ⬅️ Volver a categorías]' : '[BUTTONS: ✅ Add to cart | 👀 See another option | ⬅️ Back to categories]'}
 
-STEP 6 — ORDER COMPLETE
-- When customer says they're done: warm closing message
-- Include: [ORDER_COMPLETE]
+6. NOTAS: Si el cliente dice "Agregar al carrito", ANTES de agregar pregunta por notas:
+   ${isSpanish ? '"¿Alguna nota especial? Ej: sin vegetales, extra queso..."' : '"Any special notes? E.g. no veggies, extra cheese..."'}
+   ${isSpanish ? '[BUTTONS: 👌 Sin cambios, así está bien | ✏️ Quiero hacer un cambio]' : '[BUTTONS: 👌 No changes, it\'s perfect | ✏️ I want to customize]'}
+   - Si dice "Sin cambios": agrega sin notas [ADD_TO_CART: item_id] (o con cantidad: [ADD_TO_CART: item_id | 2])
+   - Si dice "Quiero hacer un cambio": dile que escriba qué quiere cambiar
+   - Cuando escriba su nota: [ADD_TO_CART: item_id | la nota que escribió] (o con cantidad: [ADD_TO_CART: item_id | 2 | la nota])
+   Después de agregar, ofrece:
+   ${isSpanish ? '[BUTTONS: 🍟 Agregar un extra | 🥤 Algo más | ✅ Eso es todo]' : '[BUTTONS: 🍟 Add a side | 🥤 Something else | ✅ That\'s all]'}
 
-RULES:
-- Keep responses SHORT — max 3 sentences of text
-- ALWAYS end with [BUTTONS:] except on [ORDER_COMPLETE] and [CLOSE_CHAT]
-- NEVER mention items not in the menu below
-- NEVER include [ADD_TO_CART:] and the observations question in the same message
-- [BUTTONS:] must appear at the very end of the message, after all text
-- Item IDs are in format [id:xxx] in the menu. Use those exact IDs for [ADD_TO_CART:]
-- Without the [ADD_TO_CART:] tag, NOTHING gets added to the cart. Never say "added" without it.
-- For photos: [SHOW_PHOTO: item_id]
+7. EXTRAS: Si pide extras, muestra los extras disponibles como botones.
 
-${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `STATUS: CLOSED. Do NOT use [ADD_TO_CART:]. Tell the customer: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENU:
-${formatMenuData(menuData)}`;
+8. CIERRE: Si dice "Eso es todo", despídete brevemente:
+   ${isSpanish ? '[BUTTONS: 👋 Cerrar]' : '[BUTTONS: 👋 Close]'}
 
-    // Trim messages to last 6 to prevent timeouts on long conversations
-    const trimmedMessages = (messages || []).slice(-6);
+REGLAS IMPORTANTES:
+- Los item_ids están en el menú con formato [id:xxx]. Usa EXACTAMENTE esos IDs en [ADD_TO_CART:]
+- CONVERSACIONAL: Cada mensaje debe sentirse como un intercambio real, no un monólogo
+- Si el cliente dice "no sé qué pedir", hazle UNA pregunta sobre sus preferencias
+- Si el cliente muestra interés en algo, profundiza y sugiere complementos
+- Solo recomienda items del menú actual
+- Si un item está [AGOTADO], di que se acabó y sugiere alternativa
+- Precios en RD$
+- Si preguntan algo fuera del restaurante, redirige amablemente a la comida
+- NUNCA inventes items o precios que no están en el menú
+- NUNCA confirmes que un plato es libre de alérgenos sin datos. Si el cliente menciona alergia, inclúyelo como nota en la orden.
 
-    // Cap system prompt but NEVER truncate the menu section
-    const menuMarker = '=== MENÚ COMPLETO ===';
-    const menuIdx = systemPrompt.indexOf(menuMarker);
-    const maxPromptChars = 16000;
-    let cappedSystem;
-    if (systemPrompt.length <= maxPromptChars) {
-      cappedSystem = systemPrompt;
-    } else if (menuIdx > 0) {
-      // Truncate instructions before menu, keep full menu intact
-      const menuSection = systemPrompt.substring(menuIdx);
-      const available = maxPromptChars - menuSection.length;
-      cappedSystem = systemPrompt.substring(0, Math.max(available, 2000)) + '\n...\n' + menuSection;
-    } else {
-      cappedSystem = systemPrompt.substring(0, maxPromptChars);
-    }
+${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
+REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
+Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
+Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText + '\n\n' : '' }MENÚ ACTUAL (items disponibles):
+${menuData}`;
 
-    console.log('[waiter-chat] estimated prompt size:', JSON.stringify(trimmedMessages).length + cappedSystem.length, 'chars (system:', cappedSystem.length, '+ messages:', JSON.stringify(trimmedMessages).length, ') history:', trimmedMessages.length, 'msgs');
-
-    const claudeBody = JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      system: cappedSystem,
-      messages: trimmedMessages
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system: systemPrompt,
+        messages: messages.slice(-10)
+      })
     });
-    const claudeHeaders = {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    };
 
-    let response, data;
-    try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: claudeHeaders, body: claudeBody,
-        signal: AbortSignal.timeout(20000),
-      });
-      data = await response.json();
-    } catch (e1) {
-      console.error('[waiter-chat] Claude API attempt 1 failed:', e1.message);
-      console.log('[waiter-chat] retrying after error:', e1.message);
-      await new Promise(r => setTimeout(r, 1500));
-      try {
-        response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST', headers: claudeHeaders, body: claudeBody,
-          signal: AbortSignal.timeout(20000),
-        });
-        data = await response.json();
-      } catch (e2) {
-        console.error('[waiter-chat] Claude API attempt 2 failed:', e2.message);
-        return res.status(200).json({ answer: p.error });
-      }
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      console.error('[waiter-chat] Claude API error:', response.status, JSON.stringify(data));
-      // Retry once on 429 (rate limit) or 529 (overloaded)
-      if (response.status === 429 || response.status === 529) {
-        console.log('[waiter-chat] retrying after', response.status, '(overloaded/rate-limited)');
-        await new Promise(r => setTimeout(r, 3000));
-        try {
-          const retryRes = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST', headers: claudeHeaders, body: claudeBody,
-            signal: AbortSignal.timeout(20000),
-          });
-          const retryData = await retryRes.json();
-          if (retryRes.ok) {
-            const retryAnswer = retryData.content.find(c => c.type === 'text')?.text || p.error;
-            res.status(200).json({ answer: retryAnswer });
-            return;
-          }
-          console.error('[waiter-chat] Claude API retry failed:', retryRes.status);
-        } catch (e) {
-          console.error('[waiter-chat] Claude API retry error:', e.message);
-        }
-      }
+      console.error('Claude API error:', data);
       return res.status(200).json({ answer: p.error });
     }
 
-    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
-
-    // Safety net: if AI claims it added to cart but forgot the tag, strip the false claim
-    const claimsCart = /agregado|agregué|añadido|added|listo.*carrito|en tu carrito/i.test(answer);
-    const hasCartTag = /\[ADD_TO_CART:/i.test(answer);
-    if (claimsCart && !hasCartTag) {
-      console.warn('[waiter-chat] AI claimed cart add without [ADD_TO_CART:] tag — stripping false claim');
-      answer = answer.replace(/[✅🛒]\s*(.*(?:agregado|agregué|añadido|added|listo.*carrito|en tu carrito).*?)([.!?\n]|$)/gi, '$2').trim();
-      if (!answer) answer = '¿Qué te gustaría ordenar?';
-    }
+    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
 
     res.status(200).json({ answer });
 
@@ -523,9 +497,9 @@ ${formatMenuData(menuData)}`;
     }
 
   } catch (error) {
-    console.error('[waiter-chat] unhandled error:', error.message, error.stack);
+    console.error('waiter-chat error:', error);
     const p = PERSONALITIES.casual;
-    res.status(200).json({ answer: p.error });
+    res.status(500).json({ answer: p.error });
   }
 }
 

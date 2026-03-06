@@ -202,7 +202,6 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      text-align: center;
     }
 
     .category-title {
@@ -258,88 +257,6 @@
     .category-tab.active {
       background: var(--primary);
       color: white;
-    }
-
-    /* Subcategory tabs navigation (second level) */
-    .subcategory-tabs-wrap {
-      position: sticky;
-      top: 48px;
-      z-index: 88;
-      max-width: 500px;
-      margin: 0 auto 8px auto;
-      background: rgba(255,255,255,0.92);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 0 0 12px 12px;
-      padding: 4px 4px;
-      display: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    }
-    .subcategory-tabs {
-      display: flex;
-      gap: 4px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      scroll-behavior: smooth;
-    }
-    .subcategory-tabs::-webkit-scrollbar { display: none; }
-    .subcategory-tab {
-      flex-shrink: 0;
-      padding: 6px 14px;
-      border-radius: 6px;
-      border: none;
-      background: transparent;
-      color: var(--primary, #E8191A);
-      font-weight: 500;
-      font-size: 0.8em;
-      cursor: pointer;
-      white-space: nowrap;
-      font-family: inherit;
-      border-bottom: 2px solid transparent;
-    }
-    .subcategory-tab:hover { background: rgba(0,0,0,0.03); }
-    .subcategory-tab.active {
-      border-bottom: 2px solid var(--primary, #E8191A);
-      color: var(--primary, #E8191A);
-      font-weight: 700;
-    }
-
-    /* Parent category header (hierarchy mode) */
-    .category-parent-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 1.3rem;
-      color: var(--primary, #E8191A);
-      margin: 30px 0 12px 0;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      text-align: center;
-    }
-    .category-parent-title::before,
-    .category-parent-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--primary, #E8191A);
-      opacity: 0.3;
-    }
-    .category-parent-title:first-of-type {
-      margin-top: 10px;
-    }
-
-    /* Subcategory divider (hierarchy mode) — matches .category-title */
-    .category-sub-title {
-      font-size: 1.1em;
-      color: var(--primary, #E8191A);
-      margin: 20px 0 12px 0;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-left: 3px solid var(--primary, #E8191A);
-      padding-left: 10px;
     }
 
     /* Menu group selector (multi-menu) */
@@ -435,23 +352,7 @@
       color: #000000;
     }
     body.dark-bg .category-title {
-      color: var(--primary, #E8191A);
-    }
-    body.dark-bg .subcategory-tabs-wrap {
-      background: rgba(30,30,30,0.92);
-    }
-    body.dark-bg .subcategory-tab {
-      color: white;
-    }
-    body.dark-bg .subcategory-tab.active {
-      border-bottom-color: var(--primary);
-      color: white;
-    }
-    body.dark-bg .category-parent-title {
-      color: var(--primary, #E8191A);
-    }
-    body.dark-bg .category-sub-title {
-      color: var(--primary, #E8191A);
+      color: var(--accent);
     }
 
     .menu-item {
@@ -2272,9 +2173,6 @@
   <div class="category-tabs-wrap" id="categoryTabsWrap">
     <div class="category-tabs" id="categoryTabs"></div>
   </div>
-  <div class="subcategory-tabs-wrap" id="subcategoryTabsWrap" style="display:none;">
-    <div class="subcategory-tabs" id="subcategoryTabs"></div>
-  </div>
 
   <div class="menu-section" id="menuSection">
     <h2 class="section-title">Menú</h2>
@@ -2900,44 +2798,6 @@ function getCategoryOrder() {
   return ordered;
 }
 
-// Category hierarchy for two-level navigation
-let categoryHierarchy = [];
-let currentActiveParent = null;
-
-function buildCategoryHierarchy(categoryOrder) {
-  var SEP = ' - ';
-  var parentMap = {};
-  var orderedParents = [];
-
-  categoryOrder.forEach(function(cat) {
-    var items = MENU_DATA[cat];
-    if (!items || !items.length) return;
-    var sepIdx = cat.indexOf(SEP);
-    if (sepIdx === -1) {
-      if (!parentMap[cat]) {
-        parentMap[cat] = { label: cat, subcategories: [], standaloneKey: cat };
-        orderedParents.push(cat);
-      } else {
-        parentMap[cat].standaloneKey = cat;
-      }
-    } else {
-      var parent = cat.substring(0, sepIdx);
-      var child = cat.substring(sepIdx + SEP.length);
-      if (!parentMap[parent]) {
-        parentMap[parent] = { label: parent, subcategories: [], standaloneKey: null };
-        orderedParents.push(parent);
-      }
-      parentMap[parent].subcategories.push({ label: child, fullKey: cat });
-    }
-  });
-
-  return orderedParents.map(function(p) { return parentMap[p]; });
-}
-
-function hasSubcategories(hierarchy) {
-  return hierarchy.some(function(p) { return p.subcategories.length > 0; });
-}
-
 // Find extras category dynamically (for notes popup)
 function getExtras() {
   for (const [cat, items] of Object.entries(MENU_DATA)) {
@@ -2949,10 +2809,9 @@ function getExtras() {
 // Load restaurant insights for chatbot
 var restaurantInsights = null;
 async function loadRestaurantInsights() {
-  if (!restaurantData || !restaurantData.id) return;
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_id=eq.' + encodeURIComponent(restaurantData.id) + '&select=summary_text&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=summary_text&limit=1',
       { headers: sbHeaders() }, 5000
     );
     if (!res.ok) return;
@@ -2968,13 +2827,13 @@ async function loadRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id,display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
     if (!res.ok) {
       res = await fetchWithTimeout(
-        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id,display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
+        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
         { headers: sbHeaders() }, 10000
       );
     }
@@ -3367,251 +3226,74 @@ function renderMenu() {
   let html = title;
 
   const categoryOrder = getCategoryOrder();
-  categoryHierarchy = buildCategoryHierarchy(categoryOrder);
-  var useHierarchy = hasSubcategories(categoryHierarchy);
-
-  if (useHierarchy) {
-    categoryHierarchy.forEach(function(parent) {
-      var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      html += '<div class="category-parent-title" id="' + parentId + '">' + escHtml(parent.label.toUpperCase()) + '</div>';
-      if (parent.standaloneKey && MENU_DATA[parent.standaloneKey]) {
-        MENU_DATA[parent.standaloneKey].forEach(function(item) { html += menuItemHTML(item); });
-      }
-      parent.subcategories.forEach(function(sub) {
-        var subId = 'sub-' + sub.fullKey.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        html += '<div class="category-sub-title" id="' + subId + '">' + escHtml(sub.label) + '</div>';
-        if (MENU_DATA[sub.fullKey]) {
-          MENU_DATA[sub.fullKey].forEach(function(item) { html += menuItemHTML(item); });
-        }
-      });
-    });
-  } else {
-    categoryOrder.forEach(function(cat) {
-      var items = MENU_DATA[cat];
-      if (!items || !items.length) return;
-      var catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      html += '<div class="category-title" id="' + catId + '">' + escHtml(cat.toUpperCase()) + '</div>';
-      items.forEach(function(item) { html += menuItemHTML(item); });
-    });
-  }
+  categoryOrder.forEach(cat => {
+    const items = MENU_DATA[cat];
+    if (!items || !items.length) return;
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    html += `<div class="category-title" id="${catId}">${escHtml(cat.toUpperCase())}</div>`;
+    items.forEach(item => { html += menuItemHTML(item); });
+  });
 
   container.innerHTML = html;
   buildCategoryTabs(categoryOrder);
   buildMenuGroupSelector();
 }
 
-// Delegated click handler for menu item cards (more reliable on mobile than inline onclick)
-(function() {
-  var menuSection = document.getElementById('menuSection');
-  if (!menuSection) return;
-  menuSection.addEventListener('click', function(e) {
-    // Don't interfere with qty buttons
-    if (e.target.closest('.menu-qty-btn') || e.target.closest('.menu-qty-wrap')) return;
-    var card = e.target.closest('.menu-item[data-clickable="1"]');
-    if (!card) return;
-    var itemId = card.getAttribute('data-item-id');
-    if (!itemId) return;
-    var allItems = Object.values(MENU_DATA).flat();
-    var item = allItems.find(function(i) { return i.id === itemId; });
-    if (!item) return;
-    if (soldOutSet.has(itemId)) { showSoldOutPopup(item.name); return; }
-    showNotesPopup(itemId, item.name, item.price, item.img || '', item.desc || '');
-  });
-})();
-
 function buildCategoryTabs(categoryOrder) {
-  var wrap = document.getElementById('categoryTabsWrap');
-  var tabsContainer = document.getElementById('categoryTabs');
-  var subWrap = document.getElementById('subcategoryTabsWrap');
-  var subContainer = document.getElementById('subcategoryTabs');
-  var useHierarchy = hasSubcategories(categoryHierarchy);
+  const wrap = document.getElementById('categoryTabsWrap');
+  const tabsContainer = document.getElementById('categoryTabs');
+  const cats = categoryOrder.filter(c => MENU_DATA[c] && MENU_DATA[c].length);
+  if (cats.length < 2) { wrap.style.display = 'none'; return; }
 
-  if (!useHierarchy) {
-    // === FLAT MODE (original behavior) ===
-    subWrap.style.display = 'none';
-    currentActiveParent = null;
-    var cats = categoryOrder.filter(function(c) { return MENU_DATA[c] && MENU_DATA[c].length; });
-    if (cats.length < 2) { wrap.style.display = 'none'; return; }
-
-    tabsContainer.innerHTML = cats.map(function(cat) {
-      var catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      return '<button class="category-tab" data-cat-id="' + catId + '">' + escHtml(cat.charAt(0).toUpperCase() + cat.slice(1)) + '</button>';
-    }).join('');
-    wrap.style.display = 'block';
-
-    tabsContainer.querySelectorAll('.category-tab').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var target = document.getElementById(btn.dataset.catId);
-        if (!target) return;
-        track('menu_tab_click', { category_name: btn.textContent });
-        var tabsHeight = wrap.offsetHeight + 12;
-        var y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-      });
-    });
-
-    var scrollTicking = false;
-    window.addEventListener('scroll', function() {
-      if (scrollTicking) return;
-      scrollTicking = true;
-      requestAnimationFrame(function() {
-        updateActiveTabFlat(wrap, tabsContainer);
-        scrollTicking = false;
-      });
-    });
-    updateActiveTabFlat(wrap, tabsContainer);
-    return;
-  }
-
-  // === HIERARCHY MODE ===
-  if (categoryHierarchy.length < 2) { wrap.style.display = 'none'; subWrap.style.display = 'none'; return; }
-
-  tabsContainer.innerHTML = categoryHierarchy.map(function(parent) {
-    var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return '<button class="category-tab" data-parent-id="' + parentId + '" data-parent-label="' + escHtml(parent.label) + '">' + escHtml(parent.label) + '</button>';
+  tabsContainer.innerHTML = cats.map(cat => {
+    const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `<button class="category-tab" data-cat-id="${catId}">${escHtml(cat.charAt(0).toUpperCase() + cat.slice(1))}</button>`;
   }).join('');
+
   wrap.style.display = 'block';
 
-  tabsContainer.querySelectorAll('.category-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var target = document.getElementById(btn.dataset.parentId);
+  // Click → smooth scroll to section
+  tabsContainer.querySelectorAll('.category-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.catId);
       if (!target) return;
       track('menu_tab_click', { category_name: btn.textContent });
-      setActiveParent(btn.dataset.parentLabel);
-      var totalOffset = wrap.offsetHeight + (subWrap.style.display !== 'none' ? subWrap.offsetHeight : 0) + 12;
-      var y = target.getBoundingClientRect().top + window.scrollY - totalOffset;
+      const tabsHeight = wrap.offsetHeight + 12;
+      const y = target.getBoundingClientRect().top + window.scrollY - tabsHeight;
       window.scrollTo({ top: y, behavior: 'smooth' });
     });
   });
 
-  if (categoryHierarchy.length) {
-    setActiveParent(categoryHierarchy[0].label);
-  }
-
-  var scrollTicking2 = false;
-  window.addEventListener('scroll', function() {
-    if (scrollTicking2) return;
-    scrollTicking2 = true;
-    requestAnimationFrame(function() {
-      updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer);
-      scrollTicking2 = false;
+  // Scroll → highlight active tab
+  let scrollTicking = false;
+  window.addEventListener('scroll', () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(() => {
+      updateActiveTab(wrap, tabsContainer);
+      scrollTicking = false;
     });
   });
-  updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer);
+  updateActiveTab(wrap, tabsContainer);
 }
 
-function setActiveParent(parentLabel) {
-  var subWrap = document.getElementById('subcategoryTabsWrap');
-  var subContainer = document.getElementById('subcategoryTabs');
-  var parent = categoryHierarchy.find(function(p) { return p.label === parentLabel; });
-
-  // Immediately hide old subcategory bar before any changes
-  subWrap.style.display = 'none';
-  subContainer.innerHTML = '';
-
-  if (!parent || parent.subcategories.length === 0) {
-    currentActiveParent = parentLabel;
-    updateSubcategoryTabsPosition();
-    return;
-  }
-
-  currentActiveParent = parentLabel;
-  var buttons = [];
-  if (parent.standaloneKey) {
-    var parentId = 'parent-' + parent.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    buttons.push('<button class="subcategory-tab" data-sub-id="' + parentId + '">Todo</button>');
-  }
-  parent.subcategories.forEach(function(sub) {
-    var subId = 'sub-' + sub.fullKey.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    buttons.push('<button class="subcategory-tab" data-sub-id="' + subId + '">' + escHtml(sub.label) + '</button>');
-  });
-  subContainer.innerHTML = buttons.join('');
-  subWrap.style.display = 'block';
-
-  subContainer.querySelectorAll('.subcategory-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var target = document.getElementById(btn.dataset.subId);
-      if (!target) return;
-      var wrap = document.getElementById('categoryTabsWrap');
-      var totalOffset = wrap.offsetHeight + subWrap.offsetHeight + 12;
-      var y = target.getBoundingClientRect().top + window.scrollY - totalOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    });
-  });
-
-  updateSubcategoryTabsPosition();
-}
-
-function updateSubcategoryTabsPosition() {
-  var wrap = document.getElementById('categoryTabsWrap');
-  var subWrap = document.getElementById('subcategoryTabsWrap');
-  var menuGroupWrap = document.getElementById('menuGroupWrap');
-  var topOffset = 0;
-  if (menuGroupWrap && menuGroupWrap.style.display !== 'none') {
-    topOffset += menuGroupWrap.offsetHeight + 4;
-  }
-  wrap.style.top = topOffset + 'px';
-  if (subWrap.style.display !== 'none') {
-    subWrap.style.top = (topOffset + wrap.offsetHeight + 2) + 'px';
-  }
-}
-
-function updateActiveTabFlat(wrap, tabsContainer) {
-  var tabs = tabsContainer.querySelectorAll('.category-tab');
-  var offset = wrap.offsetHeight + 30;
-  var activeIdx = 0;
-  tabs.forEach(function(tab, i) {
-    var section = document.getElementById(tab.dataset.catId);
+function updateActiveTab(wrap, tabsContainer) {
+  const tabs = tabsContainer.querySelectorAll('.category-tab');
+  const offset = wrap.offsetHeight + 30;
+  let activeIdx = 0;
+  tabs.forEach((tab, i) => {
+    const section = document.getElementById(tab.dataset.catId);
     if (section && section.getBoundingClientRect().top <= offset) {
       activeIdx = i;
     }
   });
-  tabs.forEach(function(t, i) { t.classList.toggle('active', i === activeIdx); });
-  var activeTab = tabs[activeIdx];
+  tabs.forEach((t, i) => t.classList.toggle('active', i === activeIdx));
+  // Scroll active tab into view within the tab bar
+  const activeTab = tabs[activeIdx];
   if (activeTab) {
-    var scrollLeft = activeTab.offsetLeft - tabsContainer.offsetWidth / 2 + activeTab.offsetWidth / 2;
-    tabsContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-  }
-}
-
-function updateActiveTabHierarchy(wrap, tabsContainer, subWrap, subContainer) {
-  var parentTabs = tabsContainer.querySelectorAll('.category-tab');
-  var totalOffset = wrap.offsetHeight + (subWrap.style.display !== 'none' ? subWrap.offsetHeight : 0) + 30;
-
-  var activeParentIdx = 0;
-  parentTabs.forEach(function(tab, i) {
-    var section = document.getElementById(tab.dataset.parentId);
-    if (section && section.getBoundingClientRect().top <= totalOffset) {
-      activeParentIdx = i;
-    }
-  });
-  parentTabs.forEach(function(t, i) { t.classList.toggle('active', i === activeParentIdx); });
-
-  var activeParentTab = parentTabs[activeParentIdx];
-  if (activeParentTab) {
-    var scrollLeft = activeParentTab.offsetLeft - tabsContainer.offsetWidth / 2 + activeParentTab.offsetWidth / 2;
-    tabsContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-  }
-
-  var parentLabel = activeParentTab ? activeParentTab.dataset.parentLabel : null;
-  if (parentLabel && parentLabel !== currentActiveParent) {
-    setActiveParent(parentLabel);
-  }
-
-  var subTabs = subContainer.querySelectorAll('.subcategory-tab');
-  if (subTabs.length === 0) return;
-  var activeSubIdx = 0;
-  subTabs.forEach(function(tab, i) {
-    var section = document.getElementById(tab.dataset.subId);
-    if (section && section.getBoundingClientRect().top <= totalOffset) {
-      activeSubIdx = i;
-    }
-  });
-  subTabs.forEach(function(t, i) { t.classList.toggle('active', i === activeSubIdx); });
-  var activeSubTab = subTabs[activeSubIdx];
-  if (activeSubTab) {
-    var scrollLeft2 = activeSubTab.offsetLeft - subContainer.offsetWidth / 2 + activeSubTab.offsetWidth / 2;
-    subContainer.scrollTo({ left: scrollLeft2, behavior: 'smooth' });
+    const container = tabsContainer;
+    const scrollLeft = activeTab.offsetLeft - container.offsetWidth / 2 + activeTab.offsetWidth / 2;
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
   }
 }
 
@@ -3624,7 +3306,6 @@ function buildMenuGroupSelector() {
   if (!menuGroups || !menuGroups.length || !activeMenuGroup) {
     wrap.style.display = 'none';
     catWrap.style.top = '0px';
-    updateSubcategoryTabsPosition();
     return;
   }
 
@@ -3640,7 +3321,6 @@ function buildMenuGroupSelector() {
 
   requestAnimationFrame(function() {
     catWrap.style.top = (wrap.offsetHeight + 4) + 'px';
-    updateSubcategoryTabsPosition();
   });
 
   pillsContainer.querySelectorAll('.menu-group-pill').forEach(function(btn) {
@@ -3676,10 +3356,10 @@ function menuItemHTML(item) {
     ` : ''}
     <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
-  const clickable = !isSoldOut && !isExtra;
+  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}', '${escHtml(item.desc || '')}')" style="cursor:pointer;"` : '';
 
   return `
-    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${clickable ? 'data-clickable="1"' : ''} ${clickable ? 'style="cursor:pointer;"' : ''}>
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
       ${soldOutBadge}
       ${imgHTML}
       <div class="item-info">
@@ -5505,30 +5185,10 @@ function buildMenuData() {
 }
 
 function findMenuItem(itemId) {
-  if (!itemId) return null;
-  const cleanId = itemId.trim();
-  // Exact match
   for (const [cat, items] of Object.entries(MENU_DATA)) {
-    const found = items.find(i => i.id === cleanId);
+    const found = items.find(i => i.id === itemId);
     if (found) return found;
   }
-  // Case-insensitive match
-  const lower = cleanId.toLowerCase();
-  for (const [cat, items] of Object.entries(MENU_DATA)) {
-    const found = items.find(i => i.id.toLowerCase() === lower);
-    if (found) { console.log('[chatbot] case-insensitive match:', cleanId, '->', found.id); return found; }
-  }
-  // Partial match (chatbot may omit restaurant prefix e.g. "cranberry" instead of "squareone_cranberry")
-  for (const [cat, items] of Object.entries(MENU_DATA)) {
-    const found = items.find(i => i.id.toLowerCase().endsWith('_' + lower) || i.id.toLowerCase() === lower.replace(/\s+/g, '_'));
-    if (found) { console.log('[chatbot] partial match:', cleanId, '->', found.id); return found; }
-  }
-  // Name match (chatbot may use the item name instead of id)
-  for (const [cat, items] of Object.entries(MENU_DATA)) {
-    const found = items.find(i => i.name.toLowerCase() === lower);
-    if (found) { console.log('[chatbot] name match:', cleanId, '->', found.id); return found; }
-  }
-  console.warn('[chatbot] item not found:', cleanId);
   return null;
 }
 
@@ -5571,15 +5231,7 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
 
-  // Detect [ORDER_COMPLETE] tag
-  const orderComplete = /\[ORDER_COMPLETE\]/i.test(cleanText);
-  cleanText = cleanText.replace(/\[ORDER_COMPLETE\]/gi, '').trim();
-
-  // Detect [CLOSE_CHAT] tag
-  const closeChat = /\[CLOSE_CHAT\]/i.test(cleanText);
-  cleanText = cleanText.replace(/\[CLOSE_CHAT\]/gi, '').trim();
-
-  return { cleanText, buttons, cartItems, showPhotos, orderComplete, closeChat };
+  return { cleanText, buttons, cartItems, showPhotos };
 }
 
 function showPhotoInChat(itemId) {
@@ -5606,11 +5258,11 @@ function openPinzer() {
   if (bubble) bubble.classList.remove('show');
   pushPopupState();
 
-  // Show welcome on first open — AI drives the greeting via __START__
+  // Show welcome on first open
   if (!welcomeShown) {
     welcomeShown = true;
     sessionStorage.setItem(WELCOMED_KEY, 'true');
-    sendToAI('__START__');
+    showWelcomeMessages();
   }
 }
 
@@ -5621,6 +5273,76 @@ function closePinzer() {
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
   popPopupState();
+}
+
+async function showWelcomeMessages() {
+  // If store is closed, show closed message instead of normal welcome
+  if (storeClosed) {
+    var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
+    var nextOpen = getNextOpenTime(scheduleStr);
+    var closedMsg = 'Estamos cerrados en este momento.';
+    if (nextOpen) {
+      closedMsg += ' ' + nextOpen.text + '.';
+    }
+    closedMsg += ' Puedes ver el menu pero no podemos procesar ordenes ahora.';
+    pinzerSay(closedMsg);
+    return;
+  }
+
+  showTypingIndicator();
+  try {
+    const res = await fetch('/api/waiter-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        welcome: true,
+        restaurant_slug: SLUG,
+        restaurant_name: restaurantData?.display_name || SLUG,
+        browserLanguage: navigator.language || 'es',
+        insights: restaurantInsights || undefined
+      })
+    });
+    hideTypingIndicator();
+    if (res.ok) {
+      const data = await res.json();
+      pinzerSay(data.answer);
+    } else {
+      pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
+    }
+  } catch (e) {
+    hideTypingIndicator();
+    pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
+  }
+
+  // Proactive language offer based on browser language
+  var bLang = (navigator.language || 'es').toLowerCase();
+  var langKey = bLang.split('-')[0];
+  var langOffers = {
+    en: 'Would you like me to assist you in English? 🇺🇸',
+    fr: 'Souhaitez-vous que je vous réponde en français? 🇫🇷',
+    ht: 'Èske ou ta renmen m pale kreyòl avèk ou? 🇭🇹',
+    de: 'Möchten Sie, dass ich auf Deutsch antworte? 🇩🇪',
+    pt: 'Gostaria que eu respondesse em português? 🇧🇷'
+  };
+
+  if (langKey !== 'es' && langOffers[langKey]) {
+    setTimeout(() => {
+      pinzerSay(langOffers[langKey]);
+      setTimeout(() => {
+        pinzerShowReplies([
+          { label: '✅ Yes / Sí' },
+          { label: '🇪🇸 No, español' }
+        ]);
+      }, 300);
+    }, 800);
+  } else {
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 500);
+  }
 }
 
 function pinzerSay(message) {
@@ -5662,8 +5384,99 @@ function pinzerClearReplies() {
 
 function handleQuickReply(label) {
   pinzerClearReplies();
+
+  // Close-chat buttons
+  const closeLabels = ['👋 Cerrar', '✅ Eso es todo', '👋 Close', '✅ That\'s all'];
+  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú') || label.toLowerCase().includes('browse the menu') || label.toLowerCase().includes('i\'ll browse');
+
+  if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
+    pinzerUserSay(label);
+    var isEs2 = !currentLanguage || currentLanguage === 'es';
+    const farewell = isViewMenu
+      ? (isEs2 ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪' : 'There you go! 👆 Let me know if you need anything 💪')
+      : (isEs2 ? '¡Buen provecho! Si necesitas algo, aquí estoy 💪' : 'Enjoy your meal! I\'m here if you need anything 💪');
+    pinzerSay(farewell);
+    setTimeout(() => {
+      closePinzer();
+      bubblePermanentlyClosed = false;
+      showBubble(isEs2 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
+    }, 1200);
+    return;
+  }
+
+  // Language choice buttons
+  if (label === '✅ Yes / Sí') {
+    pinzerUserSay(label);
+    var detectedLang = (navigator.language || 'es').toLowerCase().split('-')[0];
+    currentLanguage = detectedLang;
+    var confirmMsgs = { en: 'Yes, English please', fr: 'Oui, en français svp', ht: 'Wi, an Kreyòl souple', de: 'Ja, auf Deutsch bitte', pt: 'Sim, em português por favor' };
+    sendToAI(confirmMsgs[detectedLang] || 'Yes please');
+    return;
+  }
+  if (label === '🇪🇸 No, español') {
+    pinzerUserSay(label);
+    currentLanguage = 'es';
+    pinzerSay('¡Perfecto! ¿Es tu primera vez por aquí?');
+    setTimeout(() => {
+      pinzerShowReplies([
+        { label: '👋 Sí, primera vez' },
+        { label: '🔄 Ya he venido antes' }
+      ]);
+    }, 300);
+    return;
+  }
+
+  // Returning customer — show sub-menu before going to AI
+  if (label === '🔄 Ya he venido antes' || label === '🔄 I\'ve been here before') {
+    pinzerUserSay(label);
+    var isEs3 = (label.includes('venido'));
+    pinzerSay(isEs3 ? '¡Bienvenido de vuelta! 👋 ¿Qué prefieres?' : 'Welcome back! 👋 What do you prefer?');
+    setTimeout(() => {
+      pinzerShowReplies(isEs3
+        ? [{ label: '🛒 Ayúdame con mi orden' }, { label: '👀 Prefiero ver el menú' }]
+        : [{ label: '🛒 Help me order' }, { label: '👀 I\'ll browse the menu' }]
+      );
+    }, 300);
+    return;
+  }
+
+  // "Prefiero ver el menú" — close chatbot
+  if (label === '👀 Prefiero ver el menú' || label === '👀 I\'ll browse the menu') {
+    pinzerUserSay(label);
+    var isEs4 = (label.includes('menú'));
+    pinzerSay(isEs4 ? '¡Perfecto! Aquí estoy si necesitas algo 😊' : 'Perfect! I\'m here if you need anything 😊');
+    setTimeout(() => {
+      closePinzer();
+      bubblePermanentlyClosed = false;
+      showBubble(isEs4 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
+      setTimeout(() => {
+        const bubble = document.getElementById('speechBubble');
+        if (bubble) bubble.classList.remove('show');
+      }, 4000);
+    }, 1500);
+    return;
+  }
+
+  // "Ayúdame con mi orden" — continue normally with AI
+  if (label === '🛒 Ayúdame con mi orden' || label === '🛒 Help me order') {
+    pinzerUserSay(label);
+    sendToAI(label === '🛒 Ayúdame con mi orden' ? 'Ya he venido antes, ayúdame a hacer mi orden' : 'I\'ve been here before, help me place my order');
+    return;
+  }
+
+  // Static mappings for welcome buttons (Spanish + English)
+  const messageMap = {
+    '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
+    '👋 First time here': 'This is my first time here, I don\'t know the menu',
+  };
+
+  const aiMessage = messageMap[label] || label;
   pinzerUserSay(label);
-  sendToAI(label);
+  sendToAI(aiMessage);
 }
 
 function sendPinzerMessage() {
@@ -5741,51 +5554,19 @@ async function sendToAI(userMessage) {
 
       // Handle ADD_TO_CART actions (supports multiple items per response)
       parsed.cartItems.forEach(function(ci) {
-        console.log('[chatbot] ADD_TO_CART received:', ci.id, 'qty:', ci.qty, 'note:', ci.note);
         const item = findMenuItem(ci.id);
         if (item && !soldOutSet.has(item.id)) {
           const qty = ci.qty || 1;
-          console.log('[chatbot] adding to cart:', item.name, 'qty:', qty);
           addItem(item.id, item.name, item.price, ci.note, qty);
           const qtyText = qty > 1 ? `${qty}x ` : '';
           const noteText = ci.note ? ` (${ci.note})` : '';
           pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
-        } else if (!item) {
-          console.error('[chatbot] item not found for ADD_TO_CART:', ci.id);
-          pinzerSay(`⚠️ No pude agregar "${ci.id}" — no se encontró en el menú.`);
-        } else {
-          console.log('[chatbot] item sold out:', ci.id);
-          pinzerSay(`⚠️ ${item.name} está agotado.`);
         }
       });
 
-      // Show AI-generated buttons
+      // Show parsed buttons
       if (parsed.buttons.length > 0) {
         pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
-      }
-
-      // Handle CLOSE_CHAT: close chatbot smoothly
-      if (parsed.closeChat) {
-        setTimeout(() => {
-          closePinzer();
-          bubblePermanentlyClosed = false;
-          showBubble('¡Aquí estoy si me necesitas!', '👨‍🍳');
-          setTimeout(() => {
-            const bubble = document.getElementById('speechBubble');
-            if (bubble) bubble.classList.remove('show');
-          }, 4000);
-        }, 1500);
-      }
-
-      // Handle ORDER_COMPLETE: close chatbot and scroll to order summary
-      if (parsed.orderComplete && order.length > 0) {
-        setTimeout(() => {
-          closePinzer();
-          setTimeout(() => {
-            const orderSummary = document.querySelector('.order-summary');
-            if (orderSummary) orderSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 300);
-        }, 1500);
       }
 
       // Scroll to bottom after all content is rendered
