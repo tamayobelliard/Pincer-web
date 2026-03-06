@@ -208,13 +208,13 @@ function getNextOpenTime(hoursStr) {
   return null;
 }
 
-// ── Compress large menus: category directory + active category items only ──
+// ── Compress large menus: ALL items always included, active categories get full detail ──
 function compressMenuData(menuData, messages) {
   if (!menuData) return '';
   const lines = menuData.split('\n').filter(l => l.trim());
   if (lines.length <= 40) return menuData; // small menu, send everything
 
-  // Parse into categories: { "Bebidas - Agua": [line, line], "Breakfast": [line] }
+  // Parse into categories: { "Bebidas - Agua": [line, line], ... }
   const categories = {};
   for (const line of lines) {
     const colonIdx = line.indexOf(':');
@@ -231,7 +231,6 @@ function compressMenuData(menuData, messages) {
   const activeCats = new Set();
   for (const cat of catNames) {
     const catLower = cat.toLowerCase();
-    // Match full category name or parent part (before " - ")
     if (recentText.includes(catLower)) {
       activeCats.add(cat);
     } else {
@@ -246,45 +245,50 @@ function compressMenuData(menuData, messages) {
     }
   }
 
-  // Build compressed version
   const result = [];
-  result.push('CATEGORÍAS DISPONIBLES (' + catNames.length + ' categorías, ' + lines.length + ' items total):');
 
-  // Category directory: name (count items)
-  const catSummary = catNames.map(c => c + ' (' + categories[c].length + ')');
-  result.push(catSummary.join(', '));
-  result.push('');
-
-  // Full details for active categories (max 3 categories to keep prompt manageable)
+  // Active categories: full detail (one item per line with descriptions)
   const activeList = [...activeCats].slice(0, 3);
   if (activeList.length > 0) {
-    result.push('ITEMS EN CATEGORÍAS ACTIVAS:');
     for (const cat of activeList) {
       result.push(...categories[cat]);
     }
     result.push('');
   }
 
-  // Condensed list for remaining categories: just names and prices, no descriptions
+  // ALL other categories: one compact line per category with every item name, ID, and price
+  // Format: "CATEGORY: [id:xxx] Name RD$100 | [id:yyy] Name2 RD$200 | ..."
   const remainingCats = catNames.filter(c => !activeCats.has(c));
-  if (remainingCats.length > 0) {
-    result.push('OTROS ITEMS (nombre y precio):');
-    for (const cat of remainingCats) {
-      for (const line of categories[cat]) {
-        // "Category: [id:xxx] Name - RD$100 - description [AGOTADO]"
-        // → "Category: [id:xxx] Name - RD$100"
-        const match = line.match(/^(.+?:\s*\[id:[^\]]+\]\s*[^-]+- RD\$\d+)/);
-        if (match) {
-          const agotado = line.includes('[AGOTADO]') ? ' [AGOTADO]' : '';
-          result.push(match[1] + agotado);
-        } else {
-          result.push(line);
-        }
+  for (const cat of remainingCats) {
+    const items = categories[cat].map(line => {
+      // Extract: [id:xxx] Name - RD$100
+      const m = line.match(/\[id:[^\]]+\]\s*(.+?)\s*-\s*(RD\$\d+)/);
+      if (m) {
+        const idMatch = line.match(/(\[id:[^\]]+\])/);
+        const agotado = line.includes('[AGOTADO]') ? ' AGOTADO' : '';
+        return idMatch[1] + ' ' + m[1].trim() + ' ' + m[2] + agotado;
       }
+      return null;
+    }).filter(Boolean);
+    if (items.length > 0) {
+      result.push(cat + ': ' + items.join(' | '));
     }
   }
 
   return result.join('\n');
+}
+
+// ── Extract all known item names from menu data for validation ──
+function extractMenuItemNames(menuData) {
+  if (!menuData) return new Set();
+  const names = new Set();
+  const lines = menuData.split('\n');
+  for (const line of lines) {
+    // Match: [id:xxx] ItemName - RD$price
+    const m = line.match(/\[id:[^\]]+\]\s*(.+?)\s*-\s*RD\$/);
+    if (m) names.add(m[1].trim().toLowerCase());
+  }
+  return names;
 }
 
 export default async function handler(req, res) {
@@ -519,7 +523,7 @@ REGLAS:
 - [AGOTADO] = agotado, sugiere alternativa
 - Nunca confirmes plato libre de alérgenos. Si mencionan alergia → nota en la orden.
 
-${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO: CERRADO. NO uses [ADD_TO_CART:]. Responde: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ ACTUAL (usa SOLO estos items y sus IDs exactos):
+${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO: CERRADO. NO uses [ADD_TO_CART:]. Responde: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENÚ COMPLETO — SOLO estos items existen. Si un plato NO aparece abajo, NO existe en el restaurante. NUNCA inventes items fuera de esta lista:
 ${compressMenuData(menuData, messages)}`;
 
     // Trim messages to last 6 to prevent timeouts on long conversations
@@ -592,7 +596,21 @@ ${compressMenuData(menuData, messages)}`;
       return res.status(200).json({ answer: p.error });
     }
 
-    const answer = data.content.find(c => c.type === 'text')?.text || p.error;
+    let answer = data.content.find(c => c.type === 'text')?.text || p.error;
+
+    // Validate: strip ADD_TO_CART for item IDs not in menu data
+    if (menuData && answer.includes('ADD_TO_CART')) {
+      const knownIds = new Set();
+      const idRegex = /\[id:([^\]]+)\]/g;
+      let idm;
+      while ((idm = idRegex.exec(menuData)) !== null) knownIds.add(idm[1].trim());
+      answer = answer.replace(/\[ADD_TO_CART:\s*([^\]|]+)([^\]]*)\]/g, (full, rawId, rest) => {
+        const id = rawId.trim();
+        if (knownIds.has(id)) return full; // valid
+        console.warn('[waiter-chat] blocked invented ADD_TO_CART:', id);
+        return ''; // strip invented item
+      });
+    }
 
     res.status(200).json({ answer });
 
