@@ -4892,11 +4892,18 @@ function showReceipt(orderNumber, items, total, paymentInfo, customerName) {
   statusEl.style.color = '#9a3412';
   statusEl.innerHTML = '⏳ Tu orden ha sido recibida — en cualquier momento comenzarán a prepararla';
 
-  // Show
-  closeNotesPopup();
+  // Show — hide notes popup visually only (no popPopupState to avoid history race)
+  document.getElementById('notesPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  pendingItem = null;
   document.getElementById('receiptOverlay').classList.add('show');
   document.getElementById('receiptModal').classList.add('show');
-  pushPopupState();
+  // If a popup state already exists (e.g. from checkout), replace it instead of pushing another
+  if (history.state && history.state.popup) {
+    history.replaceState({ popup: true }, '');
+  } else {
+    pushPopupState();
+  }
 
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
     Notification.requestPermission().catch(() => {});
