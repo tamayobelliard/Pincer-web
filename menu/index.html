@@ -4010,7 +4010,7 @@ function openCheckoutModal() {
   pushPopupState();
 }
 
-function closeCheckoutModal() {
+function closeCheckoutModal(skipPopState) {
   // Clear card fields immediately on close (defense in depth)
   document.getElementById('cardNumber').value = '';
   document.getElementById('cardExpiry').value = '';
@@ -4020,7 +4020,7 @@ function closeCheckoutModal() {
   modal.style.transform = '';
   modal.classList.remove('show');
   setTimeout(() => document.getElementById('checkoutOverlay').classList.remove('show'), 350);
-  popPopupState();
+  if (!skipPopState) popPopupState();
 }
 
 // Swipe-down to close checkout modal
@@ -4638,7 +4638,7 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
         );
         if (!retryRes.ok) throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
         const retryData = await retryRes.json();
-        closeCheckoutModal();
+        closeCheckoutModal(true);
         handleOrderSuccess(retryData);
         return;
       }
@@ -4648,7 +4648,7 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
 
     const data = await res.json();
     dbg('✅ Orden pagada creada: ' + JSON.stringify(data).substring(0, 200));
-    closeCheckoutModal();
+    closeCheckoutModal(true);
     handleOrderSuccess(data);
 
   } catch (err) {
