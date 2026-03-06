@@ -498,7 +498,10 @@ CRÍTICO — ITEMS Y PRECIOS:
 - NUNCA uses el nombre del item en [ADD_TO_CART:]. SOLO el ID. Ejemplo correcto: [ADD_TO_CART: squareone_smash_burger], ejemplo INCORRECTO: [ADD_TO_CART: Smash Burger].
 
 FORMATO DE RESPUESTA:
-- Al final de CADA mensaje: [BUTTONS: opción1 | opción2 | opción3] (máximo 4 botones)
+- SIEMPRE usa [BUTTONS:] para dar opciones al cliente. NUNCA listes items como texto plano.
+- Máximo 4 botones por [BUTTONS:]. Si hay más items, muestra los 4 más relevantes + "Ver más opciones".
+- ${timeHint} Usa esto para elegir qué 4 items mostrar primero como botones.
+- Al listar items de una categoría como botones, incluye el precio: [BUTTONS: Pizza Pepperoni RD$480 | Pizza Meat Lovers RD$540 | Smash Burger RD$450 | Ver más opciones]
 - Foto de un item: [SHOW_PHOTO: item_id]
 - Agregar al carrito: [ADD_TO_CART: item_id] o [ADD_TO_CART: item_id | 2] o [ADD_TO_CART: item_id | nota] o [ADD_TO_CART: item_id | 2 | nota]
 - Si el cliente pide cantidad específica, SIEMPRE incluye el número: [ADD_TO_CART: item_id | 2]
@@ -506,7 +509,7 @@ FORMATO DE RESPUESTA:
 FLUJO:
 1. SALUDO: Ya fue saludado. Si primera vez: guía por menú. Si ya vino: muestra categorías.
 2. CATEGORÍAS: Muestra como botones (nombres exactos del menú).
-3. ITEMS: Al elegir categoría, muestra items como botones.
+3. ITEMS: Al elegir categoría, muestra items como botones con precio. Si hay más de 4, muestra los 4 más relevantes + botón "Ver más".
 4. DETALLE: Describe brevemente (1 oración) + [SHOW_PHOTO: item_id]
    ${isSpanish ? '[BUTTONS: 📸 Ver foto | ✅ Agregar | 👀 Otra opción | ⬅️ Categorías]' : '[BUTTONS: 📸 Photo | ✅ Add | 👀 Other | ⬅️ Categories]'}
 5. NOTAS: Antes de agregar pregunta notas.

@@ -5715,7 +5715,9 @@ function pinzerShowReplies(replies) {
     const btn = document.createElement('button');
     btn.className = 'pinzer-reply-btn';
     if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
-    btn.textContent = r.label;
+    // Strip price from display (e.g. "Pizza Pepperoni RD$480" → "Pizza Pepperoni")
+    btn.textContent = r.label.replace(/\s*RD\$\d[\d,.]*/g, '').trim();
+    // Send full label (with price) back to AI for context
     btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
   });
