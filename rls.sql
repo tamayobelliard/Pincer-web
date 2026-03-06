@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS promotions (
   badge_text      text DEFAULT 'NUEVO',
   image_url       text,
   source_phone    text,
+  wa_status       text DEFAULT 'published',
+  product_id      text,
   created_at      timestamptz NOT NULL DEFAULT now(),
   expires_at      timestamptz
 );

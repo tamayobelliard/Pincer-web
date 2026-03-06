@@ -1182,16 +1182,16 @@
       cursor: pointer; z-index: 2; -webkit-tap-highlight-color: transparent;
     }
     .promo-popup-img {
-      width: 100%; height: 220px; object-fit: cover; display: block;
+      width: 100%; height: 180px; object-fit: cover; display: block;
     }
     .promo-popup-body {
-      padding: 20px 22px 24px; text-align: center;
+      padding: 16px 20px 20px; text-align: center;
     }
     .promo-popup-title {
-      font-size: 1.3em; font-weight: 800; color: #1e293b; margin-bottom: 8px;
+      font-size: 1.15em; font-weight: 800; color: #1e293b; margin-bottom: 6px;
     }
     .promo-popup-desc {
-      font-size: 0.95em; color: #64748b; line-height: 1.5; margin-bottom: 14px;
+      font-size: 0.88em; color: #64748b; line-height: 1.5; margin-bottom: 10px;
     }
     .promo-popup-price {
       font-size: 1.4em; font-weight: 800; color: var(--primary, #E8191A); margin-bottom: 16px;
@@ -1201,7 +1201,7 @@
     }
     .promo-popup-cta {
       display: inline-block; background: var(--primary, #E8191A); color: white; border: none;
-      padding: 13px 36px; border-radius: 12px; font-size: 1.05em; font-weight: 700;
+      padding: 11px 30px; border-radius: 12px; font-size: 1.05em; font-weight: 700;
       cursor: pointer; transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
     }
     .promo-popup-cta:active { transform: scale(0.96); }
@@ -2424,7 +2424,7 @@
 </div>
 
 <div class="promo-overlay" id="promoOverlay" onclick="closePromoPopup()"></div>
-<div class="promo-popup" id="promoPopup">
+<div class="promo-popup" id="promoPopup" data-product-id="">
   <button class="promo-popup-close" onclick="closePromoPopup()">&times;</button>
   <span class="promo-popup-badge" id="promoBadge">NUEVO</span>
   <img class="promo-popup-img" id="promoImage" src="" alt="Promo">
@@ -2432,7 +2432,7 @@
     <div class="promo-popup-title" id="promoTitle"></div>
     <div class="promo-popup-desc" id="promoDesc"></div>
     <div class="promo-popup-price" id="promoPrice" style="display:none;"></div>
-    <button class="promo-popup-cta" id="promoCta" onclick="closePromoPopup()">Ordenar Ahora</button>
+    <button class="promo-popup-cta" id="promoCta" onclick="promoCtaClick()">¡Pruébalo Ya!</button>
   </div>
 </div>
 
@@ -5988,7 +5988,7 @@ async function checkAndShowPromo() {
   try {
     var res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/promotions?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
-        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url&order=created_at.desc&limit=1',
+        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id&order=created_at.desc&limit=1',
       { headers: sbHeaders() }, 8000
     );
     if (!res.ok) return;
@@ -5996,10 +5996,11 @@ async function checkAndShowPromo() {
     if (!rows.length) return;
 
     var promo = rows[0];
+    var popup = document.getElementById('promoPopup');
+    popup.setAttribute('data-product-id', promo.product_id || '');
     document.getElementById('promoTitle').textContent = promo.title || '';
     document.getElementById('promoDesc').textContent = promo.description || '';
     document.getElementById('promoBadge').textContent = promo.badge_text || 'NUEVO';
-    document.getElementById('promoCta').textContent = promo.cta_text || 'Ordenar Ahora';
 
     if (promo.image_url) {
       document.getElementById('promoImage').src = promo.image_url;
@@ -6023,7 +6024,7 @@ async function checkAndShowPromo() {
 
     setTimeout(function() {
       document.getElementById('promoOverlay').classList.add('show');
-      document.getElementById('promoPopup').classList.add('show');
+      popup.classList.add('show');
       pushPopupState();
     }, 1500);
   } catch (e) {
@@ -6036,6 +6037,22 @@ function closePromoPopup() {
   document.getElementById('promoPopup').classList.remove('show');
   if (!_popstateClosing) popPopupState();
   sessionStorage.setItem(PROMO_SEEN_KEY, 'true');
+}
+
+function promoCtaClick() {
+  var productId = document.getElementById('promoPopup').getAttribute('data-product-id');
+  closePromoPopup();
+  if (productId) {
+    setTimeout(function() {
+      var card = document.querySelector('[data-item-id="' + productId + '"]');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.style.transition = 'box-shadow 0.3s';
+        card.style.boxShadow = '0 0 0 3px var(--primary, #E8191A)';
+        setTimeout(function() { card.style.boxShadow = ''; }, 2000);
+      }
+    }, 400);
+  }
 }
 
 init();
