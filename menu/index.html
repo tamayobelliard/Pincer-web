@@ -5575,78 +5575,11 @@ function parseBotResponse(text) {
   const orderComplete = /\[ORDER_COMPLETE\]/i.test(cleanText);
   cleanText = cleanText.replace(/\[ORDER_COMPLETE\]/gi, '').trim();
 
-  return { cleanText, buttons, cartItems, showPhotos, orderComplete };
-}
+  // Detect [CLOSE_CHAT] tag
+  const closeChat = /\[CLOSE_CHAT\]/i.test(cleanText);
+  cleanText = cleanText.replace(/\[CLOSE_CHAT\]/gi, '').trim();
 
-function generateContextButtons(botMessage, parsed) {
-  // If the AI already included buttons, use those
-  if (parsed.buttons.length > 0) return parsed.buttons.map(b => ({ label: b }));
-
-  var msg = (botMessage || '').toLowerCase();
-  var isEs = !currentLanguage || currentLanguage === 'es';
-
-  // After adding to cart
-  if (parsed.cartItems.length > 0) {
-    return isEs
-      ? [{ label: '🍽️ Pedir algo más' }, { label: '✅ Eso es todo' }]
-      : [{ label: '🍽️ Order more' }, { label: '✅ That\'s all' }];
-  }
-
-  // Order complete
-  if (parsed.orderComplete) {
-    return isEs ? [{ label: '👋 Cerrar' }] : [{ label: '👋 Close' }];
-  }
-
-  // Asking about modifications/observations
-  if (/observaci[oó]n|modificaci[oó]n|tal cual|cambios|especial|extra salsa|sin vegetales/i.test(msg)) {
-    return isEs
-      ? [{ label: '👌 Tal cual' }, { label: '✏️ Con cambios' }]
-      : [{ label: '👌 As is' }, { label: '✏️ Customize' }];
-  }
-
-  // Asking "algo más" / offering more
-  if (/algo m[aá]s|something else|¿qué más|¿deseas algo/i.test(msg)) {
-    return isEs
-      ? [{ label: '🍽️ Pedir algo más' }, { label: '✅ Eso es todo' }]
-      : [{ label: '🍽️ Order more' }, { label: '✅ That\'s all' }];
-  }
-
-  // Mentions a specific item name from the menu → offer to add
-  if (typeof MENU_DATA === 'object') {
-    for (var cat in MENU_DATA) {
-      var items = MENU_DATA[cat];
-      for (var i = 0; i < items.length; i++) {
-        if (msg.includes(items[i].name.toLowerCase())) {
-          return isEs
-            ? [{ label: '✅ Agregar al carrito' }, { label: '📸 Ver foto' }, { label: '👀 Otra opción' }, { label: '⬅️ Categorías' }]
-            : [{ label: '✅ Add to cart' }, { label: '📸 Photo' }, { label: '👀 Other' }, { label: '⬅️ Categories' }];
-        }
-      }
-    }
-  }
-
-  // Mentions category names → show matching categories as buttons
-  if (typeof MENU_DATA === 'object') {
-    var cats = Object.keys(MENU_DATA);
-    var matchedCats = [];
-    for (var c = 0; c < cats.length; c++) {
-      // Match parent category (before " - ") for subcategory menus
-      var parentCat = cats[c].indexOf(' - ') !== -1 ? cats[c].substring(0, cats[c].indexOf(' - ')) : cats[c];
-      if (msg.includes(parentCat.toLowerCase()) && matchedCats.indexOf(parentCat) === -1) {
-        matchedCats.push(parentCat);
-      }
-    }
-    if (matchedCats.length > 0) {
-      var btns = matchedCats.slice(0, 3).map(function(c) { return { label: c }; });
-      btns.push(isEs ? { label: '📋 Ver todo el menú' } : { label: '📋 Full menu' });
-      return btns;
-    }
-  }
-
-  // Default fallback — always show something useful
-  return isEs
-    ? [{ label: '📋 Ver el menú' }, { label: '🛒 Ayúdame a ordenar' }, { label: '❓ Tengo una pregunta' }]
-    : [{ label: '📋 See the menu' }, { label: '🛒 Help me order' }, { label: '❓ I have a question' }];
+  return { cleanText, buttons, cartItems, showPhotos, orderComplete, closeChat };
 }
 
 function showPhotoInChat(itemId) {
@@ -5673,11 +5606,11 @@ function openPinzer() {
   if (bubble) bubble.classList.remove('show');
   pushPopupState();
 
-  // Show welcome on first open
+  // Show welcome on first open — AI drives the greeting via __START__
   if (!welcomeShown) {
     welcomeShown = true;
     sessionStorage.setItem(WELCOMED_KEY, 'true');
-    showWelcomeMessages();
+    sendToAI('__START__');
   }
 }
 
@@ -5688,87 +5621,6 @@ function closePinzer() {
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
   popPopupState();
-}
-
-async function showWelcomeMessages() {
-  // If store is closed, show closed message instead of normal welcome
-  if (storeClosed) {
-    var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
-    var nextOpen = getNextOpenTime(scheduleStr);
-    var closedMsg = 'Estamos cerrados en este momento.';
-    if (nextOpen) {
-      closedMsg += ' ' + nextOpen.text + '.';
-    }
-    closedMsg += ' Puedes ver el menu pero no podemos procesar ordenes ahora.';
-    pinzerSay(closedMsg);
-    return;
-  }
-
-  showTypingIndicator();
-  try {
-    const res = await fetch('/api/waiter-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        welcome: true,
-        restaurant_slug: SLUG,
-        restaurant_name: restaurantData?.display_name || SLUG,
-        browserLanguage: navigator.language || 'es',
-        insights: restaurantInsights || undefined
-      })
-    });
-    hideTypingIndicator();
-    if (res.ok) {
-      const data = await res.json();
-      pinzerSay(data.answer);
-    } else {
-      pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
-    }
-  } catch (e) {
-    hideTypingIndicator();
-    pinzerSay('¡Hola! Bienvenido a ' + (restaurantData?.display_name || 'nuestro restaurante') + '. ¿Es tu primera vez por aquí?');
-  }
-
-  // Proactive language offer based on browser language (skip if already confirmed)
-  if (currentLanguage) {
-    // Language already confirmed — show standard welcome buttons
-    setTimeout(() => {
-      pinzerShowReplies([
-        { label: '👋 Sí, primera vez' },
-        { label: '🔄 Ya he venido antes' }
-      ]);
-    }, 500);
-    return;
-  }
-  var bLang = (navigator.language || 'es').toLowerCase();
-  var langKey = bLang.split('-')[0];
-  var langOffers = {
-    en: 'Would you like me to assist you in English? 🇺🇸',
-    fr: 'Souhaitez-vous que je vous réponde en français? 🇫🇷',
-    ht: 'Èske ou ta renmen m pale kreyòl avèk ou? 🇭🇹',
-    de: 'Möchten Sie, dass ich auf Deutsch antworte? 🇩🇪',
-    pt: 'Gostaria que eu respondesse em português? 🇧🇷'
-  };
-
-  if (langKey !== 'es' && langOffers[langKey]) {
-    setTimeout(() => {
-      pinzerSay(langOffers[langKey]);
-      setTimeout(() => {
-        pinzerShowReplies([
-          { label: '✅ Yes / Sí' },
-          { label: '🇪🇸 No, español' }
-        ]);
-      }, 300);
-    }, 800);
-  } else {
-    currentLanguage = 'es'; // Spanish browser — confirm language immediately
-    setTimeout(() => {
-      pinzerShowReplies([
-        { label: '👋 Sí, primera vez' },
-        { label: '🔄 Ya he venido antes' }
-      ]);
-    }, 500);
-  }
 }
 
 function pinzerSay(message) {
@@ -5810,99 +5662,8 @@ function pinzerClearReplies() {
 
 function handleQuickReply(label) {
   pinzerClearReplies();
-
-  // Close-chat buttons
-  const closeLabels = ['👋 Cerrar', '✅ Eso es todo', '👋 Close', '✅ That\'s all'];
-  const isViewMenu = label.toLowerCase().includes('voy a ver el menú') || label.toLowerCase().includes('ver el menú') || label.toLowerCase().includes('browse the menu') || label.toLowerCase().includes('i\'ll browse');
-
-  if (closeLabels.some(c => label.includes(c)) || isViewMenu) {
-    pinzerUserSay(label);
-    var isEs2 = !currentLanguage || currentLanguage === 'es';
-    const farewell = isViewMenu
-      ? (isEs2 ? '¡Ahí lo tienes! 👆 Si necesitas algo, me dices 💪' : 'There you go! 👆 Let me know if you need anything 💪')
-      : (isEs2 ? '¡Buen provecho! Si necesitas algo, aquí estoy 💪' : 'Enjoy your meal! I\'m here if you need anything 💪');
-    pinzerSay(farewell);
-    setTimeout(() => {
-      closePinzer();
-      bubblePermanentlyClosed = false;
-      showBubble(isEs2 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
-      setTimeout(() => {
-        const bubble = document.getElementById('speechBubble');
-        if (bubble) bubble.classList.remove('show');
-      }, 4000);
-    }, 1200);
-    return;
-  }
-
-  // Language choice buttons
-  if (label === '✅ Yes / Sí') {
-    pinzerUserSay(label);
-    var detectedLang = (navigator.language || 'es').toLowerCase().split('-')[0];
-    currentLanguage = detectedLang;
-    var confirmMsgs = { en: 'Yes, English please', fr: 'Oui, en français svp', ht: 'Wi, an Kreyòl souple', de: 'Ja, auf Deutsch bitte', pt: 'Sim, em português por favor' };
-    sendToAI(confirmMsgs[detectedLang] || 'Yes please');
-    return;
-  }
-  if (label === '🇪🇸 No, español') {
-    pinzerUserSay(label);
-    currentLanguage = 'es';
-    pinzerSay('¡Perfecto! ¿Es tu primera vez por aquí?');
-    setTimeout(() => {
-      pinzerShowReplies([
-        { label: '👋 Sí, primera vez' },
-        { label: '🔄 Ya he venido antes' }
-      ]);
-    }, 300);
-    return;
-  }
-
-  // Returning customer — show sub-menu before going to AI
-  if (label === '🔄 Ya he venido antes' || label === '🔄 I\'ve been here before') {
-    pinzerUserSay(label);
-    var isEs3 = (label.includes('venido'));
-    pinzerSay(isEs3 ? '¡Bienvenido de vuelta! 👋 ¿Qué prefieres?' : 'Welcome back! 👋 What do you prefer?');
-    setTimeout(() => {
-      pinzerShowReplies(isEs3
-        ? [{ label: '🛒 Ayúdame con mi orden' }, { label: '👀 Prefiero ver el menú' }]
-        : [{ label: '🛒 Help me order' }, { label: '👀 I\'ll browse the menu' }]
-      );
-    }, 300);
-    return;
-  }
-
-  // "Prefiero ver el menú" — close chatbot
-  if (label === '👀 Prefiero ver el menú' || label === '👀 I\'ll browse the menu') {
-    pinzerUserSay(label);
-    var isEs4 = (label.includes('menú'));
-    pinzerSay(isEs4 ? '¡Perfecto! Aquí estoy si necesitas algo 😊' : 'Perfect! I\'m here if you need anything 😊');
-    setTimeout(() => {
-      closePinzer();
-      bubblePermanentlyClosed = false;
-      showBubble(isEs4 ? '¡Aquí estoy si me necesitas!' : 'I\'m here if you need me!', '👨‍🍳');
-      setTimeout(() => {
-        const bubble = document.getElementById('speechBubble');
-        if (bubble) bubble.classList.remove('show');
-      }, 4000);
-    }, 1500);
-    return;
-  }
-
-  // "Ayúdame con mi orden" — continue normally with AI
-  if (label === '🛒 Ayúdame con mi orden' || label === '🛒 Help me order') {
-    pinzerUserSay(label);
-    sendToAI(label === '🛒 Ayúdame con mi orden' ? 'Ya he venido antes, ayúdame a hacer mi orden' : 'I\'ve been here before, help me place my order');
-    return;
-  }
-
-  // Static mappings for welcome buttons (Spanish + English)
-  const messageMap = {
-    '👋 Sí, primera vez': 'Es mi primera vez aquí, no conozco el menú',
-    '👋 First time here': 'This is my first time here, I don\'t know the menu',
-  };
-
-  const aiMessage = messageMap[label] || label;
   pinzerUserSay(label);
-  sendToAI(aiMessage);
+  sendToAI(label);
 }
 
 function sendPinzerMessage() {
@@ -5998,10 +5759,22 @@ async function sendToAI(userMessage) {
         }
       });
 
-      // Generate and show context-aware buttons (always, regardless of AI output)
-      var contextButtons = generateContextButtons(parsed.cleanText, parsed);
-      if (contextButtons.length > 0) {
-        pinzerShowReplies(contextButtons);
+      // Show AI-generated buttons
+      if (parsed.buttons.length > 0) {
+        pinzerShowReplies(parsed.buttons.map(b => ({ label: b })));
+      }
+
+      // Handle CLOSE_CHAT: close chatbot smoothly
+      if (parsed.closeChat) {
+        setTimeout(() => {
+          closePinzer();
+          bubblePermanentlyClosed = false;
+          showBubble('¡Aquí estoy si me necesitas!', '👨‍🍳');
+          setTimeout(() => {
+            const bubble = document.getElementById('speechBubble');
+            if (bubble) bubble.classList.remove('show');
+          }, 4000);
+        }, 1500);
       }
 
       // Handle ORDER_COMPLETE: close chatbot and scroll to order summary

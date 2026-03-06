@@ -342,98 +342,73 @@ export default async function handler(req, res) {
     // Language name mapping for the offer prompt
     const LANG_NAMES = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
 
-    // Welcome-only request: return greeting without calling Claude (always in Spanish)
-    if (req.body.welcome) {
-      const rName = restaurant_name || 'nuestro restaurante';
-      const emoji = { dominicano: '🔥', habibi: '✨', casual: '😊', formal: '', playful: '🎉' }[personality] || '😊';
-      const question = personality === 'formal' ? '¿Es su primera visita?' : '¿Es tu primera vez por aquí?';
-      const sep = emoji ? ' ' + emoji + ' ' : '. ';
-      const greeting = `${p.greeting_first} a ${rName}${sep}${question}`;
-      return res.status(200).json({ answer: greeting });
-    }
-
-    // Build language-specific prompt sections
-    let langInstruction;
-    if (confirmedLang && !isSpanish) {
-      // Language already confirmed as non-Spanish — respond in that language
-      const confirmedName = LANG_NAMES[confirmedLang] || confirmedLang;
-      langInstruction = `
-LANGUAGE RULES:
-- The customer has chosen to be served in ${confirmedName}. You MUST respond in ${confirmedName}.
-- NEVER switch languages unless the customer explicitly asks.
-- Translate menu item names and descriptions naturally, keeping the original Spanish name in parentheses on first mention.
-- Keep ALL prices in RD$ always.${confirmedLang === 'en' ? `
-- Highlight Dominican dishes with brief cultural context (e.g. "Mangú — a beloved Dominican mashed plantain dish").` : ''}${confirmedLang === 'ht' ? `
-- Use a warm, respectful tone in Kreyòl. If the customer mixes Spanish and Creole, follow their lead naturally.` : ''}
-- For totals over RD$500, show USD equivalent in parentheses (use approximate rate: 1 USD = 60 RD$).
-- Buttons text must also be in ${confirmedName}.
-`;
-    } else {
-      // Spanish confirmed or browser is Spanish — no language rules needed
-      langInstruction = '';
-    }
-
-    const personalityTone = {
-      dominicano: isSpanish ? p.style : '- Warm, lively tone with Dominican flavor adapted to the customer\'s language. Friendly and confident like a great host.',
-      habibi: isSpanish ? p.style : '- Warm, generous Middle Eastern hospitality adapted to the customer\'s language. The customer is sacred.',
-      casual: isSpanish ? p.style : '- Friendly, relaxed neutral tone. Like a friend recommending food.',
-      formal: isSpanish ? p.style : '- Professional, polished tone. Use formal register of the customer\'s language (e.g. "vous" in French, formal "you" in English).',
-      playful: isSpanish ? p.style : '- Fun, enthusiastic, energetic tone. Every dish is an adventure! Use 2-3 emojis per message.',
-    }[personality] || (isSpanish ? p.style : '- Friendly, relaxed neutral tone.');
-
     const browserLang = (browserLanguage || 'es').toLowerCase().split('-')[0];
     const LANG_DISPLAY = { en: 'English', fr: 'français', ht: 'Kreyòl', pt: 'português', de: 'Deutsch', it: 'italiano', zh: '中文', ja: '日本語', ko: '한국어' };
     const browserLangName = LANG_DISPLAY[browserLang] || browserLang;
 
-    const langRule = confirmedLang
-      ? (isSpanish ? 'Responde siempre en español.' : `Responde siempre en ${LANG_DISPLAY[confirmedLang] || confirmedLang}. El cliente ya eligió este idioma.`)
-      : (browserLang !== 'es'
-        ? `Idioma del browser del cliente: ${browserLangName}
-Regla de idioma:
-- Saluda siempre en español primero
-- En el primer mensaje pregunta: "Veo que tu dispositivo esta en ${browserLangName}. ¿Prefieres que te hable en ${browserLangName}?"
-- Si el cliente acepta, cambia a ese idioma para toda la conversacion
-- Si el cliente prefiere español, continua en español`
-        : 'Responde siempre en español.');
+    // Language instruction for the system prompt
+    let langLine;
+    if (confirmedLang && !isSpanish) {
+      langLine = `The customer chose ${LANG_DISPLAY[confirmedLang] || confirmedLang}. Respond in that language. Keep prices in RD$. Buttons text also in that language.`;
+    } else if (!confirmedLang && browserLang !== 'es') {
+      langLine = `Browser language: ${browserLangName}. In STEP 1 greeting, after the Spanish greeting, also offer: "I see your device is in ${browserLangName} — would you prefer I help you in ${browserLangName}?" Add that language as a button option.`;
+    } else {
+      langLine = 'Respond in Spanish.';
+    }
 
-    const systemPrompt = `${langRule}
+    const systemPrompt = `You are the virtual waiter for ${rName}. You guide customers through ordering naturally, like a real waiter would.
 
-Eres el mesero virtual de ${rName}.
-${langInstruction}
-ESTILO DE CONVERSACIÓN:
-- NUNCA repitas el saludo de bienvenida. El cliente ya fue saludado al abrir el chat. Si el cliente dice que es su primera vez o que ya ha venido, NO vuelvas a decir saludos. Ve directo al punto.
-${personalityTone}
-- Respuestas ULTRA CORTAS: máximo 1-2 oraciones por mensaje. Nada de párrafos. Piensa en cómo escribes por WhatsApp, no en un email.
-- NUNCA sueltes todo el menú de golpe. Guía paso a paso como una conversación real.
+${langLine}
+${p.style}
 
-CARRITO — REGLAS:
-- Para agregar al carrito: [ADD_TO_CART: item_id] o [ADD_TO_CART: item_id | nota] o [ADD_TO_CART: item_id | 2 | nota]
-- NUNCA incluyas [ADD_TO_CART:] en el mismo mensaje donde el cliente dice que quiere un item.
-- PRIMERO pregunta "¿Alguna observación? (sin vegetales, extra salsa, etc.) o tal cual?"
-- Solo incluye [ADD_TO_CART:] DESPUÉS de que el cliente responda (ej: "tal cual" o "sin cebolla").
-- Ejemplo: Cliente dice "sin cebolla" → "¡Listo! [ADD_TO_CART: squareone_smash_burger | sin cebolla] ¿Algo más?"
-- Sin el tag [ADD_TO_CART:], NADA se agrega al carrito. NUNCA digas "agregado" sin incluirlo.
-- Para fotos: [SHOW_PHOTO: item_id]
+CONVERSATION FLOW — follow this exact sequence:
 
-CIERRE:
-- Si dice "eso es todo", "nada más", "quiero pagar", "listo": despídete e incluye [ORDER_COMPLETE]
+STEP 1 — GREETING (only when first message is "__START__")
+- Greet warmly in Spanish
+- Ask if it's their first time
+- End with: [BUTTONS: 👋 Primera vez | 🔄 Ya he venido antes]
 
-REGLAS:
-- Los item_ids están en el menú con formato [id:xxx]. Usa esos IDs exactos.
-- Respuestas CORTAS: 1-2 oraciones máximo.
-- Solo recomienda items del menú actual. Si está [AGOTADO], sugiere alternativa.
-- NUNCA inventes items o precios. Precios en RD$.
-- Si mencionan alergia, inclúyelo como nota en la orden.
-- NO incluyas [BUTTONS:] en tus respuestas — los botones se generan automáticamente.
+STEP 2 — OFFER HELP
+- If first time: brief warm welcome + one-line description of the restaurant
+- If returning: welcome back warmly
+- Ask what they'd like to do
+- End with: [BUTTONS: 🛒 Ayúdame a ordenar | 📋 Prefiero ver el menú solo]
 
-${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `ESTADO DEL RESTAURANTE: CERRADO
-REGLA CRITICA: El restaurante esta cerrado. NO proceses ordenes ni uses [ADD_TO_CART:].
-Si el cliente intenta ordenar, responde: "Estamos cerrados en este momento.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Nuestro horario es: ' + restaurantHours : ''} Puedes ver el menu pero no podemos procesar ordenes ahora."
-Puedes mostrar el menu y fotos, pero NUNCA agregues items al carrito.\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }=== MENÚ COMPLETO ===
-The ONLY items you can mention or recommend are the ones listed below.
-If a customer asks for something not in this list, say you don't have it and suggest the closest available item.
-NEVER invent or suggest items outside this list. Every item has an [id:xxx] — use that exact ID for [ADD_TO_CART:].
+STEP 3a — CUSTOMER WANTS TO BROWSE ALONE
+- Say something warm like "¡Claro! Estaré aquí si necesitas algo 😊"
+- End with: [CLOSE_CHAT]
 
+STEP 3b — CUSTOMER WANTS HELP ORDERING
+- Guide them like a real waiter — ask what they're in the mood for
+- Use the menu to suggest specific items, do upselling naturally
+- End every message with [BUTTONS:] showing 2-4 relevant options
+
+STEP 4 — ITEM SELECTED
+- Describe the item briefly and enthusiastically
+- Ask about modifications in the SAME message: "¿Lo quieres así o alguna observación? (sin tomate, extra salsa...)"
+- End with: [BUTTONS: ✅ Así está bien | ❌ Sin tomate | ❌ Sin cebolla | ✏️ Otra cosa]
+- NEVER include [ADD_TO_CART:] in this message
+
+STEP 5 — CONFIRMATION RECEIVED
+- Add to cart: [ADD_TO_CART: item_id] or [ADD_TO_CART: item_id | modification]
+- Do natural upselling: suggest a drink, a side, or a complement
+- End with: [BUTTONS: 🍽️ Pedir algo más | ✅ Eso es todo]
+
+STEP 6 — ORDER COMPLETE
+- When customer says they're done: warm closing message
+- Include: [ORDER_COMPLETE]
+
+RULES:
+- Keep responses SHORT — max 3 sentences of text
+- ALWAYS end with [BUTTONS:] except on [ORDER_COMPLETE] and [CLOSE_CHAT]
+- NEVER mention items not in the menu below
+- NEVER include [ADD_TO_CART:] and the observations question in the same message
+- [BUTTONS:] must appear at the very end of the message, after all text
+- Item IDs are in format [id:xxx] in the menu. Use those exact IDs for [ADD_TO_CART:]
+- Without the [ADD_TO_CART:] tag, NOTHING gets added to the cart. Never say "added" without it.
+- For photos: [SHOW_PHOTO: item_id]
+
+${ !storeOpen ? (() => { const nxt = getNextOpenTime(restaurantHours); return `STATUS: CLOSED. Do NOT use [ADD_TO_CART:]. Tell the customer: "Estamos cerrados.${nxt ? ' ' + nxt + '.' : ''}${restaurantHours ? ' Horario: ' + restaurantHours : ''} Puedes ver el menú pero no procesar órdenes."\n\n`; })() : '' }${ insightsText ? insightsText.substring(0, 500) + '\n\n' : '' }MENU:
 ${formatMenuData(menuData)}`;
 
     // Trim messages to last 6 to prevent timeouts on long conversations
