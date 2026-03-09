@@ -284,15 +284,24 @@ SOLO JSON, sin markdown, sin backticks.`;
 
     const data = await response.json();
     if (!response.ok) {
-      console.error('[generate-insights] Claude error:', data);
-      return { hero_insight: 'No se pudo generar el análisis AI esta semana.', actions: [] };
+      console.error('[generate-insights] Claude API error:', JSON.stringify(data));
+      return { hero_insight: `No se pudo generar el análisis AI (HTTP ${response.status}: ${data.error?.message || 'unknown'}).`, actions: [] };
     }
 
-    const text = data.content.find(c => c.type === 'text')?.text || '';
-    return JSON.parse(text);
+    const rawText = data.content.find(c => c.type === 'text')?.text || '';
+    console.log('[generate-insights] Claude raw response:', rawText.substring(0, 500));
+
+    // Strip markdown code fences if present
+    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error('[generate-insights] JSON parse failed:', parseErr.message, '| Raw text:', rawText.substring(0, 300));
+      return { hero_insight: rawText.substring(0, 500), actions: [] };
+    }
   } catch (e) {
-    console.error('[generate-insights] AI parse error:', e.message);
-    return { hero_insight: 'Error generando insights AI.', actions: [] };
+    console.error('[generate-insights] AI fetch error:', e.message, e.stack);
+    return { hero_insight: `Error generando insights AI: ${e.message}`, actions: [] };
   }
 }
 
