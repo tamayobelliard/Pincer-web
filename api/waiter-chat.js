@@ -292,7 +292,7 @@ export default async function handler(req, res) {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const iRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=summary_text&limit=1`,
+          `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&select=top_items,ai_insights&order=week_start.desc&limit=1`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -303,8 +303,16 @@ export default async function handler(req, res) {
         );
         if (iRes.ok) {
           const iRows = await iRes.json();
-          if (iRows.length > 0 && iRows[0].summary_text) {
-            insightsText = iRows[0].summary_text;
+          if (iRows.length > 0) {
+            const row = iRows[0];
+            const parts = [];
+            if (row.top_items?.length > 0) {
+              parts.push('Items mas populares: ' + row.top_items.slice(0, 5).map((t, i) => `${i + 1}. ${t.name} (${t.units} vendidos)`).join(', '));
+            }
+            if (row.ai_insights?.hero_insight) {
+              parts.push('Insight de la semana: ' + row.ai_insights.hero_insight);
+            }
+            if (parts.length > 0) insightsText = parts.join('\n');
           }
         }
       } catch { /* no insights available — continue without */ }

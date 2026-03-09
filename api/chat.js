@@ -97,7 +97,7 @@ function computeOrderMetrics(orders) {
 async function fetchInsights(slug) {
   try {
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(slug)}&select=summary_text,top_items,peak_hours,avg_order_value,total_orders_7d,updated_at&limit=1`,
+      `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(slug)}&select=week_start,week_end,total_orders,total_revenue,avg_ticket,conversion_rate,top_items,low_items,behavior,chatbot_stats,language_breakdown,ai_insights,prev_week_orders,prev_week_revenue&order=week_start.desc&limit=1`,
       { headers: sbHeaders(), signal: AbortSignal.timeout(5000) }
     );
     if (!res.ok) return null;
@@ -271,11 +271,29 @@ function buildSystemPrompt(restaurantName, thisWeekMetrics, lastWeekMetrics, ins
     }
   }
 
-  // Insights summary
-  if (insights?.summary_text) {
+  // Weekly report insights
+  if (insights) {
     lines.push('');
-    lines.push('## RESUMEN DEL REPORTE SEMANAL (generado automáticamente)');
-    lines.push(insights.summary_text);
+    lines.push(`## REPORTE SEMANAL (${insights.week_start || '?'} a ${insights.week_end || '?'})`);
+    if (insights.ai_insights?.hero_insight) {
+      lines.push('Insight principal: ' + insights.ai_insights.hero_insight);
+    }
+    if (insights.ai_insights?.actions?.length > 0) {
+      lines.push('Acciones recomendadas:');
+      for (const a of insights.ai_insights.actions) {
+        lines.push(`  ${a.priority}. ${a.title}: ${a.description}`);
+      }
+    }
+    if (insights.low_items?.length > 0) {
+      lines.push('Productos con pocas ventas: ' + insights.low_items.map(i => `${i.name} (${i.units} uds)`).join(', '));
+    }
+    if (insights.chatbot_stats) {
+      lines.push(`Chatbot: ${insights.chatbot_stats.conversations} conversaciones, ${insights.chatbot_stats.orders} órdenes, tasa ${insights.chatbot_stats.conversion_rate}%`);
+    }
+    if (insights.language_breakdown) {
+      const langs = Object.entries(insights.language_breakdown).map(([k, v]) => `${k}: ${v}%`).join(', ');
+      lines.push('Idiomas de visitantes: ' + langs);
+    }
   }
 
   // Rules
