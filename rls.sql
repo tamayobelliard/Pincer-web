@@ -247,6 +247,57 @@ CREATE POLICY "deny_anon_delete_promotions"
 
 
 -- ──────────────────────────────────────────────────────────────
+-- 12. shifts — Sistema de turnos
+-- ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS shifts (
+  id                  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  restaurant_slug     text NOT NULL,
+  nombre_encargado    text NOT NULL,
+  turno               text NOT NULL DEFAULT 'personalizado',
+  hora_inicio         timestamptz NOT NULL DEFAULT now(),
+  hora_cierre         timestamptz,
+  status              text NOT NULL DEFAULT 'abierto',
+  total_ordenes       int DEFAULT 0,
+  ordenes_completadas int DEFAULT 0,
+  ordenes_canceladas  int DEFAULT 0,
+  total_bruto         int DEFAULT 0,
+  total_neto          int DEFAULT 0,
+  fee_pincer          int DEFAULT 0,
+  itbis               int DEFAULT 0,
+  total_efectivo      int DEFAULT 0,
+  total_tarjeta       int DEFAULT 0,
+  total_delivery      int DEFAULT 0,
+  total_pickup        int DEFAULT 0,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  closed_at           timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS idx_shifts_active ON shifts(restaurant_slug) WHERE status = 'abierto';
+
+ALTER TABLE shifts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_select_shifts"
+  ON shifts FOR SELECT TO anon
+  USING (true);
+
+CREATE POLICY "anon_insert_shifts"
+  ON shifts FOR INSERT TO anon
+  WITH CHECK (restaurant_slug IS NOT NULL);
+
+CREATE POLICY "anon_update_shifts"
+  ON shifts FOR UPDATE TO anon
+  USING (true);
+
+CREATE POLICY "deny_anon_delete_shifts"
+  ON shifts FOR DELETE TO anon
+  USING (false);
+
+-- Link orders to shifts
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shift_id bigint;
+
+
+-- ──────────────────────────────────────────────────────────────
 -- Cleanup: Delete expired sessions (run periodically or add to cron)
 -- ──────────────────────────────────────────────────────────────
 -- DELETE FROM restaurant_sessions WHERE expires_at < now();

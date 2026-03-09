@@ -564,36 +564,36 @@
     }
     .debug-panel.show { display: block; }
 
-    /* CLOSE DAY MODAL */
-    .close-day-overlay {
+    /* SHIFT / CLOSE DAY MODALS */
+    .close-day-overlay, .shift-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); z-index: 9990;
       opacity: 0; visibility: hidden; transition: all 0.3s;
     }
-    .close-day-overlay.show { opacity: 1; visibility: visible; }
-    .close-day-modal {
+    .close-day-overlay.show, .shift-overlay.show { opacity: 1; visibility: visible; }
+    .close-day-modal, .shift-modal {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
       background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 480px;
       max-height: 80vh; overflow-y: auto; z-index: 9991;
       box-shadow: 0 20px 60px rgba(0,0,0,0.15);
       opacity: 0; visibility: hidden; transition: all 0.3s;
     }
-    .close-day-modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+    .close-day-modal.show, .shift-modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
     .btn-modal-x {
       position: absolute; top: 12px; right: 12px; background: none; border: none;
       font-size: 1.4em; cursor: pointer; color: var(--muted); padding: 4px; margin: 0;
     }
-    .close-day-summary-stat {
+    .close-day-summary-stat, .shift-stat {
       display: flex; justify-content: space-between; padding: 10px 0;
       border-bottom: 1px solid var(--border); font-size: 14px;
     }
-    .close-day-summary-stat:last-child { border-bottom: none; }
-    .close-day-summary-stat .label { color: var(--muted); }
-    .close-day-summary-stat .value { font-weight: 700; color: var(--text); }
-    .close-day-top-items { margin-top: 12px; }
-    .close-day-top-items h4 { margin: 0 0 8px 0; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
-    .close-day-top-item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; color: var(--text); }
-    .close-day-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .close-day-summary-stat:last-child, .shift-stat:last-child { border-bottom: none; }
+    .close-day-summary-stat .label, .shift-stat .label { color: var(--muted); }
+    .close-day-summary-stat .value, .shift-stat .value { font-weight: 700; color: var(--text); }
+    .close-day-top-items, .shift-top-items { margin-top: 12px; }
+    .close-day-top-items h4, .shift-top-items h4 { margin: 0 0 8px 0; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .close-day-top-item, .shift-top-item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; color: var(--text); }
+    .close-day-actions, .shift-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
     .btn-history {
       padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px;
       background: var(--bg2); color: var(--text); font-weight: 600; font-size: 13px;
@@ -606,6 +606,36 @@
       cursor: pointer; font-family: var(--font);
     }
     .btn-confirm-close:hover { background: var(--red-dark); }
+
+    /* SHIFT BADGE & CONTROLS */
+    .shift-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;
+      padding: 6px 12px; font-size: 12px; color: #065f46; font-weight: 600;
+    }
+    .shift-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse-dot 2s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .shift-badge .shift-info { line-height: 1.3; }
+    .shift-badge .shift-name { font-weight: 700; }
+    .shift-badge .shift-time { font-weight: 400; color: #047857; font-size: 11px; }
+    .btn-shift {
+      padding: 8px 16px; border: none; border-radius: 8px;
+      font-weight: 600; font-size: 13px; cursor: pointer; font-family: var(--font);
+      transition: background 0.2s;
+    }
+    .btn-shift-open { background: #059669; color: white; }
+    .btn-shift-open:hover { background: #047857; }
+    .btn-shift-close { background: var(--red); color: white; }
+    .btn-shift-close:hover { background: var(--red-dark); }
+    .shift-section-title { font-weight: 700; font-size: 13px; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px 0; letter-spacing: 0.5px; }
+    .shift-form-group { margin-bottom: 14px; }
+    .shift-form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .shift-form-group input, .shift-form-group select {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: var(--font); background: var(--bg2); color: var(--text);
+      box-sizing: border-box;
+    }
+    .shift-form-group input:focus, .shift-form-group select:focus { outline: none; border-color: #059669; }
 
     /* CHANGE PASSWORD MODAL */
     .change-pw-overlay {
@@ -903,8 +933,18 @@
         <div class="topbar-date" id="topbarDate"></div>
       </div>
     </div>
-    <div class="topbar-right">
-      <button class="btn-ghost" onclick="openCloseDayModal()">📋 Cerrar Dia</button>
+    <div class="topbar-right" id="shiftControls">
+      <button class="btn-shift btn-shift-open" id="btnOpenShift" onclick="openShiftModal()" style="display:none;">Abrir Turno</button>
+      <div id="shiftActiveWrap" style="display:none;align-items:center;gap:8px;">
+        <div class="shift-badge" id="shiftBadge">
+          <span class="dot"></span>
+          <div class="shift-info">
+            <div class="shift-name" id="shiftBadgeName"></div>
+            <div class="shift-time" id="shiftBadgeTime"></div>
+          </div>
+        </div>
+        <button class="btn-shift btn-shift-close" onclick="openCloseShiftModal()">Cerrar Turno</button>
+      </div>
     </div>
   </div>
 
@@ -1203,6 +1243,49 @@
   </div>
 </div>
 
+<!-- Open Shift Modal -->
+<div class="shift-overlay" id="openShiftOverlay" onclick="closeShiftModal()"></div>
+<div class="shift-modal" id="openShiftModal">
+  <button class="btn-modal-x" onclick="closeShiftModal()">✕</button>
+  <h2 style="margin:0 0 16px 0;text-align:center;">Abrir Turno</h2>
+  <div class="shift-form-group">
+    <label>Nombre del encargado</label>
+    <input type="text" id="shiftEncargado" placeholder="Ej: Juan Perez" autocomplete="off">
+  </div>
+  <div class="shift-form-group">
+    <label>Tipo de turno</label>
+    <select id="shiftTipo">
+      <option value="manana">Manana</option>
+      <option value="tarde">Tarde</option>
+      <option value="noche">Noche</option>
+      <option value="personalizado">Personalizado</option>
+    </select>
+  </div>
+  <div class="shift-actions">
+    <button class="btn-shift btn-shift-open" onclick="confirmOpenShift()" style="width:100%;">Abrir Turno</button>
+  </div>
+</div>
+
+<!-- Close Shift Modal -->
+<div class="shift-overlay" id="closeShiftOverlay" onclick="closeCloseShiftModal()"></div>
+<div class="shift-modal" id="closeShiftModal">
+  <button class="btn-modal-x" onclick="closeCloseShiftModal()">✕</button>
+  <h2 style="margin:0 0 16px 0;text-align:center;">Cerrar Turno</h2>
+  <div id="closeShiftSummary" style="margin-bottom:20px;">
+    <div style="text-align:center;padding:20px;color:#94a3b8;">Cargando...</div>
+  </div>
+  <div class="shift-actions" id="closeShiftActions">
+    <button class="btn-confirm-close" onclick="confirmCloseShift()" id="btnConfirmCloseShift">Confirmar Cierre + Generar PDF</button>
+  </div>
+  <div id="closeShiftResult" style="display:none;text-align:center;margin-top:16px;">
+    <p style="color:#059669;font-weight:700;font-size:15px;">Turno cerrado correctamente</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
+      <button class="btn-history" onclick="downloadShiftPDF()" id="btnDownloadPDF">📥 Descargar PDF</button>
+      <button class="btn-shift btn-shift-open" onclick="shareShiftWhatsApp()">📲 Compartir</button>
+    </div>
+  </div>
+</div>
+
 <!-- Change Password Modal -->
 <div class="change-pw-overlay" id="changePwOverlay" onclick="dismissChangePwModal()"></div>
 <div class="change-pw-modal" id="changePwModal">
@@ -1460,6 +1543,8 @@ let lastOrderCount = 0;
 let hasInteracted = false;
 let storeIsOpen = false;
 let storeOpenedAt = null;
+let currentShift = null;
+let lastShiftPDFBase64 = null;
 let storeOverrideActive = false;
 let scheduleStateAtOverride = null;
 let restaurantHours = '';
@@ -2681,6 +2766,271 @@ async function loadHistorial() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SISTEMA DE TURNOS
+// ══════════════════════════════════════════════════════════════
+
+const TURNO_LABELS = { manana: 'Manana', tarde: 'Tarde', noche: 'Noche', personalizado: 'Personalizado' };
+
+function formatShiftTime(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Santo_Domingo' });
+}
+
+async function loadActiveShift() {
+  try {
+    var res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/shifts?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
+        '&status=eq.abierto&order=created_at.desc&limit=1&select=*',
+      { headers: sbGetHeaders() }, 8000
+    );
+    if (!res.ok) { updateShiftUI(); return; }
+    var rows = await res.json();
+    if (rows.length > 0) {
+      currentShift = rows[0];
+    } else {
+      currentShift = null;
+    }
+    updateShiftUI();
+  } catch (e) {
+    dbg('⚠️ loadActiveShift: ' + e.message);
+    updateShiftUI();
+  }
+}
+
+function updateShiftUI() {
+  var btnOpen = document.getElementById('btnOpenShift');
+  var activeWrap = document.getElementById('shiftActiveWrap');
+  if (currentShift) {
+    btnOpen.style.display = 'none';
+    activeWrap.style.display = 'flex';
+    document.getElementById('shiftBadgeName').textContent = currentShift.nombre_encargado + ' · ' + (TURNO_LABELS[currentShift.turno] || currentShift.turno);
+    document.getElementById('shiftBadgeTime').textContent = 'Desde ' + formatShiftTime(currentShift.hora_inicio);
+  } else {
+    btnOpen.style.display = 'inline-flex';
+    activeWrap.style.display = 'none';
+  }
+}
+
+function openShiftModal() {
+  document.getElementById('openShiftOverlay').classList.add('show');
+  setTimeout(function() { document.getElementById('openShiftModal').classList.add('show'); }, 10);
+  document.getElementById('shiftEncargado').focus();
+}
+
+function closeShiftModal() {
+  document.getElementById('openShiftModal').classList.remove('show');
+  setTimeout(function() { document.getElementById('openShiftOverlay').classList.remove('show'); }, 300);
+}
+
+async function confirmOpenShift() {
+  var nombre = document.getElementById('shiftEncargado').value.trim();
+  if (!nombre) { alert('Ingresa el nombre del encargado'); return; }
+  var turno = document.getElementById('shiftTipo').value;
+
+  try {
+    var res = await fetch(
+      SUPABASE_URL + '/rest/v1/shifts',
+      {
+        method: 'POST',
+        headers: { ...sbWriteHeaders(), 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          restaurant_slug: SLUG,
+          nombre_encargado: nombre,
+          turno: turno,
+        }),
+      }
+    );
+    if (!res.ok) {
+      alert('Error al abrir turno. Verifica que la tabla shifts exista en Supabase.');
+      return;
+    }
+    var rows = await res.json();
+    currentShift = rows[0];
+    updateShiftUI();
+    closeShiftModal();
+    showToast('Turno abierto: ' + nombre);
+    dbg('✅ Turno abierto: ' + nombre + ' (' + turno + ')');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+function openCloseShiftModal() {
+  if (!currentShift) return;
+  var overlay = document.getElementById('closeShiftOverlay');
+  var modal = document.getElementById('closeShiftModal');
+  var content = document.getElementById('closeShiftSummary');
+  var actions = document.getElementById('closeShiftActions');
+  var result = document.getElementById('closeShiftResult');
+  content.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;">Cargando...</div>';
+  actions.style.display = 'flex';
+  result.style.display = 'none';
+  overlay.classList.add('show');
+  setTimeout(function() { modal.classList.add('show'); }, 10);
+
+  // Fetch orders for this shift preview
+  fetchWithTimeout(
+    SUPABASE_URL + '/rest/v1/orders?shift_id=eq.' + currentShift.id + '&select=*',
+    { headers: sbGetHeaders() }, 12000
+  ).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function(orders) {
+    var count = orders.length;
+    var totalSales = 0, efectivo = 0, tarjeta = 0, delivery = 0, pickup = 0;
+    var completed = 0, cancelled = 0;
+    var itemCounts = {};
+
+    orders.forEach(function(o) {
+      var t = o.total || 0;
+      totalSales += t;
+      if (o.azul_order_id) tarjeta += t; else efectivo += t;
+      if (o.order_type === 'delivery') delivery++; else pickup++;
+      if (o.status === 'cancelled' || o.status === 'canceled') cancelled++;
+      else if (['accepted','ready','notified','paid'].includes(o.status)) completed++;
+      try {
+        var items = typeof o.items === 'string' ? JSON.parse(o.items) : (Array.isArray(o.items) ? o.items : []);
+        items.forEach(function(item) {
+          var name = item.name || item.id || '?';
+          if (!name.toLowerCase().startsWith('extra ')) itemCounts[name] = (itemCounts[name] || 0) + (item.qty || 1);
+        });
+      } catch (e) {}
+    });
+
+    var top5 = Object.entries(itemCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+    var itbis = Math.round(totalSales * 0.18);
+
+    var html = '';
+    html += '<div class="shift-stat"><span class="label">Encargado</span><span class="value">' + currentShift.nombre_encargado + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Turno</span><span class="value">' + (TURNO_LABELS[currentShift.turno] || currentShift.turno) + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Inicio</span><span class="value">' + formatShiftTime(currentShift.hora_inicio) + '</span></div>';
+
+    html += '<div class="shift-section-title">Resumen de ventas</div>';
+    html += '<div class="shift-stat"><span class="label">Total ordenes</span><span class="value">' + count + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Completadas</span><span class="value" style="color:#059669;">' + completed + '</span></div>';
+    if (cancelled > 0) html += '<div class="shift-stat"><span class="label">Canceladas</span><span class="value" style="color:#ef4444;">' + cancelled + '</span></div>';
+
+    html += '<div class="shift-section-title">Financiero</div>';
+    html += '<div class="shift-stat"><span class="label">Venta bruta</span><span class="value" style="color:#059669;">RD$' + totalSales.toLocaleString() + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">ITBIS (18%)</span><span class="value">RD$' + itbis.toLocaleString() + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Venta neta</span><span class="value">RD$' + (totalSales - itbis).toLocaleString() + '</span></div>';
+
+    html += '<div class="shift-section-title">Metodos de pago</div>';
+    html += '<div class="shift-stat"><span class="label">Efectivo</span><span class="value">RD$' + efectivo.toLocaleString() + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Tarjeta</span><span class="value">RD$' + tarjeta.toLocaleString() + '</span></div>';
+
+    html += '<div class="shift-section-title">Tipo de orden</div>';
+    html += '<div class="shift-stat"><span class="label">Pickup / Dine-in</span><span class="value">' + pickup + '</span></div>';
+    html += '<div class="shift-stat"><span class="label">Delivery</span><span class="value">' + delivery + '</span></div>';
+
+    if (top5.length > 0) {
+      html += '<div class="shift-top-items"><h4>Top productos</h4>';
+      top5.forEach(function(item, idx) {
+        html += '<div class="shift-top-item"><span>' + (idx + 1) + '. ' + item[0] + '</span><span>' + item[1] + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    content.innerHTML = html;
+  }).catch(function(e) {
+    content.innerHTML = '<div style="text-align:center;padding:20px;color:#ef4444;">Error: ' + e.message + '</div>';
+  });
+}
+
+function closeCloseShiftModal() {
+  document.getElementById('closeShiftModal').classList.remove('show');
+  setTimeout(function() { document.getElementById('closeShiftOverlay').classList.remove('show'); }, 300);
+}
+
+async function confirmCloseShift() {
+  if (!currentShift) return;
+  var btn = document.getElementById('btnConfirmCloseShift');
+  btn.disabled = true;
+  btn.textContent = 'Cerrando turno...';
+
+  try {
+    var res = await fetch('/api/shift-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() },
+      body: JSON.stringify({ shift_id: currentShift.id }),
+    });
+
+    if (res.status === 403) { handleSessionExpired(); return; }
+    if (!res.ok) {
+      var err = await res.json().catch(function() { return { error: 'Error desconocido' }; });
+      alert('Error al cerrar turno: ' + (err.error || 'Error HTTP ' + res.status));
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Cierre + Generar PDF';
+      return;
+    }
+
+    var data = await res.json();
+    lastShiftPDFBase64 = data.pdf;
+
+    // Auto-download PDF
+    downloadPDFFromBase64(data.pdf, 'turno-' + currentShift.nombre_encargado.replace(/\s+/g, '-') + '-' + new Date().toISOString().slice(0, 10) + '.pdf');
+
+    // Show result
+    document.getElementById('closeShiftActions').style.display = 'none';
+    document.getElementById('closeShiftResult').style.display = 'block';
+
+    currentShift = null;
+    updateShiftUI();
+    loadDaySummary();
+    showToast('Turno cerrado correctamente');
+    dbg('✅ Turno cerrado, PDF generado');
+
+  } catch (e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Cierre + Generar PDF';
+  }
+}
+
+function downloadPDFFromBase64(base64, filename) {
+  var byteCharacters = atob(base64);
+  var byteNumbers = new Array(byteCharacters.length);
+  for (var i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+  var byteArray = new Uint8Array(byteNumbers);
+  var blob = new Blob([byteArray], { type: 'application/pdf' });
+  var link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  setTimeout(function() { URL.revokeObjectURL(link.href); }, 10000);
+}
+
+function downloadShiftPDF() {
+  if (!lastShiftPDFBase64) { alert('No hay PDF disponible'); return; }
+  downloadPDFFromBase64(lastShiftPDFBase64, 'turno-reporte.pdf');
+}
+
+function shareShiftWhatsApp() {
+  if (!lastShiftPDFBase64) return;
+  // Can't share files via wa.me, share a text summary instead
+  var text = 'Reporte de turno generado. Descarga el PDF desde el dashboard de Pincer.';
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+
+async function assignOrdersToShift() {
+  if (!currentShift) return;
+  try {
+    // Bulk assign orders without shift_id that were created after this shift started
+    await fetch(
+      SUPABASE_URL + '/rest/v1/orders?shift_id=is.null&restaurant_slug=eq.' + encodeURIComponent(SLUG) +
+        '&created_at=gte.' + encodeURIComponent(currentShift.hora_inicio),
+      {
+        method: 'PATCH',
+        headers: sbWriteHeaders(),
+        body: JSON.stringify({ shift_id: currentShift.id }),
+      }
+    );
+  } catch (e) {
+    dbg('⚠️ assignOrdersToShift: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // ★ RENDER ITEMS — FIXED: handles items with or without "id" field
 // ══════════════════════════════════════════════════════════════
 
@@ -2780,6 +3130,9 @@ async function loadOrders() {
 
     const data = await res.json();
     document.getElementById("connection-status").innerHTML = "🟢 Conectado";
+
+    // Assign unlinked orders to active shift
+    if (currentShift) assignOrdersToShift();
 
     const container = document.getElementById("orders");
 
@@ -3279,6 +3632,9 @@ async function initializeDashboard() {
 
   // Load store status first (determines if we load live orders)
   await loadStoreStatus();
+
+  // Load active shift
+  loadActiveShift();
 
   // Load analytics for default filter
   loadDaySummary();
