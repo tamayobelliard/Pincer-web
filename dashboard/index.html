@@ -1341,10 +1341,10 @@
         👋 Hola! Soy tu asistente de ventas.<br><br>
         <strong style="color: #4a7c2c;">Preguntas rápidas:</strong>
         <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-          <button onclick="askQuickQuestion('¿Cuánto vendí hoy?')" style="background: #f0fdf4; border: 2px solid #4ade80; color: #166534; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">💰 ¿Cuánto vendí hoy?</button>
+          <button onclick="askQuickQuestion('¿Cómo me fue esta semana?')" style="background: #f0fdf4; border: 2px solid #4ade80; color: #166534; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">📊 ¿Cómo me fue esta semana?</button>
           <button onclick="askQuickQuestion('¿Qué producto se vende más?')" style="background: #fef3c7; border: 2px solid #fbbf24; color: #92400e; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⭐ ¿Qué producto se vende más?</button>
-          <button onclick="askQuickQuestion('¿A qué hora tengo más pedidos?')" style="background: #dbeafe; border: 2px solid #60a5fa; color: #1e40af; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">⏰ ¿A qué hora tengo más pedidos?</button>
-          <button onclick="askQuickQuestion('¿Cuántas órdenes tuve hoy?')" style="background: #fae8ff; border: 2px solid #d946ef; color: #86198f; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">📦 ¿Cuántas órdenes tuve hoy?</button>
+          <button onclick="askQuickQuestion('¿Cuál es mi tasa de conversión?')" style="background: #dbeafe; border: 2px solid #60a5fa; color: #1e40af; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">📈 ¿Cuál es mi tasa de conversión?</button>
+          <button onclick="askQuickQuestion('¿Qué puedo mejorar?')" style="background: #fae8ff; border: 2px solid #d946ef; color: #86198f; padding: 10px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: left; margin: 0;">💡 ¿Qué puedo mejorar?</button>
         </div>
       </div>
     </div>
@@ -3683,6 +3683,8 @@ function askQuickQuestion(question) {
   sendAIMessage();
 }
 
+var aiChatHistory = [];
+
 async function sendAIMessage() {
   const input = document.getElementById('aiChatInput');
   const loading = document.getElementById('aiChatLoading');
@@ -3694,62 +3696,26 @@ async function sendAIMessage() {
   loading.style.display = 'block';
 
   try {
-    const salesData = await fetchSalesData();
-    const answer = await askClaudeAI(question, salesData);
-    addAIMessage(answer);
+    const res = await fetchWithTimeout('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        restaurant_slug: SLUG,
+        messages: aiChatHistory
+      })
+    }, 30000);
+
+    if (!res.ok) throw new Error('Error del servidor');
+    const data = await res.json();
+    aiChatHistory.push({ role: 'user', content: question });
+    aiChatHistory.push({ role: 'assistant', content: data.answer });
+    addAIMessage(data.answer);
   } catch (error) {
     addAIMessage('Lo siento, tuve un problema. ¿Puedes intentar de nuevo?');
   } finally {
     loading.style.display = 'none';
   }
-}
-
-async function fetchSalesData() {
-  try {
-    const endDateDR = getDRDateString();
-    const startDateDR = getDRDateString(new Date(getDRDate().getTime() - (30 * 24 * 60 * 60 * 1000)));
-    const res = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_sales_data', {
-      method: 'POST', headers: sbWriteHeaders(),
-      body: JSON.stringify({ p_start_date: startDateDR, p_end_date: endDateDR, p_restaurant_slug: SLUG })
-    }, 10000);
-    if (!res.ok) throw new Error('Error fetching sales data');
-    return await res.json();
-  } catch (error) { return []; }
-}
-
-async function askClaudeAI(question, salesData) {
-  const q = question.toLowerCase();
-  const todayStr = getDRDateString();
-  const today = salesData.find(d => d.date === todayStr);
-  const totalOrders = today?.total_orders || 0;
-  const totalSales = today?.total_sales || 0;
-  const topItem = today?.top_item || 'ninguno todavía';
-  const peakHour = today?.peak_hour;
-
-  if (q.includes('hola') || q.includes('hi')) {
-    return '👋 ¡Hola! Soy tu asistente de ventas. ¿Qué te gustaría saber?';
-  }
-  if (q.includes('ayud') || q.includes('puedes')) {
-    return `🤖 Puedo ayudarte con:<br>• ¿Cuánto vendí hoy?<br>• ¿Qué producto se vende más?<br>• ¿A qué hora tengo más pedidos?<br>• ¿Cuántas órdenes tuve hoy?`;
-  }
-  if ((q.includes('cuanta') || q.includes('cuánta')) && (q.includes('orden') || q.includes('tuve') || q.includes('tengo'))) {
-    if (totalOrders === 0) return '📦 Hoy todavía no has tenido órdenes.';
-    return `📦 Hoy has tenido <strong>${totalOrders} órdenes</strong>. ${totalOrders > 10 ? '¡Día movido!' : totalOrders > 5 ? '¡Buen ritmo!' : '¡Sigue así!'} 💪`;
-  }
-  if ((q.includes('cuanto') || q.includes('cuánto')) && (q.includes('vend') || q.includes('venta') || q.includes('hoy'))) {
-    if (totalOrders === 0) return '📊 Hoy todavía no has tenido órdenes. ¡El día apenas comienza! 🌅';
-    return `💰 Hoy has vendido <strong>RD$${totalSales.toLocaleString()}</strong> con <strong>${totalOrders} órdenes</strong>.<br>Ticket promedio: RD$${Math.round(totalSales/totalOrders).toLocaleString()} 📈`;
-  }
-  if ((q.includes('producto') || q.includes('item')) && (q.includes('mas') || q.includes('más') || q.includes('vende') || q.includes('popular'))) {
-    if (totalOrders === 0) return '🍔 Todavía no hay ventas hoy.';
-    return `⭐ El más vendido hoy es <strong>${topItem}</strong> con ${today?.top_item_count || 0} ventas. 🌟`;
-  }
-  if (q.includes('hora') || q.includes('pico') || q.includes('cuando') || q.includes('cuándo')) {
-    if (!peakHour) return '🕐 No hay suficientes datos para identificar la hora pico.';
-    const hora12 = peakHour > 12 ? `${peakHour-12}pm` : `${peakHour}am`;
-    return `⏰ La hora más ocupada fue a las <strong>${hora12}</strong> con ${today?.peak_hour_orders} órdenes. 🔥`;
-  }
-  return `🤔 No entendí. Intenta: "¿Cuánto vendí hoy?" o "¿Qué producto se vende más?" 💡`;
 }
 
 // ══════════════════════════════════════════════════════════════
