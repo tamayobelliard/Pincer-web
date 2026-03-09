@@ -2787,6 +2787,11 @@ async function loadActiveShift() {
     var rows = await res.json();
     if (rows.length > 0) {
       currentShift = rows[0];
+      // Fix #4: Detect stale shift (>24h without closing)
+      var shiftAge = Date.now() - new Date(currentShift.hora_inicio).getTime();
+      if (shiftAge > 24 * 3600000) {
+        currentShift._stale = true;
+      }
     } else {
       currentShift = null;
     }
@@ -2800,11 +2805,26 @@ async function loadActiveShift() {
 function updateShiftUI() {
   var btnOpen = document.getElementById('btnOpenShift');
   var activeWrap = document.getElementById('shiftActiveWrap');
+  var badge = document.getElementById('shiftBadge');
   if (currentShift) {
     btnOpen.style.display = 'none';
     activeWrap.style.display = 'flex';
-    document.getElementById('shiftBadgeName').textContent = currentShift.nombre_encargado + ' · ' + (TURNO_LABELS[currentShift.turno] || currentShift.turno);
-    document.getElementById('shiftBadgeTime').textContent = 'Desde ' + formatShiftTime(currentShift.hora_inicio);
+    if (currentShift._stale) {
+      // Fix #4: Stale shift warning
+      badge.style.background = '#fef3c7';
+      badge.style.borderColor = '#f59e0b';
+      badge.style.color = '#92400e';
+      document.getElementById('shiftBadgeName').textContent = 'Turno sin cerrar';
+      document.getElementById('shiftBadgeTime').textContent = 'Desde ' + formatShiftTime(currentShift.hora_inicio) + ' — cierra antes de abrir otro';
+      badge.querySelector('.dot').style.background = '#f59e0b';
+    } else {
+      badge.style.background = '#ecfdf5';
+      badge.style.borderColor = '#a7f3d0';
+      badge.style.color = '#065f46';
+      document.getElementById('shiftBadgeName').textContent = currentShift.nombre_encargado + ' · ' + (TURNO_LABELS[currentShift.turno] || currentShift.turno);
+      document.getElementById('shiftBadgeTime').textContent = 'Desde ' + formatShiftTime(currentShift.hora_inicio);
+      badge.querySelector('.dot').style.background = '#10b981';
+    }
   } else {
     btnOpen.style.display = 'inline-flex';
     activeWrap.style.display = 'none';
@@ -2812,6 +2832,18 @@ function updateShiftUI() {
 }
 
 function openShiftModal() {
+  // Fix #1: Can't open shift if store is closed
+  if (!storeIsOpen) {
+    alert('No puedes abrir un turno con el negocio cerrado. Abre el negocio primero.');
+    return;
+  }
+  // Fix #4: Can't open new shift if stale one exists
+  if (currentShift) {
+    if (currentShift._stale) {
+      alert('Hay un turno sin cerrar desde ' + formatShiftTime(currentShift.hora_inicio) + '. Ciérralo primero.');
+    }
+    return;
+  }
   document.getElementById('openShiftOverlay').classList.add('show');
   setTimeout(function() { document.getElementById('openShiftModal').classList.add('show'); }, 10);
   document.getElementById('shiftEncargado').focus();
@@ -2823,11 +2855,40 @@ function closeShiftModal() {
 }
 
 async function confirmOpenShift() {
+  // Fix #1: Store must be open
+  if (!storeIsOpen) {
+    alert('No puedes abrir un turno con el negocio cerrado. Abre el negocio primero.');
+    return;
+  }
+  // Fix #3: Guard against race condition — only one active shift
+  if (currentShift) {
+    alert('Ya hay un turno abierto. Ciérralo antes de abrir otro.');
+    closeShiftModal();
+    return;
+  }
+
   var nombre = document.getElementById('shiftEncargado').value.trim();
   if (!nombre) { alert('Ingresa el nombre del encargado'); return; }
   var turno = document.getElementById('shiftTipo').value;
 
   try {
+    // Fix #2: No duplicate shift type in same day (except personalizado)
+    if (turno !== 'personalizado') {
+      var todayStart = getTodayMidnightISO();
+      var dupRes = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/shifts?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
+          '&turno=eq.' + encodeURIComponent(turno) + '&created_at=gte.' + encodeURIComponent(todayStart) + '&select=id&limit=1',
+        { headers: sbGetHeaders() }, 5000
+      );
+      if (dupRes.ok) {
+        var dups = await dupRes.json();
+        if (dups.length > 0) {
+          alert('Ya hubo un turno de "' + (TURNO_LABELS[turno] || turno) + '" hoy. Selecciona otro tipo o usa Personalizado.');
+          return;
+        }
+      }
+    }
+
     var res = await fetch(
       SUPABASE_URL + '/rest/v1/shifts',
       {
@@ -2877,6 +2938,17 @@ function openCloseShiftModal() {
     return res.json();
   }).then(function(orders) {
     var count = orders.length;
+
+    // Fix #5: Warn if no orders in this shift
+    if (count === 0) {
+      content.innerHTML = '<div style="text-align:center;padding:20px;color:#f59e0b;">' +
+        '<div style="font-size:2em;margin-bottom:8px;">⚠️</div>' +
+        '<div style="font-weight:700;">Este turno no tiene ordenes</div>' +
+        '<div style="color:#94a3b8;font-size:13px;margin-top:6px;">Puedes cerrar el turno de todas formas si lo deseas.</div>' +
+        '</div>';
+      return;
+    }
+
     var totalSales = 0, efectivo = 0, tarjeta = 0, delivery = 0, pickup = 0;
     var completed = 0, cancelled = 0;
     var itemCounts = {};
