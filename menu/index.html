@@ -2817,6 +2817,7 @@ const ORDER_PREFIX = SLUG.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4
 
 // ── Payment toggle (set dynamically from restaurant_users_public.payment_enabled) ──
 var PAYMENT_ENABLED = false;
+var BUSINESS_TYPE = '';
 
 // ── Debug logger ──
 let debugLogs = [];
@@ -2919,13 +2920,13 @@ async function loadRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
     if (!res.ok) {
       res = await fetchWithTimeout(
-        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee&limit=1',
+        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,business_type&limit=1',
         { headers: sbHeaders() }, 10000
       );
     }
@@ -5910,8 +5911,19 @@ async function init() {
   enabledOrderTypes = Array.isArray(rawOT) && rawOT.length > 0 ? rawOT : ['dine_in'];
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
   PAYMENT_ENABLED = !!(restaurantData.payment_enabled);
+  BUSINESS_TYPE = restaurantData.business_type || '';
+
+  // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in (solo pickup/delivery)
+  if (PAYMENT_ENABLED) {
+    var nodineinTypes = ['Restaurante', 'Cafeteria', 'Bar', 'Panaderia', 'Otro'];
+    if (nodineinTypes.includes(BUSINESS_TYPE)) {
+      enabledOrderTypes = enabledOrderTypes.filter(function(t) { return t !== 'dine_in'; });
+      if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
+    }
+  }
+
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';
-  console.log('order_types:', restaurantData.order_types, '-> enabledOrderTypes:', enabledOrderTypes);
+  console.log('order_types:', restaurantData.order_types, '-> enabledOrderTypes:', enabledOrderTypes, 'business_type:', BUSINESS_TYPE);
 
   // 3. Receipt branding
   const receiptLogo = document.getElementById('receiptLogoText');
