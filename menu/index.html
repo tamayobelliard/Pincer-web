@@ -3429,6 +3429,15 @@ function buildMenuGroupSelector() {
   });
 }
 
+function openItemFromCard(el) {
+  var itemId = el.dataset.itemId;
+  if (!itemId) return;
+  var allItems = Object.values(MENU_DATA).flat();
+  var item = allItems.find(function(i) { return i.id === itemId; });
+  if (!item) return;
+  showNotesPopup(itemId, item.name, item.price, item.img || '', item.desc || '');
+}
+
 function menuItemHTML(item) {
   const isSoldOut = soldOutSet.has(item.id);
   const soldOutClass = isSoldOut ? ' sold-out' : '';
@@ -3451,7 +3460,7 @@ function menuItemHTML(item) {
     ` : ''}
     <button class="menu-qty-btn" onclick="event.stopPropagation(); menuQtyChange('${escHtml(item.id)}', 1)" style="${currentQty > 0 ? '' : 'border-radius:8px;'}">+</button>`;
 
-  const cardClick = (!isSoldOut && !isExtra) ? `onclick="showNotesPopup('${escHtml(item.id)}', '${escHtml(item.name)}', ${item.price}, '${escHtml(item.img || '')}', '${escHtml(item.desc || '')}')" style="cursor:pointer;"` : '';
+  const cardClick = (!isSoldOut && !isExtra) ? `onclick="openItemFromCard(this)" style="cursor:pointer;"` : '';
 
   return `
     <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
@@ -5912,6 +5921,8 @@ async function init() {
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
   PAYMENT_ENABLED = !!(restaurantData.payment_enabled);
   BUSINESS_TYPE = restaurantData.business_type || '';
+  console.log('[Pincer Debug] payment_enabled:', restaurantData.payment_enabled, 'business_type:', restaurantData.business_type);
+  console.log('[Pincer Debug] PAYMENT_ENABLED:', PAYMENT_ENABLED, 'BUSINESS_TYPE:', BUSINESS_TYPE);
 
   // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in (solo pickup/delivery)
   if (PAYMENT_ENABLED) {
