@@ -50,18 +50,36 @@ function formatHour(h) {
 
 // ── PDF drawing helpers ──
 
+// Sanitize text to WinAnsi-safe characters
+function sanitize(text) {
+  return String(text || '')
+    .replace(/\u2192/g, '->')   // →
+    .replace(/\u2190/g, '<-')   // ←
+    .replace(/\u2013/g, '-')    // –
+    .replace(/\u2014/g, '-')    // —
+    .replace(/\u2022/g, '*')    // •
+    .replace(/\u2018/g, "'")    // '
+    .replace(/\u2019/g, "'")    // '
+    .replace(/\u201C/g, '"')    // "
+    .replace(/\u201D/g, '"')    // "
+    .replace(/\u2026/g, '...')  // …
+    .replace(/[^\x00-\x7E\xA0-\xFF]/g, ''); // strip remaining non-WinAnsi
+}
+
 function drawText(page, text, x, y, font, size, color) {
-  page.drawText(String(text || ''), { x, y, size, font, color: color || NAVY });
+  page.drawText(sanitize(text), { x, y, size, font, color: color || NAVY });
 }
 
 function drawCenteredText(page, text, y, font, size, color, pageWidth) {
-  const w = font.widthOfTextAtSize(String(text || ''), size);
-  page.drawText(String(text || ''), { x: (pageWidth - w) / 2, y, size, font, color: color || NAVY });
+  const s = sanitize(text);
+  const w = font.widthOfTextAtSize(s, size);
+  page.drawText(s, { x: (pageWidth - w) / 2, y, size, font, color: color || NAVY });
 }
 
 function drawRightText(page, text, x, y, font, size, color) {
-  const w = font.widthOfTextAtSize(String(text || ''), size);
-  page.drawText(String(text || ''), { x: x - w, y, size, font, color: color || NAVY });
+  const s = sanitize(text);
+  const w = font.widthOfTextAtSize(s, size);
+  page.drawText(s, { x: x - w, y, size, font, color: color || NAVY });
 }
 
 function drawBox(page, x, y, w, h, color) {
@@ -74,7 +92,7 @@ function drawLine(page, x1, y1, x2, y2, color, thickness) {
 
 // Wrap long text into multiple lines
 function wrapText(text, font, size, maxWidth) {
-  const words = (text || '').split(' ');
+  const words = sanitize(text).split(' ');
   const lines = [];
   let current = '';
   for (const word of words) {
@@ -193,7 +211,7 @@ async function generateReportPDF(insight, restaurantName) {
     drawText(p2, 'Productos con Pocas Ventas', M, y, bold, 12, RED);
     y -= 18;
     for (const item of lowItems) {
-      drawText(p2, `• ${item.name} — ${item.units} vendidos`, M + 10, y, regular, 10, SLATE);
+      drawText(p2, `* ${item.name} - ${item.units} vendidos`, M + 10, y, regular, 10, SLATE);
       y -= 16;
     }
   }
