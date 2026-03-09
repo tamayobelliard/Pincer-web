@@ -956,6 +956,13 @@
       <div class="day-summary-item"><span>📊</span> Promedio<strong id="daySummaryAvg">RD$0</strong></div>
     </div>
 
+    <div style="text-align:center;margin:12px 0;">
+      <button id="downloadReportBtn" onclick="downloadWeeklyReport()"
+        style="background:#DC2626;color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9em;">
+        📥 Reporte Semanal PDF
+      </button>
+    </div>
+
     <div class="debug-panel" id="debugPanel" style="display:none"></div>
 
     <div id="connection-status">🟢 Conectado</div>
@@ -3194,6 +3201,27 @@ function downloadShiftPDF() {
   downloadPDFFromBase64(lastShiftPDFBase64, 'turno-reporte.pdf');
 }
 
+async function downloadWeeklyReport() {
+  var btn = document.getElementById('downloadReportBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando...'; }
+  try {
+    var res = await fetchWithTimeout('/api/download-report?slug=' + encodeURIComponent(SLUG), {
+      headers: { 'x-restaurant-token': getSessionToken() }
+    }, 30000);
+    if (res.status === 403) { handleSessionExpired(); return; }
+    if (!res.ok) {
+      var errData = await res.json().catch(function() { return {}; });
+      throw new Error(errData.error || 'Error generando reporte');
+    }
+    var data = await res.json();
+    downloadPDFFromBase64(data.pdf, 'reporte-' + SLUG + '-' + (data.week_start || 'semana') + '.pdf');
+  } catch (e) {
+    showError('No se pudo generar el reporte: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📥 Reporte Semanal PDF'; }
+  }
+}
+
 function shareShiftWhatsApp() {
   if (!lastShiftPDFBase64) return;
   // Can't share files via wa.me, share a text summary instead
@@ -3674,6 +3702,16 @@ function addAIMessage(message, isUser = false) {
     ${isUser ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;'
              : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'}`;
   messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
+
+  // Auto-add download button if AI mentions report/PDF
+  if (!isUser && /reporte|pdf|descargar/i.test(message)) {
+    var dlBtn = document.createElement('button');
+    dlBtn.textContent = '📥 Descargar Reporte PDF';
+    dlBtn.style.cssText = 'margin-top:10px;background:#DC2626;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;display:block;width:100%;';
+    dlBtn.onclick = downloadWeeklyReport;
+    messageDiv.appendChild(dlBtn);
+  }
+
   container.appendChild(messageDiv);
   container.scrollTop = container.scrollHeight;
 }

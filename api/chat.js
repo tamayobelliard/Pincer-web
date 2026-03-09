@@ -309,6 +309,7 @@ function buildSystemPrompt(restaurantName, thisWeekMetrics, lastWeekMetrics, ins
   lines.push('8. Compara períodos cuando sea relevante');
   lines.push('9. Cuando muestres fechas usa: "Lunes 5 de Febrero"');
   lines.push('10. Si te preguntan algo que no está en los datos, dilo claramente');
+  lines.push('11. Si te piden el reporte PDF o descargar datos, responde mencionando "reporte PDF" para que el sistema muestre un botón de descarga. Ejemplo: "Aquí tienes el reporte PDF de la semana con todos los detalles."');
 
   return lines.join('\n');
 }
