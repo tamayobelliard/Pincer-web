@@ -6065,6 +6065,7 @@ async function init() {
 // ══════════════════════════════════════════════════════════════
 
 var PROMO_SEEN_KEY = 'pincer_promo_seen_' + SLUG;
+var _activePromo = null;
 
 async function checkAndShowPromo() {
   if (sessionStorage.getItem(PROMO_SEEN_KEY)) return;
@@ -6108,6 +6109,8 @@ async function checkAndShowPromo() {
       document.getElementById('promoOverlay').classList.add('show');
       popup.classList.add('show');
       pushPopupState();
+      _activePromo = promo;
+      track('promotion_viewed', { promotion_id: promo.product_id || '', item_name: promo.title || '', price: promo.price || 0 });
     }, 1500);
   } catch (e) {
     console.log('[promo] check error:', e.message);
@@ -6122,6 +6125,9 @@ function closePromoPopup() {
 }
 
 function promoCtaClick() {
+  if (_activePromo) {
+    track('promotion_clicked', { promotion_id: _activePromo.product_id || '', item_name: _activePromo.title || '' });
+  }
   var productId = document.getElementById('promoPopup').getAttribute('data-product-id');
   closePromoPopup();
   if (productId) {
