@@ -1766,17 +1766,17 @@ async function saveFCMToken(token) {
       active: true,
       updated_at: new Date().toISOString(),
     };
-    let res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+    let res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens?on_conflict=token', {
       method: 'POST',
       headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
       body: JSON.stringify(payload),
     });
 
-    // If 400 (column missing), retry without restaurant_slug
-    if (res.status === 400) {
-      dbg('⚠️ FCM token insert failed, retrying without restaurant_slug');
+    // If 400/409 (column missing or no unique constraint), retry without restaurant_slug
+    if (res.status === 400 || res.status === 409) {
+      dbg('⚠️ FCM token upsert failed (' + res.status + '), retrying without restaurant_slug');
       delete payload.restaurant_slug;
-      res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens', {
+      res = await fetch(SUPABASE_URL + '/rest/v1/fcm_tokens?on_conflict=token', {
         method: 'POST',
         headers: sbWriteHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
         body: JSON.stringify(payload),
