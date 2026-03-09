@@ -15,29 +15,67 @@ firebase.initializeApp({
 firebase.messaging();
 
 // ═══════════════════════════════════════════════════════════
-// RAW PUSH EVENT — most reliable way to show notifications
-// on Android even with screen off / Chrome closed
+// PWA — Cache dashboard shell + immediate activation
 // ═══════════════════════════════════════════════════════════
+
+var CACHE_NAME = 'dashboard-shell-v2';
+var DASHBOARD_HTML = '/dashboard/index.html';
+
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.add(DASHBOARD_HTML);
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(clients.claim());
+});
+
+// ═══════════════════════════════════════════════════════════
+// PWA NAVIGATION — serve cached dashboard for /{slug}/dashboard/
+// ═══════════════════════════════════════════════════════════
+
+self.addEventListener('fetch', function(event) {
+  var request = event.request;
+  if (request.mode !== 'navigate') return;
+
+  var url = new URL(request.url);
+  if (/^\/[^/]+\/dashboard\/?$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(request).catch(function() {
+        return caches.match(DASHBOARD_HTML);
+      })
+    );
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// FCM PUSH — show notification when browser is in background
+// or screen is locked (most reliable method)
+// ═══════════════════════════════════════════════════════════
+
 self.addEventListener('push', function(event) {
   console.log('[Pincer SW] Push received:', event);
 
-  let data = {};
+  var data = {};
   try {
     if (event.data) {
-      const json = event.data.json();
-      // FCM wraps data-only messages inside json.data
+      var json = event.data.json();
       data = json.data || json;
     }
   } catch (e) {
     console.error('[Pincer SW] Error parsing push data:', e);
   }
 
-  const title = data.title || 'Nueva Orden en Pincer';
-  const body = data.body || 'Tienes una nueva orden pendiente';
-  const orderId = data.orderId || '';
-  const dashboardUrl = data.url || '/' + (data.restaurantSlug || 'mrsandwich') + '/dashboard/';
+  var title = data.title || 'Nueva Orden en Pincer';
+  var body = data.body || 'Tienes una nueva orden pendiente';
+  var orderId = data.orderId || '';
+  var dashboardUrl = data.url || '/' + (data.restaurantSlug || 'mrsandwich') + '/dashboard/';
 
-  const options = {
+  var options = {
     body: body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
@@ -54,19 +92,37 @@ self.addEventListener('push', function(event) {
     }
   };
 
-  // waitUntil keeps the SW alive until showNotification resolves
   event.waitUntil(
     self.registration.showNotification(title, options)
   );
 });
 
 // ═══════════════════════════════════════════════════════════
+// MESSAGE — Dashboard sends NEW_ORDER to show notification
+// (foreground fallback when tab is active)
+// ═══════════════════════════════════════════════════════════
+
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'NEW_ORDER') {
+    self.registration.showNotification(event.data.title || '¡Nueva Orden! 🔔', {
+      body: event.data.body || 'Toca para ver la orden',
+      icon: '/icon-192.png',
+      vibrate: [500, 200, 500, 200, 500],
+      requireInteraction: true,
+      tag: 'new-order',
+      renotify: true
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // NOTIFICATION CLICK — open or focus the dashboard
 // ═══════════════════════════════════════════════════════════
+
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/dashboard/';
+  var urlToOpen = event.notification.data?.url || '/dashboard/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {

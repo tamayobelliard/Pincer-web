@@ -1033,12 +1033,13 @@
             <label>Tipo de negocio</label>
             <select id="sType">
               <option value="">Seleccionar...</option>
-              <option value="food_truck">Food Truck</option>
-              <option value="restaurant">Restaurante</option>
-              <option value="food_park">Food Park</option>
-              <option value="cafeteria">Cafeteria</option>
-              <option value="bar">Bar</option>
-              <option value="otro">Otro</option>
+              <option value="Food Truck">Food Truck</option>
+              <option value="Restaurante">Restaurante</option>
+              <option value="Food Court">Food Court</option>
+              <option value="Cafeteria">Cafeteria</option>
+              <option value="Bar">Bar</option>
+              <option value="Panaderia">Panaderia</option>
+              <option value="Otro">Otro</option>
             </select>
           </div>
           <div class="settings-field">
@@ -3770,16 +3771,8 @@ async function initializeDashboard() {
 
   requestWakeLock();
 
-  // Register dashboard service worker for push notifications
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/dashboard-sw.js').then(function(reg) {
-      console.log('[dashboard] SW registered, scope:', reg.scope);
-      dbg('✅ Dashboard SW registrado: ' + reg.scope);
-    }).catch(function(e) {
-      console.error('[dashboard] SW registration failed:', e);
-      dbg('⚠️ Dashboard SW error: ' + e.message);
-    });
-  }
+  // Service worker is registered by initFCM() — firebase-messaging-sw.js handles
+  // both FCM push notifications AND dashboard PWA navigation in a single SW.
 
   dbg('✅ Dashboard listo');
 }
