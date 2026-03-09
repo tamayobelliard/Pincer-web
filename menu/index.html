@@ -3886,6 +3886,7 @@ async function placeOrder() {
       id: item.id,
       name: item.name,
       qty: item.qty,
+      price: item.price,
       notes: item.notes || null
     }));
 
@@ -4759,6 +4760,7 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       id: item.id,
       name: item.name,
       qty: item.qty,
+      price: item.price,
       notes: item.notes || null
     }));
 

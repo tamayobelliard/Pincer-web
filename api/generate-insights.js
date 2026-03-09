@@ -116,12 +116,19 @@ function computeOrderMetrics(orders) {
     try {
       const items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items;
       if (Array.isArray(items)) {
+        // If items lack price, estimate per-item from order total
+        const hasPrice = items.some(i => i.price > 0);
+        const mainItems = items.filter(i => !i.id?.startsWith('extra_') && !i.name?.toLowerCase().startsWith('extra '));
+        const totalQty = mainItems.reduce((s, i) => s + (i.qty || 1), 0);
+        const estimatedPrice = !hasPrice && totalQty > 0 ? Math.round((o.total || 0) / totalQty) : 0;
+
         for (const item of items) {
           if (item.id?.startsWith('extra_') || item.name?.toLowerCase().startsWith('extra ')) continue;
           const name = item.name || item.id || 'Unknown';
           const qty = item.qty || 1;
           itemCounts[name] = (itemCounts[name] || 0) + qty;
-          itemRevenue[name] = (itemRevenue[name] || 0) + (item.price || 0) * qty;
+          const price = item.price || estimatedPrice;
+          itemRevenue[name] = (itemRevenue[name] || 0) + price * qty;
         }
       }
     } catch { /* skip */ }
@@ -415,7 +422,7 @@ async function processRestaurant(slug, bounds) {
     conversion_rate: eventMetrics.conversionRate,
     top_items: orderMetrics.topItems,
     low_items: orderMetrics.lowItems,
-    behavior: eventMetrics.behavior,
+    behavior: { ...eventMetrics.behavior, funnel: eventMetrics.funnel },
     chatbot_stats: eventMetrics.chatbotStats,
     language_breakdown: eventMetrics.languageBreakdown,
     ai_insights: aiInsights,

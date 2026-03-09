@@ -206,11 +206,12 @@ async function generateReportPDF(insight, restaurantName) {
   y -= 30;
 
   const behavior = insight.behavior || {};
+  const f = behavior.funnel || {};
   const funnel = [
-    { label: 'Visitas al menú', value: '—' },
-    { label: 'Agregaron al carrito', value: '—' },
-    { label: 'Iniciaron checkout', value: '—' },
-    { label: 'Completaron orden', value: '—' },
+    { label: 'Visitas al menú', value: f.page_views != null ? fmtNum(f.page_views) : '—' },
+    { label: 'Agregaron al carrito', value: f.cart_adds != null ? fmtNum(f.cart_adds) : '—' },
+    { label: 'Iniciaron checkout', value: f.checkout_starts != null ? fmtNum(f.checkout_starts) : '—' },
+    { label: 'Completaron orden', value: f.orders_completed != null ? fmtNum(f.orders_completed) : '—' },
   ];
 
   // Funnel boxes
