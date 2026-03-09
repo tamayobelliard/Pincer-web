@@ -100,10 +100,10 @@ CREATE POLICY "anon_select_orders"
   ON orders FOR SELECT TO anon
   USING (true);
 
--- Customers create orders — must start as pending
+-- Customers create orders — pending (normal) or paid (after payment)
 CREATE POLICY "anon_insert_orders"
   ON orders FOR INSERT TO anon
-  WITH CHECK (restaurant_slug IS NOT NULL AND status = 'pending');
+  WITH CHECK (restaurant_slug IS NOT NULL AND status IN ('pending', 'paid'));
 
 -- Dashboard updates order status
 CREATE POLICY "anon_update_orders"
