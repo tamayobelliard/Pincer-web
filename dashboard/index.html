@@ -957,10 +957,25 @@
     </div>
 
     <div style="text-align:center;margin:12px 0;">
-      <button id="downloadReportBtn" onclick="downloadWeeklyReport()"
+      <button id="downloadReportBtn" onclick="openReportModal()"
         style="background:#DC2626;color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9em;">
         📥 Reporte Semanal PDF
       </button>
+    </div>
+
+    <div id="reportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
+      <div style="background:white;padding:24px;border-radius:12px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 16px 0;font-size:1.1em;">📥 Generar Reporte</h3>
+        <label style="font-size:0.85em;color:#64748B;display:block;">Desde</label>
+        <input type="date" id="reportDateFrom" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.95em;margin-top:4px;box-sizing:border-box;">
+        <label style="font-size:0.85em;color:#64748B;display:block;margin-top:10px;">Hasta</label>
+        <input type="date" id="reportDateTo" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.95em;margin-top:4px;box-sizing:border-box;">
+        <div id="reportModalStatus" style="display:none;margin-top:12px;padding:8px 12px;background:#FEF3C7;border-radius:6px;font-size:0.85em;color:#92400E;"></div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button onclick="closeReportModal()" style="flex:1;padding:10px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-size:0.9em;">Cancelar</button>
+          <button id="reportGenerateBtn" onclick="generateAndDownloadReport()" style="flex:1;padding:10px;background:#DC2626;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9em;">Generar PDF</button>
+        </div>
+      </div>
     </div>
 
     <div class="debug-panel" id="debugPanel" style="display:none"></div>
@@ -3201,25 +3216,79 @@ function downloadShiftPDF() {
   downloadPDFFromBase64(lastShiftPDFBase64, 'turno-reporte.pdf');
 }
 
-async function downloadWeeklyReport() {
-  var btn = document.getElementById('downloadReportBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando...'; }
+function openReportModal() {
+  var today = new Date();
+  var yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  var weekAgo = new Date(yesterday); weekAgo.setDate(weekAgo.getDate() - 6);
+  document.getElementById('reportDateFrom').value = weekAgo.toISOString().split('T')[0];
+  document.getElementById('reportDateTo').value = yesterday.toISOString().split('T')[0];
+  document.getElementById('reportModalStatus').style.display = 'none';
+  document.getElementById('reportModal').style.display = 'flex';
+}
+
+function closeReportModal() {
+  document.getElementById('reportModal').style.display = 'none';
+}
+
+async function generateAndDownloadReport() {
+  var dateFrom = document.getElementById('reportDateFrom').value;
+  var dateTo = document.getElementById('reportDateTo').value;
+  var btn = document.getElementById('reportGenerateBtn');
+  var status = document.getElementById('reportModalStatus');
+  btn.disabled = true; btn.textContent = '⏳ Descargando...';
+  status.style.display = 'none';
+
   try {
-    var res = await fetchWithTimeout('/api/download-report?slug=' + encodeURIComponent(SLUG), {
+    var url = '/api/download-report?slug=' + encodeURIComponent(SLUG) +
+      '&date_from=' + dateFrom + '&date_to=' + dateTo;
+    var res = await fetchWithTimeout(url, {
       headers: { 'x-restaurant-token': getSessionToken() }
     }, 30000);
+
     if (res.status === 403) { handleSessionExpired(); return; }
+
+    if (res.status === 404) {
+      // No insights yet — generate them first
+      status.textContent = '🔄 Generando análisis... puede tomar 30 segundos';
+      status.style.display = 'block';
+      btn.textContent = '⏳ Analizando...';
+
+      var genRes = await fetchWithTimeout('/api/generate-insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': 'test-from-dashboard'
+        },
+        body: JSON.stringify({ restaurant_slug: SLUG, week_start: dateFrom, week_end: dateTo })
+      }, 60000);
+
+      if (!genRes.ok) throw new Error('Error generando análisis');
+
+      // Retry download
+      btn.textContent = '⏳ Descargando PDF...';
+      res = await fetchWithTimeout(url, {
+        headers: { 'x-restaurant-token': getSessionToken() }
+      }, 30000);
+    }
+
     if (!res.ok) {
       var errData = await res.json().catch(function() { return {}; });
-      throw new Error(errData.error || 'Error generando reporte');
+      throw new Error(errData.error || 'Error descargando reporte');
     }
+
     var data = await res.json();
-    downloadPDFFromBase64(data.pdf, 'reporte-' + SLUG + '-' + (data.week_start || 'semana') + '.pdf');
+    downloadPDFFromBase64(data.pdf, 'reporte-' + SLUG + '-' + dateFrom + '.pdf');
+    closeReportModal();
   } catch (e) {
-    showError('No se pudo generar el reporte: ' + e.message);
+    status.textContent = '❌ ' + e.message;
+    status.style.display = 'block';
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📥 Reporte Semanal PDF'; }
+    btn.disabled = false; btn.textContent = 'Generar PDF';
   }
+}
+
+async function downloadWeeklyReport() {
+  openReportModal();
 }
 
 function shareShiftWhatsApp() {

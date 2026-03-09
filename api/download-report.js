@@ -23,14 +23,6 @@ const BLACK   = rgb(0, 0, 0);
 
 // ── Date helpers ──
 
-function getCurrentWeekMonday() {
-  const now = new Date(Date.now() - 4 * 60 * 60 * 1000); // DR timezone
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const day = d.getUTCDay();
-  const diff = day === 0 ? 6 : day - 1;
-  d.setUTCDate(d.getUTCDate() - diff);
-  return d.toISOString().split('T')[0];
-}
 
 function formatDateES(dateStr) {
   const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -342,20 +334,24 @@ export default async function handler(req, res) {
   const slug = req.query.slug || session.restaurant_slug;
   if (slug !== session.restaurant_slug) return res.status(403).json({ error: 'No autorizado para este restaurante' });
 
-  const weekStart = req.query.week || getCurrentWeekMonday();
+  const dateFrom = req.query.date_from;
+  const dateTo = req.query.date_to;
 
   try {
-    // Fetch insight for this week
-    const insightRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(slug)}&week_start=eq.${weekStart}&select=*&limit=1`,
-      { headers: sbHeaders(), signal: AbortSignal.timeout(5000) }
-    );
+    // Fetch insight: by specific date_from, or most recent available
+    let insightUrl;
+    if (dateFrom) {
+      insightUrl = `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(slug)}&week_start=eq.${dateFrom}&select=*&limit=1`;
+    } else {
+      insightUrl = `${supabaseUrl}/rest/v1/restaurant_insights?restaurant_slug=eq.${encodeURIComponent(slug)}&select=*&order=week_start.desc&limit=1`;
+    }
+    const insightRes = await fetch(insightUrl, { headers: sbHeaders(), signal: AbortSignal.timeout(5000) });
 
     if (!insightRes.ok) return res.status(500).json({ error: 'Error leyendo datos' });
     const rows = await insightRes.json();
 
     if (!rows.length) {
-      return res.status(404).json({ error: `No hay reporte para la semana de ${weekStart}. Espera al próximo lunes o genera uno manualmente.` });
+      return res.status(404).json({ error: `No hay reporte disponible${dateFrom ? ' para ' + dateFrom : ''}. Genera uno primero.` });
     }
 
     const insight = rows[0];

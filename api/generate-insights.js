@@ -20,34 +20,41 @@ function getDRDate(date) {
   return new Date(d.getTime() - 4 * 60 * 60 * 1000);
 }
 
-function getWeekBounds(weekStartInput) {
-  // If weekStart provided, use it; otherwise compute current week's Monday
-  let monday;
-  if (weekStartInput) {
-    monday = new Date(weekStartInput + 'T00:00:00Z');
-  } else {
-    const now = getDRDate();
-    monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const day = monday.getUTCDay(); // 0=Sun, 1=Mon...
-    const diff = day === 0 ? 6 : day - 1;
-    monday.setUTCDate(monday.getUTCDate() - diff);
-  }
-  const sunday = new Date(monday);
-  sunday.setUTCDate(sunday.getUTCDate() + 6);
+function getWeekBounds(weekStartInput, weekEndInput) {
+  let startDate, endDate;
 
-  const prevMonday = new Date(monday);
-  prevMonday.setUTCDate(prevMonday.getUTCDate() - 7);
-  const prevSunday = new Date(monday);
-  prevSunday.setUTCDate(prevSunday.getUTCDate() - 1);
+  if (weekStartInput && weekEndInput) {
+    // Both provided: use exact range
+    startDate = new Date(weekStartInput + 'T00:00:00Z');
+    endDate = new Date(weekEndInput + 'T00:00:00Z');
+  } else if (weekStartInput) {
+    // Only start: end = start + 6
+    startDate = new Date(weekStartInput + 'T00:00:00Z');
+    endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + 6);
+  } else {
+    // Auto: trailing 7 complete days (yesterday - 6 → yesterday)
+    const now = getDRDate();
+    endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    endDate.setUTCDate(endDate.getUTCDate() - 1); // yesterday
+    startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 6); // yesterday - 6
+  }
+
+  // Previous period: same length, immediately before
+  const prevEnd = new Date(startDate);
+  prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setUTCDate(prevStart.getUTCDate() - 6);
 
   return {
-    weekStart: monday.toISOString().split('T')[0],
-    weekEnd: sunday.toISOString().split('T')[0],
-    // For querying: use Monday 00:00 DR time → UTC = Monday 04:00
-    weekStartISO: new Date(monday.getTime() + 4 * 60 * 60 * 1000).toISOString(),
-    weekEndISO: new Date(sunday.getTime() + 28 * 60 * 60 * 1000).toISOString(), // Sunday 23:59 DR = +28h
-    prevWeekStartISO: new Date(prevMonday.getTime() + 4 * 60 * 60 * 1000).toISOString(),
-    prevWeekEndISO: new Date(prevSunday.getTime() + 28 * 60 * 60 * 1000).toISOString(),
+    weekStart: startDate.toISOString().split('T')[0],
+    weekEnd: endDate.toISOString().split('T')[0],
+    // DR midnight = UTC+4h
+    weekStartISO: new Date(startDate.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+    weekEndISO: new Date(endDate.getTime() + 28 * 60 * 60 * 1000).toISOString(),
+    prevWeekStartISO: new Date(prevStart.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+    prevWeekEndISO: new Date(prevEnd.getTime() + 28 * 60 * 60 * 1000).toISOString(),
   };
 }
 
@@ -353,7 +360,8 @@ export default async function handler(req, res) {
     console.log(`[generate-insights] Processing ${slugs.length} restaurant(s)`);
 
     const weekStartInput = req.body?.week_start || null;
-    const bounds = getWeekBounds(weekStartInput);
+    const weekEndInput = req.body?.week_end || null;
+    const bounds = getWeekBounds(weekStartInput, weekEndInput);
     const results = [];
 
     for (const slug of slugs) {
