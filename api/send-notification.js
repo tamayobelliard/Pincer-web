@@ -33,6 +33,14 @@ export default async function handler(req, res) {
   // Rate limit: 30 notifications per minute per IP
   if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'notify' })) return;
 
+  // Validate required environment variables
+  const requiredEnv = ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const missingEnv = requiredEnv.filter(k => !process.env[k]);
+  if (missingEnv.length > 0) {
+    console.error('[send-notification] Missing env vars:', missingEnv.join(', '));
+    return res.status(500).json({ error: 'Server misconfigured', missing: missingEnv });
+  }
+
   // Verify webhook secret (allow 'test-from-dashboard' for manual test pushes)
   const webhookSecret = req.headers['x-webhook-secret'];
   const isTest = webhookSecret === 'test-from-dashboard';

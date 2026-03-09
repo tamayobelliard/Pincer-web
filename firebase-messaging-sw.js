@@ -2,6 +2,9 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
+// ── Version: bump this on every deploy to force SW update ──
+var SW_VERSION = 'v3';
+
 firebase.initializeApp({
   apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",
   authDomain: "pincer-app-deda6.firebaseapp.com",
@@ -11,26 +14,34 @@ firebase.initializeApp({
   appId: "1:1025818715545:web:d149b23af22f151c85df08"
 });
 
-// Initialize messaging (needed for token management)
 firebase.messaging();
 
 // ═══════════════════════════════════════════════════════════
-// PWA — Cache dashboard shell + immediate activation
+// INSTALL — cache dashboard shell, clean old caches, activate immediately
 // ═══════════════════════════════════════════════════════════
 
-var CACHE_NAME = 'dashboard-shell-v2';
+var CACHE_NAME = 'dashboard-shell-' + SW_VERSION;
 var DASHBOARD_HTML = '/dashboard/index.html';
 
 self.addEventListener('install', function(event) {
+  console.log('[Pincer SW] Installing ' + SW_VERSION);
   event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.add(DASHBOARD_HTML);
+    caches.keys().then(function(names) {
+      return Promise.all(
+        names.filter(function(n) { return n !== CACHE_NAME; })
+          .map(function(n) { return caches.delete(n); })
+      );
+    }).then(function() {
+      return caches.open(CACHE_NAME).then(function(cache) {
+        return cache.add(DASHBOARD_HTML);
+      });
     })
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', function(event) {
+  console.log('[Pincer SW] Activated ' + SW_VERSION);
   event.waitUntil(clients.claim());
 });
 
@@ -53,12 +64,11 @@ self.addEventListener('fetch', function(event) {
 });
 
 // ═══════════════════════════════════════════════════════════
-// FCM PUSH — show notification when browser is in background
-// or screen is locked (most reliable method)
+// FCM PUSH — notification when browser is in background / screen locked
 // ═══════════════════════════════════════════════════════════
 
 self.addEventListener('push', function(event) {
-  console.log('[Pincer SW] Push received:', event);
+  console.log('[Pincer SW] Push received (' + SW_VERSION + ')');
 
   var data = {};
   try {
@@ -98,13 +108,12 @@ self.addEventListener('push', function(event) {
 });
 
 // ═══════════════════════════════════════════════════════════
-// MESSAGE — Dashboard sends NEW_ORDER to show notification
-// (foreground fallback when tab is active)
+// MESSAGE — Dashboard sends NEW_ORDER for foreground notification
 // ═══════════════════════════════════════════════════════════
 
 self.addEventListener('message', function(event) {
   if (event.data && event.data.type === 'NEW_ORDER') {
-    self.registration.showNotification(event.data.title || '¡Nueva Orden! 🔔', {
+    self.registration.showNotification(event.data.title || 'Nueva Orden', {
       body: event.data.body || 'Toca para ver la orden',
       icon: '/icon-192.png',
       vibrate: [500, 200, 500, 200, 500],
@@ -112,6 +121,11 @@ self.addEventListener('message', function(event) {
       tag: 'new-order',
       renotify: true
     });
+  }
+
+  // Health check: respond with version
+  if (event.data && event.data.type === 'HEALTH_CHECK') {
+    event.ports[0].postMessage({ version: SW_VERSION });
   }
 });
 
