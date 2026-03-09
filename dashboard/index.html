@@ -1522,6 +1522,23 @@ function sbWriteHeaders(extra = {}) {
   return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', ...extra };
 }
 
+// Analytics tracking (fire and forget)
+function track(eventType, eventData) {
+  fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: 'dash-' + SLUG + '-' + Date.now(),
+      restaurant_slug: SLUG,
+      event_type: eventType,
+      event_data: eventData || {},
+      browser_language: navigator.language || 'es',
+      device_type: window.innerWidth <= 768 ? 'mobile' : 'desktop',
+    }),
+    keepalive: true,
+  }).catch(function(){});
+}
+
 // Fetch with timeout
 function fetchWithTimeout(url, options, timeoutMs = 12000) {
   return Promise.race([
@@ -2186,6 +2203,7 @@ async function toggleSoldOut(productId, isSoldOut) {
     // Update local data
     const p = productsData.find(p => p.id === productId);
     if (p) p.sold_out = isSoldOut;
+    track('menu_item_updated', { action: 'sold_out_toggle', product_id: productId, sold_out: isSoldOut });
     clearError();
   } catch (e) {
     if (isSoldOut) soldOutSet.delete(productId); else soldOutSet.add(productId);
@@ -2457,6 +2475,7 @@ async function saveProduct() {
     }
 
     dbg('✅ Producto ' + (editId ? 'actualizado' : 'creado'));
+    track('menu_item_updated', { action: editId ? 'edit' : 'create', product_id: editId || payload.id, product_name: name, price: price });
     closeProductModal();
     await loadProducts();
   } catch (e) {
@@ -3453,6 +3472,7 @@ async function acceptOrder(id) {
     });
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
     dbg('✅ Orden #' + id + ' → accepted (digitada_at saved)');
+    track('order_accepted', { order_id: id });
     playConfirmSound();
     setTimeout(loadOrders, 150);
     loadDaySummary();
@@ -3467,6 +3487,7 @@ async function markReady(id) {
     });
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
     dbg('✅ Orden #' + id + ' → ready (lista_at saved)');
+    track('order_ready', { order_id: id });
     playConfirmSound();
     setTimeout(loadOrders, 150);
     loadDaySummary();
@@ -3546,6 +3567,7 @@ async function handleLogin(e) {
       updateTopbarDate();
       document.getElementById('loginScreen').style.display = 'none';
       initializeDashboard();
+      track('dashboard_login', { username: data.username, role: data.role });
       // Show password change modal if forced
       if (data.mustChangePassword) {
         sessionStorage.setItem('mustChangePassword', 'true');

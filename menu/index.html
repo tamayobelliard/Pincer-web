@@ -3332,6 +3332,32 @@ function renderMenu() {
   container.innerHTML = html;
   buildCategoryTabs(categoryOrder);
   buildMenuGroupSelector();
+
+  // Track menu items viewed (2s visibility threshold)
+  if ('IntersectionObserver' in window) {
+    if (window._menuObserver) window._menuObserver.disconnect();
+    window._menuObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          if (!el._viewTimer) {
+            el._viewTimer = setTimeout(function() {
+              track('menu_item_viewed', { item_id: el.dataset.itemId, item_name: el.dataset.itemName });
+              window._menuObserver.unobserve(el);
+            }, 2000);
+          }
+        } else {
+          if (entry.target._viewTimer) {
+            clearTimeout(entry.target._viewTimer);
+            entry.target._viewTimer = null;
+          }
+        }
+      });
+    }, { threshold: 0.5 });
+    container.querySelectorAll('.menu-item').forEach(function(el) {
+      window._menuObserver.observe(el);
+    });
+  }
 }
 
 function buildCategoryTabs(categoryOrder) {
@@ -3463,7 +3489,7 @@ function menuItemHTML(item) {
   const cardClick = (!isSoldOut && !isExtra) ? `onclick="openItemFromCard(this)" style="cursor:pointer;"` : '';
 
   return `
-    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" ${cardClick}>
+    <div class="menu-item${soldOutClass}" data-item-id="${item.id}" data-item-name="${escHtml(item.name)}" ${cardClick}>
       ${soldOutBadge}
       ${imgHTML}
       <div class="item-info">
@@ -3960,6 +3986,7 @@ async function placeOrder() {
       }
       
       showError(errorTitle, errorMessage);
+      track('checkout_failed', { error_type: 'server', error_code: res.status, order_type: selectedOrderType });
       placeOrderBtn.disabled = false;
       placeOrderBtn.textContent = "Ordenar Ahora";
       return;
@@ -3971,13 +3998,14 @@ async function placeOrder() {
 
   } catch (err) {
     dbg('❌ placeOrder exception: ' + err.message);
-    
+
     let errorTitle = "Error de Conexión";
     let errorMessage = err.message.includes('Timeout')
       ? "El servidor tardó demasiado en responder. Verifica tu internet e intenta de nuevo."
       : "No pudimos conectar con el servidor. Verifica tu conexión e intenta de nuevo.";
-    
+
     showError(errorTitle, errorMessage);
+    track('checkout_failed', { error_type: 'network', error_message: err.message, order_type: selectedOrderType });
     placeOrderBtn.disabled = false;
     placeOrderBtn.textContent = "Ordenar Ahora";
   }
@@ -4212,6 +4240,7 @@ function renderOrderTypeButtons(containerId) {
 
 function selectOrderType(type) {
   selectedOrderType = type;
+  track('order_type_selected', { order_type: type });
   document.querySelectorAll('.order-type-btn').forEach(function(btn) {
     btn.classList.toggle('active', btn.dataset.type === type);
   });
@@ -5270,6 +5299,16 @@ const CHAT_SESSION_KEY = 'pincer_chat_session_' + SLUG;
 let chatSessionId = sessionStorage.getItem(CHAT_SESSION_KEY) || crypto.randomUUID();
 sessionStorage.setItem(CHAT_SESSION_KEY, chatSessionId);
 
+// Track detected browser language once per session
+var _langTracked = sessionStorage.getItem('pincer_lang_tracked_' + SLUG);
+if (!_langTracked) {
+  sessionStorage.setItem('pincer_lang_tracked_' + SLUG, '1');
+  // Deferred: track() defined below, fire after definition
+  setTimeout(function() {
+    track('language_detected', { browser_language: navigator.language || 'es', language_primary: (navigator.language || 'es').split('-')[0] });
+  }, 0);
+}
+
 // Analytics tracking (fire and forget)
 const _pageLoadTime = Date.now();
 function track(eventType, eventData) {
@@ -5661,6 +5700,7 @@ function hideTypingIndicator() {
 
 async function sendToAI(userMessage) {
   chatHistory.push({ role: 'user', content: userMessage });
+  track('chatbot_message_sent', { message_length: userMessage.length, session_id: chatSessionId });
   showTypingIndicator();
 
   const payload = {
@@ -5713,6 +5753,7 @@ async function sendToAI(userMessage) {
         if (item && !soldOutSet.has(item.id)) {
           const qty = ci.qty || 1;
           addItem(item.id, item.name, item.price, ci.note, qty);
+          track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: qty, cart_total: order.length });
           const qtyText = qty > 1 ? `${qty}x ` : '';
           const noteText = ci.note ? ` (${ci.note})` : '';
           pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
