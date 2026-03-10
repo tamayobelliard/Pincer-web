@@ -3,7 +3,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
 // ── Version: bump this on every deploy to force SW update ──
-var SW_VERSION = 'v4';
+var SW_VERSION = 'v5';
 
 firebase.initializeApp({
   apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",
@@ -89,9 +89,10 @@ self.addEventListener('push', function(event) {
     body: body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    tag: 'pincer-order-' + orderId,
+    tag: 'pincer-order-' + orderId + '-' + Date.now(),
     renotify: true,
     requireInteraction: true,
+    silent: false,
     vibrate: [300, 100, 300, 100, 300, 100, 300],
     actions: [
       { action: 'open', title: 'Ver orden' }

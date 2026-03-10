@@ -1602,17 +1602,6 @@ function ensureAudioContext() {
 }
 ['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: false }));
 
-// Keep AudioContext alive on Android (silent pulse every 20s)
-setInterval(function() {
-  if (!audioCtx || audioCtx.state !== 'running') return;
-  var buf = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-  var src = audioCtx.createBufferSource();
-  src.buffer = buf;
-  var g = audioCtx.createGain();
-  g.gain.value = 0.001;
-  src.connect(g); g.connect(audioCtx.destination);
-  src.start();
-}, 20000);
 
 function playBeeps(freqs, volume = 0.4) {
   try {
