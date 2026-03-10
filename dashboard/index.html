@@ -848,6 +848,8 @@
 </head>
 <body>
 
+<audio id="keepalive-audio" loop preload="auto" style="display:none;"></audio>
+
 <!-- Login Screen -->
 <div id="loginScreen" style="
   position: fixed; inset: 0;
@@ -1602,6 +1604,69 @@ function ensureAudioContext() {
 }
 ['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: false }));
 
+// Silent audio keepalive — prevents Android from freezing the tab
+function startKeepAlive() {
+  var audio = document.getElementById('keepalive-audio');
+  if (!audio) return;
+  if (!audio.src) {
+    ensureAudioContext();
+    if (!audioCtx) return;
+    var sr = audioCtx.sampleRate;
+    var buf = audioCtx.createBuffer(1, sr, sr);
+    var offline = new OfflineAudioContext(1, sr, sr);
+    var s = offline.createBufferSource();
+    s.buffer = buf;
+    s.connect(offline.destination);
+    s.start();
+    offline.startRendering().then(function(rendered) {
+      var wav = encodeWAV(rendered);
+      audio.src = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+      audio.play().catch(function() {});
+    });
+  } else {
+    audio.play().catch(function() {});
+  }
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: 'Pincer Dashboard', artist: DISPLAY_NAME });
+    navigator.mediaSession.playbackState = 'playing';
+  }
+  dbg('🔊 Keepalive audio started');
+}
+
+function stopKeepAlive() {
+  var audio = document.getElementById('keepalive-audio');
+  if (audio) { audio.pause(); audio.currentTime = 0; }
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+  dbg('🔇 Keepalive audio stopped');
+}
+
+function encodeWAV(audioBuffer) {
+  var numFrames = audioBuffer.length;
+  var sampleRate = audioBuffer.sampleRate;
+  var buffer = new ArrayBuffer(44 + numFrames * 2);
+  var view = new DataView(buffer);
+  function writeStr(o, s) { for (var i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); }
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + numFrames * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, numFrames * 2, true);
+  var samples = audioBuffer.getChannelData(0);
+  var offset = 44;
+  for (var i = 0; i < numFrames; i++, offset += 2) {
+    var v = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
+  }
+  return buffer;
+}
 
 function playBeeps(freqs, volume = 0.4) {
   try {
@@ -3066,6 +3131,7 @@ async function confirmOpenShift() {
     closeShiftModal();
     showToast('Turno abierto: ' + nombre);
     dbg('✅ Turno abierto: ' + nombre + ' (' + turno + ')');
+    startKeepAlive();
   } catch (e) {
     alert('Error: ' + e.message);
   }
@@ -3202,6 +3268,7 @@ async function confirmCloseShift() {
     document.getElementById('closeShiftResult').style.display = 'block';
 
     currentShift = null;
+    stopKeepAlive();
     updateShiftUI();
     loadDaySummary();
     showToast('Turno cerrado correctamente');
@@ -3932,11 +3999,14 @@ async function initializeDashboard() {
   if (navigator.serviceWorker) {
     navigator.serviceWorker.addEventListener('message', function(e) {
       if (e.data && e.data.type === 'PLAY_ORDER_SOUND') {
+        var ka = document.getElementById('keepalive-audio');
+        if (ka) ka.pause();
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume().then(function() { playNewOrderSound(); });
         } else {
           playNewOrderSound();
         }
+        setTimeout(function() { if (ka && currentShift) ka.play().catch(function() {}); }, 500);
       }
     });
   }
