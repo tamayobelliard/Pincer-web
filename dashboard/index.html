@@ -3924,6 +3924,15 @@ async function initializeDashboard() {
   if (storeIsOpen) loadOrders();
   initFCM();
 
+  // Listen for SW push messages to play sound (works even with screen locked)
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'PLAY_ORDER_SOUND') {
+        playNewOrderSound();
+      }
+    });
+  }
+
   setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
   setInterval(loadProducts, 30000);
   setInterval(loadDaySummary, 30000);
