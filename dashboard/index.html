@@ -1776,6 +1776,7 @@ async function requestWakeLock() {
       wakeLock.addEventListener('release', () => {
         dbg('🔓 Wake lock liberado');
         wakeLock = null;
+        if (document.visibilityState === 'visible') requestWakeLock();
       });
     }
   } catch (e) { dbg('⚠️ Wake lock error: ' + e.message); }
