@@ -3026,6 +3026,7 @@ async function loadActiveShift() {
     }
     updateShiftUI();
     // Show sound activation banner if shift is open and not yet activated this session
+    console.log('[keepalive-debug] currentShift:', !!currentShift, 'status:', currentShift?.status, 'stale:', currentShift?._stale, 'flag:', sessionStorage.getItem('pincer_sound_activated'));
     if (currentShift && !currentShift._stale && !sessionStorage.getItem('pincer_sound_activated')) {
       document.getElementById('sound-activation-banner').style.display = 'block';
     }
