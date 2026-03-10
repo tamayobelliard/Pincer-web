@@ -988,10 +988,9 @@
       🔔 Activa las notificaciones para recibir alertas de órdenes
       <button onclick="requestNotificationPermission()" style="margin-left:12px;background:#78350f;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer">Activar</button>
     </div>
-    <div id="sound-activation-banner" style="display:none;background:#FEF3C7;color:#78350f;border:1px solid #fde68a;padding:12px 16px;text-align:center;border-radius:10px;margin-bottom:16px;font-weight:600;font-size:13px;cursor:pointer;" onclick="activateSound()">
-      🔔 Toca aquí para activar el sonido de notificaciones
+    <div id="sound-activation-banner" style="background:#FEF3C7;color:#78350f;border:1px solid #fde68a;padding:14px 16px;text-align:center;border-radius:10px;margin-bottom:16px;font-weight:700;font-size:14px;cursor:pointer;" onclick="activateSound()">
+      Activar Notificaciones de Sonido 🔔
     </div>
-    <div id="notif-health" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;padding:12px 16px;border-radius:10px;margin-bottom:12px;font-size:13px;"></div>
 
     <div class="stats" id="stats">
       <div class="stat-item"><div class="stat-number" id="total-orders">0</div><div class="stat-label">Total Órdenes</div></div>
@@ -1608,7 +1607,10 @@ function ensureAudioContext() {
 ['click','touchstart'].forEach(e => document.addEventListener(e, ensureAudioContext, { once: false }));
 
 // Silent audio keepalive — prevents Android from freezing the tab
+var isKeepAliveActive = false;
+
 function startKeepAlive() {
+  if (isKeepAliveActive) return;
   var audio = document.getElementById('keepalive-audio');
   if (!audio) return;
   if (!audio.src) {
@@ -1633,6 +1635,17 @@ function startKeepAlive() {
     navigator.mediaSession.metadata = new MediaMetadata({ title: 'Pincer Dashboard', artist: DISPLAY_NAME });
     navigator.mediaSession.playbackState = 'playing';
   }
+  isKeepAliveActive = true;
+  var banner = document.getElementById('sound-activation-banner');
+  if (banner && banner.style.display !== 'none') {
+    banner.style.background = '#DCFCE7';
+    banner.style.color = '#166534';
+    banner.style.borderColor = '#BBF7D0';
+    banner.textContent = '✅ Sonido activado';
+    banner.style.cursor = 'default';
+    banner.onclick = null;
+    setTimeout(function() { banner.style.display = 'none'; }, 3000);
+  }
   dbg('🔊 Keepalive audio started');
 }
 
@@ -1640,13 +1653,12 @@ function stopKeepAlive() {
   var audio = document.getElementById('keepalive-audio');
   if (audio) { audio.pause(); audio.currentTime = 0; }
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+  isKeepAliveActive = false;
   dbg('🔇 Keepalive audio stopped');
 }
 
 function activateSound() {
   startKeepAlive();
-  document.getElementById('sound-activation-banner').style.display = 'none';
-  sessionStorage.setItem('pincer_sound_activated', '1');
 }
 
 function encodeWAV(audioBuffer) {
@@ -1815,7 +1827,7 @@ async function initFCM() {
         newWorker.addEventListener('statechange', function() {
           if (newWorker.state === 'activated') {
             dbg('🔄 Service Worker actualizado');
-            renderNotifHealthCheck();
+            // SW updated
           }
         });
       }
@@ -1828,8 +1840,6 @@ async function initFCM() {
     } else if (Notification.permission === 'default') {
       document.getElementById('notification-banner').classList.add('show');
     }
-
-    renderNotifHealthCheck();
 
     // Handle foreground messages (tab is open)
     fcmMessaging.onMessage(function(payload) {
@@ -1952,7 +1962,6 @@ async function requestNotificationPermission() {
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
       document.getElementById('notification-banner').classList.remove('show');
-      document.getElementById('test-notif-banner').style.display = 'block';
       new Notification("¡Notificaciones Habilitadas!", {
         body: "Te avisaremos cuando lleguen nuevas órdenes a Pincer",
         tag: "pincer-notifications-enabled"
@@ -2049,86 +2058,7 @@ async function testPushNotification() {
 // NOTIFICATION HEALTH CHECK
 // ══════════════════════════════════════════════════════════════
 
-async function renderNotifHealthCheck() {
-  var panel = document.getElementById('notif-health');
-  if (!panel) return;
-
-  var checks = [];
-
-  // 1. Service Worker
-  var swOk = false;
-  var swVersion = '?';
-  try {
-    var reg = await navigator.serviceWorker.getRegistration('/');
-    if (reg && reg.active) {
-      swOk = true;
-      // Ask SW for its version
-      try {
-        var mc = new MessageChannel();
-        var versionPromise = new Promise(function(resolve) {
-          mc.port1.onmessage = function(e) { resolve(e.data.version || '?'); };
-          setTimeout(function() { resolve('?'); }, 1000);
-        });
-        reg.active.postMessage({ type: 'HEALTH_CHECK' }, [mc.port2]);
-        swVersion = await versionPromise;
-      } catch(e) {}
-    }
-  } catch(e) {}
-  checks.push(swOk
-    ? '<span style="color:#16a34a">✅ Service Worker activo (' + swVersion + ')</span>'
-    : '<span style="color:#dc2626">❌ Service Worker no registrado</span>');
-
-  // 2. Notification permission
-  var permStatus = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
-  if (permStatus === 'granted') {
-    checks.push('<span style="color:#16a34a">✅ Permisos concedidos</span>');
-  } else if (permStatus === 'default') {
-    checks.push('<span style="color:#d97706">⚠️ Permisos no solicitados</span> <button onclick="requestNotificationPermission()" style="background:#2563eb;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;margin-left:4px;">Activar</button>');
-  } else {
-    checks.push('<span style="color:#dc2626">❌ Permisos denegados — desbloquear en configuración del navegador</span>');
-  }
-
-  // 3. FCM Token
-  var tokenOk = false;
-  if (fcmMessaging && permStatus === 'granted') {
-    try {
-      var swReg = await navigator.serviceWorker.ready;
-      var token = await fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: swReg });
-      if (token) {
-        tokenOk = true;
-        await saveFCMToken(token);
-      }
-    } catch(e) {
-      dbg('⚠️ Token refresh error: ' + e.message);
-    }
-  }
-  if (permStatus === 'granted') {
-    checks.push(tokenOk
-      ? '<span style="color:#16a34a">✅ Token FCM registrado</span>'
-      : '<span style="color:#dc2626">❌ Token FCM no generado</span>');
-  }
-
-  // 4. Test button
-  if (permStatus === 'granted' && tokenOk) {
-    checks.push('<button onclick="testPushNotification()" style="background:#2563eb;color:white;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">🔔 Probar notificación push</button>');
-  }
-
-  // All green? Collapse after 5s
-  var allGreen = swOk && permStatus === 'granted' && tokenOk;
-
-  panel.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:14px;">🔔 Estado de Notificaciones</div>' +
-    checks.map(function(c) { return '<div style="padding:2px 0;">' + c + '</div>'; }).join('');
-  panel.style.display = 'block';
-  panel.style.borderColor = allGreen ? '#bbf7d0' : '#fde68a';
-  panel.style.background = allGreen ? '#f0fdf4' : '#fffbeb';
-
-  if (allGreen) {
-    setTimeout(function() {
-      panel.style.transition = 'opacity 0.5s';
-      panel.style.opacity = '0.6';
-    }, 8000);
-  }
-}
+// (notif health panel removed — replaced by sound activation banner)
 
 // ══════════════════════════════════════════════════════════════
 // PRODUCTOS
@@ -3026,10 +2956,6 @@ async function loadActiveShift() {
     }
     updateShiftUI();
     // Show sound activation banner if shift is open and not yet activated this session
-    console.log('[keepalive-debug] currentShift:', !!currentShift, 'status:', currentShift?.status, 'stale:', currentShift?._stale, 'flag:', sessionStorage.getItem('pincer_sound_activated'));
-    if (currentShift && !currentShift._stale && !sessionStorage.getItem('pincer_sound_activated')) {
-      document.getElementById('sound-activation-banner').style.display = 'block';
-    }
   } catch (e) {
     dbg('⚠️ loadActiveShift: ' + e.message);
     updateShiftUI();
@@ -3146,7 +3072,6 @@ async function confirmOpenShift() {
     showToast('Turno abierto: ' + nombre);
     dbg('✅ Turno abierto: ' + nombre + ' (' + turno + ')');
     startKeepAlive();
-    sessionStorage.setItem('pincer_sound_activated', '1');
   } catch (e) {
     alert('Error: ' + e.message);
   }
