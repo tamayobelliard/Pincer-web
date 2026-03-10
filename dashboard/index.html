@@ -1773,6 +1773,18 @@ async function initFCM() {
       loadOrders();
     });
 
+    // Re-register FCM token when tab regains focus (prevents stale tokens)
+    document.addEventListener('visibilitychange', async function() {
+      if (document.visibilityState !== 'visible') return;
+      if (!fcmMessaging || Notification.permission !== 'granted') return;
+      try {
+        var swReg = await navigator.serviceWorker.ready;
+        await getAndStoreFCMToken(swReg);
+      } catch (e) {
+        dbg('⚠️ FCM refresh on focus: ' + e.message);
+      }
+    });
+
   } catch (err) {
     dbg('❌ FCM init error: ' + err.message);
   }
