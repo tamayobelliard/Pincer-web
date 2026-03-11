@@ -84,7 +84,7 @@ export default async function handler(req, res) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     const tokensRes = await fetch(
-      `${supabaseUrl}/rest/v1/fcm_tokens?select=token&active=eq.true&restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}`,
+      `${supabaseUrl}/rest/v1/fcm_tokens?select=token,device_info,updated_at&active=eq.true&restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}`,
       {
         headers: {
           'apikey': supabaseServiceKey,
@@ -94,14 +94,45 @@ export default async function handler(req, res) {
     );
 
     if (!tokensRes.ok) {
-      console.error('Failed to fetch FCM tokens:', tokensRes.status);
+      console.error('[send-notification] Failed to fetch FCM tokens:', tokensRes.status);
       return res.status(500).json({ error: 'Failed to fetch tokens' });
     }
 
     const tokenRows = await tokensRes.json();
-    const tokens = tokenRows.map(r => r.token).filter(Boolean);
 
-    console.log(`[send-notification] ${restaurantSlug} order #${orderDisplayNum}: ${tokens.length} device(s) found`);
+    // Deactivate zombie tokens (not updated in 30+ days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const zombieTokens = tokenRows.filter(r => r.updated_at < thirtyDaysAgo);
+    const freshRows = tokenRows.filter(r => r.updated_at >= thirtyDaysAgo);
+
+    if (zombieTokens.length > 0) {
+      console.log(`[send-notification] Deactivating ${zombieTokens.length} zombie token(s) (>30 days stale)`);
+      for (const z of zombieTokens) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/fcm_tokens?token=eq.${encodeURIComponent(z.token)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ active: false }),
+          }
+        );
+      }
+    }
+
+    // Build token-to-device map for logging
+    const tokenDeviceMap = {};
+    freshRows.forEach(r => {
+      const info = r.device_info || 'unknown';
+      tokenDeviceMap[r.token] = info.length > 50 ? info.substring(0, 50) + '...' : info;
+    });
+
+    const tokens = freshRows.map(r => r.token).filter(Boolean);
+
+    console.log(`[send-notification] ${restaurantSlug} order #${orderDisplayNum}: ${tokens.length} device(s), ${zombieTokens.length} zombie(s) cleaned`);
 
     if (tokens.length === 0) {
       console.warn(`[send-notification] No active FCM tokens for ${restaurantSlug}`);
@@ -122,7 +153,7 @@ export default async function handler(req, res) {
       tokens: tokens,
       android: {
         priority: 'high',
-        ttl: 60 * 1000,
+        ttl: 4 * 60 * 60 * 1000, // 4 hours
       },
       webpush: {
         headers: {
@@ -136,21 +167,28 @@ export default async function handler(req, res) {
 
     const response = await admin.messaging().sendEachForMulticast(message);
 
-    // Clean up invalid tokens
-    if (response.failureCount > 0) {
-      const invalidTokens = [];
-      response.responses.forEach((resp, idx) => {
-        if (!resp.success) {
-          const errorCode = resp.error?.code;
-          if (
-            errorCode === 'messaging/invalid-registration-token' ||
-            errorCode === 'messaging/registration-token-not-registered'
-          ) {
-            invalidTokens.push(tokens[idx]);
-          }
+    // Log result per token
+    const invalidTokens = [];
+    response.responses.forEach((resp, idx) => {
+      const device = tokenDeviceMap[tokens[idx]] || 'unknown';
+      if (resp.success) {
+        console.log(`[send-notification]   OK -> ${device} (${tokens[idx].substring(0, 12)}...)`);
+      } else {
+        const errorCode = resp.error?.code || 'unknown';
+        const errorMsg = resp.error?.message || '';
+        console.error(`[send-notification]   FAIL -> ${device} (${tokens[idx].substring(0, 12)}...) ${errorCode}: ${errorMsg}`);
+        if (
+          errorCode === 'messaging/invalid-registration-token' ||
+          errorCode === 'messaging/registration-token-not-registered'
+        ) {
+          invalidTokens.push(tokens[idx]);
         }
-      });
+      }
+    });
 
+    // Deactivate invalid tokens
+    if (invalidTokens.length > 0) {
+      console.log(`[send-notification] Deactivating ${invalidTokens.length} invalid token(s)`);
       for (const token of invalidTokens) {
         await fetch(
           `${supabaseUrl}/rest/v1/fcm_tokens?token=eq.${encodeURIComponent(token)}`,
@@ -165,14 +203,15 @@ export default async function handler(req, res) {
           }
         );
       }
-      if (invalidTokens.length > 0) {
-      }
     }
+
+    console.log(`[send-notification] Result: ${response.successCount} sent, ${response.failureCount} failed`);
 
     return res.status(200).json({
       success: true,
       sent: response.successCount,
       failed: response.failureCount,
+      zombiesCleaned: zombieTokens.length,
     });
 
   } catch (error) {
