@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 // Cache SSL agent at module level (reused across warm invocations)
 let cachedAgent = null;
@@ -85,6 +85,7 @@ async function supabasePostAwait(table, data) {
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   // Rate limit: 5 payment attempts per minute per IP (anti card-testing)
   if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'payment' })) return;

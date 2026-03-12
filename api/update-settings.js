@@ -1,5 +1,5 @@
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession } from './verify-session.js';
 
 export const config = { maxDuration: 30 };
@@ -7,6 +7,7 @@ export const config = { maxDuration: 30 };
 export default async function handler(req, res) {
   if (handleCors(req, res, { methods: 'PATCH, OPTIONS', headers: 'Content-Type, x-restaurant-token' })) return;
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   // Rate limit: 10 per minute per IP
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'settings' })) return;

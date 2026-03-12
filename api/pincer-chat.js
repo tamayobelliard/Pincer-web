@@ -1,11 +1,12 @@
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   // Rate limit: 20 chat requests per minute per IP
   if (rateLimit(req, res, { max: 20, windowMs: 60000, prefix: 'pincer-chat' })) return;

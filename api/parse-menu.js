@@ -1,5 +1,5 @@
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 export const config = { maxDuration: 60 };
 
@@ -78,6 +78,7 @@ function callClaude(apiKey, imageContent, textPrompt) {
 export default async function handler(req, res) {
   if (handleCors(req, res, { headers: 'Content-Type, x-admin-key, x-signup-slug, x-restaurant-token' })) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   // Rate limit: 10 menu parse requests per minute per IP
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'parse-menu' })) return;

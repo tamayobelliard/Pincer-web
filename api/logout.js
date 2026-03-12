@@ -1,4 +1,4 @@
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -6,6 +6,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export default async function handler(req, res) {
   if (handleCors(req, res, { headers: 'Content-Type, x-restaurant-token, x-admin-key' })) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   if (!supabaseKey) return res.status(500).json({ error: 'Server misconfigured' });
 

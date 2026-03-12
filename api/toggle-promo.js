@@ -1,10 +1,11 @@
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession } from './verify-session.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: 'toggle-promo' })) return;
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';

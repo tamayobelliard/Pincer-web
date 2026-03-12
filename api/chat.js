@@ -1,5 +1,5 @@
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 export const config = { maxDuration: 30 };
 
@@ -319,6 +319,7 @@ function buildSystemPrompt(restaurantName, thisWeekMetrics, lastWeekMetrics, ins
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
   if (rateLimit(req, res, { max: 20, windowMs: 60000, prefix: 'chat' })) return;
 
   if (!supabaseKey) {

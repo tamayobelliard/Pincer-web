@@ -1,4 +1,4 @@
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 export const config = { maxDuration: 60 };
 
@@ -323,6 +323,8 @@ SOLO JSON, sin markdown, sin backticks.`;
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
+
+  if (requireJson(req, res)) return;
 
   // Support both GET (cron) and POST (manual)
   if (req.method !== 'POST' && req.method !== 'GET') {

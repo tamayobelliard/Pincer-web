@@ -2,7 +2,7 @@ import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 import { sanitizeRestaurant } from './sanitize.js';
 
 async function sendEmail(to, subject, html, attachments = []) {
@@ -132,7 +132,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
       temp_password += chars.charAt(bytes[i] % chars.length);
     }
 
-    const password_hash = await bcrypt.hash(temp_password, 10);
+    const password_hash = await bcrypt.hash(temp_password, 12);
 
     // Upload logo from base64 if provided
     let finalLogoUrl = logo_url || null;
@@ -401,7 +401,7 @@ async function handleResetPassword(req, res, supabaseUrl, supabaseKey) {
       temp_password += chars.charAt(bytes[i] % chars.length);
     }
 
-    const password_hash = await bcrypt.hash(temp_password, 10);
+    const password_hash = await bcrypt.hash(temp_password, 12);
 
     const patchRes = await fetch(
       `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}`,
@@ -488,6 +488,8 @@ async function handleDelete(req, res, supabaseUrl, supabaseKey) {
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
   if (handleCors(req, res, { methods: 'GET, POST, PATCH, DELETE, OPTIONS', headers: 'Content-Type, x-admin-key' })) return;
+
+  if (requireJson(req, res)) return;
 
   // Rate limit: 30 admin requests per minute per IP
   if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: 'admin' })) return;

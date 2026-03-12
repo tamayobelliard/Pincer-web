@@ -156,10 +156,10 @@
 
     <form id="changeForm">
       <label for="newPassword">Nueva contrasena</label>
-      <input type="password" id="newPassword" required placeholder="Minimo 8 caracteres" minlength="8">
+      <input type="password" id="newPassword" required placeholder="Minimo 8 caracteres, 1 mayuscula, 1 numero" minlength="8" autocomplete="new-password">
 
       <label for="confirmPassword">Confirmar contrasena</label>
-      <input type="password" id="confirmPassword" required placeholder="Repite tu contrasena" minlength="8">
+      <input type="password" id="confirmPassword" required placeholder="Repite tu contrasena" minlength="8" autocomplete="new-password">
 
       <button type="submit" class="btn-submit" id="submitBtn">Guardar contrasena</button>
     </form>

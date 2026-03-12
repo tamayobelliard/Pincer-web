@@ -85,7 +85,7 @@ export default async function handler(req, res) {
     for (let i = 0; i < 8; i++) {
       temp_password += chars.charAt(bytes[i] % chars.length);
     }
-    const password_hash = await bcrypt.hash(temp_password, 10);
+    const password_hash = await bcrypt.hash(temp_password, 12);
 
     // Update password_hash in DB
     const pwPatchRes = await fetch(

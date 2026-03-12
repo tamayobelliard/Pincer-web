@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession } from './verify-session.js';
 
 export const config = { maxDuration: 15 };

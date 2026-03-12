@@ -1,11 +1,12 @@
 import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession } from './verify-session.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res, { headers: 'Content-Type, x-restaurant-token' })) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (requireJson(req, res)) return;
 
   // Rate limit: 5 attempts per minute per IP
   if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'change-pw' })) return;
@@ -18,6 +19,12 @@ export default async function handler(req, res) {
 
   if (newPassword.length < 8) {
     return res.status(400).json({ success: false, error: 'La contrasena debe tener al menos 8 caracteres' });
+  }
+  if (!/[A-Z]/.test(newPassword)) {
+    return res.status(400).json({ success: false, error: 'La contrasena debe incluir al menos una letra mayuscula' });
+  }
+  if (!/[0-9]/.test(newPassword)) {
+    return res.status(400).json({ success: false, error: 'La contrasena debe incluir al menos un numero' });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
@@ -79,7 +86,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const password_hash = await bcrypt.hash(newPassword, 10);
+    const password_hash = await bcrypt.hash(newPassword, 12);
 
     // Update password (and clear forced flag if it was a forced change)
     const patchBody = { password_hash };

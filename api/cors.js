@@ -54,3 +54,22 @@ export function handleCors(req, res, { methods = 'POST, OPTIONS', headers = 'Con
   res.status(403).json({ error: 'Origin not allowed' });
   return true;
 }
+
+/**
+ * Validate that the request Content-Type is application/json.
+ * Call after handleCors() for POST/PATCH/PUT endpoints that expect JSON.
+ * Skips validation for OPTIONS and GET requests.
+ *
+ * @param {object} req
+ * @param {object} res
+ * @returns {boolean} true if request was rejected (caller should return), false to proceed
+ */
+export function requireJson(req, res) {
+  if (req.method === 'OPTIONS' || req.method === 'GET') return false;
+  const ct = (req.headers['content-type'] || '').toLowerCase();
+  if (!ct.startsWith('application/json')) {
+    res.status(400).json({ error: 'Content-Type must be application/json' });
+    return true;
+  }
+  return false;
+}

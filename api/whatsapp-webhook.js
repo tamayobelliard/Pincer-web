@@ -12,7 +12,10 @@ function validateTwilioSignature(authToken, signature, url, params) {
   const sortedKeys = Object.keys(params).sort();
   let data = url;
   for (const key of sortedKeys) data += key + params[key];
-  return crypto.createHmac('sha1', authToken).update(data).digest('base64') === signature;
+  const computed = crypto.createHmac('sha1', authToken).update(data).digest();
+  const expected = Buffer.from(signature, 'base64');
+  if (computed.length !== expected.length) return false;
+  return crypto.timingSafeEqual(computed, expected);
 }
 
 function twiml(msg) {

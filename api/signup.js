@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { sendEmail } from './send-email.js';
-import { handleCors } from './cors.js';
+import { handleCors, requireJson } from './cors.js';
 
 export const config = { maxDuration: 60 };
 
@@ -226,6 +226,8 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 export default async function handler(req, res) {
   if (handleCors(req, res, { methods: 'POST, PATCH, OPTIONS' })) return;
 
+  if (requireJson(req, res)) return;
+
   // Rate limit: 5 signup attempts per minute per IP
   if (rateLimit(req, res, { max: 5, windowMs: 60000, prefix: 'signup' })) return;
 
@@ -402,7 +404,7 @@ export default async function handler(req, res) {
     for (let i = 0; i < 8; i++) {
       temp_password += chars.charAt(bytes[i] % chars.length);
     }
-    const password_hash = await bcrypt.hash(temp_password, 10);
+    const password_hash = await bcrypt.hash(temp_password, 12);
 
     // Email verification token
     const emailVerificationToken = randomBytes(32).toString('hex');
