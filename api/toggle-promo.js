@@ -1,6 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
-import { verifyRestaurantSession } from './verify-session.js';
+import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   };
 
   // Verify restaurant session
-  const token = req.headers['x-restaurant-token'];
+  const token = getRestaurantToken(req);
   const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
   if (!session.valid) {
     return res.status(403).json({ error: 'Sesión inválida' });

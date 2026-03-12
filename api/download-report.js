@@ -1,6 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { handleCors, requireJson } from './cors.js';
-import { verifyRestaurantSession } from './verify-session.js';
+import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 
 export const config = { maxDuration: 15 };
 
@@ -346,7 +346,7 @@ export default async function handler(req, res) {
   if (!supabaseKey) return res.status(500).json({ error: 'Server misconfigured' });
 
   // Auth
-  const token = req.headers['x-restaurant-token'];
+  const token = getRestaurantToken(req);
   const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
   if (!session.valid) return res.status(403).json({ error: 'Sesión inválida' });
 

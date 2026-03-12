@@ -1,6 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
-import { verifyRestaurantSession } from './verify-session.js';
+import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 
 export const config = { maxDuration: 30 };
 
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   // Verify restaurant session token (if provided)
-  const token = req.headers['x-restaurant-token'];
+  const token = getRestaurantToken(req);
   if (token) {
     const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
     if (!session.valid) {
@@ -106,16 +106,30 @@ export default async function handler(req, res) {
       }
     }
 
-    // Whitelist of allowed fields
-    const ALLOWED = [
-      'business_type', 'address', 'phone', 'contact_name',
-      'hours', 'website', 'notes', 'chatbot_personality',
-      'order_types', 'delivery_fee', 'logo_url',
-    ];
+    // Whitelist of allowed fields with type validation
+    const ALLOWED = {
+      business_type: 'string',
+      address: 'string',
+      phone: 'string',
+      contact_name: 'string',
+      hours: 'string',
+      website: 'string',
+      notes: 'string',
+      chatbot_personality: 'string',
+      order_types: 'string',
+      delivery_fee: 'number',
+      logo_url: 'string',
+    };
 
     const update = {};
-    for (const key of ALLOWED) {
+    for (const [key, expectedType] of Object.entries(ALLOWED)) {
       if (body[key] !== undefined) {
+        if (body[key] !== null && typeof body[key] !== expectedType) {
+          return res.status(400).json({ success: false, error: `Campo '${key}' debe ser tipo ${expectedType}` });
+        }
+        if (typeof body[key] === 'string' && body[key].length > 2000) {
+          return res.status(400).json({ success: false, error: `Campo '${key}' excede el limite de 2000 caracteres` });
+        }
         update[key] = body[key];
       }
     }

@@ -309,3 +309,21 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shift_id bigint;
 -- ──────────────────────────────────────────────────────────────
 ALTER TABLE restaurant_users ADD COLUMN IF NOT EXISTS failed_login_attempts int NOT NULL DEFAULT 0;
 ALTER TABLE restaurant_users ADD COLUMN IF NOT EXISTS locked_until timestamptz;
+
+
+-- ──────────────────────────────────────────────────────────────
+-- Distributed rate limiting table
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  key        text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_key_created ON rate_limits(key, created_at);
+
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+-- No anon policies = service role only
+
+-- Cleanup: delete entries older than 5 minutes (run via cron)
+-- DELETE FROM rate_limits WHERE created_at < now() - interval '5 minutes';

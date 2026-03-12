@@ -1,8 +1,36 @@
 /**
+ * Parse a specific cookie value from the Cookie header.
+ * @param {string} cookieHeader - Raw Cookie header string
+ * @param {string} name - Cookie name to find
+ * @returns {string|null}
+ */
+function parseCookie(cookieHeader, name) {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Extract restaurant session token from request.
+ * Checks x-restaurant-token header first, then pincer_session cookie.
+ */
+export function getRestaurantToken(req) {
+  return req.headers['x-restaurant-token'] || parseCookie(req.headers.cookie, 'pincer_session') || null;
+}
+
+/**
+ * Extract admin session token from request.
+ * Checks x-admin-key header first, then pincer_admin cookie.
+ */
+export function getAdminToken(req) {
+  return req.headers['x-admin-key'] || parseCookie(req.headers.cookie, 'pincer_admin') || null;
+}
+
+/**
  * Verify a restaurant session token against the restaurant_sessions table.
  * Mirrors the verifyAdmin() pattern in api/admin.js.
  *
- * @param {string} token - Session token from x-restaurant-token header
+ * @param {string} token - Session token from header or cookie
  * @param {string} supabaseUrl
  * @param {string} supabaseKey - Service role key
  * @returns {Promise<{valid: boolean, restaurant_slug: string|null, user_id: string|null}>}

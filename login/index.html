@@ -217,16 +217,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
 
     if (data.success) {
+      // Store only non-sensitive UI data — tokens are in httpOnly cookies
       var sessionData = JSON.stringify({
         role: data.role,
         restaurant_slug: data.restaurant_slug,
         display_name: data.display_name,
         username: data.username,
-        sessionToken: data.sessionToken || '',
-        adminToken: data.adminToken || '',
       });
       sessionStorage.setItem('dashboard_session', sessionData);
-      // Also store slug-specific key so dashboard finds it immediately
       if (data.role === 'restaurant' && data.restaurant_slug) {
         sessionStorage.setItem('dashboard_session_' + data.restaurant_slug, sessionData);
       }

@@ -1,5 +1,5 @@
 import { handleCors, requireJson } from './cors.js';
-import { verifyRestaurantSession } from './verify-session.js';
+import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (!supabaseKey) return res.status(500).json({ error: 'Server misconfigured' });
 
   // Verify restaurant session token
-  const sessionToken = req.headers['x-restaurant-token'];
+  const sessionToken = getRestaurantToken(req);
   if (!sessionToken) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -23,13 +23,20 @@ export default async function handler(req, res) {
 
   const { token, restaurantSlug, platform } = req.body || {};
 
-  // Verify the slug matches the authenticated session
-  if (restaurantSlug && restaurantSlug !== session.restaurant_slug) {
-    return res.status(403).json({ error: 'Slug mismatch with session' });
+  // Validate input types
+  if (!token || typeof token !== 'string' || token.length < 10 || token.length > 500) {
+    return res.status(400).json({ error: 'token debe ser un string valido (10-500 caracteres)' });
+  }
+  if (!restaurantSlug || typeof restaurantSlug !== 'string' || !/^[a-z0-9_-]{2,50}$/.test(restaurantSlug)) {
+    return res.status(400).json({ error: 'restaurantSlug debe ser un slug valido (letras minusculas, numeros, guiones)' });
+  }
+  if (platform !== undefined && (typeof platform !== 'string' || platform.length > 50)) {
+    return res.status(400).json({ error: 'platform debe ser un string de hasta 50 caracteres' });
   }
 
-  if (!token || !restaurantSlug) {
-    return res.status(400).json({ error: 'token y restaurantSlug requeridos' });
+  // Verify the slug matches the authenticated session
+  if (restaurantSlug !== session.restaurant_slug) {
+    return res.status(403).json({ error: 'Slug mismatch with session' });
   }
 
   try {

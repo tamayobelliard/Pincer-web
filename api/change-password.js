@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
-import { verifyRestaurantSession } from './verify-session.js';
+import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res, { headers: 'Content-Type, x-restaurant-token' })) return;
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
     // Voluntary mode: verify session token if provided
     if (isVoluntary) {
-      const token = req.headers['x-restaurant-token'];
+      const token = getRestaurantToken(req);
       if (token) {
         const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
         if (!session.valid) {

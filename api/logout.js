@@ -1,4 +1,5 @@
 import { handleCors, requireJson } from './cors.js';
+import { getRestaurantToken, getAdminToken } from './verify-session.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -10,8 +11,8 @@ export default async function handler(req, res) {
 
   if (!supabaseKey) return res.status(500).json({ error: 'Server misconfigured' });
 
-  const restaurantToken = req.headers['x-restaurant-token'];
-  const adminToken = req.headers['x-admin-key'];
+  const restaurantToken = getRestaurantToken(req);
+  const adminToken = getAdminToken(req);
 
   if (!restaurantToken && !adminToken) {
     return res.status(400).json({ error: 'No session token provided' });
@@ -51,6 +52,12 @@ export default async function handler(req, res) {
         console.error('[logout] Failed to delete admin session:', delRes.status);
       }
     }
+
+    // Clear httpOnly cookies
+    const cookiesToClear = [];
+    if (restaurantToken) cookiesToClear.push('pincer_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
+    if (adminToken) cookiesToClear.push('pincer_admin=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
+    if (cookiesToClear.length) res.setHeader('Set-Cookie', cookiesToClear);
 
     return res.status(200).json({ success: true });
   } catch (error) {

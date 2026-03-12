@@ -617,8 +617,8 @@ function getSession() {
 
 // Helper: fetch with auto-logout on 403 (expired/invalid session token)
 async function adminFetch(url, opts = {}) {
-  const session = getSession();
-  opts.headers = { ...opts.headers, 'x-admin-key': session?.adminToken || '' };
+  // Admin token is in httpOnly cookie — no need to send header
+  opts.headers = { ...opts.headers };
   const res = await fetch(url, opts);
   if (res.status === 403) {
     sessionStorage.removeItem('dashboard_session');
@@ -650,7 +650,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     if (data.success && data.role === 'admin') {
       sessionStorage.setItem('dashboard_session', JSON.stringify({
         role: data.role, username: data.username, display_name: data.display_name,
-        adminToken: data.adminToken || '',
       }));
       showAdmin();
     } else if (data.success) {
@@ -670,15 +669,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 });
 
 async function logout() {
-  const session = getSession();
-  if (session?.adminToken) {
-    try {
-      await fetch('/api/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': session.adminToken },
-      });
-    } catch (e) { /* proceed with client-side logout regardless */ }
-  }
+  try {
+    await fetch('/api/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e) { /* proceed with client-side logout regardless */ }
   sessionStorage.removeItem('dashboard_session');
   location.reload();
 }

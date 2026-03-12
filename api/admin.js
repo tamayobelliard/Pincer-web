@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { getAdminToken } from './verify-session.js';
 import { sanitizeRestaurant } from './sanitize.js';
 
 async function sendEmail(to, subject, html, attachments = []) {
@@ -498,7 +499,7 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // Verify admin session token
-  const isAdmin = await verifyAdmin(req.headers['x-admin-key'], supabaseUrl, supabaseKey);
+  const isAdmin = await verifyAdmin(getAdminToken(req), supabaseUrl, supabaseKey);
   if (!isAdmin) {
     return res.status(403).json({ error: 'Forbidden' });
   }

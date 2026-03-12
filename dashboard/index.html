@@ -3678,8 +3678,7 @@ async function handleLogin(e) {
       }
       sessionStorage.setItem('dashboard_session_' + SLUG, JSON.stringify({
         role: data.role, restaurant_slug: data.restaurant_slug,
-        display_name: data.display_name, username: data.username,
-        sessionToken: data.sessionToken || ''
+        display_name: data.display_name, username: data.username
       }));
       DISPLAY_NAME = data.display_name;
       document.getElementById('loginSubtitle').textContent = DISPLAY_NAME;
@@ -3724,21 +3723,15 @@ function checkSession() {
   } catch (e) { return false; }
 }
 
-function getSessionToken() {
-  try {
-    var s = sessionStorage.getItem('dashboard_session_' + SLUG) || sessionStorage.getItem('dashboard_session');
-    return JSON.parse(s).sessionToken || '';
-  } catch (e) { return ''; }
-}
+// Session token is now in httpOnly cookie — no JS access needed.
+// getSessionToken() returns empty string; auth is via cookie automatically.
+function getSessionToken() { return ''; }
 
 function handleSessionExpired() {
-  var token = getSessionToken();
-  if (token) {
-    fetch('/api/logout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
-    }).catch(function() {});
-  }
+  fetch('/api/logout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  }).catch(function() {});
   sessionStorage.removeItem('dashboard_session_' + SLUG);
   sessionStorage.removeItem('dashboard_session');
   window.location.reload();

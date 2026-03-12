@@ -134,9 +134,21 @@ export default async function handler(req, res) {
       response.mustChangePassword = true;
     }
 
-    // For restaurant users, generate a session token
+    const sbHeaders = {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // For restaurant users, invalidate existing sessions then create new one
     if (user.role === 'restaurant') {
       try {
+        // Invalidate all existing sessions for this user (#3 — session regeneration)
+        await fetch(
+          `${supabaseUrl}/rest/v1/restaurant_sessions?user_id=eq.${user.id}`,
+          { method: 'DELETE', headers: sbHeaders }
+        );
+
         const sessionToken = randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
@@ -144,11 +156,7 @@ export default async function handler(req, res) {
           `${supabaseUrl}/rest/v1/restaurant_sessions`,
           {
             method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-            },
+            headers: sbHeaders,
             body: JSON.stringify({
               token: sessionToken,
               user_id: user.id,
@@ -160,30 +168,33 @@ export default async function handler(req, res) {
 
         if (sessRes.ok) {
           response.sessionToken = sessionToken;
+          // Set httpOnly cookie (#1 — move token out of sessionStorage)
+          const maxAge = 24 * 60 * 60; // 24h in seconds
+          res.setHeader('Set-Cookie', `pincer_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
         } else {
           console.error('Failed to create restaurant session:', sessRes.status, await sessRes.text());
-          // Login still succeeds — session token features won't work until table is created
         }
       } catch (e) {
         console.error('Restaurant session creation error:', e.message);
       }
     }
 
-    // For admin users, generate a unique session token (not the static API key)
+    // For admin users, invalidate existing sessions then create new one
     if (user.role === 'admin') {
+      // Invalidate all existing admin sessions for this user (#3)
+      await fetch(
+        `${supabaseUrl}/rest/v1/admin_sessions?user_id=eq.${user.id}`,
+        { method: 'DELETE', headers: sbHeaders }
+      );
+
       const sessionToken = randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
-      // Store session in Supabase
       const sessRes = await fetch(
         `${supabaseUrl}/rest/v1/admin_sessions`,
         {
           method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers: sbHeaders,
           body: JSON.stringify({
             token: sessionToken,
             user_id: user.id,
@@ -198,6 +209,9 @@ export default async function handler(req, res) {
       }
 
       response.adminToken = sessionToken;
+      // Set httpOnly cookie for admin
+      const maxAge = 24 * 60 * 60;
+      res.setHeader('Set-Cookie', `pincer_admin=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
     }
 
     return res.status(200).json(response);

@@ -1,5 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { getAdminToken } from './verify-session.js';
 
 export const config = { maxDuration: 60 };
 
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   // Verify admin session token OR signup access (recently-created restaurant)
-  const isAdmin = await verifyAdmin(req.headers['x-admin-key'], supabaseUrl, supabaseKey);
+  const isAdmin = await verifyAdmin(getAdminToken(req), supabaseUrl, supabaseKey);
   const signupSlug = req.headers['x-signup-slug'] || '';
   const isSignup = !isAdmin && signupSlug ? await verifySignupAccess(signupSlug, supabaseUrl, supabaseKey) : false;
   if (!isAdmin && !isSignup) {
