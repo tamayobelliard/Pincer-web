@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
     // 3. Fetch orders for this shift
     const ordersRes = await fetch(
-      `${supabaseUrl}/rest/v1/orders?shift_id=eq.${shift_id}&select=*`,
+      `${supabaseUrl}/rest/v1/orders?shift_id=eq.${shift_id}&restaurant_slug=eq.${encodeURIComponent(slug)}&select=*`,
       { headers, signal: AbortSignal.timeout(8000) }
     );
     if (!ordersRes.ok) return res.status(500).json({ error: 'Error cargando órdenes' });

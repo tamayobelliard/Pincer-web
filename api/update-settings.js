@@ -19,29 +19,24 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Error del servidor' });
   }
 
-  // Verify restaurant session token (if provided)
+  // Verify restaurant session token — MANDATORY
   const token = getRestaurantToken(req);
-  if (token) {
-    const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
-    if (!session.valid) {
-      return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
-    }
-    // Verify ownership: session token must match the restaurant being updated
-    const { restaurant_slug: bodySlug } = req.body || {};
-    if (bodySlug && session.restaurant_slug !== bodySlug) {
-      return res.status(403).json({ success: false, error: 'No tienes acceso a este restaurante' });
-    }
+  if (!token) {
+    return res.status(401).json({ success: false, error: 'Authentication required' });
+  }
+  const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
+  if (!session.valid) {
+    return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
   }
 
   const body = req.body || {};
-  const { restaurant_slug, logo_base64 } = body;
+  const { logo_base64 } = body;
+
+  // Use slug from authenticated session — never trust client-sent slug
+  const restaurant_slug = session.restaurant_slug;
 
   console.log('update-settings: received body keys:', Object.keys(body).join(', '));
   console.log('update-settings: restaurant_slug:', restaurant_slug, '| logo_base64:', !!logo_base64);
-
-  if (!restaurant_slug) {
-    return res.status(400).json({ success: false, error: 'restaurant_slug requerido' });
-  }
 
   const sbHeaders = {
     'apikey': supabaseKey,

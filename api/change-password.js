@@ -41,27 +41,27 @@ export default async function handler(req, res) {
   };
 
   try {
+    // Session token is MANDATORY for all password changes
+    const token = getRestaurantToken(req);
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+    const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
+    if (!session.valid) {
+      return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
+    }
+
     // Two modes: forced (no currentPassword) vs voluntary (currentPassword provided)
     const isVoluntary = !!currentPassword;
 
-    // Voluntary mode: verify session token if provided
-    if (isVoluntary) {
-      const token = getRestaurantToken(req);
-      if (token) {
-        const session = await verifyRestaurantSession(token, supabaseUrl, supabaseKey);
-        if (!session.valid) {
-          return res.status(403).json({ success: false, error: 'Sesion invalida o expirada' });
-        }
-      }
-    }
-
+    // Build query — always scoped to the authenticated session's slug
     let userQuery;
     if (isVoluntary) {
-      // Voluntary: fetch by username + active, will verify currentPassword
-      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&status=eq.active&select=id,password_hash&limit=1`;
+      // Voluntary: fetch by username + active + must belong to same restaurant
+      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&status=eq.active&select=id,password_hash&limit=1`;
     } else {
-      // Forced: MUST have must_change_password = true (security gate)
-      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&must_change_password=eq.true&status=eq.active&select=id&limit=1`;
+      // Forced: MUST have must_change_password = true (security gate) + same restaurant
+      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&must_change_password=eq.true&status=eq.active&select=id&limit=1`;
     }
 
     const userRes = await fetch(userQuery, { headers: sbHeaders });
