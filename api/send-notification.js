@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   const missingEnv = requiredEnv.filter(k => !process.env[k]);
   if (missingEnv.length > 0) {
     console.error('[send-notification] Missing env vars:', missingEnv.join(', '));
-    return res.status(500).json({ error: 'Server misconfigured', missing: missingEnv });
+    return res.status(500).json({ error: 'Server misconfigured' });
   }
 
   // Verify webhook secret (allow 'test-from-dashboard' for manual test pushes)
@@ -216,6 +216,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('send-notification error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

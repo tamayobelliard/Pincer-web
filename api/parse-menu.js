@@ -124,11 +124,12 @@ export default async function handler(req, res) {
           signal: AbortSignal.timeout(15000),
         });
         if (!urlRes.ok) {
-          return res.status(502).json({ error: 'Failed to fetch URL', details: 'HTTP ' + urlRes.status });
+          return res.status(502).json({ error: 'Failed to fetch URL' });
         }
         htmlText = await urlRes.text();
       } catch (fetchErr) {
-        return res.status(502).json({ error: 'Failed to fetch URL', details: fetchErr.message });
+        console.error('[parse-menu] URL fetch error:', fetchErr.message);
+        return res.status(502).json({ error: 'Failed to fetch URL' });
       }
 
       if (htmlText.length > 100000) {
@@ -143,12 +144,14 @@ export default async function handler(req, res) {
       try {
         claudeRes = await callClaude(apiKey, null, urlPrompt);
       } catch (err) {
-        return res.status(502).json({ error: 'Claude API request failed', details: err.message });
+        console.error('[parse-menu] Claude API request failed:', err.message);
+        return res.status(502).json({ error: 'Claude API request failed' });
       }
 
       if (!claudeRes.ok) {
         const errData = await claudeRes.json().catch(() => ({}));
-        return res.status(502).json({ error: 'Claude API error', details: errData.error?.message || 'Unknown' });
+        console.error('[parse-menu] Claude API error:', JSON.stringify(errData));
+        return res.status(502).json({ error: 'Failed to process menu with AI' });
       }
 
       const claudeData = await claudeRes.json();
@@ -211,7 +214,8 @@ export default async function handler(req, res) {
 
       if (!insertRes.ok) {
         const errText = await insertRes.text();
-        return res.status(500).json({ error: 'Failed to save menu items', details: errText });
+        console.error('[parse-menu] Failed to save menu items:', errText);
+        return res.status(500).json({ error: 'Failed to save menu items' });
       }
 
       const inserted = await insertRes.json();
@@ -279,7 +283,7 @@ export default async function handler(req, res) {
       ]);
     } catch (claudeErr) {
       console.error('[parse-menu] Claude API fetch error:', claudeErr.message);
-      return res.status(502).json({ error: 'Claude API request failed', details: claudeErr.message });
+      return res.status(502).json({ error: 'Claude API request failed' });
     }
 
     console.log(`[parse-menu] Claude items response status: ${itemsRes.status}`);
@@ -295,12 +299,12 @@ export default async function handler(req, res) {
       ]);
     } catch (jsonErr) {
       console.error('[parse-menu] Claude response JSON parse error:', jsonErr.message);
-      return res.status(502).json({ error: 'Invalid response from Claude API', details: jsonErr.message });
+      return res.status(502).json({ error: 'Invalid response from Claude API' });
     }
 
     if (!itemsRes.ok) {
       console.error('[parse-menu] Claude items API error:', JSON.stringify(itemsData));
-      return res.status(502).json({ error: 'Failed to process image with AI', details: itemsData.error?.message || JSON.stringify(itemsData) });
+      return res.status(502).json({ error: 'Failed to process image with AI' });
     }
 
     // ── Step 4: Extract items from Claude text ──
@@ -407,13 +411,14 @@ export default async function handler(req, res) {
       });
     } catch (fetchErr) {
       console.error('[parse-menu] Supabase products upsert fetch error:', fetchErr.message);
-      return res.status(500).json({ error: 'Supabase request failed', details: fetchErr.message });
+      return res.status(500).json({ error: 'Supabase request failed' });
     }
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
       console.error(`[parse-menu] Supabase upsert failed (${insertRes.status}):`, errText);
-      return res.status(500).json({ error: 'Failed to save menu items', details: errText });
+      console.error('[parse-menu] Failed to save menu items (upsert):', errText);
+      return res.status(500).json({ error: 'Failed to save menu items' });
     }
 
     const inserted = await insertRes.json();
@@ -446,6 +451,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[parse-menu] UNCAUGHT ERROR:', error.message, error.stack);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

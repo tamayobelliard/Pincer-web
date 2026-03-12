@@ -669,7 +669,16 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   }
 });
 
-function logout() {
+async function logout() {
+  const session = getSession();
+  if (session?.adminToken) {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': session.adminToken },
+      });
+    } catch (e) { /* proceed with client-side logout regardless */ }
+  }
   sessionStorage.removeItem('dashboard_session');
   location.reload();
 }

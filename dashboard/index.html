@@ -3732,6 +3732,13 @@ function getSessionToken() {
 }
 
 function handleSessionExpired() {
+  var token = getSessionToken();
+  if (token) {
+    fetch('/api/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
+    }).catch(function() {});
+  }
   sessionStorage.removeItem('dashboard_session_' + SLUG);
   sessionStorage.removeItem('dashboard_session');
   window.location.reload();

@@ -50,11 +50,68 @@ export default async function handler(req, res) {
 
     const user = users[0];
 
+    // Check account lockout
+    if (user.locked_until) {
+      const lockedUntil = new Date(user.locked_until);
+      if (lockedUntil > new Date()) {
+        return res.status(429).json({ success: false, error: 'Cuenta bloqueada. Intenta en 15 minutos.' });
+      }
+      // Lock expired — reset counter
+      await fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${user.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ failed_login_attempts: 0, locked_until: null }),
+        }
+      );
+    }
+
     // Verify password
     const valid = await bcrypt.compare(password, user.password_hash);
 
     if (!valid) {
+      const attempts = (user.failed_login_attempts || 0) + 1;
+      const update = { failed_login_attempts: attempts };
+      if (attempts >= 5) {
+        update.locked_until = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      }
+      await fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${user.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(update),
+        }
+      );
+      if (attempts >= 5) {
+        return res.status(429).json({ success: false, error: 'Cuenta bloqueada. Intenta en 15 minutos.' });
+      }
       return res.status(401).json({ success: false, error: 'Usuario o contraseña incorrectos' });
+    }
+
+    // Reset failed attempts on successful login
+    if (user.failed_login_attempts > 0) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${user.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ failed_login_attempts: 0, locked_until: null }),
+        }
+      );
     }
 
     // Block login if email is not verified (skip for admin users)

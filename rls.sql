@@ -302,3 +302,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shift_id bigint;
 -- ──────────────────────────────────────────────────────────────
 -- DELETE FROM restaurant_sessions WHERE expires_at < now();
 -- DELETE FROM admin_sessions WHERE expires_at < now();
+
+
+-- ──────────────────────────────────────────────────────────────
+-- Account lockout columns for brute-force protection
+-- ──────────────────────────────────────────────────────────────
+ALTER TABLE restaurant_users ADD COLUMN IF NOT EXISTS failed_login_attempts int NOT NULL DEFAULT 0;
+ALTER TABLE restaurant_users ADD COLUMN IF NOT EXISTS locked_until timestamptz;

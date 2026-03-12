@@ -159,7 +159,7 @@ async function handleCallback(req, res) {
 
     patchSession(supabaseUrl, supabaseKey, sessionId, {
       status: 'error',
-      final_response: { error: error.message },
+      final_response: { error: 'Payment processing error' },
     });
 
     const safeSession = escJs(sessionId);
@@ -262,7 +262,7 @@ async function handleContinue(req, res) {
 
   } catch (error) {
     console.error('3ds continue error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 

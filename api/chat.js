@@ -390,6 +390,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('[chat] Server error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
