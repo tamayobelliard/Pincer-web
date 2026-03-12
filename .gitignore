@@ -3,8 +3,8 @@ pincer-azul.key
 *.csr
 *.pem
 .env
-.env.*
 .env.local
+!.env.example
 certs/
 .vercel
 .env*.local

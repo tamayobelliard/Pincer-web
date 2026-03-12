@@ -5,6 +5,8 @@ import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { getAdminToken } from './verify-session.js';
 import { sanitizeRestaurant } from './sanitize.js';
+import { stripExif } from './strip-exif.js';
+import { checkEnvSafety } from './env-check.js';
 
 async function sendEmail(to, subject, html, attachments = []) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -142,7 +144,8 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
         const match = logo_base64.match(/^data:(image\/\w+);base64,(.+)$/);
         if (match) {
           const contentType = match[1];
-          const buffer = Buffer.from(match[2], 'base64');
+          const rawBuffer = Buffer.from(match[2], 'base64');
+          const buffer = stripExif(rawBuffer);
           const storagePath = `logos/${username}.jpg`;
           const uploadRes = await fetch(
             `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
@@ -311,7 +314,8 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
         const slug = slugRows.length > 0 ? slugRows[0].restaurant_slug : id;
 
         const contentType = match[1];
-        const buffer = Buffer.from(match[2], 'base64');
+        const rawBuffer = Buffer.from(match[2], 'base64');
+        const buffer = stripExif(rawBuffer);
         const storagePath = `logos/${slug}.jpg`;
         const uploadRes = await fetch(
           `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
@@ -488,6 +492,7 @@ async function handleDelete(req, res, supabaseUrl, supabaseKey) {
 // ROUTER
 // ══════════════════════════════════════════════════════════════
 export default async function handler(req, res) {
+  checkEnvSafety();
   if (handleCors(req, res, { methods: 'GET, POST, PATCH, DELETE, OPTIONS', headers: 'Content-Type, x-admin-key' })) return;
 
   if (requireJson(req, res)) return;

@@ -4,6 +4,8 @@ import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { sendEmail } from './send-email.js';
 import { handleCors, requireJson } from './cors.js';
+import { stripExif } from './strip-exif.js';
+import { checkEnvSafety } from './env-check.js';
 
 export const config = { maxDuration: 60 };
 
@@ -224,6 +226,7 @@ async function extractMenuFromImages(restaurant_slug, menu_files) {
 }
 
 export default async function handler(req, res) {
+  checkEnvSafety();
   if (handleCors(req, res, { methods: 'POST, PATCH, OPTIONS' })) return;
 
   if (requireJson(req, res)) return;
@@ -253,10 +256,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Invalid logo format' });
         }
         const contentType = match[1];
-        const buffer = Buffer.from(match[2], 'base64');
+        const rawBuffer = Buffer.from(match[2], 'base64');
+        const buffer = stripExif(rawBuffer);
         const storagePath = `logos/${restaurant_slug}.jpg`;
 
-        console.log('PATCH: uploading logo to Storage, size:', buffer.length);
+        console.log('PATCH: uploading logo to Storage, size:', buffer.length, '(stripped EXIF)');
         const uploadRes = await fetch(
           `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
           {

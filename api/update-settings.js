@@ -1,6 +1,7 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
+import { stripExif } from './strip-exif.js';
 
 export const config = { maxDuration: 30 };
 
@@ -72,10 +73,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ success: false, error: 'Formato de logo invalido' });
         }
         const contentType = match[1];
-        const buffer = Buffer.from(match[2], 'base64');
+        const rawBuffer = Buffer.from(match[2], 'base64');
+        const buffer = stripExif(rawBuffer);
         const storagePath = `logos/${restaurant_slug}.jpg`;
 
-        console.log('update-settings: uploading logo to Storage, size:', buffer.length);
+        console.log('update-settings: uploading logo to Storage, size:', buffer.length, '(stripped EXIF)');
         const uploadRes = await fetch(
           `${supabaseUrl}/storage/v1/object/product-images/${storagePath}`,
           {

@@ -3,8 +3,10 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { handleCors, requireJson } from './cors.js';
+import { checkEnvSafety } from './env-check.js';
 
 export default async function handler(req, res) {
+  checkEnvSafety();
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (requireJson(req, res)) return;
