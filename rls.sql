@@ -327,3 +327,41 @@ ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
 
 -- Cleanup: delete entries older than 5 minutes (run via cron)
 -- DELETE FROM rate_limits WHERE created_at < now() - interval '5 minutes';
+
+
+-- ──────────────────────────────────────────────────────────────
+-- Session token hashing migration
+-- Rename 'token' column to 'token_hash' and re-index
+-- ──────────────────────────────────────────────────────────────
+
+-- Restaurant sessions: rename token → token_hash
+ALTER TABLE restaurant_sessions RENAME COLUMN token TO token_hash;
+DROP INDEX IF EXISTS idx_restaurant_sessions_token;
+CREATE INDEX IF NOT EXISTS idx_restaurant_sessions_token_hash ON restaurant_sessions(token_hash);
+
+-- Admin sessions: rename token → token_hash
+ALTER TABLE admin_sessions RENAME COLUMN token TO token_hash;
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_token_hash ON admin_sessions(token_hash);
+
+
+-- ──────────────────────────────────────────────────────────────
+-- Payment audit / fraud detection table
+-- ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS payment_audit (
+  id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ip              text NOT NULL,
+  card_last4      text,
+  card_bin        text,
+  restaurant_slug text,
+  amount          integer DEFAULT 0,
+  success         boolean NOT NULL DEFAULT false,
+  reason          text,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_audit_ip_created ON payment_audit(ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_payment_audit_bin_created ON payment_audit(card_bin, created_at);
+
+ALTER TABLE payment_audit ENABLE ROW LEVEL SECURITY;
+-- No anon policies = service role only

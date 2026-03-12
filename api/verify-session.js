@@ -1,3 +1,13 @@
+import { createHash } from 'crypto';
+
+/**
+ * Hash a session token with SHA-256 for safe storage in the database.
+ * The raw token only travels in cookies/headers — the DB never stores it.
+ */
+export function hashToken(token) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
 /**
  * Parse a specific cookie value from the Cookie header.
  * @param {string} cookieHeader - Raw Cookie header string
@@ -38,8 +48,9 @@ export function getAdminToken(req) {
 export async function verifyRestaurantSession(token, supabaseUrl, supabaseKey) {
   if (!token) return { valid: false, restaurant_slug: null, user_id: null };
   try {
+    const tokenHash = hashToken(token);
     const r = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${new Date().toISOString()}&select=user_id,restaurant_slug`,
+      `${supabaseUrl}/rest/v1/restaurant_sessions?token_hash=eq.${encodeURIComponent(tokenHash)}&expires_at=gt.${new Date().toISOString()}&select=user_id,restaurant_slug`,
       {
         headers: {
           'apikey': supabaseKey,

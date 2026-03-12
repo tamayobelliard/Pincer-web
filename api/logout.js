@@ -1,5 +1,5 @@
 import { handleCors, requireJson } from './cors.js';
-import { getRestaurantToken, getAdminToken } from './verify-session.js';
+import { getRestaurantToken, getAdminToken, hashToken } from './verify-session.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     // Invalidate restaurant session
     if (restaurantToken) {
       const delRes = await fetch(
-        `${supabaseUrl}/rest/v1/restaurant_sessions?token=eq.${encodeURIComponent(restaurantToken)}`,
+        `${supabaseUrl}/rest/v1/restaurant_sessions?token_hash=eq.${encodeURIComponent(hashToken(restaurantToken))}`,
         {
           method: 'DELETE',
           headers: {
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     // Invalidate admin session
     if (adminToken) {
       const delRes = await fetch(
-        `${supabaseUrl}/rest/v1/admin_sessions?token=eq.${encodeURIComponent(adminToken)}`,
+        `${supabaseUrl}/rest/v1/admin_sessions?token_hash=eq.${encodeURIComponent(hashToken(adminToken))}`,
         {
           method: 'DELETE',
           headers: {

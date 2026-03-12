@@ -4,6 +4,7 @@ import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { handleCors, requireJson } from './cors.js';
 import { checkEnvSafety } from './env-check.js';
+import { hashToken } from './verify-session.js';
 
 export default async function handler(req, res) {
   checkEnvSafety();
@@ -152,6 +153,7 @@ export default async function handler(req, res) {
         );
 
         const sessionToken = randomBytes(32).toString('hex');
+        const tokenHash = hashToken(sessionToken);
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
         const sessRes = await fetch(
@@ -160,7 +162,7 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: sbHeaders,
             body: JSON.stringify({
-              token: sessionToken,
+              token_hash: tokenHash,
               user_id: user.id,
               restaurant_slug: user.restaurant_slug,
               expires_at: expiresAt,
@@ -190,6 +192,7 @@ export default async function handler(req, res) {
       );
 
       const sessionToken = randomBytes(32).toString('hex');
+      const tokenHash = hashToken(sessionToken);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
 
       const sessRes = await fetch(
@@ -198,7 +201,7 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: sbHeaders,
           body: JSON.stringify({
-            token: sessionToken,
+            token_hash: tokenHash,
             user_id: user.id,
             expires_at: expiresAt,
           }),

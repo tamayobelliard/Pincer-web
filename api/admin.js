@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { generateQRPdf } from './generate-qr-pdf.js';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
-import { getAdminToken } from './verify-session.js';
+import { getAdminToken, hashToken } from './verify-session.js';
 import { sanitizeRestaurant } from './sanitize.js';
 import { stripExif } from './strip-exif.js';
 import { checkEnvSafety } from './env-check.js';
@@ -29,8 +29,9 @@ async function sendEmail(to, subject, html, attachments = []) {
 async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   if (!token) return false;
   try {
+    const tokenH = hashToken(token);
     const r = await fetch(
-      `${supabaseUrl}/rest/v1/admin_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${new Date().toISOString()}&select=user_id`,
+      `${supabaseUrl}/rest/v1/admin_sessions?token_hash=eq.${encodeURIComponent(tokenH)}&expires_at=gt.${new Date().toISOString()}&select=user_id`,
       {
         headers: {
           'apikey': supabaseKey,

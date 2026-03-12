@@ -49,7 +49,20 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('[cleanup] rate_limits + expired sessions cleaned');
+    // Delete payment_audit entries older than 7 days
+    const auditCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    await fetch(
+      `${supabaseUrl}/rest/v1/payment_audit?created_at=lt.${auditCutoff}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    console.log('[cleanup] rate_limits + expired sessions + old audit logs cleaned');
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error('[cleanup] Error:', error);

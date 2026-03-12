@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { checkFraud, logPaymentAttempt } from './fraud-check.js';
 
 // Cache SSL agent at module level (reused across warm invocations)
 let cachedAgent = null;
@@ -201,6 +202,19 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Fraud detection ──
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || '0.0.0.0';
+    const cleanCard = cardNumber.replace(/\s/g, '');
+    const cardBin = cleanCard.substring(0, 6);
+    const cardLast4 = cleanCard.slice(-4);
+
+    const fraudResult = await checkFraud({ ip: clientIp, cardNumber: cleanCard });
+    if (!fraudResult.allowed && !fraudResult.suspicious) {
+      // Hard block (too many failed attempts)
+      await logPaymentAttempt({ ip: clientIp, cardLast4, cardBin, restaurantSlug, amount, success: false, reason: fraudResult.reason });
+      return res.status(429).json({ error: 'Demasiados intentos fallidos. Intenta mas tarde.' });
+    }
+
     // Generate unique session ID for 3DS tracking
     const sessionId = crypto.randomUUID();
 
@@ -282,10 +296,18 @@ export default async function handler(req, res) {
 
     // CASE 1: Direct approval (frictionless)
     if (result.IsoCode === '00') {
+      const isSuspicious = fraudResult.suspicious === true;
       supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
-        status: 'approved',
+        status: isSuspicious ? 'suspicious' : 'approved',
         final_response: result,
       });
+      logPaymentAttempt({ ip: clientIp, cardLast4, cardBin, restaurantSlug, amount, success: true, reason: isSuspicious ? fraudResult.reason : null });
+
+      if (isSuspicious) {
+        // Flag for manual review — still return success to customer but mark in DB
+        console.warn(`[fraud] Order approved but flagged as suspicious: session=${sessionId} ip=${clientIp} reason=${fraudResult.reason}`);
+      }
+
       return res.status(200).json({
         success: true,
         approved: true,
@@ -336,6 +358,13 @@ export default async function handler(req, res) {
     supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
       status,
       final_response: result,
+    });
+
+    // Log failed payment for fraud tracking
+    logPaymentAttempt({
+      ip: clientIp, cardLast4, cardBin, restaurantSlug, amount,
+      success: false,
+      reason: result.ResponseMessage || result.ErrorDescription || status,
     });
 
     if (result.ResponseCode === 'Error') {
