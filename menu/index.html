@@ -4446,9 +4446,9 @@ async function processPayment() {
       return;
     }
 
-    // Convert expiry MM/AA to MMYY (Azul expected format)
+    // Convert expiry MM/AA to YYYYMM (Azul expected format)
     const parts = expiry.split('/');
-    const expirationFormatted = parts[0] + parts[1];
+    const expirationFormatted = '20' + parts[1] + parts[0];
 
     // Amount in cents (no decimals)
     const total = order.reduce((s, i) => s + i.price * i.qty, 0) + getDeliveryFee();
