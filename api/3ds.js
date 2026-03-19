@@ -260,7 +260,22 @@ async function handleContinue(req, res) {
       });
     }
 
-    // CASE 2: Challenge required
+    // CASE 2: 3DS Method required (second round)
+    if (result.ResponseMessage === '3D_SECURE_2_METHOD') {
+      patchSession(supabaseUrl, supabaseKey, sessionId, {
+        status: '3ds_method',
+        azul_order_id: result.AzulOrderId,
+      });
+      return res.status(200).json({
+        approved: false,
+        threeDSMethod: true,
+        sessionId,
+        azulOrderId: result.AzulOrderId || azulOrderId,
+        methodForm: result.ThreeDSMethod?.MethodForm || '',
+      });
+    }
+
+    // CASE 3: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
       patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
 
