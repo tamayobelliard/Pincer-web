@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restablecer contrasena — Pincer</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/FaOdU4D.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #E8191A;
+      --primary-dark: #C41415;
+      --text-main: #0F172A;
+      --text-secondary: #64748B;
+      --border: #E2E8F0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      min-height: 100vh;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 40px;
+      text-decoration: none;
+    }
+    .logo img { height: 40px; }
+    .logo span { font-size: 1.6em; font-weight: 800; color: var(--text-main); }
+
+    .card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 36px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }
+
+    .card h1 {
+      font-size: 1.4em;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .card .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9em;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .error-box {
+      display: none;
+      background: #FEF2F2;
+      color: #991B1B;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.88em;
+      border: 1px solid #FECACA;
+    }
+
+    .success-box {
+      display: none;
+      background: #F0FDF4;
+      color: #166534;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.88em;
+      border: 1px solid #BBF7D0;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 0.85em;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95em;
+      transition: border-color 0.2s;
+      outline: none;
+      font-family: inherit;
+      background: #F9FAFB;
+      color: var(--text-main);
+    }
+    .form-group input:focus {
+      border-color: var(--primary);
+      background: #FFFFFF;
+    }
+    .form-group input::placeholder { color: #CBD5E1; }
+
+    .password-rules {
+      font-size: 0.8em;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    .btn-login:hover { background: var(--primary-dark); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: var(--text-secondary);
+      font-size: 0.88em;
+    }
+    .back-link a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .back-link a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+  <a class="logo" href="/">
+    <img src="https://i.imgur.com/t72wYFc.png" alt="Pincer">
+    <span>Pincer</span>
+  </a>
+
+  <div class="card">
+    <!-- Step 1: Request reset email -->
+    <div id="stepRequest">
+      <h1>Restablecer contrasena</h1>
+      <p class="subtitle">Ingresa el email asociado a tu cuenta y te enviaremos un enlace para restablecer tu contrasena.</p>
+
+      <div class="error-box" id="requestError"></div>
+      <div class="success-box" id="requestSuccess"></div>
+
+      <form id="requestForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="tu@email.com" autocomplete="email">
+        </div>
+
+        <button type="submit" class="btn-login" id="requestBtn">Enviar enlace</button>
+      </form>
+    </div>
+
+    <!-- Step 2: Set new password (shown when ?token= is present) -->
+    <div id="stepReset" style="display: none;">
+      <h1>Nueva contrasena</h1>
+      <p class="subtitle">Ingresa tu nueva contrasena.</p>
+
+      <div class="error-box" id="resetError"></div>
+      <div class="success-box" id="resetSuccess"></div>
+
+      <form id="resetForm">
+        <div class="form-group">
+          <label for="newPassword">Nueva contrasena</label>
+          <input type="password" id="newPassword" required placeholder="••••••••" autocomplete="new-password">
+          <p class="password-rules">Minimo 8 caracteres, 1 mayuscula y 1 numero.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirmar contrasena</label>
+          <input type="password" id="confirmPassword" required placeholder="••••••••" autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn-login" id="resetBtn">Restablecer contrasena</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="back-link"><a href="/login">Volver al login</a></p>
+</div>
+
+<script>
+var params = new URLSearchParams(window.location.search);
+var resetToken = params.get('token');
+
+// If token is present, show reset form; otherwise show request form
+if (resetToken) {
+  document.getElementById('stepRequest').style.display = 'none';
+  document.getElementById('stepReset').style.display = 'block';
+}
+
+// Step 1: Request reset email
+document.getElementById('requestForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var email = document.getElementById('email').value.trim();
+  var btn = document.getElementById('requestBtn');
+  var errorBox = document.getElementById('requestError');
+  var successBox = document.getElementById('requestSuccess');
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  errorBox.style.display = 'none';
+  successBox.style.display = 'none';
+
+  try {
+    var res = await fetch('/api/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email }),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      successBox.textContent = data.message;
+      successBox.style.display = 'block';
+      document.getElementById('requestForm').style.display = 'none';
+    } else {
+      errorBox.textContent = data.error || 'Error al enviar. Intenta de nuevo.';
+      errorBox.style.display = 'block';
+    }
+  } catch (err) {
+    errorBox.textContent = 'Error al conectar. Intenta de nuevo.';
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar enlace';
+  }
+});
+
+// Step 2: Reset password with token
+document.getElementById('resetForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var newPassword = document.getElementById('newPassword').value;
+  var confirmPassword = document.getElementById('confirmPassword').value;
+  var btn = document.getElementById('resetBtn');
+  var errorBox = document.getElementById('resetError');
+  var successBox = document.getElementById('resetSuccess');
+
+  errorBox.style.display = 'none';
+  successBox.style.display = 'none';
+
+  if (newPassword !== confirmPassword) {
+    errorBox.textContent = 'Las contrasenas no coinciden.';
+    errorBox.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Actualizando...';
+
+  try {
+    var res = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, newPassword: newPassword }),
+    });
+    var data = await res.json();
+
+    if (data.success) {
+      successBox.textContent = data.message;
+      successBox.style.display = 'block';
+      document.getElementById('resetForm').style.display = 'none';
+      // Redirect to login after 3 seconds
+      setTimeout(function() {
+        window.location.href = '/login?password_changed=1';
+      }, 3000);
+    } else {
+      errorBox.textContent = data.error || 'Error al restablecer. Intenta de nuevo.';
+      errorBox.style.display = 'block';
+    }
+  } catch (err) {
+    errorBox.textContent = 'Error al conectar. Intenta de nuevo.';
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Restablecer contrasena';
+  }
+});
+</script>
+</body>
+</html>
