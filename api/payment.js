@@ -259,6 +259,23 @@ export default async function handler(req, res) {
       SaveToDataVault: "0",
       AltMerchantName: "",
       ForceNo3DS: "0",
+      ThreeDSAuth: {
+        TermUrl: `${baseUrl}/api/3ds?action=callback&session=${sessionId}`,
+        MethodNotificationUrl: `${baseUrl}/api/3ds?action=method-notify&session=${sessionId}`,
+        RequestorChallengeIndicator: "01",
+      },
+      BrowserInfo: {
+        AcceptHeader: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        IPAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || '0.0.0.0',
+        Language: browserInfo?.language || 'es-DO',
+        ColorDepth: String(browserInfo?.colorDepth || 24),
+        ScreenHeight: String(browserInfo?.screenHeight || 920),
+        ScreenWidth: String(browserInfo?.screenWidth || 412),
+        TimeZone: String(browserInfo?.timeZoneOffset || 240),
+        UserAgent: req.headers['user-agent'] || '',
+        JavaEnabled: "false",
+        JavaScriptEnabled: "true",
+      },
     };
 
     const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
