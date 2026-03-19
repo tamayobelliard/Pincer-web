@@ -230,7 +230,7 @@ export default async function handler(req, res) {
     // Base URL for callbacks
     const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
 
-    // Build Azul request with 3DS
+    // Build Azul request (schema per Azul production documentation)
     const azulRequest = {
       Channel: "EC",
       Store: merchantId || process.env.AZUL_MERCHANT_ID,
@@ -244,37 +244,21 @@ export default async function handler(req, res) {
       CurrencyPosCode: "$",
       Payments: "1",
       Plan: "0",
+      OriginalDate: "",
+      OriginalTrxTicketNr: "",
+      AuthorizationCode: "",
+      ResponseCode: "",
       AcquirerRefData: "1",
       RRN: null,
+      AzulOrderId: null,
       CustomerServicePhone: "",
       OrderNumber: "",
       ECommerceUrl: baseUrl,
       CustomOrderId: customOrderId || "",
       DataVaultToken: "",
       SaveToDataVault: "0",
-      ForceNo3DS: "",
       AltMerchantName: "",
-      CardHolderInfo: {
-        Name: customerName || "",
-        PhoneMobile: customerPhone || "",
-      },
-      ThreeDSAuth: {
-        TermUrl: `${baseUrl}/api/3ds?action=callback&session=${sessionId}`,
-        MethodNotificationUrl: `${baseUrl}/api/3ds?action=method-notify&session=${sessionId}`,
-        RequestorChallengeIndicator: "01",
-      },
-      BrowserInfo: {
-        AcceptHeader: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        IPAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || '0.0.0.0',
-        Language: browserInfo?.language || 'es-DO',
-        ColorDepth: String(browserInfo?.colorDepth || 24),
-        ScreenHeight: String(browserInfo?.screenHeight || 920),
-        ScreenWidth: String(browserInfo?.screenWidth || 412),
-        TimeZone: String(browserInfo?.timeZoneOffset || 240),
-        UserAgent: req.headers['user-agent'] || '',
-        JavaEnabled: "false",
-        JavaScriptEnabled: "true",
-      },
+      ForceNo3DS: "0",
     };
 
     const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
