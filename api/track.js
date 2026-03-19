@@ -17,29 +17,33 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Respond immediately — save async
-  res.status(200).json({ ok: true });
-
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseKey) return;
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(200).json({ ok: true });
+  }
 
-  fetch(`${supabaseUrl}/rest/v1/page_events`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
-      'Prefer': 'return=minimal',
-    },
-    body: JSON.stringify({
-      session_id,
-      restaurant_slug,
-      event_type,
-      event_data: event_data || {},
-      browser_language: browser_language || null,
-      device_type: device_type || null,
-    }),
-    signal: AbortSignal.timeout(5000),
-  }).catch(e => console.error('page_events save error:', e.message));
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/page_events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        session_id,
+        restaurant_slug,
+        event_type,
+        event_data: event_data || {},
+        browser_language: browser_language || null,
+        device_type: device_type || null,
+      }),
+    });
+  } catch (e) {
+    console.error('page_events save error:', e.message);
+  }
+
+  return res.status(200).json({ ok: true });
 }
