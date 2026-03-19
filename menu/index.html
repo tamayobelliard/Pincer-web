@@ -2904,13 +2904,13 @@ var restaurantInsights = null;
 async function loadRestaurantInsights() {
   try {
     const res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=summary_text&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=ai_insights&order=week_start.desc&limit=1',
       { headers: sbHeaders() }, 5000
     );
     if (!res.ok) return;
     const rows = await res.json();
-    if (rows.length > 0 && rows[0].summary_text) {
-      restaurantInsights = rows[0].summary_text;
+    if (rows.length > 0 && rows[0].ai_insights?.hero_insight) {
+      restaurantInsights = rows[0].ai_insights.hero_insight;
     }
   } catch (e) { /* insights not critical */ }
 }
