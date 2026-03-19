@@ -110,8 +110,8 @@ export default async function handler(req, res) {
     if (!cardNumber || typeof cardNumber !== 'string' || !/^\d{13,19}$/.test(cardNumber.replace(/\s/g, ''))) {
       return res.status(400).json({ error: 'cardNumber debe ser un numero de tarjeta valido (13-19 digitos)' });
     }
-    if (!expiration || typeof expiration !== 'string' || !/^\d{2}\/?\d{2}$/.test(expiration.replace(/\s/g, ''))) {
-      return res.status(400).json({ error: 'expiration debe tener formato MM/YY' });
+    if (!expiration || typeof expiration !== 'string' || !/^\d{6}$/.test(expiration.replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'expiration debe tener formato YYYYMM' });
     }
     if (!cvc || typeof cvc !== 'string' || !/^\d{3,4}$/.test(cvc)) {
       return res.status(400).json({ error: 'cvc debe ser 3 o 4 digitos' });
