@@ -91,21 +91,21 @@ export default async function handler(req, res) {
     // Send email
     await sendEmail(
       user.email,
-      'Restablecer contrasena — Pincer',
+      'Restablecer contraseña — Pincer',
       `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
         <div style="text-align: center; margin-bottom: 32px;">
           <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="height: 36px;" />
         </div>
-        <h2 style="color: #0F172A; font-size: 1.3em; margin-bottom: 8px;">Restablecer contrasena</h2>
+        <h2 style="color: #0F172A; font-size: 1.3em; margin-bottom: 8px;">Restablecer contraseña</h2>
         <p style="color: #64748B; font-size: 0.95em; line-height: 1.6;">
           Hola${user.display_name ? ` ${user.display_name}` : ''},<br><br>
-          Recibimos una solicitud para restablecer la contrasena de tu cuenta en Pincer.
-          Haz clic en el boton para crear una nueva contrasena:
+          Recibimos una solicitud para restablecer la contraseña de tu cuenta en Pincer.
+          Haz clic en el botón para crear una nueva contraseña:
         </p>
         <div style="text-align: center; margin: 28px 0;">
           <a href="${resetLink}" style="background: #E8191A; color: #FFFFFF; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.95em; display: inline-block;">
-            Restablecer contrasena
+            Restablecer contraseña
           </a>
         </div>
         <p style="color: #94A3B8; font-size: 0.85em; line-height: 1.5;">
