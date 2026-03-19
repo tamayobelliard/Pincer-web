@@ -11,7 +11,7 @@ let cachedAgent = null;
 function getSSLAgent() {
   if (cachedAgent) return cachedAgent;
   const cert = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-chain.pem'));
-  const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key.pem'));
+  const key = fs.readFileSync(path.join(process.cwd(), 'certs', 'azul-key-prod.pem'));
   cachedAgent = new https.Agent({ cert, key, rejectUnauthorized: true, keepAlive: true });
   return cachedAgent;
 }
