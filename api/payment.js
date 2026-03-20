@@ -264,7 +264,7 @@ export default async function handler(req, res) {
       DataVaultToken: "",
       SaveToDataVault: "0",
       AltMerchantName: "",
-      ForceNo3DS: "0",
+      ForceNo3DS: "1",
       ThreeDSAuth: {
         TermUrl: `${baseUrl}/api/3ds?action=callback&session=${sessionId}`,
         MethodNotificationUrl: `${baseUrl}/api/3ds?action=method-notify&session=${sessionId}`,
