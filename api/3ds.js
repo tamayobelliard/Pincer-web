@@ -195,26 +195,13 @@ async function handleContinue(req, res) {
     const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
     const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
-    const [agent, sessRows] = await Promise.all([
-      Promise.resolve(getSSLAgent()),
-      fetch(
-        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          signal: AbortSignal.timeout(3000),
-        }
-      ).then(r => r.json()).catch(() => []),
-    ]);
-    const methodReceived = sessRows[0]?.method_notification_received === true;
+    const agent = getSSLAgent();
 
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
       AzulOrderId: azulOrderId,
-      MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
+      MethodNotificationStatus: "RECEIVED",
     };
 
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
