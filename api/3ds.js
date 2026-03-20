@@ -159,7 +159,7 @@ async function handleCallback(req, res) {
 
     patchSession(supabaseUrl, supabaseKey, sessionId, {
       status: 'error',
-      final_response: { error: 'Payment processing error' },
+      final_response: { error: error.message },
     });
 
     const safeSession = escJs(sessionId);
@@ -195,13 +195,26 @@ async function handleContinue(req, res) {
     const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
     const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
-    const agent = getSSLAgent();
+    const [agent, sessRows] = await Promise.all([
+      Promise.resolve(getSSLAgent()),
+      fetch(
+        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          signal: AbortSignal.timeout(3000),
+        }
+      ).then(r => r.json()).catch(() => []),
+    ]);
+    const methodReceived = sessRows[0]?.method_notification_received === true;
 
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
       AzulOrderId: azulOrderId,
-      MethodNotificationStatus: "RECEIVED",
+      MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };
 
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
@@ -221,22 +234,7 @@ async function handleContinue(req, res) {
       });
     }
 
-    // CASE 2: 3DS Method required (second round)
-    if (result.ResponseMessage === '3D_SECURE_2_METHOD') {
-      patchSession(supabaseUrl, supabaseKey, sessionId, {
-        status: '3ds_method',
-        azul_order_id: result.AzulOrderId,
-      });
-      return res.status(200).json({
-        approved: false,
-        threeDSMethod: true,
-        sessionId,
-        azulOrderId: result.AzulOrderId || azulOrderId,
-        methodForm: result.ThreeDSMethod?.MethodForm || '',
-      });
-    }
-
-    // CASE 3: Challenge required
+    // CASE 2: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
       patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
 
@@ -264,7 +262,7 @@ async function handleContinue(req, res) {
 
   } catch (error) {
     console.error('3ds continue error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error.message });
   }
 }
 
