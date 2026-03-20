@@ -182,7 +182,7 @@ async function handleCallback(req, res) {
 async function handleContinue(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionId, azulOrderId, cardNumber, expiration, cvc, amount, customOrderId } = req.body;
+  const { sessionId, azulOrderId } = req.body;
 
   if (!sessionId || !azulOrderId) {
     return res.status(400).json({ error: 'Missing sessionId or azulOrderId' });
@@ -210,36 +210,10 @@ async function handleContinue(req, res) {
     ]);
     const methodReceived = sessRows[0]?.method_notification_received === true;
 
-    const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
-
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
-      CardNumber: cardNumber || "",
-      Expiration: expiration || "",
-      CVC: cvc || "",
-      PosInputMode: "E-Commerce",
-      TrxType: "Sale",
-      Amount: String(amount || "0"),
-      Itbis: "000",
-      CurrencyPosCode: "$",
-      Payments: "1",
-      Plan: "0",
-      OriginalDate: "",
-      OriginalTrxTicketNr: "",
-      AuthorizationCode: "",
-      ResponseCode: "",
-      AcquirerRefData: "1",
-      RRN: null,
       AzulOrderId: azulOrderId,
-      CustomerServicePhone: "",
-      OrderNumber: "",
-      ECommerceUrl: baseUrl,
-      CustomOrderId: customOrderId || "",
-      DataVaultToken: "",
-      SaveToDataVault: "0",
-      AltMerchantName: "",
-      ForceNo3DS: "0",
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };
 
