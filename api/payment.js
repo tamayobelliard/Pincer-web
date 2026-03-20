@@ -83,6 +83,8 @@ async function supabasePostAwait(table, data) {
   return r;
 }
 
+export const config = { maxDuration: 25 };
+
 export default async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -120,27 +122,76 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'amount debe ser un numero positivo' });
     }
 
-    // Look up merchant ID server-side (never trust client-sent merchant IDs)
-    let merchantId = process.env.AZUL_MERCHANT_ID || null;
-    if (restaurantSlug) {
-      try {
-        const supabaseUrl = sbUrl();
-        const supabaseKey = sbKey();
-        const mRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&status=eq.active&select=azul_merchant_id&limit=1`,
-          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(3000) }
-        );
-        if (mRes.ok) {
-          const rows = await mRes.json();
-          if (rows.length > 0 && rows[0].azul_merchant_id) {
-            merchantId = rows[0].azul_merchant_id;
+    // ── Parallel pre-checks: merchant lookup, amount validation, fraud detection ──
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || '0.0.0.0';
+    const cleanCard = cardNumber.replace(/\s/g, '');
+    const cardBin = cleanCard.substring(0, 6);
+    const cardLast4 = cleanCard.slice(-4);
+    const supabaseUrl = sbUrl();
+    const supabaseKey = sbKey();
+    const hdrs = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` };
+
+    const [merchantId, amountMismatch, fraudResult] = await Promise.all([
+      // 1. Merchant ID lookup
+      (async () => {
+        let mid = process.env.AZUL_MERCHANT_ID || null;
+        if (restaurantSlug) {
+          try {
+            const mRes = await fetch(
+              `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&status=eq.active&select=azul_merchant_id&limit=1`,
+              { headers: hdrs, signal: AbortSignal.timeout(3000) }
+            );
+            if (mRes.ok) {
+              const rows = await mRes.json();
+              if (rows.length > 0 && rows[0].azul_merchant_id) {
+                mid = rows[0].azul_merchant_id;
+              }
+            }
+          } catch (e) {
+            console.error('Merchant ID lookup error:', e.message);
           }
         }
-      } catch (e) {
-        console.error('Merchant ID lookup error:', e.message);
-      }
-    }
+        return mid;
+      })(),
 
+      // 2. Amount validation (non-blocking — returns error string or null)
+      (async () => {
+        if (!Array.isArray(orderItems) || orderItems.length === 0 || !restaurantSlug || !supabaseKey) return null;
+        try {
+          const itemIds = orderItems.map(i => i.id).join(',');
+          const priceRes = await fetch(
+            `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&id=in.(${encodeURIComponent(itemIds)})&select=id,price`,
+            { headers: hdrs, signal: AbortSignal.timeout(5000) }
+          );
+          if (priceRes.ok) {
+            const products = await priceRes.json();
+            const priceMap = {};
+            for (const p of products) priceMap[p.id] = p.price;
+            let expectedTotal = 0;
+            for (const item of orderItems) {
+              const unitPrice = priceMap[item.id];
+              if (unitPrice != null) {
+                expectedTotal += unitPrice * (item.qty || 1);
+              }
+            }
+            const expectedCents = Math.round(expectedTotal * 100);
+            const submittedCents = parseInt(amount, 10);
+            if (expectedCents > 0 && Math.abs(submittedCents - expectedCents) > expectedCents * 0.02 + 500) {
+              console.error(`Payment amount mismatch: submitted=${submittedCents} expected=${expectedCents} slug=${restaurantSlug}`);
+              return 'El monto del pago no coincide con la orden.';
+            }
+          }
+        } catch (e) {
+          console.error('Amount validation error (non-blocking):', e.message);
+        }
+        return null;
+      })(),
+
+      // 3. Fraud check
+      checkFraud({ ip: clientIp, cardNumber: cleanCard }),
+    ]);
+
+    // Process results
     if (!merchantId) {
       return res.status(400).json({ error: 'Payment not configured for this restaurant' });
     }
@@ -163,54 +214,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── Server-side amount validation ──
-    // Fetch product prices from Supabase and verify the submitted amount
-    if (Array.isArray(orderItems) && orderItems.length > 0 && restaurantSlug) {
-      const supabaseUrl = sbUrl();
-      const supabaseKey = sbKey();
-      if (supabaseKey) {
-        try {
-          const itemIds = orderItems.map(i => i.id).join(',');
-          const priceRes = await fetch(
-            `${supabaseUrl}/rest/v1/products?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&id=in.(${encodeURIComponent(itemIds)})&select=id,price`,
-            { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(5000) }
-          );
-          if (priceRes.ok) {
-            const products = await priceRes.json();
-            const priceMap = {};
-            for (const p of products) priceMap[p.id] = p.price;
-            let expectedTotal = 0;
-            for (const item of orderItems) {
-              const unitPrice = priceMap[item.id];
-              if (unitPrice != null) {
-                expectedTotal += unitPrice * (item.qty || 1);
-              }
-            }
-            // Amount is in cents (price * 100), expectedTotal is in pesos
-            const expectedCents = Math.round(expectedTotal * 100);
-            const submittedCents = parseInt(amount, 10);
-            // Allow 2% tolerance for delivery fees / rounding
-            if (expectedCents > 0 && Math.abs(submittedCents - expectedCents) > expectedCents * 0.02 + 500) {
-              console.error(`Payment amount mismatch: submitted=${submittedCents} expected=${expectedCents} slug=${restaurantSlug}`);
-              return res.status(400).json({ error: 'El monto del pago no coincide con la orden.' });
-            }
-          }
-        } catch (e) {
-          console.error('Amount validation error (non-blocking):', e.message);
-          // Non-blocking: if validation fails due to network, allow payment to proceed
-        }
-      }
+    if (amountMismatch) {
+      return res.status(400).json({ error: amountMismatch });
     }
 
-    // ── Fraud detection ──
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || '0.0.0.0';
-    const cleanCard = cardNumber.replace(/\s/g, '');
-    const cardBin = cleanCard.substring(0, 6);
-    const cardLast4 = cleanCard.slice(-4);
-
-    const fraudResult = await checkFraud({ ip: clientIp, cardNumber: cleanCard });
     if (!fraudResult.allowed && !fraudResult.suspicious) {
-      // Hard block (too many failed attempts)
       await logPaymentAttempt({ ip: clientIp, cardLast4, cardBin, restaurantSlug, amount, success: false, reason: fraudResult.reason });
       return res.status(429).json({ error: 'Demasiados intentos fallidos. Intenta mas tarde.' });
     }
@@ -220,11 +228,9 @@ export default async function handler(req, res) {
 
     // Cleanup stale sessions (fire and forget)
     const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const supabaseUrl = sbUrl();
-    const supabaseKey = sbKey();
     fetch(`${supabaseUrl}/rest/v1/sessions_3ds?created_at=lt.${cutoff}&status=neq.approved`, {
       method: 'DELETE',
-      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+      headers: hdrs,
     }).catch(() => {});
 
     // Base URL for callbacks
