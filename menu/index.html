@@ -4516,7 +4516,7 @@ async function processPayment() {
       if (payData.threeDSMethod) {
         // 3DS Method: inject hidden iframe, wait, then continue payment
         dbg('🔐 3DS Method requerido, inyectando iframe...');
-        await handle3DSMethod(payData, name, phone, total, customOrderId, cardLast4, cvv, cardNum, expirationFormatted, amountCents);
+        await handle3DSMethod(payData, name, phone, total, customOrderId, cardLast4);
         return;
       }
 
@@ -4559,93 +4559,62 @@ function hide3DSOverlay() {
   document.getElementById('threeDSChallengeFrame').innerHTML = '';
 }
 
-async function handle3DSMethod(payData, customerName, phone, total, customOrderId, cardLast4, cvc, cardNumber, expiration, amount) {
+async function handle3DSMethod(payData, customerName, phone, total, customOrderId, cardLast4) {
   const errorDiv = document.getElementById('checkoutError');
   const payBtn = document.getElementById('checkoutPayBtn');
 
   show3DSOverlay('Verificando tarjeta...');
 
   try {
-    var currentAzulOrderId = payData.azulOrderId;
-    var currentMethodForm = payData.methodForm;
-    var currentSessionId = payData.sessionId;
-    var maxAttempts = 3;
+    // Inject the 3DS Method form into hidden iframe
+    if (payData.methodForm) {
+      const iframe = document.getElementById('threeDSMethodIframe');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(payData.methodForm);
+      doc.close();
+    }
 
-    for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      // Inject the 3DS Method form into hidden iframe
-      if (currentMethodForm) {
-        var iframe = document.getElementById('threeDSMethodIframe');
-        var doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(currentMethodForm);
-        doc.close();
-      }
+    // Poll for method notification (the bank will POST to our method-notify endpoint)
+    dbg('🔐 Polling 3DS method status...');
+    const methodReceived = await poll3DSStatus(payData.sessionId, 'method_received', 10000);
+    dbg('🔐 Method notification received: ' + methodReceived);
 
-      // Wait for 3DS Method iframe to complete (Azul prod doesn't send method-notify)
-      dbg('🔐 Waiting for 3DS Method iframe (attempt ' + (attempt + 1) + ')...');
-      await new Promise(function(ok) { setTimeout(ok, 2000); });
+    // Now continue the payment by calling Azul again (they need the same AzulOrderId)
+    show3DSOverlay('Procesando pago seguro...');
 
-      // Continue the payment by calling Azul again
-      show3DSOverlay('Procesando pago seguro...');
+    const continueRes = await fetchWithTimeout('/api/3ds?action=continue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: payData.sessionId,
+        azulOrderId: payData.azulOrderId,
+      })
+    }, 45000);
 
-      var continueRes = await fetchWithTimeout('/api/3ds?action=continue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: currentSessionId,
-          azulOrderId: currentAzulOrderId,
-          cardNumber: cardNumber,
-          expiration: expiration,
-          cvc: cvc,
-          amount: amount,
-          customOrderId: customOrderId,
-        })
-      }, 45000);
+    const continueData = await continueRes.json();
+    dbg('🔐 3DS continue response: ' + JSON.stringify(continueData).substring(0, 300));
 
-      var continueData = await continueRes.json();
-      dbg('🔐 3DS continue response (attempt ' + (attempt + 1) + '): ' + JSON.stringify(continueData).substring(0, 300));
-
-      // If Azul asks for another 3DS Method round, loop again
-      if (continueData.threeDSMethod) {
-        dbg('🔐 Azul requested another 3DS Method round');
-        currentAzulOrderId = continueData.azulOrderId;
-        currentMethodForm = continueData.methodForm;
-        currentSessionId = continueData.sessionId;
-        show3DSOverlay('Verificando tarjeta...');
-        continue;
-      }
-
-      // Approved
-      if (continueData.approved) {
-        hide3DSOverlay();
-        customerPhone = phone;
-        lastPaymentInfo = {
-          authorizationCode: continueData.authorizationCode || '',
-          azulOrderId: continueData.azulOrderId || customOrderId,
-          cardLast4: cardLast4,
-        };
-        await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
-        return;
-      }
-
-      // Challenge required
-      if (continueData.challengeRequired) {
-        await handle3DSChallenge(continueData, customerName, phone, total, customOrderId, cardLast4);
-        return;
-      }
-
-      // Declined or error
+    if (continueData.approved) {
       hide3DSOverlay();
-      errorDiv.textContent = continueData.message || 'Pago rechazado.';
-      errorDiv.style.display = 'block';
-      payBtn.disabled = false;
-      payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
+      customerPhone = phone;
+      lastPaymentInfo = {
+        authorizationCode: continueData.authorizationCode || '',
+        azulOrderId: continueData.azulOrderId || customOrderId,
+        cardLast4: cardLast4,
+      };
+      await submitOrderToSupabase('paid', continueData.azulOrderId || customOrderId, customerName);
       return;
     }
 
-    // Exhausted max attempts
+    if (continueData.challengeRequired) {
+      await handle3DSChallenge(continueData, customerName, phone, total, customOrderId, cardLast4);
+      return;
+    }
+
+    // Declined
     hide3DSOverlay();
-    errorDiv.textContent = 'Error en verificación de seguridad. Intenta de nuevo.';
+    errorDiv.textContent = continueData.message || 'Pago rechazado.';
     errorDiv.style.display = 'block';
     payBtn.disabled = false;
     payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
