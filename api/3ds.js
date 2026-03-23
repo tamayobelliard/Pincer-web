@@ -182,7 +182,7 @@ async function handleCallback(req, res) {
 async function handleContinue(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionId, azulOrderId, cvc } = req.body;
+  const { sessionId, azulOrderId, cardNumber, expiration, cvc, amount, customOrderId } = req.body;
 
   if (!sessionId || !azulOrderId) {
     return res.status(400).json({ error: 'Missing sessionId or azulOrderId' });
@@ -210,13 +210,33 @@ async function handleContinue(req, res) {
     ]);
     const methodReceived = sessRows[0]?.method_notification_received === true;
 
+    const baseUrl = process.env.BASE_URL || 'https://www.pincerweb.com';
+
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
+      CardNumber: cardNumber || "",
+      Expiration: expiration || "",
+      CVC: cvc || "",
       PosInputMode: "E-Commerce",
+      TrxType: "Sale",
+      Amount: String(amount || "0"),
+      Itbis: "000",
+      CurrencyPosCode: "$",
+      Payments: "1",
+      Plan: "0",
+      AcquirerRefData: "1",
+      RRN: null,
       AzulOrderId: azulOrderId,
+      CustomerServicePhone: "",
+      OrderNumber: "",
+      ECommerceUrl: baseUrl,
+      CustomOrderId: customOrderId || "",
+      DataVaultToken: "",
+      SaveToDataVault: "0",
+      ForceNo3DS: "",
+      AltMerchantName: "",
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
-      CVC: cvc,
     };
 
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
