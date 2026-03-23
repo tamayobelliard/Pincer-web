@@ -399,7 +399,7 @@ async function handleStatus(req, res) {
 export default async function handler(req, res) {
   if (handleCors(req, res, { methods: 'GET, POST, OPTIONS', allowNoOrigin: true })) return;
   // Rate limit: 10 3DS requests per minute per IP
-  if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: '3ds' })) return;
+  if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: '3ds' })) return;
 
   const action = req.query.action;
 

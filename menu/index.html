@@ -4583,7 +4583,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
 
       // Poll for method notification (the bank will POST to our method-notify endpoint)
       dbg('🔐 Polling 3DS method status (attempt ' + (attempt + 1) + ')...');
-      var methodReceived = await poll3DSStatus(currentSessionId, 'method_received', 10000);
+      var methodReceived = await poll3DSStatus(currentSessionId, 'method_received', 3000);
       dbg('🔐 Method notification received: ' + methodReceived);
 
       // Continue the payment by calling Azul again
