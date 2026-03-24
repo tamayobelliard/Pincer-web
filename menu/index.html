@@ -4658,7 +4658,7 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
     frameContainer.innerHTML = '';
     frameContainer.appendChild(iframe);
 
-    // If there's POST data, submit a form to the iframe
+    // If there's POST data, submit CReq form to the iframe
     if (payData.redirectPostData) {
       const form = document.createElement('form');
       form.method = 'POST';
@@ -4666,28 +4666,13 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
       form.target = iframe.id;
       iframe.name = iframe.id;
 
-      // Parse redirect post data (could be key=value pairs or JSON)
-      try {
-        const postData = typeof payData.redirectPostData === 'string'
-          ? JSON.parse(payData.redirectPostData) : payData.redirectPostData;
-        for (const [key, val] of Object.entries(postData)) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = val;
-          form.appendChild(input);
-        }
-      } catch (e) {
-        // If not JSON, try URL params
-        const params = new URLSearchParams(payData.redirectPostData);
-        for (const [key, val] of params.entries()) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = val;
-          form.appendChild(input);
-        }
-      }
+      // 3DS 2.0: send CReq as single base64 field
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'creq';
+      input.value = payData.redirectPostData;
+      form.appendChild(input);
+
       document.body.appendChild(form);
       form.submit();
       form.remove();
