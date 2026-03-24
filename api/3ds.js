@@ -182,7 +182,7 @@ async function handleCallback(req, res) {
 async function handleContinue(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionId, azulOrderId } = req.body;
+  const { sessionId, azulOrderId, cardNumber, cvc } = req.body;
 
   if (!sessionId || !azulOrderId) {
     return res.status(400).json({ error: 'Missing sessionId or azulOrderId' });
@@ -200,8 +200,11 @@ async function handleContinue(req, res) {
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
+      PosInputMode: "E-Commerce",
       AzulOrderId: azulOrderId,
       MethodNotificationStatus: "RECEIVED",
+      CVC: cvc,
+      CardNumber: cardNumber,
     };
 
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
