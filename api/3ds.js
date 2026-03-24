@@ -237,15 +237,19 @@ async function handleContinue(req, res) {
 
     // CASE 2: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
+      console.log('[3ds-continue] Challenge response keys:', JSON.stringify(Object.keys(result)));
+      console.log('[3ds-continue] Challenge response:', JSON.stringify(result).substring(0, 1000));
       patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
 
+      // 3DS 2.0 uses ThreeDSChallenge object, 3DS 1.0 uses top-level RedirectUrl
+      const challenge = result.ThreeDSChallenge || {};
       return res.status(200).json({
         approved: false,
         challengeRequired: true,
         sessionId,
         azulOrderId: result.AzulOrderId || azulOrderId,
-        redirectUrl: result.RedirectUrl || '',
-        redirectPostData: result.RedirectPostData || '',
+        redirectUrl: challenge.RedirectPostUrl || result.RedirectUrl || '',
+        redirectPostData: challenge.CReq || result.RedirectPostData || '',
       });
     }
 
