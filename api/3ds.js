@@ -206,6 +206,7 @@ async function handleContinue(req, res) {
       Expiration: expiration,
       CVC: cvc,
       PosInputMode: "E-Commerce",
+      TrxType: "Sale",
       CurrencyPosCode: "$",
       Payments: "1",
       Plan: "0",
