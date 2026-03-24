@@ -4516,7 +4516,7 @@ async function processPayment() {
       if (payData.threeDSMethod) {
         // 3DS Method: inject hidden iframe, wait, then continue payment
         dbg('🔐 3DS Method requerido, inyectando iframe...');
-        await handle3DSMethod(payData, name, phone, total, customOrderId, cardLast4, cvv, cardNum);
+        await handle3DSMethod(payData, name, phone, total, customOrderId, cardLast4, cvv, cardNum, expirationFormatted);
         return;
       }
 
@@ -4559,7 +4559,7 @@ function hide3DSOverlay() {
   document.getElementById('threeDSChallengeFrame').innerHTML = '';
 }
 
-async function handle3DSMethod(payData, customerName, phone, total, customOrderId, cardLast4, cvc, cardNumber) {
+async function handle3DSMethod(payData, customerName, phone, total, customOrderId, cardLast4, cvc, cardNumber, expiration) {
   const errorDiv = document.getElementById('checkoutError');
   const payBtn = document.getElementById('checkoutPayBtn');
 
@@ -4596,6 +4596,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
           sessionId: currentSessionId,
           azulOrderId: currentAzulOrderId,
           cardNumber: cardNumber,
+          expiration: expiration,
           cvc: cvc,
         })
       }, 45000);
