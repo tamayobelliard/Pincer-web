@@ -4643,7 +4643,7 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
     // Validate redirect URL domain (must be azul.com.do or pincerweb.com)
     try {
       const rHost = new URL(payData.redirectUrl).hostname;
-      if (!rHost.endsWith('.azul.com.do') && !rHost.endsWith('.pincerweb.com')) {
+      if (!rHost.endsWith('.azul.com.do') && !rHost.endsWith('.pincerweb.com') && !rHost.endsWith('.cardinalcommerce.com')) {
         throw new Error('Dominio de redirección no permitido: ' + rHost);
       }
     } catch (e) {
