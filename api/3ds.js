@@ -42,7 +42,8 @@ function callAzul(url, headers, body, agent, timeoutMs = 9500) {
   });
 }
 
-const AZUL_URL = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx?processthreedsmethod';
+const AZUL_BASE = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
+const AZUL_URL_3DS_METHOD = AZUL_BASE + (AZUL_BASE.includes('?') ? '&' : '?') + 'processthreedsmethod';
 
 // Fire-and-forget Supabase PATCH
 function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
@@ -182,7 +183,7 @@ async function handleCallback(req, res) {
 async function handleContinue(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionId, azulOrderId, cvc } = req.body;
+  const { sessionId, azulOrderId } = req.body;
 
   if (!sessionId || !azulOrderId) {
     return res.status(400).json({ error: 'Missing sessionId or azulOrderId' });
@@ -213,13 +214,11 @@ async function handleContinue(req, res) {
     const requestBody = {
       Channel: "EC",
       Store: process.env.AZUL_MERCHANT_ID,
-      PosInputMode: "E-Commerce",
       AzulOrderId: azulOrderId,
-      CVC: cvc,
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };
 
-    const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
+    const result = await callAzul(AZUL_URL_3DS_METHOD, { 'Auth1': auth1, 'Auth2': auth2 }, requestBody, agent);
 
     // CASE 1: Approved (frictionless after method)
     if (result.IsoCode === '00') {
