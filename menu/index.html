@@ -4450,9 +4450,10 @@ async function processPayment() {
     const parts = expiry.split('/');
     const expirationFormatted = '20' + parts[1] + parts[0];
 
-    // Amount in cents (no decimals)
+    // Amount in cents (no decimals) — prices include 18% ITBIS
     const total = order.reduce((s, i) => s + i.price * i.qty, 0) + getDeliveryFee();
     const amountCents = Math.round(total * 100).toString();
+    const itbisCents = Math.round((total - total / 1.18) * 100).toString();
 
     // Generate custom order ID
     const customOrderId = ORDER_PREFIX + Date.now();
@@ -4482,7 +4483,7 @@ async function processPayment() {
           expiration: expirationFormatted,
           cvc: cvv,
           amount: amountCents,
-          itbis: '000',
+          itbis: itbisCents,
           customOrderId,
           customerName: name,
           customerPhone: phone,

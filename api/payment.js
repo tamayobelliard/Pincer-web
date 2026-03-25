@@ -224,7 +224,7 @@ export default async function handler(req, res) {
       Plan: "0",
       AcquirerRefData: "1",
       RRN: null,
-      CustomerServicePhone: "",
+      CustomerServicePhone: "18295481236",
       OrderNumber: "",
       ECommerceUrl: baseUrl,
       CustomOrderId: customOrderId || "",
