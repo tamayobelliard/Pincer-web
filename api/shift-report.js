@@ -81,10 +81,11 @@ export default async function handler(req, res) {
     };
 
     // 7. Update shift with calculated totals and close it
-    await fetch(
-      `${supabaseUrl}/rest/v1/shifts?id=eq.${shift_id}`,
+    const patchRes = await fetch(
+      `${supabaseUrl}/rest/v1/shifts?id=eq.${shift_id}&restaurant_slug=eq.${encodeURIComponent(slug)}`,
       {
-        method: 'PATCH', headers,
+        method: 'PATCH',
+        headers: { ...headers, 'Prefer': 'return=minimal' },
         body: JSON.stringify({
           status: 'cerrado',
           hora_cierre: closeTime,
@@ -94,6 +95,10 @@ export default async function handler(req, res) {
         signal: AbortSignal.timeout(5000),
       }
     );
+    if (!patchRes.ok) {
+      console.error(`[shift-report] PATCH failed: ${patchRes.status} ${await patchRes.text()}`);
+      return res.status(500).json({ error: 'Error cerrando turno' });
+    }
 
     // 8. Generate PDF
     const pdf = await generateShiftPDF({
