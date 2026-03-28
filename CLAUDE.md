@@ -6,11 +6,11 @@
 
 **Owner/Developer:** Tamayo Belliard
 **Domain:** pincerweb.com (live, on Vercel)
-**Status:** Production — multi-tenant, payments live, Android app deployed
+**Status:** Production — multi-tenant, payments live with real transactions, Android app deployed
 
 ### Active Clients
-- **Mr. Sandwich** (`mrsandwich`) — First client, pilot completed
-- **Square One** (`squareone`) — Second client, uses `SQUAREONE_TEST` merchant for test-mode payments
+- **Mr. Sandwich** (`mrsandwich`) — First client, pilot completed, payments live
+- **Square One** (`squareone`) — Second client, first real production payment processed March 26, 2026
 
 ---
 
@@ -20,13 +20,13 @@
 - **Frontend:** HTML / CSS / Vanilla JavaScript (no frameworks, no build tools)
 - **Backend:** Vercel Serverless Functions (Node.js ESM, `api/` directory)
 - **Database:** Supabase (`tcwujslibopzfyufhjsr.supabase.co`)
-- **Payments:** Azul with mTLS + 3D Secure (fully integrated)
+- **Payments:** Azul with mTLS + 3D Secure 2.0 (production, fully working)
 - **Push Notifications:** Firebase Cloud Messaging (FCM) — web + Android native
 - **Email:** Resend (`info@pincerweb.com`)
 - **AI:** Anthropic Claude API (chatbot, menu extraction, weekly insights)
 - **WhatsApp:** Twilio webhook for promotion creation
 - **reCAPTCHA:** Google reCAPTCHA v3 on login + signup
-- **Android App:** Separate repo (`pincer-dashboard-android`), WebView-based with native FCM
+- **Android App:** Separate repo (`pincer-dashboard-android` on Desktop), WebView-based with native FCM
 
 ### Single Repo Structure
 ```
@@ -35,7 +35,7 @@ Pincer-web/
   vercel.json                   # Routes, headers, crons, CSP
   rls.sql                       # All Supabase schema + RLS policies
   firebase-messaging-sw.js      # Service worker (FCM + PWA caching)
-  certs/                        # Azul mTLS certificates (gitignored)
+  certs/                        # Azul mTLS certificates (git-tracked via force-add)
   api/                          # 30+ Vercel serverless functions
   dashboard/index.html          # Restaurant staff dashboard
   menu/index.html               # Customer-facing menu
@@ -43,6 +43,7 @@ Pincer-web/
   login/index.html              # Restaurant login
   signup/index.html             # New restaurant onboarding
   change-password/index.html    # Password change flow
+  reset-password/index.html     # Forgot password flow
   politicas/                    # Legal pages (privacy, returns, security, delivery)
 ```
 
@@ -50,7 +51,7 @@ Pincer-web/
 - `/:slug` — Customer menu for restaurant
 - `/:slug/dashboard` — Staff dashboard
 - `/admin` — Pincer super-admin
-- `/login`, `/signup`, `/change-password` — Auth flows
+- `/login`, `/signup`, `/change-password`, `/reset-password` — Auth flows
 - Social bots on `/:slug` get redirected to `/api/og?slug=:slug` for OG images
 
 ---
@@ -77,7 +78,7 @@ All tables have RLS enabled. API endpoints use service role key (bypasses RLS). 
 | `payment_audit` | Fraud detection log (IP, BIN, last4) | None |
 | `sessions_3ds` | 3D Secure payment flow state | None |
 
-Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `trial_expires_at`, `azul_merchant_id`, `order_types` (array), `delivery_fee`, `menu_style` (JSON theme), `chatbot_personality`, `failed_login_attempts`, `locked_until`.
+Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `trial_expires_at`, `azul_merchant_id`, `order_types` (array), `delivery_fee`, `menu_style` (JSON theme), `chatbot_personality`, `failed_login_attempts`, `locked_until`, `reset_token_hash`, `reset_token_expires`.
 
 ---
 
@@ -89,6 +90,8 @@ Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `tr
 | `/api/auth` | POST | reCAPTCHA | Login, returns httpOnly cookie |
 | `/api/logout` | POST | Cookie/header | Invalidates session, clears cookie |
 | `/api/change-password` | POST | Session | Change password (forced or voluntary) |
+| `/api/forgot-password` | POST | reCAPTCHA | Send password reset email via Resend |
+| `/api/reset-password` | POST | Token | Reset password from email link |
 | `/api/verify-session.js` | (shared) | — | `getRestaurantToken()`, `getAdminToken()`, `hashToken()`, `verifyRestaurantSession()` |
 
 ### Payments (Azul)
@@ -96,15 +99,15 @@ Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `tr
 |----------|--------|------|---------|
 | `/api/payment` | POST | None (public) | Process credit card via Azul mTLS + 3DS |
 | `/api/3ds?action=callback` | POST | None | 3DS challenge callback from Azul |
-| `/api/3ds?action=continue` | POST | None | Continue after 3DS method |
-| `/api/3ds?action=method-notify` | POST | None | 3DS method notification |
+| `/api/3ds?action=continue` | POST | None | Continue after 3DS method (uses `?processthreedsmethod` endpoint) |
+| `/api/3ds?action=method-notify` | POST | None | 3DS method notification from Azul |
 | `/api/3ds?action=status` | GET | None | Poll 3DS session status |
 
 ### Restaurant Management
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
 | `/api/update-settings` | PATCH | Session | Update restaurant profile |
-| `/api/shift-report` | POST | Session | Generate PDF shift report |
+| `/api/shift-report` | POST | Session | Close shift + generate PDF report |
 | `/api/download-report` | POST | Session | Download reports |
 | `/api/toggle-promo` | PATCH | Session | Enable/disable promotions |
 | `/api/register-device-token` | POST | Session | Register Android FCM token |
@@ -137,24 +140,27 @@ Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `tr
 
 ## Security Implementation
 
-Comprehensive security audit completed (March 2026). Key measures:
+Security audit completed (March 2026). Key measures in place:
 
 - **Session tokens:** SHA-256 hashed before storage. Raw token only in httpOnly cookies.
 - **Password hashing:** bcrypt cost factor 12
 - **Account lockout:** 5 failed attempts = 15-minute lock
 - **Session regeneration:** All existing sessions deleted on login
 - **Rate limiting:** Hybrid in-memory + Supabase distributed (`rate_limits` table)
-- **Fraud detection:** `payment_audit` table with IP/BIN velocity checks (3 failed/IP/hr, 10 orders/BIN/hr, 5 orders/IP/30min)
 - **Cross-tenant isolation:** All DB queries scoped to `session.restaurant_slug`
-- **Content-Type validation:** `requireJson()` on all POST/PATCH endpoints
 - **EXIF stripping:** Logo uploads stripped of EXIF/GPS metadata
 - **SRI hashes:** On all CDN scripts (Firebase, html2canvas, qrcode.js)
-- **CSP headers:** Full Content-Security-Policy in vercel.json (includes `unsafe-inline`)
+- **CSP headers:** Full Content-Security-Policy in vercel.json (includes Visa/Cardinal for 3DS)
 - **Timing-safe comparison:** Twilio webhook signature uses `crypto.timingSafeEqual`
-- **Error masking:** `error.message` never exposed in production responses
 - **Cache control:** API responses have `no-store, no-cache, private`
 - **GitHub Actions:** Weekly `npm audit --audit-level=high`
 - **Environment check:** Warns if `NODE_ENV=development` points to production Supabase
+
+### Security features reverted during payment debugging (to re-apply later)
+- **Fraud detection:** `checkFraud()` + `logPaymentAttempt()` in `fraud-check.js` — was in `payment.js`, reverted to February base for stability
+- **Input validation:** Strict regex for cardNumber, expiration, CVC, amount — was in `payment.js`, reverted
+- **requireJson():** Content-Type validation on payment endpoint — reverted
+- **Error masking:** Generic error messages in payment/3ds endpoints — reverted
 
 ### Known Security Limitations
 - CSP still allows `unsafe-inline` and `unsafe-eval` (required by inline JS in HTML monoliths)
@@ -164,16 +170,36 @@ Comprehensive security audit completed (March 2026). Key measures:
 
 ---
 
-## Payment Flow (Azul)
+## Payment Flow (Azul) — PRODUCTION WORKING
 
-1. Client sends card data to `/api/payment`
-2. Server validates fields, runs fraud checks, looks up per-restaurant `azul_merchant_id`
-3. Server sends to Azul via mTLS (`certs/azul-chain.pem` + `certs/azul-key.pem`)
+### Flow
+1. Client sends card data to `/api/payment` (includes `ThreeDSAuth`, `BrowserInfo`, `CardHolderInfo`)
+2. Server validates fields, looks up per-restaurant `azul_merchant_id`
+3. Server sends to Azul via mTLS (`certs/azul-chain.pem` + `certs/azul-key-prod.pem`)
 4. Azul responds: frictionless approval (IsoCode 00), 3DS method required, or challenge required
-5. For 3DS: client renders hidden iframe or challenge redirect, callbacks hit `/api/3ds`
-6. Test mode: `azul_merchant_id = 'SQUAREONE_TEST'` simulates approval without hitting Azul
+5. For 3DS Method: client renders hidden iframe, polls for method-notify, calls `/api/3ds?action=continue`
+6. **CRITICAL:** The continue request must use `?processthreedsmethod` query param on the Azul URL. `api/3ds.js` builds `AZUL_URL_3DS_METHOD` by appending this to `AZUL_URL` env var.
+7. Continue request uses only 4 fields: `Channel`, `Store`, `AzulOrderId`, `MethodNotificationStatus`
+8. For Challenge: Cardinal Commerce iframe loads, user authenticates with bank, callback hits `/api/3ds?action=callback`
+9. Test mode: `azul_merchant_id = 'SQUAREONE_TEST'` simulates approval without hitting Azul
 
-Card data is never stored or logged. mTLS certificates are in `certs/` (gitignored).
+### Critical Implementation Details
+- **Expiration format:** YYYYMM (e.g., "202906" for June 2029)
+- **ITBIS:** Calculated as 18% of total, sent in centavos
+- **CustomerServicePhone:** Set to Pincer support number
+- **`maxDuration: 25`** on `api/payment.js` to prevent Vercel timeout
+- **CSP frame-src:** Must include `*.vcas.visa.com` and `*.cardinalcommerce.com` for 3DS iframes
+- **Challenge redirect:** `cardinalcommerce.com` must be in domain whitelist validation
+- **CReq format:** Sent as single `creq=<base64>` field in POST form to Cardinal Commerce
+- **Never add `Amount` to the continue request** — it causes Azul to create a new transaction instead of continuing the existing one
+- Card data is never stored or logged. mTLS certificates are in `certs/` (git-tracked via force-add, despite `.gitignore`)
+
+### Certificates
+- **Production cert:** `certs/azul-cert.pem` (OU=Produccion, CN=pincerweb.local, expires April 2029)
+- **Production key:** `certs/azul-key-prod.pem` (4096-bit RSA, generated with CSR `certs/azul-csr-prod.pem`)
+- **Chain:** `certs/azul-chain.pem` (prod cert + BPD-SCA + BPD-RCA)
+- **Old cert backup:** `certs/azul-cert-old.pem`, `certs/azul-chain-old.pem`
+- **Old key (Desarrollo):** `certs/azul-key.pem` — no longer used
 
 ---
 
@@ -191,7 +217,7 @@ Card data is never stored or logged. mTLS certificates are in `certs/` (gitignor
 ## AI Features
 
 - **Model:** `claude-haiku-4-5-20251001` (fast, cheap)
-- **Customer chatbot** (`/api/waiter-chat`): 5 personalities (`dominicano`, `habibi`, `casual`, `formal`, `playful`). Aware of menu, hours, open/closed status. Can add items to cart via `[ADD_TO_CART:]` syntax.
+- **Customer chatbot** (`/api/waiter-chat`): 5 personalities (`dominicano`, `habibi`, `casual`, `formal`, `playful`). Aware of menu, hours, open/closed status. Can add items to cart via `[ADD_TO_CART:]` syntax. Uses `ai_insights.hero_insight` for smarter recommendations.
 - **Dashboard AI** (`/api/chat`): Analyzes 14 days of orders, answers business questions
 - **Menu extraction** (`signup.js`): Claude Vision extracts items from uploaded menu images/PDFs, picks color theme
 - **Weekly insights** (`/api/generate-insights`): Cron runs Monday 3am, generates analytics summary
@@ -214,13 +240,15 @@ Card data is never stored or logged. mTLS certificates are in `certs/` (gitignor
 See `.env.example` for the full list. Critical ones:
 - `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — Database access
 - `ANTHROPIC_API_KEY` — AI features
+- `AZUL_URL` — Azul production endpoint (`https://pagos.azul.com.do/WebServices/JSON/default.aspx`)
 - `AZUL_AUTH1` / `AZUL_AUTH2` / `AZUL_MERCHANT_ID` — Payment processing
 - `FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` — Push notifications
 - `RESEND_API_KEY` — Transactional email
 - `RECAPTCHA_SECRET_KEY` — Login/signup protection
 - `CRON_SECRET` — Cron job auth
+- `BASE_URL` — `https://www.pincerweb.com` (used for 3DS callback URLs)
 
-**IMPORTANT:** Use a separate Supabase project for development. The `env-check.js` module warns if `NODE_ENV=development` is pointed at production.
+**IMPORTANT:** `AZUL_URL` in Vercel must NOT include `?processthreedsmethod` — that is appended by `api/3ds.js` automatically. If you include it, the initial payment request will fail.
 
 ---
 
@@ -243,7 +271,18 @@ See `.env.example` for the full list. Critical ones:
 - Push to `main` branch on GitHub auto-deploys via Vercel
 - Domain: `www.pincerweb.com` (Vercel)
 - SSL: Managed by Vercel
-- Azul certs in `certs/` directory (must be present in Vercel file system)
+- Azul certs in `certs/` directory (git-tracked via `git add -f`, despite `.gitignore` listing `certs/`)
+
+---
+
+## Android App
+
+- **Repo:** `pincer-dashboard-android` (on Desktop, not git-initialized)
+- **Architecture:** WebView loading `https://www.pincerweb.com/login`
+- **FCM:** Native Firebase messaging with `PincerFirebaseMessagingService.kt`
+- **Screen orientation:** `fullSensor` (free rotation for tablets)
+- **Config changes:** `orientation|screenSize|screenLayout|smallestScreenSize` — prevents Activity recreation on rotation
+- **Build:** Open in Android Studio, Sync Gradle, Build APK
 
 ---
 
@@ -254,10 +293,14 @@ All schema changes are documented in `rls.sql`. After code changes that require 
 2. Run in Supabase SQL Editor
 3. Verify with a test query
 
-**Pending migrations (as of March 2026):**
+**Completed migrations:**
+- `reset_token_hash` and `reset_token_expires` columns on `restaurant_users`
+- `payment_audit` table with indexes
+- `sessions_3ds` table
+
+**Pending migrations:**
 - `ALTER TABLE restaurant_sessions RENAME COLUMN token TO token_hash`
 - `ALTER TABLE admin_sessions RENAME COLUMN token TO token_hash`
-- `CREATE TABLE payment_audit (...)` with indexes
 - After running: invalidate all existing sessions (users must re-login)
 
 ---
@@ -266,25 +309,55 @@ All schema changes are documented in `rls.sql`. After code changes that require 
 
 1. **HTML monoliths** — `dashboard/index.html` is 65K+ tokens. Each page has all JS inline. Makes CSP hardening difficult.
 2. **Products/orders anon write** — Dashboard uses Supabase anon key for real-time operations (sold-out toggle, order status). Should migrate to authenticated API endpoints.
-3. **No automated tests** — Zero test coverage. Only manual testing and `scripts/stress-test.js`.
+3. **No automated tests** — Zero test coverage. Only manual testing.
 4. **PCI SAQ D scope** — Card data transits server. Should evaluate Azul Payment Page (redirect) for SAQ A when re-certification is possible.
-5. **Legacy files** — `restaurant.html`, `_backups/` directory still exist.
-6. **Single Supabase service role key** — All endpoints share one key with full DB access. No granular permissions.
+5. **Single Supabase service role key** — All endpoints share one key with full DB access. No granular permissions.
+6. **Security features reverted** — Fraud detection, input validation, requireJson, and error masking were reverted from `payment.js` during production debugging. Need to re-apply carefully without breaking the payment flow. The February base (commit 856d195) is the current production state for payment/3ds.
+7. **ITBIS hardcoded in some places** — Frontend now calculates 18% ITBIS but some edge cases may still send "000".
 
 ---
 
-## What Was Being Worked On (March 2026)
+## What Was Completed (March 2026)
 
-### Completed
-- Full 30-rule security audit implementation (5 batches)
-- Cross-tenant authorization hardening
-- Android app universal login flow (dynamic slug detection)
-- Android FCM token registration with session auth
-- Fraud detection system for payments
-- Hashed session tokens (SHA-256)
+### Azul Payment Integration — PRODUCTION LIVE
+- Production certificate (OU=Produccion) generated and deployed
+- Full 3DS 2.0 flow working: payment → 3DS Method → challenge → approval
+- Root cause of production failures: `AZUL_URL` env var overriding `?processthreedsmethod` endpoint
+- CSP updated for Visa (`vcas.visa.com`) and Cardinal Commerce (`cardinalcommerce.com`) iframes
+- ITBIS calculated as 18% instead of hardcoded "000"
+- CustomerServicePhone added to Azul requests
+- First real transaction: March 26, 2026 (Square One, RD$140)
 
-### Next Steps When Resuming
-1. **Run pending SQL migrations** in Supabase (token_hash rename + payment_audit table)
-2. **Evaluate Azul Payment Page** — Move to SAQ A compliance when possible
-3. **Extract inline JS** from HTML monoliths — Enable strict CSP
-4. **Migrate dashboard writes** to authenticated API endpoints (products, orders, store_settings)
+### Forgot Password Flow
+- `api/forgot-password.js` — generates reset token, sends email via Resend
+- `api/reset-password.js` — validates token, updates password
+- `reset-password/index.html` — dual-mode page (request email / set new password)
+- Link added to login page
+
+### Dashboard Fixes
+- Shift close bug fixed: `topProducts` field was being sent to Supabase PATCH but doesn't exist in `shifts` table
+- PATCH now explicitly lists DB columns and verifies success
+- Sidebar hidden by default on tablets (breakpoint raised to 1024px)
+- Duplicate "Pincer" text removed from login page
+
+### Android App
+- Screen orientation: `fullSensor` for free tablet rotation
+- `configChanges` added to prevent Activity recreation on rotation
+
+### Other
+- Legacy files removed: `restaurant.html`, `_backups/` directory
+- `restaurant_insights` query fixed: `ai_insights.hero_insight` instead of nonexistent `summary_text`
+- `api/track.js` fix: await Supabase insert before responding to prevent timeout aborts
+
+---
+
+## Paused — Working on MiiA (March 28, 2026)
+
+### When Resuming Pincer, Priority Tasks:
+1. **Re-apply security features to payment.js** — Fraud detection, input validation, requireJson, error masking. Apply one at a time, test payment flow after each.
+2. **Run pending SQL migrations** — token_hash rename on sessions tables
+3. **Test payment with multiple cards** — Confirm 3DS flow works with different banks/card types
+4. **Android app rebuild** — Build new APK in Android Studio with rotation + configChanges fixes
+5. **Evaluate Azul Payment Page** — Move to SAQ A compliance when possible
+6. **Extract inline JS** from HTML monoliths — Enable strict CSP
+7. **Migrate dashboard writes** to authenticated API endpoints (products, orders, store_settings)
