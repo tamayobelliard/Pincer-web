@@ -265,7 +265,7 @@ async function handleContinue(req, res) {
 
   } catch (error) {
     console.error('3ds continue error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Error procesando el pago. Intenta de nuevo.' });
   }
 }
 
