@@ -3684,17 +3684,21 @@ function updateMenuQtyBadges() {
 // ADD ITEM
 // ══════════════════════════════════════════════════════════════
 
-function addItem(id, name, price, notes = null, qty = 1) {
+function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
   if (storeClosed) return;
   if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
 
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
   if (idx !== -1) {
     order[idx].qty += qty;
+    // Track origin across merges: if a menu-added item is re-added by the bot
+    // (or vice versa), tag the line as 'mixed' so analytics stay honest.
+    const existingSource = order[idx].source || 'menu';
+    order[idx].source = existingSource === source ? source : 'mixed';
   } else {
-    order.push({ id, name, price, qty, notes });
+    order.push({ id, name, price, qty, notes, source });
   }
-  track('cart_add', { item_id: id, item_name: name, price: price, quantity: qty });
+  track('cart_add', { item_id: id, item_name: name, price: price, quantity: qty, source: source });
   renderOrder();
 }
 
@@ -3887,7 +3891,8 @@ async function placeOrder() {
       name: item.name,
       qty: item.qty,
       price: item.price,
-      notes: item.notes || null
+      notes: item.notes || null,
+      source: item.source || 'menu'
     }));
 
     const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
@@ -3902,7 +3907,8 @@ async function placeOrder() {
       status: 'pending',
       phone: customerPhone,
       restaurant_slug: SLUG,
-      order_type: selectedOrderType
+      order_type: selectedOrderType,
+      session_id: chatSessionId
     };
     if (nextNum) orderPayload.order_number = nextNum;
     if (selectedOrderType === 'take_out') {
@@ -4747,7 +4753,8 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       name: item.name,
       qty: item.qty,
       price: item.price,
-      notes: item.notes || null
+      notes: item.notes || null,
+      source: item.source || 'menu'
     }));
 
     const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
@@ -4762,7 +4769,8 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       status: status,
       phone: customerPhone,
       restaurant_slug: SLUG,
-      order_type: selectedOrderType
+      order_type: selectedOrderType,
+      session_id: chatSessionId
     };
     if (nextNum) orderPayload.order_number = nextNum;
 
@@ -5428,8 +5436,8 @@ function showPhotoInChat(itemId) {
   container.scrollTop = container.scrollHeight;
 }
 
-function openPinzer() {
-  track('chat_open', {});
+function openPinzer(trigger = 'user_click') {
+  track('chat_open', { trigger: trigger });
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
   chatOpen = true;
@@ -5740,7 +5748,7 @@ async function sendToAI(userMessage) {
         const item = findMenuItem(ci.id);
         if (item && !soldOutSet.has(item.id)) {
           const qty = ci.qty || 1;
-          addItem(item.id, item.name, item.price, ci.note, qty);
+          addItem(item.id, item.name, item.price, ci.note, qty, 'bot');
           track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: qty, cart_total: order.length });
           const qtyText = qty > 1 ? `${qty}x ` : '';
           const noteText = ci.note ? ` (${ci.note})` : '';
@@ -5771,7 +5779,7 @@ function initChatbot() {
   if (!alreadyWelcomed) {
     // First visit: auto-open after a short delay
     setTimeout(() => {
-      openPinzer();
+      openPinzer('auto');
     }, 1500);
   } else {
     // Returning visit: just show bubble messages (welcome will show when chat opens)
@@ -5909,7 +5917,7 @@ async function checkStoreOpen() {
       // Auto-open chatbot with closed message for ALL restaurants (not just premium)
       var alreadyWelcomed = sessionStorage.getItem(WELCOMED_KEY);
       if (!alreadyWelcomed) {
-        setTimeout(function() { openPinzer(); }, 1500);
+        setTimeout(function() { openPinzer('auto'); }, 1500);
       }
 
       return false;
