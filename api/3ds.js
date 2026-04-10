@@ -105,7 +105,7 @@ async function handleCallback(req, res) {
     const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
     const result = await callAzul(
-      AZUL_URL,
+      AZUL_BASE,
       { 'Auth1': auth1, 'Auth2': auth2 },
       {
         Channel: "EC",
