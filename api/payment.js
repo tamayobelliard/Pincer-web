@@ -112,6 +112,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields: cardNumber, expiration, cvc, amount' });
     }
 
+    // Strict input validation — catch garbage before it reaches Azul
+    const cleanCard = String(cardNumber).replace(/\s/g, '');
+    if (!/^\d{13,19}$/.test(cleanCard)) {
+      return res.status(400).json({ error: 'Número de tarjeta inválido' });
+    }
+    if (!/^\d{6}$/.test(String(expiration))) {
+      return res.status(400).json({ error: 'Formato de expiración inválido' });
+    }
+    const expYear = parseInt(String(expiration).substring(0, 4), 10);
+    const expMonth = parseInt(String(expiration).substring(4, 6), 10);
+    if (expMonth < 1 || expMonth > 12 || expYear < 2020 || expYear > 2050) {
+      return res.status(400).json({ error: 'Fecha de expiración inválida' });
+    }
+    if (!/^\d{3,4}$/.test(String(cvc))) {
+      return res.status(400).json({ error: 'CVC inválido' });
+    }
+    const amountInt = parseInt(amount, 10);
+    if (!Number.isInteger(amountInt) || amountInt <= 0 || amountInt >= 100000000) {
+      return res.status(400).json({ error: 'Monto inválido' });
+    }
+
     // Look up merchant ID server-side (never trust client-sent merchant IDs)
     let merchantId = process.env.AZUL_MERCHANT_ID || null;
     if (restaurantSlug) {
