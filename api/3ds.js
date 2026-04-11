@@ -362,8 +362,24 @@ async function handleStatus(req, res) {
 // ══════════════════════════════════════════════════════════════
 // ROUTER
 // ══════════════════════════════════════════════════════════════
+
+// 3DS ACS providers that POST back to our method-notify and callback endpoints.
+// Visa (vcas.visa.com) runs device fingerprinting and posts the method notification;
+// Cardinal Commerce (cardinalcommerce.com) hosts the challenge page and posts CRes back.
+// Azul subdomains are included defensively in case they ever post server-to-server
+// with an Origin header to our callbacks.
+const THREEDS_ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/[a-z0-9-]+\.vcas\.visa\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*cardinalcommerce\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*azul\.com\.do$/i,
+];
+
 export default async function handler(req, res) {
-  if (handleCors(req, res, { methods: 'GET, POST, OPTIONS', allowNoOrigin: true })) return;
+  if (handleCors(req, res, {
+    methods: 'GET, POST, OPTIONS',
+    allowNoOrigin: true,
+    extraAllowedOriginPatterns: THREEDS_ALLOWED_ORIGIN_PATTERNS,
+  })) return;
   // Rate limit: 10 3DS requests per minute per IP
   if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: '3ds' })) return;
 

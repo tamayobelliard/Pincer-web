@@ -15,12 +15,13 @@ if (process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'developm
  * @param {object} req - Vercel request
  * @param {object} res - Vercel response
  * @param {object} opts
- * @param {string}  opts.methods       - Allowed methods (default 'POST, OPTIONS')
- * @param {string}  opts.headers       - Allowed headers (default 'Content-Type')
- * @param {boolean} opts.allowNoOrigin - Allow requests with no Origin header (webhooks, cron)
+ * @param {string}   opts.methods                     - Allowed methods (default 'POST, OPTIONS')
+ * @param {string}   opts.headers                     - Allowed headers (default 'Content-Type')
+ * @param {boolean}  opts.allowNoOrigin               - Allow requests with no Origin header (webhooks, cron)
+ * @param {RegExp[]} opts.extraAllowedOriginPatterns  - Additional regex patterns to accept as origins (e.g. 3DS provider ACS subdomains)
  * @returns {boolean} true if request was handled (preflight answered or origin rejected), false to proceed
  */
-export function handleCors(req, res, { methods = 'POST, OPTIONS', headers = 'Content-Type', allowNoOrigin = false } = {}) {
+export function handleCors(req, res, { methods = 'POST, OPTIONS', headers = 'Content-Type', allowNoOrigin = false, extraAllowedOriginPatterns = [] } = {}) {
   const origin = req.headers.origin;
 
   if (!origin) {
@@ -40,7 +41,8 @@ export function handleCors(req, res, { methods = 'POST, OPTIONS', headers = 'Con
     return false;
   }
 
-  if (ALLOWED_ORIGINS.includes(origin)) {
+  const isExtraAllowed = extraAllowedOriginPatterns.some((p) => p.test(origin));
+  if (ALLOWED_ORIGINS.includes(origin) || isExtraAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', methods);
