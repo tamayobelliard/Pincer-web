@@ -2825,6 +2825,7 @@ function dbg(msg) {
   const ts = new Date().toLocaleTimeString();
   const line = `[${ts}] ${msg}`;
   debugLogs.push(line);
+  console.log(line);
   const panel = document.getElementById('debugPanel');
   if (panel && panel.classList.contains('show')) {
     panel.innerHTML = debugLogs.slice(-30).join('<br>');
@@ -4580,6 +4581,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
       doc.open();
       doc.write(payData.methodForm);
       doc.close();
+      dbg('🔐 methodForm escrito en iframe OK');
     }
 
     // Poll for method notification (the bank will POST to our method-notify endpoint)
@@ -4589,6 +4591,7 @@ async function handle3DSMethod(payData, customerName, phone, total, customOrderI
 
     // Now continue the payment by calling Azul again (they need the same AzulOrderId)
     show3DSOverlay('Procesando pago seguro...');
+    dbg('🔐 Iniciando POST a /api/3ds?action=continue');
 
     const continueRes = await fetchWithTimeout('/api/3ds?action=continue', {
       method: 'POST',
