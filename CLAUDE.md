@@ -297,11 +297,7 @@ All schema changes are documented in `rls.sql`. After code changes that require 
 - `reset_token_hash` and `reset_token_expires` columns on `restaurant_users`
 - `payment_audit` table with indexes
 - `sessions_3ds` table
-
-**Pending migrations:**
-- `ALTER TABLE restaurant_sessions RENAME COLUMN token TO token_hash`
-- `ALTER TABLE admin_sessions RENAME COLUMN token TO token_hash`
-- After running: invalidate all existing sessions (users must re-login)
+- `token` → `token_hash` rename on `restaurant_sessions` and `admin_sessions`
 
 ---
 
@@ -351,13 +347,55 @@ All schema changes are documented in `rls.sql`. After code changes that require 
 
 ---
 
-## Paused — Working on MiiA (March 28, 2026)
+## Session of April 11, 2026 — 3DS Method/Challenge fixes
 
-### When Resuming Pincer, Priority Tasks:
-1. **Re-apply security features to payment.js** — Fraud detection, input validation, requireJson, error masking. Apply one at a time, test payment flow after each.
-2. **Run pending SQL migrations** — token_hash rename on sessions tables
-3. **Test payment with multiple cards** — Confirm 3DS flow works with different banks/card types
-4. **Android app rebuild** — Build new APK in Android Studio with rotation + configChanges fixes
-5. **Evaluate Azul Payment Page** — Move to SAQ A compliance when possible
-6. **Extract inline JS** from HTML monoliths — Enable strict CSP
-7. **Migrate dashboard writes** to authenticated API endpoints (products, orders, store_settings)
+The frictionless 3DS path has been working since March 26, 2026 (Square One first real payment). But the **3DS Method + Challenge path was completely broken** in latent ways that never surfaced until a card requiring full 3DS authentication was tested. This session traced and fixed every bug along the chain. Thirteen commits, all in production. Validated end-to-end except for the final approved transaction (the last test failed with `VALIDATION_ERROR:CVC` — a typo, not a code bug).
+
+### Bugs fixed in this session (all in production)
+
+1. **`api/3ds.js:108` — `AZUL_URL` undefined in `handleCallback`** — referenced a variable that did not exist in the file. Latent `ReferenceError`. Replaced with `AZUL_BASE`.
+2. **`api/payment.js` — `requireJson` Content-Type validation** — re-applied (was reverted in March debugging).
+3. **`api/payment.js` + `api/3ds.js` — error masking on catch** — re-applied (was reverted).
+4. **`api/payment.js` — strict input validation** — re-applied (regex for cardNumber, expiration, cvc, amount).
+5. **`vercel.json` CSP `frame-src`** — was missing `'self'`. Browsers blocked the bank's iframe from POSTing to `pincerweb.com/api/3ds?action=method-notify`. Added `'self'`.
+6. **`vercel.json` `X-Frame-Options: DENY` global** — blocked the 3DS callback HTML from rendering inside the challenge iframe even with CSP fixed. A surgical override rule for `/api/3ds` did NOT take effect (Vercel header merging behavior unexpected). Resolved by adding `frame-ancestors 'self'` to the global CSP, which modern browsers prioritize over X-Frame-Options.
+7. **`menu/index.html:4664` — Safari `iframe.name` set after `appendChild`** — caused `form.target` to fail to resolve the iframe in Safari, sending the form POST to nowhere. Moved name assignment before appendChild.
+8. **`api/cors.js` — exact-match origin allowlist** — rejected POSTs from `methodurl.vcas.visa.com` (Visa ACS) with 403 before they could reach `handleMethodNotify`. Added an opt-in `extraAllowedOriginPatterns` regex array to `handleCors`. `api/3ds.js` passes patterns for `*.vcas.visa.com`, `*.cardinalcommerce.com`, `*.azul.com.do`. Scoped to `/api/3ds` only — no global CORS weakening.
+9. **`api/3ds.js` `handleCallback` postMessage** — forwarded only `ResponseMessage`, lost `ErrorDescription` and `ResponseCode`. Now includes both so the frontend can show real error reasons.
+10. **`menu/index.html` — generic "Pago rechazado por el banco" message** — showed misleading text for any decline. Added `friendlyPaymentError()` helper that maps Azul `ErrorDescription` and `IsoCode` to specific Spanish messages (CVC wrong, card expired, insufficient funds, issuer unavailable, etc.). Used in both the direct payment flow and the 3DS challenge result handler.
+
+### Bot analytics also added this session
+- `addItem()` gained a `source` parameter (`'menu'` | `'bot'` | `'mixed'`).
+- `cart_add` event and `orders.items` JSON now include `source` per item.
+- `orders.session_id` column added (SQL migration run) and populated by both insert flows so orders join cleanly to `page_events`.
+- `openPinzer()` gained a `trigger` param (`'user_click'` | `'auto'`); auto-open call sites pass `'auto'` so `chat_open` events can be filtered to real user intent.
+- Diagnostic `dbg()` calls added throughout `handle3DSMethod` and `handle3DSChallenge`. `dbg()` now also writes to `console.log` so the browser DevTools captures the full trace.
+
+### Test history this session
+| Time | Browser | Card | Result |
+|---|---|---|---|
+| 09:46 AM | Safari mobile | wife card #1 | popup blanco — frame-src CSP block |
+| 17:52 PM | Safari desktop | wife card #1 | popup blanco — Safari iframe.name bug |
+| 18:18 PM | Chrome mobile | wife card #1 | challenge appeared, token entered, blank popup — X-Frame-Options + CSP |
+| 18:55 PM | Chrome (automated) | wife card #1 | iso 99 — CORS blocked method-notify |
+| 19:32 PM | Chrome desktop | wife card #1 | iso 99 — risk scoring after multiple fails |
+| 19:38 PM | Safari mobile | wife card #2 | full flow, declined with `VALIDATION_ERROR:CVC` (typo) |
+
+The 19:38 test was the first session in the database with `status: declined`, `method_notification_received: true`, and `has_cres: true` — confirming all 16 steps of the 3DS Challenge flow ran end-to-end.
+
+---
+
+## Paused — Continuing tomorrow (April 12, 2026)
+
+### Immediate next step
+**Re-test payment with correct CVC.** The 19:38 PM decline was a CVC typo, not a code bug. Last test of the day was paused intentionally to avoid Azul's risk scoring on the wife's account. Pick up tomorrow with the SAME card, careful CVC entry. If it approves, the 3DS Challenge flow is fully validated and Pincer can advertise full card payment support to clients.
+
+### When Resuming Pincer, Priority Tasks (post 3DS validation):
+1. **Re-apply fraud detection to payment.js** — sub-task 1d, the only remaining piece from the original security re-application. `api/fraud-check.js` already exists with `checkFraud()` and `logPaymentAttempt()`. Apply with care: `logPaymentAttempt` must be fire-and-forget, `checkFraud` must fail-open on DB error. Verify `payment_audit` table is writable first.
+2. **Android app rebuild** — Build new APK with rotation + configChanges fixes that are sitting in the `pincer-dashboard-android` repo on Desktop.
+3. **Evaluate Azul Payment Page** — Move to SAQ A compliance when possible (avoids server-side card handling).
+4. **Extract inline JS** from HTML monoliths — Enable strict CSP (remove `unsafe-inline` / `unsafe-eval`).
+5. **Migrate dashboard writes** to authenticated API endpoints (products, orders, store_settings — currently use Supabase anon key).
+6. **Apple Pay / Google Pay** — UI buttons exist at `menu/index.html:2508-2509` but are not wired to any backend. Selecting them and clicking "Pagar" silently does nothing. Real implementation requires Apple Pay Merchant ID, Apple Pay JS or PaymentRequest API, and Azul backend support for Apple Pay tokens.
+7. **Font CSP violation** at `menu/index.html:6154` — embedded `data:` URI font is blocked by `font-src 'self' https://fonts.gstatic.com`. Cosmetic (font fallback works) but should be cleaned up. Either add `data:` to font-src or move the font to a hosted file.
+8. **Dead `/api/3ds` header override rule** — already removed in commit `5bf79bf`. Documented here so the surgical-override approach is not retried (Vercel header merging behavior is "last rule wins for duplicate keys", which is the opposite of what was assumed).
