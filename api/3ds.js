@@ -147,6 +147,8 @@ async function handleCallback(req, res) {
         rrn: result.RRN || '',
         ticket: result.Ticket || '',
         isoCode: result.IsoCode || '',
+        errorDescription: result.ErrorDescription || '',
+        responseCode: result.ResponseCode || '',
       })}
     }, '${escJs(ALLOWED_ORIGIN)}');
   } else {

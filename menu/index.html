@@ -4536,7 +4536,11 @@ async function processPayment() {
       }
 
       // Declined or error
-      errorDiv.textContent = payData.message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
+      errorDiv.textContent = friendlyPaymentError({
+        errorDescription: payData.error || '',
+        isoCode: payData.isoCode || '',
+        message: payData.message || '',
+      });
       errorDiv.style.display = 'block';
       payBtn.disabled = false;
       payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
@@ -4548,6 +4552,53 @@ async function processPayment() {
       payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
     }
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PAYMENT ERROR TRANSLATION
+// ══════════════════════════════════════════════════════════════
+
+// Map Azul responses (ErrorDescription + IsoCode + ResponseMessage) to a
+// human-readable Spanish message for the shopper. Called from both the direct
+// payment flow (decline without challenge) and the 3DS challenge result.
+function friendlyPaymentError({ errorDescription = '', isoCode = '', responseCode = '', message = '' } = {}) {
+  const err = String(errorDescription || '').toUpperCase();
+  const code = String(isoCode || '').toUpperCase();
+
+  // Azul validation errors (wrong card data)
+  if (err.startsWith('VALIDATION_ERROR:CVC')) {
+    return 'El código CVC de tu tarjeta no es correcto. Verifícalo e intenta de nuevo.';
+  }
+  if (err.startsWith('VALIDATION_ERROR:CARD') || err.startsWith('VALIDATION_ERROR:NUMBER')) {
+    return 'El número de tarjeta no es válido. Verifícalo e intenta de nuevo.';
+  }
+  if (err.startsWith('VALIDATION_ERROR:EXPIR')) {
+    return 'La fecha de expiración de tu tarjeta no es válida.';
+  }
+  if (err.startsWith('VALIDATION_ERROR')) {
+    return 'Los datos de tu tarjeta no son correctos. Verifícalos e intenta de nuevo.';
+  }
+
+  // Common ISO-8583 decline codes
+  if (code === '51') return 'Fondos insuficientes en la tarjeta.';
+  if (code === '54') return 'Tu tarjeta está vencida.';
+  if (code === '05' || code === '57' || code === '62') {
+    return 'Tu banco rechazó el pago. Contacta al banco para más información.';
+  }
+  if (code === '91') {
+    return 'Tu banco emisor no está disponible en este momento. Intenta en unos minutos.';
+  }
+  if (code === '99') {
+    return 'La autenticación con el banco falló. Intenta de nuevo o usa otra tarjeta.';
+  }
+
+  // Azul system error with no descriptive message
+  if (String(responseCode).toLowerCase() === 'error' && !message) {
+    return 'Error procesando el pago. Verifica los datos de tu tarjeta e intenta de nuevo.';
+  }
+
+  // Fall back to Azul's own message, or a generic one
+  return message || 'Pago rechazado. Verifica los datos de tu tarjeta.';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4726,7 +4777,12 @@ async function handle3DSChallenge(payData, customerName, phone, total, customOrd
       };
       await submitOrderToSupabase('paid', result.result?.azulOrderId || customOrderId, customerName);
     } else {
-      errorDiv.textContent = result.result?.message || 'Pago rechazado por el banco.';
+      errorDiv.textContent = friendlyPaymentError({
+        errorDescription: result.result?.errorDescription || '',
+        isoCode: result.result?.isoCode || '',
+        responseCode: result.result?.responseCode || '',
+        message: result.result?.message || '',
+      });
       errorDiv.style.display = 'block';
       payBtn.disabled = false;
       payBtn.textContent = `Pagar RD$${total.toLocaleString()}`;
