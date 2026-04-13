@@ -3617,7 +3617,7 @@ async function loadOrders() {
         ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
         ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Aceptar</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Lista</button>` : ''}
-        ${status === 'accepted' && order.azul_order_id ? `<button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && (status === 'accepted' || status === 'ready' || status === 'notified') ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
@@ -3735,42 +3735,68 @@ async function confirmReject() {
   btn.disabled = true;
   btn.textContent = 'Anulando...';
 
+  var order = _ordersMap[_rejectOrderId];
+  var hasPaid = order && order.azul_order_id;
+
   try {
-    var token = localStorage.getItem('pincer_token') || '';
-    var res = await fetch('/api/void-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
-      body: JSON.stringify({ orderId: _rejectOrderId })
-    });
-    var data = await res.json();
+    var success = false;
 
-    if (data.success) {
-      closeRejectModal();
-      dbg('❌ Orden #' + _rejectOrderId + ' anulada');
-      track('order_voided', { order_id: _rejectOrderId, items: itemNames });
-
-      // Open WhatsApp with rejection reason
-      var order = _ordersMap[_rejectOrderId];
-      if (order && order.phone) {
-        var itemsText;
-        if (itemNames.length === 1) {
-          itemsText = itemNames[0];
-        } else {
-          itemsText = itemNames.slice(0, -1).join(', ') + ' y ' + itemNames[itemNames.length - 1];
-        }
-        var waMsg = 'Hola ' + (order.customer_name || '') + ', lamentamos informarte que no pudimos procesar tu orden porque no tenemos '
-          + itemsText + ' disponible(s) en este momento. Puedes cambiarlo por otro y volver a ordenar. El cargo a tu tarjeta será devuelto automáticamente. Disculpa las molestias.';
-        window.open('https://wa.me/1' + order.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(waMsg.trim()), 'pincer_whatsapp');
+    if (hasPaid) {
+      // Card payment: call void endpoint to reverse the charge
+      var token = localStorage.getItem('pincer_token') || '';
+      var res = await fetch('/api/void-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
+        body: JSON.stringify({ orderId: _rejectOrderId })
+      });
+      var data = await res.json();
+      success = data.success;
+      if (!success) {
+        document.getElementById('rejectError').textContent = data.error || 'No se pudo anular el pago. Intenta de nuevo.';
+        document.getElementById('rejectError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '❌ Anular orden';
+        return;
       }
-
-      setTimeout(loadOrders, 300);
-      loadDaySummary();
     } else {
-      document.getElementById('rejectError').textContent = data.error || 'No se pudo anular el pago. Intenta de nuevo.';
-      document.getElementById('rejectError').style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = '❌ Anular orden';
+      // No card payment: just update order status directly
+      var patchRes = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + _rejectOrderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
+        method: 'PATCH', headers: sbWriteHeaders(),
+        body: JSON.stringify({ status: 'voided', voided_at: new Date().toISOString() })
+      });
+      success = patchRes.ok;
+      if (!success) {
+        document.getElementById('rejectError').textContent = 'Error al anular la orden. Intenta de nuevo.';
+        document.getElementById('rejectError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '❌ Anular orden';
+        return;
+      }
     }
+
+    closeRejectModal();
+    dbg('❌ Orden #' + _rejectOrderId + ' anulada' + (hasPaid ? ' (pago revertido)' : ''));
+    track('order_voided', { order_id: _rejectOrderId, items: itemNames, had_payment: !!hasPaid });
+
+    // Open WhatsApp with rejection reason
+    if (order && order.phone) {
+      var itemsText;
+      if (itemNames.length === 1) {
+        itemsText = itemNames[0];
+      } else {
+        itemsText = itemNames.slice(0, -1).join(', ') + ' y ' + itemNames[itemNames.length - 1];
+      }
+      var waMsg = 'Hola ' + (order.customer_name || '') + ', lamentamos informarte que no pudimos procesar tu orden porque no tenemos '
+        + itemsText + ' disponible(s) en este momento. Puedes cambiarlo por otro y volver a ordenar.';
+      if (hasPaid) {
+        waMsg += ' El cargo a tu tarjeta será devuelto automáticamente.';
+      }
+      waMsg += ' Disculpa las molestias.';
+      window.open('https://wa.me/1' + order.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(waMsg.trim()), 'pincer_whatsapp');
+    }
+
+    setTimeout(loadOrders, 300);
+    loadDaySummary();
   } catch (e) {
     document.getElementById('rejectError').textContent = 'Error de conexión. Intenta de nuevo.';
     document.getElementById('rejectError').style.display = 'block';
