@@ -433,6 +433,32 @@
     .status-accepted { background: #fef3c7; color: #92400e; }
     .status-ready { background: #d1fae5; color: #065f46; }
     .status-notified { background: #ede9fe; color: #5b21b6; }
+    .status-voided { background: #fef2f2; color: #dc2626; }
+
+    .order.voided { opacity: 0.6; border-left: 4px solid #dc2626; }
+
+    .timer-countdown { font-size: 12px; color: #92400e; font-weight: 700; padding: 6px 16px; }
+    .timer-expired { color: #dc2626; }
+
+    .btn-reject { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+    .btn-reject:hover { background: #fee2e2; }
+
+    .reject-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; }
+    .reject-overlay.show { display:block; }
+    .reject-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border-radius:16px; padding:24px; width:90%; max-width:400px; z-index:1001; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+    .reject-modal.show { display:block; }
+    .reject-modal h3 { margin:0 0 16px; font-size:16px; color:#1e293b; }
+    .reject-item { display:flex; align-items:center; gap:10px; padding:10px 12px; margin:4px 0; border-radius:8px; border:1px solid #e2e8f0; cursor:pointer; transition:all 0.15s; }
+    .reject-item:hover { border-color:#fca5a5; }
+    .reject-item.selected { background:#fef2f2; border-color:#dc2626; }
+    .reject-item .item-check { width:20px; height:20px; border:2px solid #cbd5e1; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+    .reject-item.selected .item-check { background:#dc2626; border-color:#dc2626; color:white; }
+    .reject-btns { display:flex; gap:10px; margin-top:16px; }
+    .reject-btns button { flex:1; padding:10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+    .reject-btn-cancel { background:#f1f5f9; color:#475569; }
+    .reject-btn-confirm { background:#dc2626; color:white; }
+    .reject-btn-confirm:disabled { opacity:0.5; cursor:not-allowed; }
+    .reject-error { color:#dc2626; font-size:13px; margin-top:8px; display:none; }
 
     .order-phone {
       margin: 0; padding: 8px 16px;
@@ -1257,6 +1283,18 @@
     <button class="btn-modal-save" id="pmSaveBtn" onclick="saveProduct()">Guardar</button>
   </div>
   <button class="btn-modal-delete" id="pmDeleteBtn" onclick="deleteProduct()" style="display:none;">Eliminar producto</button>
+</div>
+
+<!-- Reject Order Modal -->
+<div class="reject-overlay" id="rejectOverlay" onclick="closeRejectModal()"></div>
+<div class="reject-modal" id="rejectModal">
+  <h3>¿Qué artículo(s) no están disponibles?</h3>
+  <div id="rejectItemsList"></div>
+  <div class="reject-btns">
+    <button class="reject-btn-cancel" onclick="closeRejectModal()">Cancelar</button>
+    <button class="reject-btn-confirm" id="rejectConfirmBtn" onclick="confirmReject()">❌ Anular orden</button>
+  </div>
+  <div class="reject-error" id="rejectError"></div>
 </div>
 
 <!-- Close Day Modal -->
@@ -3480,7 +3518,9 @@ async function loadOrders() {
     // Per-restaurant order numbering — use DB order_number if available, else fallback
     const totalOrders = data.length;
 
+    _ordersMap = {};
     data.forEach((order, idx) => {
+      _ordersMap[order.id] = order;
       const orderNum = order.order_number || (totalOrders - idx);
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
@@ -3488,7 +3528,8 @@ async function loadOrders() {
       const isPaid = status === 'paid' || !!order.azul_order_id;
 
       let statusClass = 'order-new';
-      if (status === 'notified') statusClass = 'notified';
+      if (status === 'voided') statusClass = 'voided';
+      else if (status === 'notified') statusClass = 'notified';
       else if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
       else if (minutes > 2) statusClass = 'order-urgent';
@@ -3496,7 +3537,8 @@ async function loadOrders() {
       console.log('[timer] order:', order.id, 'status:', status, 'minutes:', minutes, 'class:', statusClass);
 
       let statusBadgeClass, statusText;
-      if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
+      if (status === 'voided') { statusBadgeClass = 'status-voided'; statusText = '❌ ANULADA'; }
+      else if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
       else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
       else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
       else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '💳 PAGADO'; }
@@ -3555,8 +3597,15 @@ async function loadOrders() {
           if (status === 'pending' || status === 'paid' || !status) {
             return '<div class="order-wait-timer ' + (minutes > 2 ? 'timer-urgent' : minutes >= 1 ? 'timer-medium' : '') + '">⏱ ' + minutes + ' min esperando</div>';
           } else if (status === 'accepted' && order.digitada_at) {
-            var prepMin = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 60000);
-            return '<div class="order-time">🍳 ' + prepMin + ' min en preparación</div>';
+            var elapsedSec = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 1000);
+            var remaining = Math.max(0, 300 - elapsedSec);
+            if (remaining > 0) {
+              var tMin = Math.floor(remaining / 60);
+              var tSec = remaining % 60;
+              return '<div class="timer-countdown" data-digitada="' + order.digitada_at + '">⏱ Tiempo para confirmar: ' + tMin + ':' + String(tSec).padStart(2, '0') + '</div>';
+            } else {
+              return '<div class="timer-countdown timer-expired">⚠️ Tiempo agotado — confirma o rechaza</div>';
+            }
           } else if ((status === 'ready' || status === 'notified') && order.lista_at) {
             var readyMin = Math.floor((Date.now() - new Date(order.lista_at).getTime()) / 60000);
             return '<div class="order-time">✅ Lista hace ' + readyMin + ' min</div>';
@@ -3566,12 +3615,13 @@ async function loadOrders() {
         })()}
         <div class="order-actions">
         ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
-        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Marcar como digitada</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como LISTA</button><button class="btn-revert" onclick="revertOrder(${order.id})">↩ Revertir</button>` : ''}
-        ${status === 'ready' && order.phone ? `<a class="wa-btn" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waMsg)}" target="pincer_whatsapp" onclick="markAsNotified(${order.id})">💬 Notificar por WhatsApp</a>` : ''}
-        ${order.order_type === 'delivery' && order.phone ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
+        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Aceptar</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Lista</button>` : ''}
+        ${status === 'accepted' && order.azul_order_id ? `<button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
+        ${order.order_type === 'delivery' && order.phone && (status === 'accepted' || status === 'ready' || status === 'notified') ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
+        ${status === 'voided' ? `<span class="completed-badge" style="background:#dc2626;color:white;">❌ ANULADA</span>` : ''}
         </div>`;
       container.appendChild(div);
     });
@@ -3605,43 +3655,128 @@ async function acceptOrder(id) {
 
 async function markReady(id) {
   try {
+    const now = new Date().toISOString();
     const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
       method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'ready', lista_at: new Date().toISOString() })
+      body: JSON.stringify({ status: 'ready', lista_at: now, notified_at: now })
     });
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
-    dbg('✅ Orden #' + id + ' → ready (lista_at saved)');
+    dbg('✅ Orden #' + id + ' → ready + notified');
     track('order_ready', { order_id: id });
     playConfirmSound();
+
+    // Auto-open WhatsApp if order has phone
+    var order = _ordersMap[id];
+    if (order && order.phone) {
+      var orderNum = order.order_number || id;
+      var waMsg;
+      if (order.order_type === 'delivery') {
+        waMsg = 'Hola! Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' va en camino!';
+      } else if (order.azul_order_id) {
+        waMsg = 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' está lista! Ya está pagada, solo pasa a recogerla.';
+      } else {
+        waMsg = 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' está lista! Pasa por la caja a pagar y recogerla.';
+      }
+      window.open('https://wa.me/1' + order.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(waMsg), 'pincer_whatsapp');
+    }
+
     setTimeout(loadOrders, 150);
     loadDaySummary();
   } catch (e) { showError("Error inesperado."); }
 }
 
-async function markAsNotified(orderId) {
-  try {
-    await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + orderId + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
-      method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'notified', notified_at: new Date().toISOString() })
-    });
-    dbg('✅ Orden #' + orderId + ' → notified (notified_at saved)');
-    setTimeout(loadOrders, 500);
-  } catch (e) { dbg('⚠️ markAsNotified error: ' + e.message); }
+// ══════════════════════════════════════════════════════════════
+// REJECT ORDER (VOID PAYMENT)
+// ══════════════════════════════════════════════════════════════
+
+var _ordersMap = {};
+var _rejectOrderId = null;
+
+function openRejectModal(orderId) {
+  _rejectOrderId = orderId;
+  var order = _ordersMap[orderId];
+  if (!order) { showError('Orden no encontrada'); return; }
+
+  var items;
+  try { items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; } catch(e) { items = []; }
+  if (!Array.isArray(items)) items = [];
+
+  var listEl = document.getElementById('rejectItemsList');
+  listEl.innerHTML = items.map(function(it, i) {
+    var qty = it.qty > 1 ? it.qty + 'x ' : '';
+    return '<div class="reject-item" data-index="' + i + '" data-name="' + (it.name || '').replace(/"/g, '&quot;') + '" onclick="this.classList.toggle(\'selected\')">'
+      + '<div class="item-check">✓</div>'
+      + '<span>' + qty + (it.name || 'Item') + '</span>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('rejectError').style.display = 'none';
+  document.getElementById('rejectConfirmBtn').disabled = false;
+  document.getElementById('rejectOverlay').classList.add('show');
+  document.getElementById('rejectModal').classList.add('show');
 }
 
-async function revertOrder(id) {
-  if (!confirm('¿Revertir esta orden a pendiente?')) return;
+function closeRejectModal() {
+  document.getElementById('rejectOverlay').classList.remove('show');
+  document.getElementById('rejectModal').classList.remove('show');
+  _rejectOrderId = null;
+}
+
+async function confirmReject() {
+  var selected = document.querySelectorAll('#rejectItemsList .reject-item.selected');
+  if (selected.length === 0) {
+    document.getElementById('rejectError').textContent = 'Selecciona al menos un artículo no disponible';
+    document.getElementById('rejectError').style.display = 'block';
+    return;
+  }
+
+  var itemNames = Array.from(selected).map(function(el) { return el.dataset.name; });
+  var btn = document.getElementById('rejectConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Anulando...';
+
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/orders?id=eq.' + id + '&restaurant_slug=eq.' + encodeURIComponent(SLUG), {
-      method: 'PATCH', headers: sbWriteHeaders(),
-      body: JSON.stringify({ status: 'pending' })
+    var token = localStorage.getItem('pincer_token') || '';
+    var res = await fetch('/api/void-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
+      body: JSON.stringify({ orderId: _rejectOrderId })
     });
-    if (!res.ok) { showError('Error al revertir orden #' + id); return; }
-    dbg('↩ Orden #' + id + ' → pending');
-    startAlarm();
-    setTimeout(loadOrders, 150);
-    loadDaySummary();
-  } catch (e) { showError('Error inesperado.'); }
+    var data = await res.json();
+
+    if (data.success) {
+      closeRejectModal();
+      dbg('❌ Orden #' + _rejectOrderId + ' anulada');
+      track('order_voided', { order_id: _rejectOrderId, items: itemNames });
+
+      // Open WhatsApp with rejection reason
+      var order = _ordersMap[_rejectOrderId];
+      if (order && order.phone) {
+        var itemsText;
+        if (itemNames.length === 1) {
+          itemsText = itemNames[0];
+        } else {
+          itemsText = itemNames.slice(0, -1).join(', ') + ' y ' + itemNames[itemNames.length - 1];
+        }
+        var waMsg = 'Hola ' + (order.customer_name || '') + ', lamentamos informarte que no pudimos procesar tu orden porque no tenemos '
+          + itemsText + ' disponible(s) en este momento. Puedes cambiarlo por otro y volver a ordenar. El cargo a tu tarjeta será devuelto automáticamente. Disculpa las molestias.';
+        window.open('https://wa.me/1' + order.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(waMsg.trim()), 'pincer_whatsapp');
+      }
+
+      setTimeout(loadOrders, 300);
+      loadDaySummary();
+    } else {
+      document.getElementById('rejectError').textContent = data.error || 'No se pudo anular el pago. Intenta de nuevo.';
+      document.getElementById('rejectError').style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '❌ Anular orden';
+    }
+  } catch (e) {
+    document.getElementById('rejectError').textContent = 'Error de conexión. Intenta de nuevo.';
+    document.getElementById('rejectError').style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '❌ Anular orden';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3956,6 +4091,24 @@ async function initializeDashboard() {
   }
 
   setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
+
+  // Per-second timer updates for the 5-minute countdown on accepted orders
+  setInterval(function() {
+    document.querySelectorAll('.timer-countdown[data-digitada]').forEach(function(el) {
+      var digitada = el.dataset.digitada;
+      if (!digitada) return;
+      var elapsed = Math.floor((Date.now() - new Date(digitada).getTime()) / 1000);
+      var remaining = Math.max(0, 300 - elapsed);
+      if (remaining > 0) {
+        var m = Math.floor(remaining / 60), s = remaining % 60;
+        el.textContent = '⏱ Tiempo para confirmar: ' + m + ':' + String(s).padStart(2, '0');
+        el.classList.remove('timer-expired');
+      } else {
+        el.textContent = '⚠️ Tiempo agotado — confirma o rechaza';
+        el.classList.add('timer-expired');
+      }
+    });
+  }, 1000);
   setInterval(loadProducts, 30000);
   setInterval(loadDaySummary, 30000);
 
