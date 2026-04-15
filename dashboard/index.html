@@ -3626,7 +3626,26 @@ async function loadOrders() {
         ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})"><i data-lucide="check"></i> Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})"><i data-lucide="x"></i> Rechazar</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})"><i data-lucide="check-circle-2"></i> Marcar como lista y notificar</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && status !== 'voided' ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Recibimos tu pedido #' + orderNum + ' de ' + DISPLAY_NAME + '. Para coordinar la entrega con nuestro mensajero, por favor compártenos tu ubicación en este chat. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
-        ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
+        ${(function() {
+          var isDeliveryActive = order.order_type === 'delivery' && status !== 'voided';
+          if (!isDeliveryActive && !isPaid) return '';
+          var label = isDeliveryActive ? '🛵 Enviar al mensajero' : '🧾 Compartir recibo';
+          var header = isDeliveryActive ? '🛵 *Pedido para entregar — ' + DISPLAY_NAME + '*' : '🧾 *Recibo — ' + DISPLAY_NAME + '*';
+          var body = header + '\nOrden #' + orderNum + '\n';
+          try {
+            var its = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+            if (Array.isArray(its)) its.forEach(function(it) {
+              body += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n';
+            });
+          } catch(e) {}
+          body += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*';
+          if (order.azul_order_id) body += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')';
+          else if (isDeliveryActive) body += '\n💵 Cobrar al entregar';
+          if (order.customer_name) body += '\n👤 ' + order.customer_name;
+          if (order.phone) body += '\n📱 ' + order.phone;
+          if (mapUrl) body += '\n📍 ' + mapUrl;
+          return '<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=' + encodeURIComponent(body) + '" target="_blank">' + label + '</a>';
+        })()}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge"><i data-lucide="check"></i> COMPLETADA</span>` : ''}
         ${status === 'voided' ? `<span class="completed-badge" style="background:#dc2626;color:white;"><i data-lucide="x"></i> ANULADA</span>` : ''}
         </div>`;
