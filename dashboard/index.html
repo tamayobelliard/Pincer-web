@@ -3790,8 +3790,9 @@ async function confirmReject() {
       } else {
         itemsText = itemNames.slice(0, -1).join(', ') + ' y ' + itemNames[itemNames.length - 1];
       }
-      var waMsg = 'Hola ' + (order.customer_name || '') + ', lamentamos informarte que no pudimos procesar tu orden porque no tenemos '
-        + itemsText + ' disponible(s) en este momento. Puedes cambiarlo por otro y volver a ordenar.';
+      var orderNum = order.order_number || order.id;
+      var waMsg = 'Hola ' + (order.customer_name || '') + ', lamentamos informarte que no pudimos procesar tu orden #' + orderNum + ' porque no tenemos '
+        + itemsText + ' disponible(s) en este momento. Puedes cambiarlo por otro artículo y volver a ordenar.';
       if (hasPaid) {
         waMsg += ' El cargo a tu tarjeta será devuelto automáticamente.';
       }
