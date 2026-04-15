@@ -3767,6 +3767,9 @@ async function confirmReject() {
       });
       success = patchRes.ok;
       if (!success) {
+        var errText = '';
+        try { errText = await patchRes.text(); } catch (_) {}
+        dbg('❌ voided PATCH failed ' + patchRes.status + ': ' + errText.substring(0, 200));
         document.getElementById('rejectError').textContent = 'Error al anular la orden. Intenta de nuevo.';
         document.getElementById('rejectError').style.display = 'block';
         btn.disabled = false;

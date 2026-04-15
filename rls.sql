@@ -296,6 +296,12 @@ CREATE POLICY "deny_anon_delete_shifts"
 -- Link orders to shifts
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS shift_id bigint;
 
+-- Voided orders timestamp (dashboard reject flow, Apr 15)
+-- Set when an order is cancelled via the reject button, either by voiding
+-- an Azul payment (api/void-payment.js) or cancelling a non-payment order
+-- (direct PATCH from dashboard).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS voided_at timestamptz;
+
 
 -- ──────────────────────────────────────────────────────────────
 -- Cleanup: Delete expired sessions (run periodically or add to cron)
