@@ -439,3 +439,45 @@ Fuudt (fuudt.com) is the main DR competitor — a digital menu + marketing platf
 
 - **Third-party ads on free tier** — Fuudt monetizes free users with ads. Conflicts with Pincer's premium positioning and the commission-free promise. Don't.
 - **Outbound WhatsApp marketing campaigns** — user decided Apr 15 it's not worth the engineering effort right now. Fuudt has this (Leader tier) but we're not chasing it.
+
+### Twilio + Multi-promo (Apr 15)
+
+**24. Twilio WhatsApp production rollout per restaurant.** The current integration lives in `api/whatsapp-webhook.js` and works in Twilio Sandbox. Sandbox limitations that will hurt clients in production:
+- Each sender's WhatsApp number must send `join <code>` manually once
+- Re-join required if no activity in 72 hours
+- Only numbers that joined can interact — not usable with real customers
+- Messages carry "Sent from your Twilio trial account" prefix
+
+For production, steps per restaurant:
+1. Twilio Console → Messaging → Senders → Request a WhatsApp number (one dedicated number per restaurant, or one shared with multi-routing via restaurant_users.phone match)
+2. Verify business with Meta Business Manager (3-5 days)
+3. Register templates for any message Pincer INITIATES (confirmations, promos, welcome). Messages the restaurant initiates within a 24h window don't need templates.
+4. Update the webhook URL in Twilio to the same `https://www.pincerweb.com/api/whatsapp-webhook` — handler already supports multi-restaurant routing via the `phone` field lookup in `restaurant_users`.
+5. Costs: ~$0.005-0.02 per conversation in LatAm, billed by Twilio. Pass-through or absorb as part of Premium tier pricing TBD.
+
+Decision needed before building: shared Pincer WhatsApp number (one inbox, route by phone sender) vs per-restaurant numbers (each restaurant gets its own). Shared is cheaper and simpler; per-restaurant is cleaner branding (customer sees "Mr. Sandwich" not "Pincer"). The webhook already supports either — the `From` number gets mapped to `restaurant_slug` via the `phone` column.
+
+**25. Multiple active promos + carousel popup.** Today the system is hard-limited to ONE active promo per restaurant:
+- `api/whatsapp-webhook.js:291-304` deactivates every previously-active promo before activating the new one
+- `menu/index.html:6166-6172` loads with `order=created_at.desc&limit=1` — only picks up the latest
+- `#promoPopup` in the DOM is a single card with no carousel structure
+
+To support 2-3 active promos with a carousel popup, the work splits into:
+
+Backend (`api/whatsapp-webhook.js`):
+- Add a per-restaurant limit (default 2-3) to how many promos can be active at once. New environment config or a `max_active_promos` column on `restaurant_users` (default 2).
+- When limit is reached and a new promo is published, deactivate the OLDEST (not all) to make room.
+- Add a WhatsApp command like "quitar <nombre>" or "quitar 1" for the owner to manually retire a specific promo without publishing a new one.
+
+Frontend (`menu/index.html`):
+- Change the load to `limit=3` (or config) and `order=created_at.desc`.
+- Rebuild `#promoPopup` as a carousel: one visible slide at a time, left/right arrows or swipe, dots indicator, optional auto-rotate every 4-5s.
+- Each slide keeps current fields (badge, image, title, price, old price, description, CTA button). `_activePromo` becomes an array, and `track('promotion_clicked', ...)` fires for the slide the user actually clicked.
+- `track('promotion_viewed')` already exists — keep per-slide tracking so analytics shows which of the two promos got more engagement.
+
+UX decisions the user needs to confirm before implementation:
+- Auto-rotate or manual swipe only? (auto-rotate is faster to grab attention, manual is less annoying)
+- Dismissing the popup dismisses ALL promos for that session, or just the current slide?
+- If there's only one active promo, render it as a single card (no carousel controls) — same as today.
+
+Estimated effort: 1-2 days frontend (carousel component, testing swipe on Safari mobile which has been flaky in this codebase), 2-3 hours backend (relax the auto-deactivate, add limit logic).
