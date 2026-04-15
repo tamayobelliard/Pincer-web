@@ -441,8 +441,8 @@
     .timer-countdown { font-size: 12px; color: #92400e; font-weight: 700; padding: 6px 16px; }
     .timer-expired { color: #dc2626; }
 
-    .btn-reject { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 6px; }
-    .btn-reject:hover { background: #fee2e2; }
+    .btn-reject { background: #dc2626; color: white; border: none; width: 100%; display: block; padding: 11px 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    .btn-reject:hover { background: #b91c1c; }
 
     .reject-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; }
     .reject-overlay.show { display:block; }
@@ -518,11 +518,11 @@
       -webkit-tap-highlight-color: transparent;
     }
     .btn-accept {
-      background: var(--red); box-shadow: none;
+      background: var(--green); box-shadow: none;
       width: 100%; display: block; padding: 11px 9px;
     }
-    .btn-accept:hover { background: var(--red-dark); }
-    .btn-ready { background: var(--green); box-shadow: none; }
+    .btn-accept:hover { background: #15803d; }
+    .btn-ready { background: var(--green); box-shadow: none; width: 100%; display: block; padding: 11px 9px; }
     .btn-ready:hover { background: #15803d; }
     .btn-revert {
       background: var(--bg3); color: var(--muted); font-size: 11px;
@@ -3604,17 +3604,20 @@ async function loadOrders() {
         ${deliveryInfoHTML}
         ${(function() {
           if (status === 'pending' || status === 'paid' || !status) {
-            return '<div class="order-wait-timer ' + (minutes > 2 ? 'timer-urgent' : minutes >= 1 ? 'timer-medium' : '') + '">⏱ ' + minutes + ' min esperando</div>';
-          } else if (status === 'accepted' && order.digitada_at) {
-            var elapsedSec = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 1000);
+            // 5-min decision countdown from when the order arrived.
+            // After expiry, keep counting up so the employee sees total wait time.
+            var elapsedSec = Math.floor((Date.now() - createdAt.getTime()) / 1000);
             var remaining = Math.max(0, 300 - elapsedSec);
             if (remaining > 0) {
               var tMin = Math.floor(remaining / 60);
               var tSec = remaining % 60;
-              return '<div class="timer-countdown" data-digitada="' + order.digitada_at + '">⏱ Tiempo para confirmar: ' + tMin + ':' + String(tSec).padStart(2, '0') + '</div>';
+              return '<div class="timer-countdown" data-created="' + order.created_at + '">⏱ Tiempo para confirmar: ' + tMin + ':' + String(tSec).padStart(2, '0') + '</div>';
             } else {
-              return '<div class="timer-countdown timer-expired">⚠️ Tiempo agotado — confirma o rechaza</div>';
+              return '<div class="timer-countdown timer-expired" data-created="' + order.created_at + '">⚠️ Tiempo agotado — ' + minutes + ' min esperando</div>';
             }
+          } else if (status === 'accepted' && order.digitada_at) {
+            var prepMin = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 60000);
+            return '<div class="order-time">🍳 ' + prepMin + ' min en preparación</div>';
           } else if ((status === 'ready' || status === 'notified') && order.lista_at) {
             var readyMin = Math.floor((Date.now() - new Date(order.lista_at).getTime()) / 60000);
             return '<div class="order-time">✅ Lista hace ' + readyMin + ' min</div>';
@@ -3623,10 +3626,8 @@ async function loadOrders() {
           }
         })()}
         <div class="order-actions">
-        ${status === 'paid' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Confirmar pedido</button>` : ''}
-        ${status === 'pending' ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Aceptar</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Lista</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
+        ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como lista y notificar</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && (status === 'accepted' || status === 'ready' || status === 'notified') ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
         ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
@@ -4160,19 +4161,21 @@ async function initializeDashboard() {
 
   setInterval(() => { if (storeIsOpen) loadOrders(); }, 3000);
 
-  // Per-second timer updates for the 5-minute countdown on accepted orders
+  // Per-second timer updates for the 5-minute countdown on pending/paid orders
   setInterval(function() {
-    document.querySelectorAll('.timer-countdown[data-digitada]').forEach(function(el) {
-      var digitada = el.dataset.digitada;
-      if (!digitada) return;
-      var elapsed = Math.floor((Date.now() - new Date(digitada).getTime()) / 1000);
-      var remaining = Math.max(0, 300 - elapsed);
+    document.querySelectorAll('.timer-countdown[data-created]').forEach(function(el) {
+      var created = el.dataset.created;
+      if (!created) return;
+      var createdMs = new Date(created).getTime();
+      var elapsedSec = Math.floor((Date.now() - createdMs) / 1000);
+      var remaining = Math.max(0, 300 - elapsedSec);
       if (remaining > 0) {
         var m = Math.floor(remaining / 60), s = remaining % 60;
         el.textContent = '⏱ Tiempo para confirmar: ' + m + ':' + String(s).padStart(2, '0');
         el.classList.remove('timer-expired');
       } else {
-        el.textContent = '⚠️ Tiempo agotado — confirma o rechaza';
+        var waitingMin = Math.floor(elapsedSec / 60);
+        el.textContent = '⚠️ Tiempo agotado — ' + waitingMin + ' min esperando';
         el.classList.add('timer-expired');
       }
     });

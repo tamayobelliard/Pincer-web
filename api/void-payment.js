@@ -86,8 +86,9 @@ export default async function handler(req, res) {
     }
 
     const order = orders[0];
-    if (order.status !== 'accepted') {
-      return res.status(400).json({ error: 'Solo se pueden anular órdenes aceptadas' });
+    const voidableStatuses = ['pending', 'paid', 'accepted'];
+    if (!voidableStatuses.includes(order.status)) {
+      return res.status(400).json({ error: 'Esta orden ya no puede ser anulada' });
     }
     if (!order.azul_order_id) {
       return res.status(400).json({ error: 'Esta orden no tiene pago con tarjeta' });
