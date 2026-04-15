@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -37,6 +38,22 @@
       display: flex; flex-direction: column; padding: 24px 16px; z-index: 100;
     }
     .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 32px; }
+    .sidebar-logo .logo-icon img { width: 32px; height: 32px; display: block; border-radius: 6px; }
+    /* Lucide icons — inherit color from parent, consistent stroke */
+    [data-lucide] { stroke-width: 2; flex-shrink: 0; vertical-align: middle; }
+    .order-status [data-lucide] { width: 13px; height: 13px; }
+    .order-type-badge [data-lucide] { width: 12px; height: 12px; }
+    .order-items-label [data-lucide],
+    .order-total-label [data-lucide] { width: 14px; height: 14px; }
+    .order-phone [data-lucide] { width: 14px; height: 14px; color: #0ea5e9; }
+    .order-customer [data-lucide] { width: 14px; height: 14px; color: #8b5cf6; }
+    .order-time [data-lucide], .timer-countdown [data-lucide] { width: 14px; height: 14px; }
+    .voided-reason [data-lucide] { width: 14px; height: 14px; }
+    .order-actions button [data-lucide] { width: 16px; height: 16px; }
+    .completed-badge [data-lucide] { width: 14px; height: 14px; }
+    .order button, .completed-badge { display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; }
+    /* AI bot icon */
+    #aiAssistantBtn img { width: 38px; height: 38px; display: block; border-radius: 50%; }
     .logo-icon {
       width: 32px; height: 32px; background: var(--red); border-radius: 8px;
       display: flex; align-items: center; justify-content: center; font-size: 16px; color: white;
@@ -891,8 +908,8 @@
 ">
   <div style="background: white; padding: 40px; border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
-    <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em;">
-      📟 Pincer Dashboard
+    <h1 style="text-align: center; color: #2d5016; margin-bottom: 10px; font-size: 2em; display:flex; align-items:center; justify-content:center; gap:10px;">
+      <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:36px; height:36px; border-radius:8px;"> Pincer Dashboard
     </h1>
     <p style="text-align: center; color: #64748b; margin-bottom: 30px;">
       <span id="loginSubtitle"></span>
@@ -926,7 +943,7 @@
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">📟</div>
+    <div class="logo-icon"><img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer"></div>
     <div class="logo-text">Pincer</div>
   </div>
   <div class="nav-section">Menu</div>
@@ -1390,12 +1407,13 @@
 
 <!-- AI Assistant Chatbot -->
 <div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
-  <button id="aiAssistantBtn" onclick="toggleAIChat()" style="
+  <button id="aiAssistantBtn" onclick="toggleAIChat()" data-state="closed" style="
     width: 60px; height: 60px; border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none; color: white; font-size: 2em; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(102,126,234,0.5); transition: all 0.3s; margin: 0;">
-    🤖
+    box-shadow: 0 4px 20px rgba(102,126,234,0.5); transition: all 0.3s; margin: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center;">
+    <img src="https://i.imgur.com/Dep2ZsJ.png" alt="Asistente Pincer">
   </button>
   <div id="aiChatWindow" style="display: none; position: absolute; bottom: 80px; right: 0;
     width: 400px; max-width: 90vw; height: 500px; background: white;
@@ -1404,7 +1422,7 @@
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
       <div>
-        <div style="font-weight: bold; font-size: 1.1em;">🤖 Asistente de Ventas</div>
+        <div style="font-weight: bold; font-size: 1.1em; display:flex; align-items:center; gap:8px;"><img src="https://i.imgur.com/Dep2ZsJ.png" alt="" style="width:22px;height:22px;border-radius:50%;background:white;padding:2px;"> Asistente de Ventas</div>
         <div style="font-size: 0.85em; opacity: 0.9;">Tu gerente virtual</div>
       </div>
       <button onclick="toggleAIChat()" style="background: none; border: none; color: white;
@@ -3545,14 +3563,16 @@ async function loadOrders() {
       console.log('[timer] order:', order.id, 'status:', status, 'minutes:', minutes, 'class:', statusClass);
 
       let statusBadgeClass, statusText;
-      if (status === 'voided') { statusBadgeClass = 'status-voided'; statusText = '❌ ANULADA'; }
-      else if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '💬 NOTIFICADO'; }
-      else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '✓ LISTA PARA RETIRAR'; }
-      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '👨‍🍳 EN PREPARACIÓN'; }
-      else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '💳 PAGADO'; }
-      else { statusBadgeClass = 'status-pending'; statusText = '⏳ PENDIENTE'; }
+      if (status === 'voided') { statusBadgeClass = 'status-voided'; statusText = '<i data-lucide="x-circle"></i> ANULADA'; }
+      else if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '<i data-lucide="message-circle"></i> NOTIFICADO'; }
+      else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '<i data-lucide="check"></i> LISTA PARA RETIRAR'; }
+      else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '<i data-lucide="chef-hat"></i> EN PREPARACIÓN'; }
+      else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '<i data-lucide="credit-card"></i> PAGADO'; }
+      else { statusBadgeClass = 'status-pending'; statusText = '<i data-lucide="clock"></i> PENDIENTE'; }
 
-      const totalLabel = isPaid ? '💳 Total pagado:' : '💵 TOTAL A COBRAR:';
+      const totalLabel = isPaid
+        ? '<i data-lucide="credit-card"></i> Total pagado:'
+        : '<i data-lucide="banknote"></i> TOTAL A COBRAR:';
       let waMsg;
       if (order.order_type === 'delivery') {
         waMsg = `Hola! Tu orden #${orderNum} de ${DISPLAY_NAME} va en camino!`;
@@ -3562,7 +3582,11 @@ async function loadOrders() {
         waMsg = `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
       }
 
-      const orderTypeLabels = { dine_in: '🍽️ Comer aquí', take_out: '🥡 Para Llevar', delivery: '🛵 Delivery' };
+      const orderTypeLabels = {
+        dine_in: '<i data-lucide="utensils"></i> Comer aquí',
+        take_out: '<i data-lucide="shopping-bag"></i> Para Llevar',
+        delivery: '<i data-lucide="bike"></i> Delivery',
+      };
       const orderTypeBadge = order.order_type ? '<span class="order-type-badge type-' + order.order_type + '">' + (orderTypeLabels[order.order_type] || order.order_type) + '</span>' : '';
 
       let deliveryInfoHTML = '';
@@ -3588,9 +3612,9 @@ async function loadOrders() {
       div.innerHTML = `
         <div class="order-number">#${orderNum}</div>
         <span class="order-status ${statusBadgeClass}">${statusText}</span>${orderTypeBadge}
-        ${status === 'voided' && order.voided_items ? `<div class="voided-reason">❌ No disponible: ${String(order.voided_items).replace(/</g, '&lt;')}</div>` : ''}
+        ${status === 'voided' && order.voided_items ? `<div class="voided-reason"><i data-lucide="ban"></i> No disponible: ${String(order.voided_items).replace(/</g, '&lt;')}</div>` : ''}
         <div class="order-items">
-          <strong class="order-items-label" style="font-size: 0.95em;">📋 ITEMS:</strong>
+          <strong class="order-items-label" style="font-size: 0.95em;"><i data-lucide="clipboard-list"></i> ITEMS:</strong>
           <ul class="order-items-list">
             ${renderOrderItems(order.items)}
           </ul>
@@ -3599,8 +3623,8 @@ async function loadOrders() {
           <span class="order-total-label">${totalLabel}</span>
           <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
-        ${order.phone ? `<div class="order-phone">📱 ${order.phone}</div>` : ''}
-        ${order.customer_name ? `<div class="order-phone" style="border-left-color:#8b5cf6;">👤 ${order.customer_name}</div>` : ''}
+        ${order.phone ? `<div class="order-phone"><i data-lucide="phone"></i> ${order.phone}</div>` : ''}
+        ${order.customer_name ? `<div class="order-phone order-customer" style="border-left-color:#8b5cf6;"><i data-lucide="user"></i> ${order.customer_name}</div>` : ''}
         ${deliveryInfoHTML}
         ${(function() {
           if (status === 'pending' || status === 'paid' || !status) {
@@ -3611,30 +3635,35 @@ async function loadOrders() {
             if (remaining > 0) {
               var tMin = Math.floor(remaining / 60);
               var tSec = remaining % 60;
-              return '<div class="timer-countdown" data-created="' + order.created_at + '">⏱ Tiempo para confirmar: ' + tMin + ':' + String(tSec).padStart(2, '0') + '</div>';
+              return '<div class="timer-countdown" data-created="' + order.created_at + '"><i data-lucide="timer"></i> Tiempo para confirmar: ' + tMin + ':' + String(tSec).padStart(2, '0') + '</div>';
             } else {
-              return '<div class="timer-countdown timer-expired" data-created="' + order.created_at + '">⚠️ Tiempo agotado — ' + minutes + ' min esperando</div>';
+              return '<div class="timer-countdown timer-expired" data-created="' + order.created_at + '"><i data-lucide="alert-triangle"></i> Tiempo agotado — ' + minutes + ' min esperando</div>';
             }
           } else if (status === 'accepted' && order.digitada_at) {
             var prepMin = Math.floor((Date.now() - new Date(order.digitada_at).getTime()) / 60000);
-            return '<div class="order-time">🍳 ' + prepMin + ' min en preparación</div>';
+            return '<div class="order-time"><i data-lucide="cooking-pot"></i> ' + prepMin + ' min en preparación</div>';
           } else if ((status === 'ready' || status === 'notified') && order.lista_at) {
             var readyMin = Math.floor((Date.now() - new Date(order.lista_at).getTime()) / 60000);
-            return '<div class="order-time">✅ Lista hace ' + readyMin + ' min</div>';
+            return '<div class="order-time"><i data-lucide="check-circle" style="color:#16a34a"></i> Lista hace ' + readyMin + ' min</div>';
           } else {
-            return '<div class="order-time">⏱️ Hace ' + minutes + ' minuto' + (minutes !== 1 ? 's' : '') + '</div>';
+            return '<div class="order-time"><i data-lucide="clock"></i> Hace ' + minutes + ' minuto' + (minutes !== 1 ? 's' : '') + '</div>';
           }
         })()}
         <div class="order-actions">
-        ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})">✅ Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})">❌ Rechazar</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})">🎉 Marcar como lista y notificar</button>` : ''}
+        ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})"><i data-lucide="check"></i> Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})"><i data-lucide="x"></i> Rechazar</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})"><i data-lucide="check-circle-2"></i> Marcar como lista y notificar</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && (status === 'accepted' || status === 'ready' || status === 'notified') ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' ya está lista 🎉 Por favor compártenos tu ubicación en este chat para coordinar la entrega con nuestro mensajero. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${isPaid ? `<a class="wa-btn wa-btn-receipt" href="https://wa.me/?text=${encodeURIComponent((function() { let r = '🧾 *Recibo — ' + DISPLAY_NAME + '*\nOrden #' + orderNum + '\n'; try { var items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items; if (Array.isArray(items)) items.forEach(function(it) { r += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n'; }); } catch(e) {} r += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*'; if (order.azul_order_id) r += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')'; if (order.customer_name) r += '\n👤 ' + order.customer_name; if (order.phone) r += '\n📱 ' + order.phone; if (mapUrl) r += '\n📍 ' + mapUrl; return r; })())}" target="_blank">🧾 Compartir recibo</a>` : ''}
-        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge">✓ COMPLETADA</span>` : ''}
-        ${status === 'voided' ? `<span class="completed-badge" style="background:#dc2626;color:white;">❌ ANULADA</span>` : ''}
+        ${(status === 'ready' || status === 'notified') ? `<span class="completed-badge"><i data-lucide="check"></i> COMPLETADA</span>` : ''}
+        ${status === 'voided' ? `<span class="completed-badge" style="background:#dc2626;color:white;"><i data-lucide="x"></i> ANULADA</span>` : ''}
         </div>`;
       container.appendChild(div);
     });
+
+    // Render any Lucide icons that were just inserted into the DOM
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      try { lucide.createIcons(); } catch (_) {}
+    }
 
     clearError();
   } catch (err) {
@@ -3989,9 +4018,11 @@ function toggleAIChat() {
   const w = document.getElementById('aiChatWindow');
   const btn = document.getElementById('aiAssistantBtn');
   if (w.style.display === 'none' || !w.style.display) {
-    w.style.display = 'flex'; btn.textContent = '✕';
+    w.style.display = 'flex';
+    btn.innerHTML = '<span style="font-size:1.6em;line-height:1;">×</span>';
   } else {
-    w.style.display = 'none'; btn.textContent = '🤖';
+    w.style.display = 'none';
+    btn.innerHTML = '<img src="https://i.imgur.com/Dep2ZsJ.png" alt="Asistente Pincer">';
   }
 }
 
@@ -4001,7 +4032,11 @@ function addAIMessage(message, isUser = false) {
   messageDiv.style.cssText = `padding: 12px; border-radius: 12px; margin-bottom: 10px;
     ${isUser ? 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-left: 40px; text-align: right;'
              : 'background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'}`;
-  messageDiv.innerHTML = isUser ? message : '🤖 ' + message;
+  if (isUser) {
+    messageDiv.innerHTML = message;
+  } else {
+    messageDiv.innerHTML = '<img src="https://i.imgur.com/Dep2ZsJ.png" alt="" style="width:18px;height:18px;vertical-align:middle;border-radius:50%;margin-right:6px;"> ' + message;
+  }
 
   // Auto-add download button if AI mentions report/PDF
   if (!isUser && /reporte|pdf|descargar/i.test(message)) {
