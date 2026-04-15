@@ -52,8 +52,8 @@
     .order-actions button [data-lucide] { width: 16px; height: 16px; }
     .completed-badge [data-lucide] { width: 14px; height: 14px; }
     .order button, .completed-badge { display: inline-flex !important; align-items: center; justify-content: center; gap: 6px; }
-    /* AI bot icon */
-    #aiAssistantBtn img { width: 38px; height: 38px; display: block; border-radius: 50%; }
+    /* AI bot icon — matches the landing page .pincer-chat-fab */
+    #aiAssistantBtn img { width: 44px; height: 44px; display: block; object-fit: contain; }
     .logo-icon {
       width: 32px; height: 32px; background: var(--red); border-radius: 8px;
       display: flex; align-items: center; justify-content: center; font-size: 16px; color: white;
@@ -1008,28 +1008,6 @@
       <div class="day-summary-item"><span>📊</span> Promedio<strong id="daySummaryAvg">RD$0</strong></div>
     </div>
 
-    <div style="text-align:center;margin:12px 0;">
-      <button id="downloadReportBtn" onclick="openReportModal()"
-        style="background:#DC2626;color:white;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9em;">
-        📥 Reporte Semanal PDF
-      </button>
-    </div>
-
-    <div id="reportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">
-      <div style="background:white;padding:24px;border-radius:12px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="margin:0 0 16px 0;font-size:1.1em;">📥 Generar Reporte</h3>
-        <label style="font-size:0.85em;color:#64748B;display:block;">Desde</label>
-        <input type="date" id="reportDateFrom" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.95em;margin-top:4px;box-sizing:border-box;">
-        <label style="font-size:0.85em;color:#64748B;display:block;margin-top:10px;">Hasta</label>
-        <input type="date" id="reportDateTo" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:6px;font-size:0.95em;margin-top:4px;box-sizing:border-box;">
-        <div id="reportModalStatus" style="display:none;margin-top:12px;padding:8px 12px;background:#FEF3C7;border-radius:6px;font-size:0.85em;color:#92400E;"></div>
-        <div style="display:flex;gap:8px;margin-top:16px;">
-          <button onclick="closeReportModal()" style="flex:1;padding:10px;border:1px solid #e2e8f0;background:white;border-radius:8px;cursor:pointer;font-size:0.9em;">Cancelar</button>
-          <button id="reportGenerateBtn" onclick="generateAndDownloadReport()" style="flex:1;padding:10px;background:#DC2626;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9em;">Generar PDF</button>
-        </div>
-      </div>
-    </div>
-
     <div class="debug-panel" id="debugPanel" style="display:none"></div>
 
     <div id="connection-status">🟢 Conectado</div>
@@ -1038,10 +1016,6 @@
       🔔 Activa las notificaciones para recibir alertas de órdenes
       <button onclick="requestNotificationPermission()" style="margin-left:12px;background:#78350f;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer">Activar</button>
     </div>
-    <div id="sound-activation-banner" style="background:#FEF3C7;color:#78350f;border:1px solid #fde68a;padding:14px 16px;text-align:center;border-radius:10px;margin-bottom:16px;font-weight:700;font-size:14px;cursor:pointer;" onclick="activateSound()">
-      Activar Notificaciones de Sonido 🔔
-    </div>
-
     <div class="stats" id="stats">
       <div class="stat-item"><div class="stat-number" id="total-orders">0</div><div class="stat-label">Total Órdenes</div></div>
       <div class="stat-item"><div class="stat-number" id="pending-orders">0</div><div class="stat-label">Pendientes</div></div>
@@ -1407,11 +1381,10 @@
 
 <!-- AI Assistant Chatbot -->
 <div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
-  <button id="aiAssistantBtn" onclick="toggleAIChat()" data-state="closed" style="
-    width: 60px; height: 60px; border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none; color: white; font-size: 2em; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(102,126,234,0.5); transition: all 0.3s; margin: 0; padding: 0;
+  <button id="aiAssistantBtn" onclick="toggleAIChat()" aria-label="Asistente Pincer" style="
+    width: 64px; height: 64px; border-radius: 50%;
+    background: white; border: none; cursor: pointer; margin: 0; padding: 0;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2); transition: transform 0.2s;
     display: flex; align-items: center; justify-content: center;">
     <img src="https://i.imgur.com/Dep2ZsJ.png" alt="Asistente Pincer">
   </button>
@@ -4016,14 +3989,8 @@ async function dailyCleanup() {
 
 function toggleAIChat() {
   const w = document.getElementById('aiChatWindow');
-  const btn = document.getElementById('aiAssistantBtn');
-  if (w.style.display === 'none' || !w.style.display) {
-    w.style.display = 'flex';
-    btn.innerHTML = '<span style="font-size:1.6em;line-height:1;">×</span>';
-  } else {
-    w.style.display = 'none';
-    btn.innerHTML = '<img src="https://i.imgur.com/Dep2ZsJ.png" alt="Asistente Pincer">';
-  }
+  // Button always shows the isotipo; the chat window has its own close (×) in the header.
+  w.style.display = (w.style.display === 'none' || !w.style.display) ? 'flex' : 'none';
 }
 
 function addAIMessage(message, isUser = false) {
@@ -4036,15 +4003,6 @@ function addAIMessage(message, isUser = false) {
     messageDiv.innerHTML = message;
   } else {
     messageDiv.innerHTML = '<img src="https://i.imgur.com/Dep2ZsJ.png" alt="" style="width:18px;height:18px;vertical-align:middle;border-radius:50%;margin-right:6px;"> ' + message;
-  }
-
-  // Auto-add download button if AI mentions report/PDF
-  if (!isUser && /reporte|pdf|descargar/i.test(message)) {
-    var dlBtn = document.createElement('button');
-    dlBtn.textContent = '📥 Descargar Reporte PDF';
-    dlBtn.style.cssText = 'margin-top:10px;background:#DC2626;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;display:block;width:100%;';
-    dlBtn.onclick = downloadWeeklyReport;
-    messageDiv.appendChild(dlBtn);
   }
 
   container.appendChild(messageDiv);
