@@ -403,3 +403,39 @@ The 19:38 test was the first session in the database with `status: declined`, `m
 10. **Apple Pay / Google Pay** — UI buttons exist at `menu/index.html:2508-2509` but are not wired to any backend. Selecting them and clicking "Pagar" silently does nothing. Real implementation requires Apple Pay Merchant ID, Apple Pay JS or PaymentRequest API, and Azul backend support for Apple Pay tokens.
 11. **Font CSP violation** at `menu/index.html:6154` — embedded `data:` URI font is blocked by `font-src 'self' https://fonts.gstatic.com`. Cosmetic (font fallback works) but should be cleaned up. Either add `data:` to font-src or move the font to a hosted file.
 12. **Dead `/api/3ds` header override rule** — already removed in commit `5bf79bf`. Documented here so the surgical-override approach is not retried (Vercel header merging behavior is "last rule wins for duplicate keys", which is the opposite of what was assumed).
+
+### Competitive gaps identified vs Fuudt (analysis Apr 15)
+Fuudt (fuudt.com) is the main DR competitor — a digital menu + marketing platform (not ordering/payments). They sit upstream of Pincer on the restaurant's pain stack. They beat us on breadth of menu/marketing features and presentation. We beat them on payments, full ordering flow, conversational AI, and commission-free positioning. The backlog below is ordered by what would close the gap fastest without diluting Pincer's core identity.
+
+**High priority (direct feature gaps):**
+
+13. **More client logos on the landing** — Fuudt shows 6+ restaurant logos (Tua Bar, Agentao, Laiali, Zutros, The Cooks Grilling, Rincón) + a 5-star badge. We show only Mr. Sandwich. Add Square One and any other confirmed clients to the `clients-grid` section, even if just name + city. Target: 3-4 visible clients minimum. High-impact, low-effort.
+
+14. **Mid-tier pricing plan** — current pricing is binary ($0 free vs $50 premium). Fuudt has Starter (free) / Builder ($24.99) / Smarter ($59.99) / Leader ($99.99). Consider a middle "Growth" tier around $25-30/mo with a subset of premium features (e.g., loyalty program + analytics AI assistant but not the full chatbot, or reverse). Gives price-sensitive restaurants an upgrade path before the $50 jump.
+
+15. **SEO blog with 3-5 articles** — Fuudt has articles indexed (QR vs NFC, FB Pixel integration, etc.) which attract organic traffic. We have zero content marketing. Draft topics: "Cómo dejar de pagar 30% a Rappi", "Mesero virtual con IA para restaurantes DR", "WhatsApp para pedidos: del caos al orden", "Pagos con tarjeta en tu QR sin POS extra". Host under `/blog/` or `/recursos/`. No heavy CMS needed — static HTML files are fine given the rest of the codebase is vanilla.
+
+**Medium priority (feature depth):**
+
+16. **Analytics integrations (Google Analytics, FB Pixel, Tag Manager, Clarity)** — Fuudt lets restaurants plug their existing marketing stack. Technical effort is small (just `<script>` tag injection per restaurant config). Field on `restaurant_users` table: `tracking_pixels jsonb` storing IDs. Inject tags in menu page render. Helps acquisition for restaurants that already run ad campaigns.
+
+17. **Time/day-based dynamic menu items** — Fuudt calls this "dynamic products". Breakfast menu auto-hides at 11am, happy hour drinks only 5-7pm. Schema: add `available_hours` and `available_days` columns to `products`. Frontend filters by current DR time. Small but shows product maturity and is asked by most cafes/bars.
+
+18. **Custom product fields** (allergens, spice level, etc.) — Fuudt has this. We have free-text `notes`. Could add `tags jsonb` on products (e.g. `{"spicy": 2, "vegetarian": true, "allergens": ["nuts"]}`). Pairs with bot prompts and filters on the menu.
+
+19. **Video in menu items** — Fuudt supports item videos. We support photos only. Add `video_url` column to `products`, render a small inline autoplay-muted loop in the menu. Helps sell high-margin visual items (pizzas, burgers, cocktails).
+
+**Low priority (nice to have but not blocking):**
+
+20. **Multiple menus per account** — Fuudt pitch for multi-brand operators or food trucks switching locations. Our model is one slug = one restaurant. Revisit when we have enough multi-location clients to justify the schema change.
+
+21. **GeoPush (location-based push)** — Fuudt sends push when customer is near the restaurant. Cool feature, not the dolor that sells Pincer. Skip unless volume demands it.
+
+22. **Live chat widget on pincerweb.com** — Fuudt uses Bitrix24 embedded. We direct to WhatsApp. Ours is arguably better for LatAm, but adding a lightweight chat widget (Crisp, Intercom, or even a Pincer-bot-like) could reduce friction on the landing. Only if analytics show landing visitors bouncing without reaching out.
+
+23. **Visual branding polish** — Fuudt's purple/violet + minimalist feels more established. Our red is distinctive but the overall design could use a polish pass. Not urgent; ship features first, polish the brand when we have a clearer identity to protect.
+
+**Explicitly rejected (do NOT build):**
+
+- **Third-party ads on free tier** — Fuudt monetizes free users with ads. Conflicts with Pincer's premium positioning and the commission-free promise. Don't.
+- **Outbound WhatsApp marketing campaigns** — user decided Apr 15 it's not worth the engineering effort right now. Fuudt has this (Leader tier) but we're not chasing it.
