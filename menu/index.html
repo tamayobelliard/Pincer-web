@@ -5811,14 +5811,20 @@ async function sendToAI(userMessage) {
       // Handle ADD_TO_CART actions (supports multiple items per response)
       parsed.cartItems.forEach(function(ci) {
         const item = findMenuItem(ci.id);
-        if (item && !soldOutSet.has(item.id)) {
-          const qty = ci.qty || 1;
-          addItem(item.id, item.name, item.price, ci.note, qty, 'bot');
-          track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: qty, cart_total: order.length });
-          const qtyText = qty > 1 ? `${qty}x ` : '';
-          const noteText = ci.note ? ` (${ci.note})` : '';
-          pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
+        if (!item) return;
+        if (soldOutSet.has(item.id)) {
+          // Race condition: bot issued ADD_TO_CART for an item that just went sold out.
+          // Give the user visible feedback instead of silently dropping the command.
+          pinzerSay(`❌ Lo siento, ${item.name} se acaba de agotar. ¿Te gustaría elegir otra opción?`);
+          track('chatbot_add_blocked_sold_out', { item_id: ci.id, item_name: item.name });
+          return;
         }
+        const qty = ci.qty || 1;
+        addItem(item.id, item.name, item.price, ci.note, qty, 'bot');
+        track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: qty, cart_total: order.length });
+        const qtyText = qty > 1 ? `${qty}x ` : '';
+        const noteText = ci.note ? ` (${ci.note})` : '';
+        pinzerSay(`✅ ${qtyText}${item.name} agregado al carrito${noteText}`);
       });
 
       // Show parsed buttons

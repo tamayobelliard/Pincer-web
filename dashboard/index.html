@@ -460,6 +460,9 @@
     .reject-btn-confirm { background:#dc2626; color:white; }
     .reject-btn-confirm:disabled { opacity:0.5; cursor:not-allowed; }
     .reject-error { color:#dc2626; font-size:13px; margin-top:8px; display:none; }
+    .reject-mark-soldout { display:flex; align-items:center; gap:10px; margin:14px 2px 0; padding:10px 12px; background:#f8fafc; border-radius:8px; cursor:pointer; font-size:13px; color:#475569; }
+    .reject-mark-soldout input { width:18px; height:18px; cursor:pointer; flex-shrink:0; accent-color:#dc2626; }
+    .reject-mark-soldout:hover { background:#f1f5f9; }
 
     .order-phone {
       margin: 0; padding: 8px 16px;
@@ -1291,6 +1294,10 @@
 <div class="reject-modal" id="rejectModal">
   <h3>¿Qué artículo(s) no están disponibles?</h3>
   <div id="rejectItemsList"></div>
+  <label class="reject-mark-soldout">
+    <input type="checkbox" id="rejectMarkSoldOut" checked>
+    <span>Marcar estos artículos como agotados en el menú</span>
+  </label>
   <div class="reject-btns">
     <button class="reject-btn-cancel" onclick="closeRejectModal()">Cancelar</button>
     <button class="reject-btn-confirm" id="rejectConfirmBtn" onclick="confirmReject()">❌ Anular orden</button>
@@ -3707,7 +3714,7 @@ function openRejectModal(orderId) {
   var listEl = document.getElementById('rejectItemsList');
   listEl.innerHTML = items.map(function(it, i) {
     var qty = it.qty > 1 ? it.qty + 'x ' : '';
-    return '<div class="reject-item" data-index="' + i + '" data-name="' + (it.name || '').replace(/"/g, '&quot;') + '" onclick="this.classList.toggle(\'selected\')">'
+    return '<div class="reject-item" data-index="' + i + '" data-id="' + (it.id || '') + '" data-name="' + (it.name || '').replace(/"/g, '&quot;') + '" onclick="this.classList.toggle(\'selected\')">'
       + '<div class="item-check">✓</div>'
       + '<span>' + qty + (it.name || 'Item') + '</span>'
       + '</div>';
@@ -3715,6 +3722,7 @@ function openRejectModal(orderId) {
 
   document.getElementById('rejectError').style.display = 'none';
   document.getElementById('rejectConfirmBtn').disabled = false;
+  document.getElementById('rejectMarkSoldOut').checked = true;
   document.getElementById('rejectOverlay').classList.add('show');
   document.getElementById('rejectModal').classList.add('show');
 }
@@ -3734,7 +3742,9 @@ async function confirmReject() {
   }
 
   var itemNames = Array.from(selected).map(function(el) { return el.dataset.name; });
+  var itemIds = Array.from(selected).map(function(el) { return el.dataset.id; }).filter(Boolean);
   var voidedItemsText = itemNames.join(', ');
+  var markSoldOut = document.getElementById('rejectMarkSoldOut').checked;
   var btn = document.getElementById('rejectConfirmBtn');
   btn.disabled = true;
   btn.textContent = 'Anulando...';
@@ -3784,6 +3794,30 @@ async function confirmReject() {
     closeRejectModal();
     dbg('❌ Orden #' + _rejectOrderId + ' anulada' + (hasPaid ? ' (pago revertido)' : ''));
     track('order_voided', { order_id: _rejectOrderId, items: itemNames, had_payment: !!hasPaid });
+
+    // Optionally mark these products as sold out in the menu (batched PATCH)
+    if (markSoldOut && itemIds.length > 0) {
+      try {
+        var soldOutRes = await fetch(
+          SUPABASE_URL + '/rest/v1/products?id=in.(' + itemIds.map(encodeURIComponent).join(',') + ')&restaurant_slug=eq.' + encodeURIComponent(SLUG),
+          {
+            method: 'PATCH',
+            headers: sbWriteHeaders(),
+            body: JSON.stringify({ sold_out: true })
+          }
+        );
+        if (soldOutRes.ok) {
+          dbg('🚫 Marcados como agotados: ' + itemIds.join(', '));
+          track('items_marked_sold_out', { item_ids: itemIds, source: 'reject_flow' });
+        } else {
+          var errText = '';
+          try { errText = await soldOutRes.text(); } catch (_) {}
+          dbg('⚠️ Fallo marcando agotados ' + soldOutRes.status + ': ' + errText.substring(0, 200));
+        }
+      } catch (e) {
+        dbg('⚠️ Error marcando agotados: ' + e.message);
+      }
+    }
 
     // Open WhatsApp with rejection reason
     if (order && order.phone) {
