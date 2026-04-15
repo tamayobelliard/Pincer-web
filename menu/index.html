@@ -4030,7 +4030,11 @@ function handleOrderSuccess(data) {
 
   // Capture order items and total BEFORE clearing the cart
   const receiptItems = order.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
-  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0) + (record.delivery_fee || 0);
+  const deliveryFee = Number(record.delivery_fee) || 0;
+  if (deliveryFee > 0) {
+    receiptItems.push({ name: 'Servicio de delivery', qty: 1, price: deliveryFee });
+  }
+  const receiptTotal = order.reduce((s, i) => s + i.price * i.qty, 0) + deliveryFee;
   track('order_complete', { order_total: receiptTotal, item_count: order.length });
 
   // Save order to session history before clearing cart
@@ -5097,14 +5101,27 @@ function showReceipt(orderNumber, items, total, paymentInfo, customerName) {
 
   // Items
   let itemsHtml = '';
+  let itemsSum = 0;
   items.forEach(item => {
     const subtotal = item.price * item.qty;
+    itemsSum += subtotal;
     itemsHtml += `<div class="receipt-item">
       <span class="receipt-item-name">${escHtml(item.name)}</span>
       <span class="receipt-item-qty">x${item.qty}</span>
       <span class="receipt-item-price">RD$${subtotal.toLocaleString()}</span>
     </div>`;
   });
+  // Backward compat: older saved receipts stored only product items and added
+  // delivery on top of total. Derive the delivery line from the gap between
+  // items sum and total so those receipts still render coherently.
+  const derivedDelivery = total - itemsSum;
+  if (derivedDelivery > 0) {
+    itemsHtml += `<div class="receipt-item">
+      <span class="receipt-item-name">Servicio de delivery</span>
+      <span class="receipt-item-qty">x1</span>
+      <span class="receipt-item-price">RD$${derivedDelivery.toLocaleString()}</span>
+    </div>`;
+  }
   document.getElementById('receiptItems').innerHTML = itemsHtml;
 
   // ITBIS breakdown (prices include 18% ITBIS)
@@ -5192,9 +5209,17 @@ function shareReceiptWhatsApp() {
   msg += `📋 *Orden #${d.orderNumber}*\n`;
   msg += `📅 ${dateStr} — ${timeStr}\n\n`;
   msg += `*Detalle:*\n`;
+  let itemsSumMsg = 0;
   d.items.forEach(item => {
-    msg += `• ${item.name} x${item.qty} — RD$${(item.price * item.qty).toLocaleString()}\n`;
+    const line = item.price * item.qty;
+    itemsSumMsg += line;
+    msg += `• ${item.name} x${item.qty} — RD$${line.toLocaleString()}\n`;
   });
+  // Backward compat: if items don't sum to total, the gap is delivery fee
+  const derivedDeliveryMsg = d.total - itemsSumMsg;
+  if (derivedDeliveryMsg > 0) {
+    msg += `• Servicio de delivery — RD$${derivedDeliveryMsg.toLocaleString()}\n`;
+  }
   const subBase = Math.round(d.total / 1.18);
   const itbisAmt = d.total - subBase;
   msg += `\nSubtotal: RD$${subBase.toLocaleString()}\n`;

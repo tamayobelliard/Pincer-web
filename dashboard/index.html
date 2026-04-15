@@ -3632,12 +3632,19 @@ async function loadOrders() {
           var label = isDeliveryActive ? '🛵 Enviar al mensajero' : '🧾 Compartir recibo';
           var header = isDeliveryActive ? '🛵 *Pedido para entregar — ' + DISPLAY_NAME + '*' : '🧾 *Recibo — ' + DISPLAY_NAME + '*';
           var body = header + '\nOrden #' + orderNum + '\n';
+          var itemsSumShare = 0;
           try {
             var its = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
             if (Array.isArray(its)) its.forEach(function(it) {
+              itemsSumShare += (Number(it.price) || 0) * (Number(it.qty) || 1);
               body += '• ' + (it.qty > 1 ? it.qty + 'x ' : '') + it.name + (it.notes ? ' (' + it.notes + ')' : '') + '\n';
             });
           } catch(e) {}
+          // Add delivery fee as its own line if it's part of the total but not in items
+          var deliveryGap = (Number(order.total) || 0) - itemsSumShare;
+          if (deliveryGap > 0) {
+            body += '• Servicio de delivery — RD$' + deliveryGap.toLocaleString() + '\n';
+          }
           body += '\n💰 *Total: RD$' + (order.total || 0).toLocaleString() + '*';
           if (order.azul_order_id) body += '\n✅ Pagado con tarjeta (Ref: ' + order.azul_order_id + ')';
           else if (isDeliveryActive) body += '\n💵 Cobrar al entregar';
