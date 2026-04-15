@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Iconos vs Emojis</title>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --red: #E8191A;
+    --red-dark: #C41415;
+    --red-light: #fef2f2;
+    --green: #16a34a;
+    --bg: #f8fafc;
+    --bg2: #ffffff;
+    --bg3: #f1f5f9;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+  }
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .comparison {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 768px) {
+    .comparison { grid-template-columns: 1fr; }
+  }
+  .column {
+    background: var(--bg2);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+  }
+  .column-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .column.current .column-title { background: #fef3c7; color: #92400e; }
+  .column.new .column-title { background: #d1fae5; color: #065f46; }
+
+  /* Order card — replicates the actual dashboard card style */
+  .order {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .order.new-order { border-left: 4px solid var(--red); }
+  .order.accepted { border-left: 4px solid #f59e0b; }
+  .order.ready { border-left: 4px solid var(--green); }
+  .order.voided { opacity: 0.7; border-left: 4px solid #dc2626; }
+
+  .order-number {
+    font-size: 22px;
+    font-weight: 700;
+    padding: 12px 16px 0;
+    display: inline-block;
+  }
+  .order-status {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700;
+    margin-left: 8px; text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .status-pending { background: var(--red-light); color: var(--red); }
+  .status-accepted { background: #fef3c7; color: #92400e; }
+  .status-ready { background: #d1fae5; color: #065f46; }
+  .status-voided { background: #fef2f2; color: #dc2626; }
+
+  .order-type-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    background: var(--bg3); color: var(--muted);
+    margin-left: 6px;
+  }
+
+  .order-items {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+  .order-items-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .order-items-list {
+    list-style: none; padding: 0; margin: 6px 0 0;
+    font-size: 14px; color: var(--text);
+  }
+  .order-items-list li { padding: 2px 0; }
+
+  .order-total {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600;
+  }
+  .order-total-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted);
+  }
+
+  .order-phone, .order-customer, .order-address {
+    padding: 8px 16px;
+    background: var(--bg3);
+    font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .order-phone { border-left: 3px solid #0ea5e9; }
+  .order-customer { border-left: 3px solid #8b5cf6; }
+
+  .order-time {
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .timer-countdown {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .voided-reason {
+    margin: 8px 16px;
+    padding: 8px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .order-actions {
+    padding: 12px 16px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  button {
+    margin: 0; padding: 11px 9px;
+    width: 100%; display: flex;
+    align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer; color: white; border: none; border-radius: 8px;
+    font-weight: 600; font-size: 13px;
+    font-family: var(--font);
+  }
+  .btn-accept { background: var(--green); }
+  .btn-accept:hover { background: #15803d; }
+  .btn-reject { background: #dc2626; }
+  .btn-reject:hover { background: #b91c1c; }
+  .btn-ready { background: var(--green); }
+  .btn-ready:hover { background: #15803d; }
+  .completed-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: 6px;
+    background: #d1fae5; color: #065f46;
+    font-size: 12px; font-weight: 700;
+    width: 100%; justify-content: center;
+  }
+
+  /* Lucide icon sizing defaults */
+  [data-lucide] {
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  footer {
+    max-width: 1200px;
+    margin: 32px auto;
+    padding: 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  footer h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+  }
+  .mapping {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mapping-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 6px;
+  }
+  .mapping-row .emoji {
+    font-size: 18px;
+    width: 24px; text-align: center;
+  }
+  .mapping-row .arrow {
+    color: var(--muted);
+  }
+  .mapping-row .icon-wrap {
+    display: inline-flex;
+    width: 24px; height: 24px;
+    align-items: center; justify-content: center;
+    color: var(--text);
+  }
+  .mapping-row .label {
+    color: var(--muted);
+    margin-left: auto;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Preview — Dashboard con iconos en lugar de emojis</h1>
+  <p>Misma data, misma card, mismo flow. Solo cambian los glyphs. Lucide Icons (SVG, MIT).</p>
+</header>
+
+<div class="comparison">
+
+  <!-- ═════════════════════════════════════════════════════════════
+       CURRENT (emoji)
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="column current">
+    <div class="column-title">Actual — con emojis</div>
+
+    <!-- Pending -->
+    <div class="order new-order">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#43</span>
+        <span class="order-status status-pending">⏳ PENDIENTE</span>
+        <span class="order-type-badge">🥡 Para Llevar</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label">📋 ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1x Classic French Toast</li>
+          <li>• 1x Coffee</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label">💵 TOTAL A COBRAR:</span>
+        <span>RD$350</span>
+      </div>
+      <div class="order-phone">📱 809-555-1234</div>
+      <div class="order-customer" style="border-left-color:#8b5cf6;">👤 Juan Pérez</div>
+      <div class="timer-countdown">⏱ Tiempo para confirmar: 4:37</div>
+      <div class="order-actions">
+        <button class="btn-accept">✅ Aceptar</button>
+        <button class="btn-reject">❌ Rechazar</button>
+      </div>
+    </div>
+
+    <!-- Accepted -->
+    <div class="order accepted">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#42</span>
+        <span class="order-status status-accepted">👨‍🍳 EN PREPARACIÓN</span>
+        <span class="order-type-badge">🛵 Delivery</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label">📋 ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 2x Sandwich Club</li>
+          <li>• 1x Papas Fritas</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label">💳 Total pagado:</span>
+        <span>RD$680</span>
+      </div>
+      <div class="order-phone">📱 809-555-9876</div>
+      <div class="order-time">🍳 3 min en preparación</div>
+      <div class="order-actions">
+        <button class="btn-ready">🎉 Marcar como lista y notificar</button>
+      </div>
+    </div>
+
+    <!-- Ready -->
+    <div class="order ready">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#41</span>
+        <span class="order-status status-ready">✓ LISTA PARA RETIRAR</span>
+        <span class="order-type-badge">🍽️ Comer aquí</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label">📋 ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1x Pasta Carbonara</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label">💵 TOTAL A COBRAR:</span>
+        <span>RD$450</span>
+      </div>
+      <div class="order-time">✅ Lista hace 2 min</div>
+      <div class="order-actions">
+        <span class="completed-badge">✓ COMPLETADA</span>
+      </div>
+    </div>
+
+    <!-- Voided -->
+    <div class="order voided">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#40</span>
+        <span class="order-status status-voided">❌ ANULADA</span>
+        <span class="order-type-badge">🥡 Para Llevar</span>
+      </div>
+      <div class="voided-reason">❌ No disponible: Hamburguesa Clásica</div>
+      <div class="order-items">
+        <div class="order-items-label">📋 ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1x Hamburguesa Clásica</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label">💳 Total pagado:</span>
+        <span>RD$280</span>
+      </div>
+      <div class="order-actions">
+        <span class="completed-badge" style="background:#dc2626;color:white;">❌ ANULADA</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════
+       NEW (lucide icons)
+       ═════════════════════════════════════════════════════════════ -->
+  <div class="column new">
+    <div class="column-title">Propuesta — con iconos</div>
+
+    <!-- Pending -->
+    <div class="order new-order">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#43</span>
+        <span class="order-status status-pending"><i data-lucide="clock" style="width:13px;height:13px"></i> PENDIENTE</span>
+        <span class="order-type-badge"><i data-lucide="shopping-bag" style="width:12px;height:12px"></i> Para Llevar</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label"><i data-lucide="clipboard-list" style="width:16px;height:16px"></i> ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1× Classic French Toast</li>
+          <li>• 1× Coffee</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label"><i data-lucide="banknote" style="width:14px;height:14px"></i> TOTAL A COBRAR:</span>
+        <span>RD$350</span>
+      </div>
+      <div class="order-phone"><i data-lucide="phone" style="width:14px;height:14px;color:#0ea5e9"></i> 809-555-1234</div>
+      <div class="order-customer" style="border-left-color:#8b5cf6;"><i data-lucide="user" style="width:14px;height:14px;color:#8b5cf6"></i> Juan Pérez</div>
+      <div class="timer-countdown"><i data-lucide="timer" style="width:14px;height:14px"></i> Tiempo para confirmar: 4:37</div>
+      <div class="order-actions">
+        <button class="btn-accept"><i data-lucide="check" style="width:16px;height:16px"></i> Aceptar</button>
+        <button class="btn-reject"><i data-lucide="x" style="width:16px;height:16px"></i> Rechazar</button>
+      </div>
+    </div>
+
+    <!-- Accepted -->
+    <div class="order accepted">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#42</span>
+        <span class="order-status status-accepted"><i data-lucide="chef-hat" style="width:13px;height:13px"></i> EN PREPARACIÓN</span>
+        <span class="order-type-badge"><i data-lucide="bike" style="width:12px;height:12px"></i> Delivery</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label"><i data-lucide="clipboard-list" style="width:16px;height:16px"></i> ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 2× Sandwich Club</li>
+          <li>• 1× Papas Fritas</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label"><i data-lucide="credit-card" style="width:14px;height:14px"></i> Total pagado:</span>
+        <span>RD$680</span>
+      </div>
+      <div class="order-phone"><i data-lucide="phone" style="width:14px;height:14px;color:#0ea5e9"></i> 809-555-9876</div>
+      <div class="order-time"><i data-lucide="cooking-pot" style="width:13px;height:13px"></i> 3 min en preparación</div>
+      <div class="order-actions">
+        <button class="btn-ready"><i data-lucide="check-circle-2" style="width:16px;height:16px"></i> Marcar como lista y notificar</button>
+      </div>
+    </div>
+
+    <!-- Ready -->
+    <div class="order ready">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#41</span>
+        <span class="order-status status-ready"><i data-lucide="check" style="width:13px;height:13px"></i> LISTA PARA RETIRAR</span>
+        <span class="order-type-badge"><i data-lucide="utensils" style="width:12px;height:12px"></i> Comer aquí</span>
+      </div>
+      <div class="order-items">
+        <div class="order-items-label"><i data-lucide="clipboard-list" style="width:16px;height:16px"></i> ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1× Pasta Carbonara</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label"><i data-lucide="banknote" style="width:14px;height:14px"></i> TOTAL A COBRAR:</span>
+        <span>RD$450</span>
+      </div>
+      <div class="order-time"><i data-lucide="check-circle" style="width:13px;height:13px;color:#16a34a"></i> Lista hace 2 min</div>
+      <div class="order-actions">
+        <span class="completed-badge"><i data-lucide="check" style="width:14px;height:14px"></i> COMPLETADA</span>
+      </div>
+    </div>
+
+    <!-- Voided -->
+    <div class="order voided">
+      <div style="padding: 12px 16px 0;">
+        <span class="order-number">#40</span>
+        <span class="order-status status-voided"><i data-lucide="x-circle" style="width:13px;height:13px"></i> ANULADA</span>
+        <span class="order-type-badge"><i data-lucide="shopping-bag" style="width:12px;height:12px"></i> Para Llevar</span>
+      </div>
+      <div class="voided-reason"><i data-lucide="ban" style="width:14px;height:14px"></i> No disponible: Hamburguesa Clásica</div>
+      <div class="order-items">
+        <div class="order-items-label"><i data-lucide="clipboard-list" style="width:16px;height:16px"></i> ITEMS:</div>
+        <ul class="order-items-list">
+          <li>• 1× Hamburguesa Clásica</li>
+        </ul>
+      </div>
+      <div class="order-total">
+        <span class="order-total-label"><i data-lucide="credit-card" style="width:14px;height:14px"></i> Total pagado:</span>
+        <span>RD$280</span>
+      </div>
+      <div class="order-actions">
+        <span class="completed-badge" style="background:#dc2626;color:white;"><i data-lucide="x" style="width:14px;height:14px"></i> ANULADA</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <h2>Mapeo completo — emoji → icono</h2>
+  <div class="mapping">
+    <div class="mapping-row"><span class="emoji">⏳</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="clock"></i></span><span class="label">clock</span></div>
+    <div class="mapping-row"><span class="emoji">✅</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="check"></i></span><span class="label">check</span></div>
+    <div class="mapping-row"><span class="emoji">❌</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="x"></i></span><span class="label">x</span></div>
+    <div class="mapping-row"><span class="emoji">💳</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="credit-card"></i></span><span class="label">credit-card</span></div>
+    <div class="mapping-row"><span class="emoji">👨‍🍳</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="chef-hat"></i></span><span class="label">chef-hat</span></div>
+    <div class="mapping-row"><span class="emoji">🎉</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="check-circle-2"></i></span><span class="label">check-circle-2</span></div>
+    <div class="mapping-row"><span class="emoji">💬</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="message-circle"></i></span><span class="label">message-circle</span></div>
+    <div class="mapping-row"><span class="emoji">⏱</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="timer"></i></span><span class="label">timer</span></div>
+    <div class="mapping-row"><span class="emoji">🍳</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="cooking-pot"></i></span><span class="label">cooking-pot</span></div>
+    <div class="mapping-row"><span class="emoji">📋</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="clipboard-list"></i></span><span class="label">clipboard-list</span></div>
+    <div class="mapping-row"><span class="emoji">💵</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="banknote"></i></span><span class="label">banknote</span></div>
+    <div class="mapping-row"><span class="emoji">📱</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="phone"></i></span><span class="label">phone</span></div>
+    <div class="mapping-row"><span class="emoji">👤</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="user"></i></span><span class="label">user</span></div>
+    <div class="mapping-row"><span class="emoji">📍</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="map-pin"></i></span><span class="label">map-pin</span></div>
+    <div class="mapping-row"><span class="emoji">🛵</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="bike"></i></span><span class="label">bike</span></div>
+    <div class="mapping-row"><span class="emoji">🥡</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="shopping-bag"></i></span><span class="label">shopping-bag</span></div>
+    <div class="mapping-row"><span class="emoji">🍽️</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="utensils"></i></span><span class="label">utensils</span></div>
+    <div class="mapping-row"><span class="emoji">⚠️</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="alert-triangle"></i></span><span class="label">alert-triangle</span></div>
+    <div class="mapping-row"><span class="emoji">📲</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="share-2"></i></span><span class="label">share-2</span></div>
+    <div class="mapping-row"><span class="emoji">🧾</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="receipt"></i></span><span class="label">receipt</span></div>
+    <div class="mapping-row"><span class="emoji">📂</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="folder-open"></i></span><span class="label">folder-open</span></div>
+    <div class="mapping-row"><span class="emoji">🔒</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="lock"></i></span><span class="label">lock</span></div>
+    <div class="mapping-row"><span class="emoji">🔔</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="bell"></i></span><span class="label">bell</span></div>
+    <div class="mapping-row"><span class="emoji">🚫</span><span class="arrow">→</span><span class="icon-wrap"><i data-lucide="ban"></i></span><span class="label">ban</span></div>
+  </div>
+  <p style="margin-top:16px; font-size:13px; color: var(--muted);">
+    Si apruebas la propuesta, aplico el mismo mapeo a todo el dashboard: status badges, botones, section headers, modales, sidebar, WhatsApp templates (solo UI — los mensajes de WhatsApp SÍ se quedan con emojis porque en chat son apropiados).
+  </p>
+</footer>
+
+<script>
+  // Render all Lucide icons on the page
+  if (window.lucide) {
+    lucide.createIcons();
+  } else {
+    // Fallback: wait for CDN to load
+    window.addEventListener('load', () => { if (window.lucide) lucide.createIcons(); });
+  }
+</script>
+
+</body>
+</html>
