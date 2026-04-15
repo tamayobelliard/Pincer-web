@@ -302,6 +302,11 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shift_id bigint;
 -- (direct PATCH from dashboard).
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS voided_at timestamptz;
 
+-- Voided items audit trail (Apr 15)
+-- Comma-separated list of item names that were unavailable when the order
+-- was rejected. Displayed on the voided order card so staff can see the reason.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS voided_items text;
+
 
 -- ──────────────────────────────────────────────────────────────
 -- Cleanup: Delete expired sessions (run periodically or add to cron)

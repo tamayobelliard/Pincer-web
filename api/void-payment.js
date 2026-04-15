@@ -66,10 +66,11 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Sesión inválida' });
     }
 
-    const { orderId } = req.body;
+    const { orderId, voidedItems } = req.body;
     if (!orderId || !Number.isInteger(Number(orderId))) {
       return res.status(400).json({ error: 'orderId requerido' });
     }
+    const voidedItemsText = typeof voidedItems === 'string' ? voidedItems.substring(0, 500) : null;
 
     // Fetch the order — must belong to this restaurant, be in 'accepted' status, and have azul_order_id
     const orderRes = await fetch(
@@ -121,7 +122,7 @@ export default async function handler(req, res) {
         {
           method: 'PATCH',
           headers: sbHeaders(supabaseKey),
-          body: JSON.stringify({ status: 'voided', voided_at: new Date().toISOString() }),
+          body: JSON.stringify({ status: 'voided', voided_at: new Date().toISOString(), voided_items: voidedItemsText }),
         }
       );
       return res.status(200).json({ success: true, testMode: true });
@@ -152,7 +153,7 @@ export default async function handler(req, res) {
         {
           method: 'PATCH',
           headers: sbHeaders(supabaseKey),
-          body: JSON.stringify({ status: 'voided', voided_at: new Date().toISOString() }),
+          body: JSON.stringify({ status: 'voided', voided_at: new Date().toISOString(), voided_items: voidedItemsText }),
         }
       );
       return res.status(200).json({ success: true });
