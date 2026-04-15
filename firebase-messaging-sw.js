@@ -3,7 +3,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
 // ── Version: bump this on every deploy to force SW update ──
-var SW_VERSION = 'v5';
+var SW_VERSION = 'v6';
 
 firebase.initializeApp({
   apiKey: "AIzaSyCk77dGtiwhAcPcdjY6Q3NDlmaT7kQ_9eQ",

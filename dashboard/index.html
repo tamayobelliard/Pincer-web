@@ -3647,6 +3647,7 @@ async function acceptOrder(id) {
     if (!res.ok) { showError("Error al marcar orden #" + id); return; }
     dbg('✅ Orden #' + id + ' → accepted (digitada_at saved)');
     track('order_accepted', { order_id: id });
+    stopAlarm(); // Stop the new-order alarm as soon as the employee acknowledges
     playConfirmSound();
     setTimeout(loadOrders, 150);
     loadDaySummary();
