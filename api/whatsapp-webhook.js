@@ -287,31 +287,11 @@ Responde SOLO con JSON válido:
           console.error('[wa] Product upsert error:', prodRes.status, await prodRes.text().catch(() => ''));
         }
 
-        // Deactivate previous promos and their products
-        const oldPromoRes = await fetch(
-          `${supabaseUrl}/rest/v1/promotions?restaurant_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true`,
-          { method: 'PATCH', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify({ is_active: false }), signal: AbortSignal.timeout(5000) }
-        ).catch(() => null);
-        if (oldPromoRes && oldPromoRes.ok) {
-          const oldPromos = await oldPromoRes.json().catch(() => []);
-          const oldProductIds = oldPromos.map(p => p.product_id).filter(Boolean);
-          if (oldProductIds.length) {
-            await fetch(
-              `${supabaseUrl}/rest/v1/products?id=in.(${oldProductIds.map(id => encodeURIComponent(id)).join(',')})`,
-              { method: 'PATCH', headers, body: JSON.stringify({ active: false }), signal: AbortSignal.timeout(5000) }
-            ).catch(() => {});
-            console.log(`[wa] Deactivated old promo products: ${oldProductIds.join(', ')}`);
-          }
-        }
-
-        // Calculate expires_at (end of day DR timezone UTC-4)
-        const now = new Date();
-        const drNow = new Date(now.getTime() - 4 * 3600000);
-        const endOfDay = new Date(drNow);
-        endOfDay.setUTCHours(23, 59, 59, 999);
-        const expiresAt = new Date(endOfDay.getTime() + 4 * 3600000).toISOString();
-
-        // Activate promo
+        // Activate promo — does NOT deactivate previous promos anymore.
+        // The owner now manages a persistent library from the dashboard and
+        // multiple specials can be active at the same time (carousel popup).
+        // expires_at is left null so the promo stays in the library until the
+        // owner toggles it off or deletes it.
         await fetch(
           `${supabaseUrl}/rest/v1/promotions?id=eq.${pending.id}`,
           {
@@ -320,7 +300,6 @@ Responde SOLO con JSON válido:
               wa_status: 'published',
               is_active: true,
               product_id: productId,
-              expires_at: expiresAt,
             }),
             signal: AbortSignal.timeout(5000),
           }
@@ -330,7 +309,7 @@ Responde SOLO con JSON válido:
         return res.status(200).send(twiml(
           `✅ ¡Publicado!\n\n` +
           `"${pending.title}" - RD$${pending.price.toLocaleString()}\n\n` +
-          `Ya esta en tu menu y en el popup de promo. Expira a medianoche.`
+          `Ya está activa en tu menú. Puedes activarla o desactivarla cuando quieras desde el dashboard → Especiales.`
         ));
       }
 

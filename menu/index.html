@@ -1222,6 +1222,30 @@
     }
     .promo-popup-cta:active { transform: scale(0.97); }
 
+    /* Carousel controls — only visible when more than one promo is active */
+    .promo-carousel-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(0,0,0,0.5); color: white; border: none;
+      font-size: 26px; line-height: 1; font-weight: 300;
+      cursor: pointer; z-index: 2; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .promo-carousel-arrow:hover { background: rgba(0,0,0,0.7); }
+    .promo-carousel-arrow:active { transform: translateY(-50%) scale(0.92); }
+    .promo-carousel-prev { left: 8px; padding-right: 3px; }
+    .promo-carousel-next { right: 8px; padding-left: 3px; }
+    .promo-carousel-dots {
+      display: flex; justify-content: center; gap: 6px; margin-top: 10px;
+    }
+    .promo-carousel-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #cbd5e1; cursor: pointer;
+      transition: all 0.2s; border: none; padding: 0;
+    }
+    .promo-carousel-dot.active { background: var(--primary, #E8191A); width: 20px; border-radius: 4px; }
+
     .extras-section {
       margin: 15px 0 10px 0;
       padding-top: 12px;
@@ -2445,6 +2469,8 @@
     <button class="promo-popup-close" onclick="closePromoPopup()">&times;</button>
     <span class="promo-popup-badge" id="promoBadge">NUEVO</span>
     <img class="promo-popup-img" id="promoImage" src="" alt="Promo">
+    <button class="promo-carousel-arrow promo-carousel-prev" id="promoPrevBtn" onclick="promoPrev(event)" aria-label="Anterior" style="display:none;">‹</button>
+    <button class="promo-carousel-arrow promo-carousel-next" id="promoNextBtn" onclick="promoNext(event)" aria-label="Siguiente" style="display:none;">›</button>
   </div>
   <div class="promo-popup-body">
     <div class="promo-popup-info">
@@ -2452,6 +2478,7 @@
       <div class="promo-popup-price" id="promoPrice" style="display:none;"></div>
     </div>
     <button class="promo-popup-cta" id="promoCta" onclick="promoCtaClick()">¡Pruébalo Ya!</button>
+    <div class="promo-carousel-dots" id="promoDots" style="display:none;"></div>
   </div>
 </div>
 
@@ -6157,61 +6184,142 @@ async function init() {
 // ══════════════════════════════════════════════════════════════
 
 var PROMO_SEEN_KEY = 'pincer_promo_seen_' + SLUG;
-var _activePromo = null;
+var _activePromo = null;        // currently displayed promo
+var _promoList = [];            // all active promos (carousel source)
+var _promoIndex = 0;            // current carousel slide
+var _promoAutoRotate = null;    // setInterval handle
+var _promoViewedSet = new Set(); // which promos have fired promotion_viewed
 
 async function checkAndShowPromo() {
   if (sessionStorage.getItem(PROMO_SEEN_KEY)) return;
   try {
     var res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/promotions?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
-        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id&order=created_at.desc&limit=1',
+        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id&order=created_at.desc&limit=10',
       { headers: sbHeaders() }, 8000
     );
     if (!res.ok) return;
-    var rows = await res.json();
-    if (!rows.length) return;
+    _promoList = await res.json();
+    if (!_promoList.length) return;
 
-    var promo = rows[0];
-    var popup = document.getElementById('promoPopup');
-    popup.setAttribute('data-product-id', promo.product_id || '');
-    document.getElementById('promoTitle').textContent = promo.title || '';
-    document.getElementById('promoBadge').textContent = promo.badge_text || 'NUEVO';
-
-    if (promo.image_url) {
-      document.getElementById('promoImage').src = promo.image_url;
-      document.getElementById('promoImage').style.display = 'block';
-    } else {
-      document.getElementById('promoImage').style.display = 'none';
-    }
-
-    var priceEl = document.getElementById('promoPrice');
-    if (promo.price) {
-      var priceHtml = '';
-      if (promo.original_price && promo.original_price > promo.price) {
-        priceHtml += '<span class="promo-old-price">RD$' + promo.original_price.toLocaleString() + '</span>';
-      }
-      priceHtml += 'RD$' + promo.price.toLocaleString();
-      priceEl.innerHTML = priceHtml;
-      priceEl.style.display = 'block';
-    } else {
-      priceEl.style.display = 'none';
-    }
+    _promoIndex = 0;
+    renderPromoSlide(0);
+    renderPromoDots();
 
     setTimeout(function() {
       document.getElementById('promoOverlay').classList.add('show');
-      popup.classList.add('show');
+      document.getElementById('promoPopup').classList.add('show');
       pushPopupState();
-      _activePromo = promo;
-      track('promotion_viewed', { promotion_id: promo.product_id || '', item_name: promo.title || '', price: promo.price || 0 });
+      // Auto-rotate every 5s if more than one promo
+      if (_promoList.length > 1) {
+        _promoAutoRotate = setInterval(function() { promoNext(); }, 5000);
+      }
     }, 1500);
   } catch (e) {
     console.log('[promo] check error:', e.message);
   }
 }
 
+function renderPromoSlide(idx) {
+  if (!_promoList[idx]) return;
+  var promo = _promoList[idx];
+  _activePromo = promo;
+  var popup = document.getElementById('promoPopup');
+  popup.setAttribute('data-product-id', promo.product_id || '');
+  document.getElementById('promoTitle').textContent = promo.title || '';
+  document.getElementById('promoBadge').textContent = promo.badge_text || 'NUEVO';
+
+  var imgEl = document.getElementById('promoImage');
+  if (promo.image_url) {
+    imgEl.src = promo.image_url;
+    imgEl.style.display = 'block';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  var priceEl = document.getElementById('promoPrice');
+  if (promo.price) {
+    var priceHtml = '';
+    if (promo.original_price && promo.original_price > promo.price) {
+      priceHtml += '<span class="promo-old-price">RD$' + promo.original_price.toLocaleString() + '</span>';
+    }
+    priceHtml += 'RD$' + promo.price.toLocaleString();
+    priceEl.innerHTML = priceHtml;
+    priceEl.style.display = 'block';
+  } else {
+    priceEl.style.display = 'none';
+  }
+
+  document.getElementById('promoCta').textContent = promo.cta_text || '¡Pruébalo Ya!';
+
+  // Show or hide carousel controls based on how many active promos we have
+  var multi = _promoList.length > 1;
+  document.getElementById('promoPrevBtn').style.display = multi ? 'flex' : 'none';
+  document.getElementById('promoNextBtn').style.display = multi ? 'flex' : 'none';
+  document.getElementById('promoDots').style.display = multi ? 'flex' : 'none';
+
+  // Track view once per promo per session
+  var key = promo.product_id || String(idx);
+  if (!_promoViewedSet.has(key)) {
+    _promoViewedSet.add(key);
+    track('promotion_viewed', { promotion_id: promo.product_id || '', item_name: promo.title || '', price: promo.price || 0 });
+  }
+  updatePromoDots();
+}
+
+function renderPromoDots() {
+  var dotsEl = document.getElementById('promoDots');
+  dotsEl.innerHTML = '';
+  for (var i = 0; i < _promoList.length; i++) {
+    var dot = document.createElement('button');
+    dot.className = 'promo-carousel-dot' + (i === _promoIndex ? ' active' : '');
+    dot.setAttribute('data-i', i);
+    dot.onclick = function(e) { promoGoTo(parseInt(e.currentTarget.dataset.i, 10)); };
+    dotsEl.appendChild(dot);
+  }
+}
+
+function updatePromoDots() {
+  var dots = document.querySelectorAll('#promoDots .promo-carousel-dot');
+  for (var i = 0; i < dots.length; i++) {
+    dots[i].classList.toggle('active', i === _promoIndex);
+  }
+}
+
+function promoPrev(e) {
+  if (e) e.stopPropagation();
+  if (_promoList.length <= 1) return;
+  _promoIndex = (_promoIndex - 1 + _promoList.length) % _promoList.length;
+  renderPromoSlide(_promoIndex);
+  restartPromoAutoRotate();
+}
+
+function promoNext(e) {
+  if (e) e.stopPropagation();
+  if (_promoList.length <= 1) return;
+  _promoIndex = (_promoIndex + 1) % _promoList.length;
+  renderPromoSlide(_promoIndex);
+  restartPromoAutoRotate();
+}
+
+function promoGoTo(i) {
+  if (i < 0 || i >= _promoList.length) return;
+  _promoIndex = i;
+  renderPromoSlide(i);
+  restartPromoAutoRotate();
+}
+
+function restartPromoAutoRotate() {
+  if (_promoAutoRotate) { clearInterval(_promoAutoRotate); _promoAutoRotate = null; }
+  if (_promoList.length > 1) {
+    _promoAutoRotate = setInterval(function() { promoNext(); }, 5000);
+  }
+}
+
 function closePromoPopup() {
   document.getElementById('promoOverlay').classList.remove('show');
   document.getElementById('promoPopup').classList.remove('show');
+  if (_promoAutoRotate) { clearInterval(_promoAutoRotate); _promoAutoRotate = null; }
   if (!_popstateClosing) popPopupState();
   sessionStorage.setItem(PROMO_SEEN_KEY, 'true');
 }
