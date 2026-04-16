@@ -977,7 +977,7 @@
     <span class="icon">📦</span> Menú
   </button>
   <button class="nav-item" id="navPromos" onclick="showPromosPanel()">
-    <span class="icon">⭐</span> Recomendación del Chef
+    <span class="icon">⭐</span> Recomendacion del Chef
   </button>
   <a class="nav-item" id="navQR" href="#" onclick="window.open('/' + SLUG, '_blank'); return false;">
     <span class="icon">🔗</span> Ver QR
@@ -1215,10 +1215,10 @@
       </div>
     </div>
 
-    <!-- Recomendación del Chef panel -->
+    <!-- Recomendacion del Chef panel -->
     <div class="products-panel" id="promosPanel" style="display:none;">
       <div class="products-panel-header">
-        <h3><i data-lucide="star" style="width:20px;height:20px;vertical-align:middle;"></i> Recomendación del Chef</h3>
+        <h3><i data-lucide="star" style="width:20px;height:20px;vertical-align:middle;"></i> Recomendacion del Chef</h3>
         <button class="btn-add-product" onclick="openPromoModal()">+ Agregar recomendación</button>
       </div>
       <div id="promosList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:16px;"></div>
@@ -3108,7 +3108,7 @@ async function savePromo() {
       return;
     }
 
-    dbg('⭐ Recomendación ' + (_editingPromoId ? 'actualizada' : 'creada') + ': ' + title);
+    dbg('⭐ Recomendacion ' + (_editingPromoId ? 'actualizada' : 'creada') + ': ' + title);
     track(_editingPromoId ? 'promo_updated' : 'promo_created', { title: title, price: price });
     closePromoModal();
     loadPromos();
@@ -3225,7 +3225,7 @@ async function deletePromo(promoId, title) {
       showError(data.error || 'No se pudo eliminar la recomendación');
       return;
     }
-    dbg('❌ Recomendación ' + promoId + ' eliminada');
+    dbg('❌ Recomendacion ' + promoId + ' eliminada');
     loadPromos();
   } catch (e) {
     showError('Error de conexión');

@@ -3083,11 +3083,14 @@ async function loadMenuFromDB() {
       return false;
     }
 
-    // Forward-compat rename: products saved with category "Especiales" (the
-    // old name) display as "Recomendación del Chef" until the SQL migration
-    // is run. Zero-risk — in-memory only.
+    // Forward-compat rename: normalize older category names to the current
+    // "Recomendacion del Chef" (no accent — avoids encoding issues on some
+    // devices). Covers products saved with "Especiales" or with the accented
+    // "Recomendación del Chef" from an earlier run. Zero-risk — in-memory only.
     products.forEach(function(p) {
-      if (p.category === 'Especiales') p.category = 'Recomendación del Chef';
+      if (p.category === 'Especiales' || p.category === 'Recomendación del Chef') {
+        p.category = 'Recomendacion del Chef';
+      }
     });
 
     var hasMultiMenu = products.some(function(p) { return p.menu_group; });

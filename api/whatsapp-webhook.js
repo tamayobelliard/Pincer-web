@@ -269,7 +269,7 @@ Responde SOLO con JSON válido:
           price: pending.price,
           description: String(pending.description || '').slice(0, 500),
           img_url: pending.image_url || null,
-          category: 'Recomendación del Chef',
+          category: 'Recomendacion del Chef',
           active: true,
           sold_out: false,
           display_order: 0,
@@ -309,7 +309,7 @@ Responde SOLO con JSON válido:
         return res.status(200).send(twiml(
           `✅ ¡Publicado!\n\n` +
           `"${pending.title}" - RD$${pending.price.toLocaleString()}\n\n` +
-          `Ya está activa en tu menú. Puedes activarla o desactivarla cuando quieras desde el dashboard → Recomendación del Chef.`
+          `Ya está activa en tu menú. Puedes activarla o desactivarla cuando quieras desde el dashboard → Recomendacion del Chef.`
         ));
       }
 
