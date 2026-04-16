@@ -1217,14 +1217,12 @@
     <div class="products-panel" id="promosPanel" style="display:none;">
       <div class="products-panel-header">
         <h3><i data-lucide="star" style="width:20px;height:20px;vertical-align:middle;"></i> Especiales</h3>
-        <div style="font-size:13px;color:#64748B;">
-          Envía fotos por WhatsApp para crearlos. Actívalos cuando quieras.
-        </div>
+        <button class="btn-add-product" onclick="openPromoModal()">+ Agregar especial</button>
       </div>
       <div id="promosList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:16px;"></div>
       <div id="promosEmpty" style="padding:40px 24px;text-align:center;color:#64748B;display:none;">
         <div style="font-size:14px;">Aún no hay especiales creados.</div>
-        <div style="font-size:13px;margin-top:8px;">Envía una foto por WhatsApp al bot de Pincer para crear tu primer especial.</div>
+        <div style="font-size:13px;margin-top:8px;">Toca "+ Agregar especial" para crear el primero.</div>
       </div>
     </div>
 
@@ -1314,6 +1312,42 @@
     <button class="btn-modal-save" id="pmSaveBtn" onclick="saveProduct()">Guardar</button>
   </div>
   <button class="btn-modal-delete" id="pmDeleteBtn" onclick="deleteProduct()" style="display:none;">Eliminar producto</button>
+</div>
+
+<!-- Promo Modal -->
+<div class="product-modal-overlay" id="promoModalOverlay" onclick="closePromoModal()"></div>
+<div class="product-modal" id="promoModal">
+  <div class="product-modal-handle" onclick="closePromoModal()"></div>
+  <h2 id="promoModalTitle">Agregar especial</h2>
+  <div class="product-modal-field">
+    <label>Nombre</label>
+    <input type="text" id="promoModalName" placeholder="Ej: Cubano Especial">
+  </div>
+  <div class="product-modal-field">
+    <label>Precio (RD$)</label>
+    <input type="number" id="promoModalPrice" min="1" step="1" placeholder="700">
+  </div>
+  <div class="product-modal-field">
+    <label>Descripción (opcional)</label>
+    <textarea id="promoModalDesc" placeholder="Cerdo asado, jamón, queso suizo, pepinillos..." rows="3"></textarea>
+  </div>
+  <div class="product-modal-field">
+    <label>Foto del especial</label>
+    <div id="promoModalImagePreview" style="display:none;margin-bottom:8px;">
+      <img id="promoModalImagePreviewImg" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <button type="button" id="promoUploadBtn" onclick="document.getElementById('promoFileInput').click()" style="background:#6366f1;color:white;border:none;padding:8px 16px;border-radius:8px;font-weight:600;font-size:0.85em;cursor:pointer;">📷 Subir Foto</button>
+      <span id="promoUploadStatus" style="font-size:0.8em;color:#64748b;"></span>
+      <input type="file" id="promoFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handlePromoImageUpload(this)">
+    </div>
+    <input type="hidden" id="promoImgUrl">
+  </div>
+  <div class="product-modal-error" id="promoModalError"></div>
+  <div class="product-modal-buttons">
+    <button class="btn-modal-cancel" onclick="closePromoModal()">Cancelar</button>
+    <button class="btn-modal-save" id="promoSaveBtn" onclick="savePromo()">Guardar y activar</button>
+  </div>
 </div>
 
 <!-- Reject Order Modal -->
@@ -2941,6 +2975,122 @@ function showPromosPanel() {
   panel.style.display = '';
   loadPromos();
   panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openPromoModal() {
+  document.getElementById('promoModalName').value = '';
+  document.getElementById('promoModalPrice').value = '';
+  document.getElementById('promoModalDesc').value = '';
+  document.getElementById('promoImgUrl').value = '';
+  document.getElementById('promoModalImagePreview').style.display = 'none';
+  document.getElementById('promoUploadStatus').textContent = '';
+  document.getElementById('promoModalError').style.display = 'none';
+  document.getElementById('promoModalOverlay').classList.add('show');
+  document.getElementById('promoModal').classList.add('show');
+}
+
+function closePromoModal() {
+  document.getElementById('promoModalOverlay').classList.remove('show');
+  document.getElementById('promoModal').classList.remove('show');
+}
+
+async function handlePromoImageUpload(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+  var status = document.getElementById('promoUploadStatus');
+  var btn = document.getElementById('promoUploadBtn');
+
+  if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    status.textContent = '❌ Solo JPG, PNG o WebP';
+    status.style.color = '#dc2626';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    status.textContent = '❌ Máximo 2MB';
+    status.style.color = '#dc2626';
+    return;
+  }
+
+  // Use a temp id tied to the current name/timestamp for the upload path.
+  // The actual product id the server generates will be different — that's fine,
+  // the image URL just needs to be a stable public URL.
+  var name = document.getElementById('promoModalName').value.trim();
+  if (!name) { status.textContent = '❌ Escribe el nombre primero'; status.style.color = '#dc2626'; return; }
+  var tempId = SLUG + '-promo-' + slugify(name) + '-' + Date.now().toString(36).slice(-4);
+
+  status.textContent = '⏳ Subiendo...';
+  status.style.color = '#64748b';
+  btn.disabled = true;
+
+  try {
+    var publicUrl = await uploadProductImage(file, tempId);
+    document.getElementById('promoImgUrl').value = publicUrl;
+    var preview = document.getElementById('promoModalImagePreview');
+    document.getElementById('promoModalImagePreviewImg').src = publicUrl;
+    preview.style.display = '';
+    status.textContent = '✅ Foto subida';
+    status.style.color = '#16a34a';
+  } catch (e) {
+    dbg('❌ Promo image upload error: ' + e.message);
+    status.textContent = '❌ Error al subir';
+    status.style.color = '#dc2626';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function savePromo() {
+  var errDiv = document.getElementById('promoModalError');
+  var btn = document.getElementById('promoSaveBtn');
+  errDiv.style.display = 'none';
+
+  var title = document.getElementById('promoModalName').value.trim();
+  var price = parseInt(document.getElementById('promoModalPrice').value) || 0;
+  var description = document.getElementById('promoModalDesc').value.trim() || null;
+  var image_url = document.getElementById('promoImgUrl').value.trim() || null;
+
+  if (!title) {
+    errDiv.textContent = 'El nombre es requerido';
+    errDiv.style.display = 'block';
+    return;
+  }
+  if (price <= 0) {
+    errDiv.textContent = 'El precio debe ser mayor a 0';
+    errDiv.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    var token = localStorage.getItem('pincer_token') || '';
+    var res = await fetch('/api/create-promo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
+      body: JSON.stringify({ title: title, price: price, description: description, image_url: image_url })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.success) {
+      errDiv.textContent = data.error || 'No se pudo crear el especial';
+      errDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Guardar y activar';
+      return;
+    }
+
+    dbg('⭐ Especial creado: ' + title);
+    track('promo_created', { title: title, price: price });
+    closePromoModal();
+    loadPromos();
+    loadProducts();
+  } catch (e) {
+    errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    errDiv.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Guardar y activar';
+  }
 }
 
 async function loadPromos() {
