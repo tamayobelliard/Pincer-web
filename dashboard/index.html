@@ -70,6 +70,8 @@
     .promo-toggle input:checked + .promo-switch { background: #16a34a; }
     .promo-toggle input:checked + .promo-switch::after { transform: translateX(16px); }
     .promo-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .promo-edit-btn { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .promo-edit-btn:hover { background: #c7d2fe; }
     .promo-delete-btn { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .promo-delete-btn:hover { background: #fee2e2; }
     .logo-icon {
@@ -2977,12 +2979,27 @@ function showPromosPanel() {
   panel.scrollIntoView({ behavior: 'smooth' });
 }
 
-function openPromoModal() {
-  document.getElementById('promoModalName').value = '';
-  document.getElementById('promoModalPrice').value = '';
-  document.getElementById('promoModalDesc').value = '';
-  document.getElementById('promoImgUrl').value = '';
-  document.getElementById('promoModalImagePreview').style.display = 'none';
+var _editingPromoId = null;
+
+function openPromoModal(promo) {
+  _editingPromoId = promo && promo.id ? promo.id : null;
+  document.getElementById('promoModalTitle').textContent = _editingPromoId
+    ? 'Editar recomendación del chef'
+    : 'Agregar recomendación del chef';
+  document.getElementById('promoSaveBtn').textContent = _editingPromoId
+    ? 'Guardar cambios'
+    : 'Guardar y activar';
+  document.getElementById('promoModalName').value = promo ? (promo.title || '') : '';
+  document.getElementById('promoModalPrice').value = promo ? (promo.price || '') : '';
+  document.getElementById('promoModalDesc').value = promo ? (promo.description || '') : '';
+  document.getElementById('promoImgUrl').value = promo ? (promo.image_url || '') : '';
+  var preview = document.getElementById('promoModalImagePreview');
+  if (promo && promo.image_url) {
+    document.getElementById('promoModalImagePreviewImg').src = promo.image_url;
+    preview.style.display = '';
+  } else {
+    preview.style.display = 'none';
+  }
   document.getElementById('promoUploadStatus').textContent = '';
   document.getElementById('promoModalError').style.display = 'none';
   document.getElementById('promoModalOverlay').classList.add('show');
@@ -3061,27 +3078,38 @@ async function savePromo() {
     return;
   }
 
+  var originalLabel = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
   try {
     var token = localStorage.getItem('pincer_token') || '';
-    var res = await fetch('/api/create-promo', {
-      method: 'POST',
+    var url, method, payload;
+    if (_editingPromoId) {
+      url = '/api/update-promo';
+      method = 'PATCH';
+      payload = { promoId: _editingPromoId, title: title, price: price, description: description, image_url: image_url };
+    } else {
+      url = '/api/create-promo';
+      method = 'POST';
+      payload = { title: title, price: price, description: description, image_url: image_url };
+    }
+    var res = await fetch(url, {
+      method: method,
       headers: { 'Content-Type': 'application/json', 'x-restaurant-token': token },
-      body: JSON.stringify({ title: title, price: price, description: description, image_url: image_url })
+      body: JSON.stringify(payload)
     });
     var data = await res.json();
     if (!res.ok || !data.success) {
-      errDiv.textContent = data.error || 'No se pudo crear la recomendación';
+      errDiv.textContent = data.error || (_editingPromoId ? 'No se pudo actualizar' : 'No se pudo crear la recomendación');
       errDiv.style.display = 'block';
       btn.disabled = false;
-      btn.textContent = 'Guardar y activar';
+      btn.textContent = originalLabel;
       return;
     }
 
-    dbg('⭐ Recomendación creada: ' + title);
-    track('promo_created', { title: title, price: price });
+    dbg('⭐ Recomendación ' + (_editingPromoId ? 'actualizada' : 'creada') + ': ' + title);
+    track(_editingPromoId ? 'promo_updated' : 'promo_created', { title: title, price: price });
     closePromoModal();
     loadPromos();
     loadProducts();
@@ -3089,7 +3117,7 @@ async function savePromo() {
     errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
     errDiv.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = 'Guardar y activar';
+    btn.textContent = originalLabel;
   }
 }
 
@@ -3109,9 +3137,12 @@ async function loadPromos() {
   }
 }
 
+var _promosById = {};
+
 function renderPromosList(promos) {
   var list = document.getElementById('promosList');
   var empty = document.getElementById('promosEmpty');
+  _promosById = {};
   if (!promos.length) {
     list.innerHTML = '';
     empty.style.display = '';
@@ -3119,6 +3150,7 @@ function renderPromosList(promos) {
   }
   empty.style.display = 'none';
   list.innerHTML = promos.map(function(p) {
+    _promosById[p.id] = p;
     var priceText = p.price ? 'RD$' + Number(p.price).toLocaleString() : '(sin precio)';
     var img = p.image_url
       ? '<img class="promo-card-img" src="' + String(p.image_url).replace(/"/g, '&quot;') + '" alt="">'
@@ -3139,11 +3171,20 @@ function renderPromosList(promos) {
             '<span class="promo-switch"></span>' +
             '<span>' + (p.is_active ? 'Activo' : 'Inactivo') + '</span>' +
           '</label>' +
-          '<button class="promo-delete-btn" onclick="deletePromo(' + p.id + ', \'' + safeTitle.replace(/'/g, "\\'") + '\')">Eliminar</button>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<button class="promo-edit-btn" onclick="editPromo(' + p.id + ')">Editar</button>' +
+            '<button class="promo-delete-btn" onclick="deletePromo(' + p.id + ', \'' + safeTitle.replace(/'/g, "\\'") + '\')">Eliminar</button>' +
+          '</div>' +
         '</div>' +
       '</div>'
     );
   }).join('');
+}
+
+function editPromo(promoId) {
+  var p = _promosById[promoId];
+  if (!p) return;
+  openPromoModal(p);
 }
 
 async function togglePromo(promoId, isActive, checkbox) {

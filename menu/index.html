@@ -3083,6 +3083,13 @@ async function loadMenuFromDB() {
       return false;
     }
 
+    // Forward-compat rename: products saved with category "Especiales" (the
+    // old name) display as "Recomendación del Chef" until the SQL migration
+    // is run. Zero-risk — in-memory only.
+    products.forEach(function(p) {
+      if (p.category === 'Especiales') p.category = 'Recomendación del Chef';
+    });
+
     var hasMultiMenu = products.some(function(p) { return p.menu_group; });
 
     if (hasMultiMenu) {
@@ -3352,9 +3359,13 @@ function renderMenu() {
   categoryOrder.forEach(cat => {
     const items = MENU_DATA[cat];
     if (!items || !items.length) return;
+    // Hide sold-out items entirely from the customer menu. If an entire
+    // category becomes empty after filtering, skip the category header too.
+    const availableItems = items.filter(it => !soldOutSet.has(it.id));
+    if (!availableItems.length) return;
     const catId = 'cat-' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     html += `<div class="category-title" id="${catId}">${escHtml(cat.toUpperCase())}</div>`;
-    items.forEach(item => { html += menuItemHTML(item); });
+    availableItems.forEach(item => { html += menuItemHTML(item); });
   });
 
   container.innerHTML = html;
@@ -3391,7 +3402,13 @@ function renderMenu() {
 function buildCategoryTabs(categoryOrder) {
   const wrap = document.getElementById('categoryTabsWrap');
   const tabsContainer = document.getElementById('categoryTabs');
-  const cats = categoryOrder.filter(c => MENU_DATA[c] && MENU_DATA[c].length);
+  // Only show tabs for categories that have at least one AVAILABLE item
+  // (not sold out). Matches what renderMenu actually renders.
+  const cats = categoryOrder.filter(c => {
+    const items = MENU_DATA[c];
+    if (!items || !items.length) return false;
+    return items.some(it => !soldOutSet.has(it.id));
+  });
   if (cats.length < 2) { wrap.style.display = 'none'; return; }
 
   tabsContainer.innerHTML = cats.map(cat => {
@@ -6200,10 +6217,23 @@ async function checkAndShowPromo() {
     );
     if (!res.ok) return;
     var allPromos = await res.json();
-    // Hide promos whose linked product is sold out — the customer shouldn't be
-    // teased with an item the restaurant can't deliver right now.
+
+    // Build a set of product ids that are CURRENTLY live in the menu
+    // (active AND not sold out) so the popup never advertises something the
+    // restaurant can't fulfill or has removed from the menu.
+    var liveProductIds = new Set();
+    Object.values(MENU_DATA || {}).forEach(function(items) {
+      if (Array.isArray(items)) items.forEach(function(it) {
+        if (!soldOutSet.has(it.id)) liveProductIds.add(it.id);
+      });
+    });
+
     _promoList = allPromos.filter(function(p) {
-      return !p.product_id || !soldOutSet.has(p.product_id);
+      // Orphan promo (no linked product) — don't show, there's nothing to order
+      if (!p.product_id) return false;
+      // Product was deleted, deactivated, or is sold out → don't show
+      if (!liveProductIds.has(p.product_id)) return false;
+      return true;
     });
     if (!_promoList.length) return;
 
