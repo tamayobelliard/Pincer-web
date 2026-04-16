@@ -2387,6 +2387,23 @@
       <div class="phone-hint">Te notificaremos por WhatsApp cuando tu orden esté lista</div>
       <div class="phone-error" id="phoneError">Número inválido. Usa formato: 809-123-4567</div>
     </div>
+    <!-- Loyalty VIP Box (sidebar copy) — same state as the one in the checkout modal -->
+    <div class="loyalty-vip-box" style="display:none;">
+      <div class="loyalty-vip-header loyalty-program-name">VIP CLUB</div>
+      <div class="loyalty-vip-body">
+        <div class="loyalty-progress-text"></div>
+        <div class="loyalty-progress-bar">
+          <div class="loyalty-progress-fill" style="width:0%"></div>
+        </div>
+        <div class="loyalty-reward-box" style="display:none;">
+          <div class="loyalty-reward-text"></div>
+          <button class="loyalty-reward-btn" onclick="addLoyaltyReward()">+ Agregar gratis</button>
+        </div>
+        <div class="loyalty-reward-added" style="display:none;">
+          ✅ <span class="loyalty-reward-added-name"></span> agregado a tu orden
+        </div>
+      </div>
+    </div>
     <!-- Order Type Selector -->
     <div class="order-type-section" id="orderTypeSection" style="display:none;">
       <div class="order-type-title">Tipo de orden</div>
@@ -2602,20 +2619,20 @@
     <label>Teléfono</label>
     <input type="tel" id="checkoutPhone" placeholder="809-123-4567" maxlength="15" oninput="onCheckoutPhoneChange()">
   </div>
-  <!-- Loyalty VIP Box — appears after valid phone if restaurant has an active program -->
-  <div class="loyalty-vip-box" id="loyaltyVipBox" style="display:none;">
-    <div class="loyalty-vip-header" id="loyaltyProgramName">VIP CLUB</div>
+  <!-- Loyalty VIP Box (modal copy) — appears after valid phone if restaurant has an active program -->
+  <div class="loyalty-vip-box" style="display:none;">
+    <div class="loyalty-vip-header loyalty-program-name">VIP CLUB</div>
     <div class="loyalty-vip-body">
-      <div class="loyalty-progress-text" id="loyaltyProgressText"></div>
+      <div class="loyalty-progress-text"></div>
       <div class="loyalty-progress-bar">
-        <div class="loyalty-progress-fill" id="loyaltyProgressFill" style="width:0%"></div>
+        <div class="loyalty-progress-fill" style="width:0%"></div>
       </div>
-      <div class="loyalty-reward-box" id="loyaltyRewardBox" style="display:none;">
-        <div class="loyalty-reward-text" id="loyaltyRewardText"></div>
-        <button class="loyalty-reward-btn" id="loyaltyRewardBtn" onclick="addLoyaltyReward()">+ Agregar gratis</button>
+      <div class="loyalty-reward-box" style="display:none;">
+        <div class="loyalty-reward-text"></div>
+        <button class="loyalty-reward-btn" onclick="addLoyaltyReward()">+ Agregar gratis</button>
       </div>
-      <div class="loyalty-reward-added" id="loyaltyRewardAdded" style="display:none;">
-        ✅ <span id="loyaltyRewardAddedName"></span> agregado a tu orden
+      <div class="loyalty-reward-added" style="display:none;">
+        ✅ <span class="loyalty-reward-added-name"></span> agregado a tu orden
       </div>
     </div>
   </div>
@@ -2733,6 +2750,12 @@
 </div>
 
 <script>
+// Hoisted declarations for loyalty state (used by onPhoneInput in the sidebar
+// before the main loyalty block runs). Reassigned in the LOYALTY VIP section.
+var _loyaltyPhoneTimer;
+var _loyaltyData;
+var _loyaltyRewardAdded;
+
 // ══════════════════════════════════════════════════════════════
 // CONFIGURACIÓN Y DATOS
 // ══════════════════════════════════════════════════════════════
@@ -3444,6 +3467,10 @@ function onPhoneInput(input) {
   customerPhone = input.value.trim();
   input.classList.remove('invalid');
   document.getElementById('phoneError').style.display = 'none';
+  // Loyalty VIP box: debounced fetch so the box can appear directly from the sidebar
+  var digits = customerPhone.replace(/\D/g, '');
+  clearTimeout(_loyaltyPhoneTimer);
+  _loyaltyPhoneTimer = setTimeout(function () { fetchLoyaltyProgress(digits); }, 600);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4252,15 +4279,15 @@ var _loyaltyPhoneTimer = null;   // debounce timer for phone input
 
 function onCheckoutPhoneChange() {
   // Debounce: wait 600ms after the user stops typing before fetching
+  var digits = (document.getElementById('checkoutPhone').value || '').replace(/\D/g, '');
   clearTimeout(_loyaltyPhoneTimer);
-  _loyaltyPhoneTimer = setTimeout(fetchLoyaltyProgress, 600);
+  _loyaltyPhoneTimer = setTimeout(function () { fetchLoyaltyProgress(digits); }, 600);
 }
 
-async function fetchLoyaltyProgress() {
-  var box = document.getElementById('loyaltyVipBox');
-  var phone = (document.getElementById('checkoutPhone').value || '').trim().replace(/\D/g, '');
-  if (phone.length < 10) {
-    box.style.display = 'none';
+async function fetchLoyaltyProgress(phone) {
+  // Guard first — don't hit the endpoint until we have a full number
+  if (!phone || phone.length < 10) {
+    hideAllLoyaltyBoxes();
     _loyaltyData = null;
     return;
   }
@@ -4270,46 +4297,50 @@ async function fetchLoyaltyProgress() {
       '/api/loyalty-progress?phone=' + encodeURIComponent(phone) + '&slug=' + encodeURIComponent(SLUG),
       {}, 5000
     );
-    if (!res.ok) { box.style.display = 'none'; return; }
+    if (!res.ok) { hideAllLoyaltyBoxes(); return; }
     var data = await res.json();
+    data.phone = phone; // tag for dedup on modal open
     _loyaltyData = data;
-    if (!data.active) { box.style.display = 'none'; return; }
+    if (!data.active) { hideAllLoyaltyBoxes(); return; }
     renderLoyaltyVipBox(data);
   } catch (e) {
     dbg('⚠️ loyalty-progress error: ' + e.message);
-    box.style.display = 'none';
+    hideAllLoyaltyBoxes();
   }
 }
 
+function hideAllLoyaltyBoxes() {
+  document.querySelectorAll('.loyalty-vip-box').forEach(function (el) { el.style.display = 'none'; });
+}
+
 function renderLoyaltyVipBox(data) {
-  var box = document.getElementById('loyaltyVipBox');
-  document.getElementById('loyaltyProgramName').textContent = data.program_name || 'VIP CLUB';
-
   var pct = Math.round((data.progress_toward_next / data.orders_needed) * 100);
-  document.getElementById('loyaltyProgressFill').style.width = pct + '%';
-
-  if (data.rewards_available > 0) {
-    var rewardCount = data.rewards_available > 1 ? data.rewards_available + 'x ' : '';
-    document.getElementById('loyaltyProgressText').textContent =
-      '🏆 ¡Llevas ' + data.orders_count + ' ordenes!';
-    document.getElementById('loyaltyRewardText').textContent =
-      rewardCount + data.reward_name + ' disponible';
-    document.getElementById('loyaltyRewardBtn').textContent =
-      '+ Agregar ' + data.reward_name;
-    document.getElementById('loyaltyRewardBox').style.display = _loyaltyRewardAdded ? 'none' : 'flex';
-    document.getElementById('loyaltyRewardAdded').style.display = _loyaltyRewardAdded ? 'block' : 'none';
-    if (_loyaltyRewardAdded) {
-      document.getElementById('loyaltyRewardAddedName').textContent = data.reward_name;
-    }
-  } else {
-    document.getElementById('loyaltyProgressText').textContent =
-      'Llevas ' + data.progress_toward_next + ' de ' + data.orders_needed +
+  var hasReward = data.rewards_available > 0;
+  var rewardCount = data.rewards_available > 1 ? data.rewards_available + 'x ' : '';
+  var progressText = hasReward
+    ? '🏆 ¡Llevas ' + data.orders_count + ' ordenes!'
+    : 'Llevas ' + data.progress_toward_next + ' de ' + data.orders_needed +
       ' — ' + data.remaining + ' mas para tu ' + data.reward_name;
-    document.getElementById('loyaltyRewardBox').style.display = 'none';
-    document.getElementById('loyaltyRewardAdded').style.display = 'none';
-  }
 
-  box.style.display = '';
+  document.querySelectorAll('.loyalty-vip-box').forEach(function (box) {
+    var q = function (sel) { return box.querySelector(sel); };
+    q('.loyalty-program-name').textContent = data.program_name || 'VIP CLUB';
+    q('.loyalty-progress-fill').style.width = pct + '%';
+    q('.loyalty-progress-text').textContent = progressText;
+
+    if (hasReward) {
+      q('.loyalty-reward-text').textContent = rewardCount + data.reward_name + ' disponible';
+      q('.loyalty-reward-btn').textContent = '+ Agregar ' + data.reward_name;
+      q('.loyalty-reward-box').style.display = _loyaltyRewardAdded ? 'none' : 'flex';
+      q('.loyalty-reward-added').style.display = _loyaltyRewardAdded ? 'block' : 'none';
+      if (_loyaltyRewardAdded) q('.loyalty-reward-added-name').textContent = data.reward_name;
+    } else {
+      q('.loyalty-reward-box').style.display = 'none';
+      q('.loyalty-reward-added').style.display = 'none';
+    }
+
+    box.style.display = '';
+  });
 }
 
 function addLoyaltyReward() {
@@ -4333,10 +4364,15 @@ function addLoyaltyReward() {
   order.push({ id: productId, name: itemName, price: 0, qty: 1, notes: '🎁 Cortesia VIP', source: 'loyalty' });
   _loyaltyRewardAdded = true;
 
-  // Update the VIP box to show confirmation
-  document.getElementById('loyaltyRewardBox').style.display = 'none';
-  document.getElementById('loyaltyRewardAdded').style.display = 'block';
-  document.getElementById('loyaltyRewardAddedName').textContent = itemName;
+  // Update every VIP box (sidebar + modal) to show confirmation
+  document.querySelectorAll('.loyalty-vip-box').forEach(function (box) {
+    var rewardBox = box.querySelector('.loyalty-reward-box');
+    var addedBox = box.querySelector('.loyalty-reward-added');
+    var addedName = box.querySelector('.loyalty-reward-added-name');
+    if (rewardBox) rewardBox.style.display = 'none';
+    if (addedBox) addedBox.style.display = 'block';
+    if (addedName) addedName.textContent = itemName;
+  });
 
   // Re-render the checkout summary to include the free item
   if (typeof renderCheckoutSummary === 'function') {
@@ -4378,12 +4414,16 @@ function openCheckoutModal() {
   errorDiv.textContent = '';
   document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
 
-  // Reset loyalty state for this checkout session
-  _loyaltyData = null;
+  // Reset per-session loyalty claim state (keep _loyaltyData cached from sidebar fetch)
   _loyaltyRewardAdded = false;
-  document.getElementById('loyaltyVipBox').style.display = 'none';
   // Remove any loyalty reward item left from a previous abandoned checkout
   order = order.filter(function(i) { return i.source !== 'loyalty'; });
+  // Re-render cached loyalty state so the reward button shows again for this new session
+  if (_loyaltyData && _loyaltyData.active) {
+    renderLoyaltyVipBox(_loyaltyData);
+  } else {
+    hideAllLoyaltyBoxes();
+  }
 
   // Render items
   let html = '';
@@ -4413,6 +4453,13 @@ function openCheckoutModal() {
   // Pre-fill phone from existing field
   const existingPhone = (document.getElementById('phoneInput').value || '').trim();
   document.getElementById('checkoutPhone').value = existingPhone;
+  // Trigger loyalty fetch for the pre-filled phone (skip if we already have data for it)
+  if (existingPhone) {
+    var prefillDigits = existingPhone.replace(/\D/g, '');
+    if (!(_loyaltyData && _loyaltyData.phone === prefillDigits)) {
+      fetchLoyaltyProgress(prefillDigits);
+    }
+  }
 
   // Pre-fill name from main flow (takeout or delivery)
   var prefillName = '';
