@@ -1165,6 +1165,17 @@
       overflow: hidden; opacity: 0; visibility: hidden;
       transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+    .promo-popup-header {
+      background: white;
+      color: var(--primary, #E8191A);
+      text-align: center;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 1.2px;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      text-transform: uppercase;
+    }
     .promo-popup.show {
       transform: translate(-50%, -50%) scale(1);
       opacity: 1; visibility: visible;
@@ -2465,6 +2476,7 @@
 
 <div class="promo-overlay" id="promoOverlay" onclick="closePromoPopup()"></div>
 <div class="promo-popup" id="promoPopup" data-product-id="">
+  <div class="promo-popup-header">RECOMENDACIONES DEL CHEF</div>
   <div class="promo-popup-img-wrap">
     <button class="promo-popup-close" onclick="closePromoPopup()">&times;</button>
     <span class="promo-popup-badge" id="promoBadge">NUEVO</span>
