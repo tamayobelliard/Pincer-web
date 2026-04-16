@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Título en popup de Recomendaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #E8191A;
+    --primary-dark: #C41415;
+    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: var(--font);
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+  header {
+    max-width: 1100px;
+    margin: 0 auto 24px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+  header p { margin: 0; color: #64748B; font-size: 14px; }
+
+  .comparison {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  @media (max-width: 768px) { .comparison { grid-template-columns: 1fr; } }
+
+  .column {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+  }
+  .column-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #64748B;
+    padding: 5px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 20px;
+  }
+  .column.current .column-title { background: #fef3c7; color: #92400e; }
+  .column.new .column-title { background: #d1fae5; color: #065f46; }
+
+  /* Popup visual — mirrors the real menu/index.html CSS */
+  .promo-popup {
+    position: relative;
+    width: 320px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .promo-popup-header {
+    background: white;
+    color: #16a34a;
+    text-align: center;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 1.2px;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    text-transform: uppercase;
+  }
+  .promo-popup-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    background: #e5e7eb;
+  }
+  .promo-popup-close {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 32px; height: 32px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 3;
+  }
+  .promo-popup-badge {
+    position: absolute;
+    top: 12px; left: 12px;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+  }
+  .promo-popup-img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .promo-carousel-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); color: white; border: none;
+    font-size: 26px; line-height: 1; font-weight: 300;
+    cursor: pointer; z-index: 2; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .promo-carousel-prev { left: 8px; padding-right: 3px; }
+  .promo-carousel-next { right: 8px; padding-left: 3px; }
+
+  .promo-popup-body {
+    padding: 18px 20px 20px;
+  }
+  .promo-popup-title {
+    font-size: 19px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 6px;
+  }
+  .promo-popup-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 14px;
+  }
+  .promo-popup-cta {
+    display: block;
+    width: 100%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 11px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .promo-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .promo-carousel-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    border: none; padding: 0;
+  }
+  .promo-carousel-dot.active {
+    background: var(--primary);
+    width: 20px;
+    border-radius: 4px;
+  }
+
+  .variants {
+    max-width: 1100px;
+    margin: 32px auto 0;
+    padding: 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+  }
+  .variants h2 {
+    margin: 0 0 16px;
+    font-size: 16px;
+  }
+  .variant-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+  .variant-label {
+    font-size: 13px;
+    color: #64748B;
+  }
+  .variant-label code {
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #0f172a;
+  }
+  .variant-title {
+    background: white;
+    text-align: center;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 1.2px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Preview — Título "RECOMENDACIONES DEL CHEF" en el popup</h1>
+  <p>Comparación del popup actual vs. la propuesta con título encima de la foto.</p>
+</header>
+
+<div class="comparison">
+
+  <!-- CURRENT -->
+  <div class="column current">
+    <div class="column-title">Actual</div>
+    <div class="promo-popup">
+      <div class="promo-popup-img-wrap">
+        <button class="promo-popup-close">×</button>
+        <span class="promo-popup-badge">NUEVO</span>
+        <img class="promo-popup-img" src="https://i.imgur.com/ZHGymz9.jpeg" alt="Cubano Especial">
+        <button class="promo-carousel-arrow promo-carousel-prev">‹</button>
+        <button class="promo-carousel-arrow promo-carousel-next">›</button>
+      </div>
+      <div class="promo-popup-body">
+        <div class="promo-popup-title">Cubano Especial</div>
+        <div class="promo-popup-price">RD$700</div>
+        <button class="promo-popup-cta">¡Pruébalo Ya!</button>
+        <div class="promo-carousel-dots">
+          <button class="promo-carousel-dot active"></button>
+          <button class="promo-carousel-dot"></button>
+          <button class="promo-carousel-dot"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW -->
+  <div class="column new">
+    <div class="column-title">Propuesta</div>
+    <div class="promo-popup">
+      <div class="promo-popup-header">RECOMENDACIONES DEL CHEF</div>
+      <div class="promo-popup-img-wrap">
+        <button class="promo-popup-close">×</button>
+        <span class="promo-popup-badge">NUEVO</span>
+        <img class="promo-popup-img" src="https://i.imgur.com/ZHGymz9.jpeg" alt="Cubano Especial">
+        <button class="promo-carousel-arrow promo-carousel-prev">‹</button>
+        <button class="promo-carousel-arrow promo-carousel-next">›</button>
+      </div>
+      <div class="promo-popup-body">
+        <div class="promo-popup-title">Cubano Especial</div>
+        <div class="promo-popup-price">RD$700</div>
+        <button class="promo-popup-cta">¡Pruébalo Ya!</button>
+        <div class="promo-carousel-dots">
+          <button class="promo-carousel-dot active"></button>
+          <button class="promo-carousel-dot"></button>
+          <button class="promo-carousel-dot"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="variants">
+  <h2>Opciones de color de verde (elige una)</h2>
+  <div class="variant-row">
+    <span class="variant-label"><code>#16a34a</code> — Medio (mi recomendación)</span>
+    <div class="variant-title" style="color:#16a34a;">RECOMENDACIONES DEL CHEF</div>
+  </div>
+  <div class="variant-row">
+    <span class="variant-label"><code>#15803d</code> — Más oscuro, más serio</span>
+    <div class="variant-title" style="color:#15803d;">RECOMENDACIONES DEL CHEF</div>
+  </div>
+  <div class="variant-row">
+    <span class="variant-label"><code>#0F5132</code> — Verde chef / kitchen</span>
+    <div class="variant-title" style="color:#0F5132;">RECOMENDACIONES DEL CHEF</div>
+  </div>
+  <div class="variant-row">
+    <span class="variant-label"><code>#25D366</code> — WhatsApp green (más vivo)</span>
+    <div class="variant-title" style="color:#25D366;">RECOMENDACIONES DEL CHEF</div>
+  </div>
+</div>
+
+<div style="max-width:1100px;margin:24px auto;padding:20px;background:white;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;color:#475569;line-height:1.6;">
+  <strong>Detalles del título propuesto:</strong><br>
+  • Fondo blanco sólido, tipografía Plus Jakarta Sans 800 (misma que el resto del popup).<br>
+  • Tamaño <code>13px</code>, letter-spacing <code>1.2px</code> para darle peso de título sin competir con el título del plato.<br>
+  • Mayúsculas completas.<br>
+  • Padding <code>14px 16px 10px</code> con un borde sutil debajo que separa del wrap de la imagen.<br>
+  • Se mantiene el badge "NUEVO" rojo y el botón X en su sitio.
+</div>
+
+</body>
+</html>
