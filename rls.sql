@@ -307,6 +307,72 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS voided_at timestamptz;
 -- was rejected. Displayed on the voided order card so staff can see the reason.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS voided_items text;
 
+-- Loyalty flag (Apr 16) — prevents double-counting in loyalty program
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_counted BOOLEAN DEFAULT false;
+
+-- ──────────────────────────────────────────────────────────────
+-- LOYALTY PROGRAM tables (Apr 16)
+-- ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS loyalty_config (
+  restaurant_slug  TEXT PRIMARY KEY,
+  program_name     TEXT NOT NULL DEFAULT 'VIP Club',
+  orders_needed    INT NOT NULL DEFAULT 10,
+  reward_product_id TEXT,
+  reward_name      TEXT NOT NULL DEFAULT 'Reward',
+  qualifying_categories JSONB NOT NULL DEFAULT '[]',
+  is_active        BOOLEAN NOT NULL DEFAULT true,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE loyalty_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "deny_anon_all_loyalty_config"
+  ON loyalty_config FOR ALL TO anon USING (false);
+
+CREATE TABLE IF NOT EXISTS loyalty_balance (
+  id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  restaurant_slug  TEXT NOT NULL,
+  phone            TEXT NOT NULL,
+  orders_count     INT NOT NULL DEFAULT 0,
+  rewards_redeemed INT NOT NULL DEFAULT 0,
+  last_order_at    TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(restaurant_slug, phone)
+);
+
+ALTER TABLE loyalty_balance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "deny_anon_all_loyalty_balance"
+  ON loyalty_balance FOR ALL TO anon USING (false);
+
+CREATE INDEX IF NOT EXISTS idx_loyalty_balance_lookup
+  ON loyalty_balance (restaurant_slug, phone);
+
+-- Atomic RPCs for loyalty operations (race-condition-safe)
+CREATE OR REPLACE FUNCTION increment_loyalty(p_slug TEXT, p_phone TEXT)
+RETURNS INT LANGUAGE sql AS $$
+  INSERT INTO loyalty_balance (restaurant_slug, phone, orders_count, last_order_at)
+  VALUES (p_slug, p_phone, 1, now())
+  ON CONFLICT (restaurant_slug, phone)
+  DO UPDATE SET orders_count = loyalty_balance.orders_count + 1, last_order_at = now()
+  RETURNING orders_count;
+$$;
+
+CREATE OR REPLACE FUNCTION decrement_loyalty(p_slug TEXT, p_phone TEXT)
+RETURNS INT LANGUAGE sql AS $$
+  UPDATE loyalty_balance
+  SET orders_count = GREATEST(0, orders_count - 1)
+  WHERE restaurant_slug = p_slug AND phone = p_phone
+  RETURNING orders_count;
+$$;
+
+CREATE OR REPLACE FUNCTION redeem_loyalty(p_slug TEXT, p_phone TEXT)
+RETURNS INT LANGUAGE sql AS $$
+  UPDATE loyalty_balance
+  SET rewards_redeemed = rewards_redeemed + 1
+  WHERE restaurant_slug = p_slug AND phone = p_phone
+  RETURNING rewards_redeemed;
+$$;
+
 
 -- ──────────────────────────────────────────────────────────────
 -- Cleanup: Delete expired sessions (run periodically or add to cron)
