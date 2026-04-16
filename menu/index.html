@@ -6195,11 +6195,16 @@ async function checkAndShowPromo() {
   try {
     var res = await fetchWithTimeout(
       SUPABASE_URL + '/rest/v1/promotions?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
-        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id&order=created_at.desc&limit=10',
+        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id,created_at&order=created_at.desc&limit=10',
       { headers: sbHeaders() }, 8000
     );
     if (!res.ok) return;
-    _promoList = await res.json();
+    var allPromos = await res.json();
+    // Hide promos whose linked product is sold out — the customer shouldn't be
+    // teased with an item the restaurant can't deliver right now.
+    _promoList = allPromos.filter(function(p) {
+      return !p.product_id || !soldOutSet.has(p.product_id);
+    });
     if (!_promoList.length) return;
 
     _promoIndex = 0;
@@ -6227,7 +6232,21 @@ function renderPromoSlide(idx) {
   var popup = document.getElementById('promoPopup');
   popup.setAttribute('data-product-id', promo.product_id || '');
   document.getElementById('promoTitle').textContent = promo.title || '';
-  document.getElementById('promoBadge').textContent = promo.badge_text || 'NUEVO';
+
+  // "NUEVO" badge only appears the first few days after creation.
+  // After that the recomendación is just part of the rotating carousel.
+  var badgeEl = document.getElementById('promoBadge');
+  var isRecent = false;
+  if (promo.created_at) {
+    var ageDays = (Date.now() - new Date(promo.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    isRecent = ageDays < 3;
+  }
+  if (isRecent && promo.badge_text) {
+    badgeEl.textContent = promo.badge_text;
+    badgeEl.style.display = '';
+  } else {
+    badgeEl.style.display = 'none';
+  }
 
   var imgEl = document.getElementById('promoImage');
   if (promo.image_url) {

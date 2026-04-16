@@ -975,7 +975,7 @@
     <span class="icon">📦</span> Menú
   </button>
   <button class="nav-item" id="navPromos" onclick="showPromosPanel()">
-    <span class="icon">⭐</span> Especiales
+    <span class="icon">⭐</span> Recomendación del Chef
   </button>
   <a class="nav-item" id="navQR" href="#" onclick="window.open('/' + SLUG, '_blank'); return false;">
     <span class="icon">🔗</span> Ver QR
@@ -1213,16 +1213,16 @@
       </div>
     </div>
 
-    <!-- Promos/Especiales panel -->
+    <!-- Recomendación del Chef panel -->
     <div class="products-panel" id="promosPanel" style="display:none;">
       <div class="products-panel-header">
-        <h3><i data-lucide="star" style="width:20px;height:20px;vertical-align:middle;"></i> Especiales</h3>
-        <button class="btn-add-product" onclick="openPromoModal()">+ Agregar especial</button>
+        <h3><i data-lucide="star" style="width:20px;height:20px;vertical-align:middle;"></i> Recomendación del Chef</h3>
+        <button class="btn-add-product" onclick="openPromoModal()">+ Agregar recomendación</button>
       </div>
       <div id="promosList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:16px;"></div>
       <div id="promosEmpty" style="padding:40px 24px;text-align:center;color:#64748B;display:none;">
-        <div style="font-size:14px;">Aún no hay especiales creados.</div>
-        <div style="font-size:13px;margin-top:8px;">Toca "+ Agregar especial" para crear el primero.</div>
+        <div style="font-size:14px;">Aún no hay recomendaciones creadas.</div>
+        <div style="font-size:13px;margin-top:8px;">Toca "+ Agregar recomendación" para crear la primera.</div>
       </div>
     </div>
 
@@ -1318,7 +1318,7 @@
 <div class="product-modal-overlay" id="promoModalOverlay" onclick="closePromoModal()"></div>
 <div class="product-modal" id="promoModal">
   <div class="product-modal-handle" onclick="closePromoModal()"></div>
-  <h2 id="promoModalTitle">Agregar especial</h2>
+  <h2 id="promoModalTitle">Agregar recomendación del chef</h2>
   <div class="product-modal-field">
     <label>Nombre</label>
     <input type="text" id="promoModalName" placeholder="Ej: Cubano Especial">
@@ -1332,7 +1332,7 @@
     <textarea id="promoModalDesc" placeholder="Cerdo asado, jamón, queso suizo, pepinillos..." rows="3"></textarea>
   </div>
   <div class="product-modal-field">
-    <label>Foto del especial</label>
+    <label>Foto del plato</label>
     <div id="promoModalImagePreview" style="display:none;margin-bottom:8px;">
       <img id="promoModalImagePreviewImg" style="width:120px;height:120px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">
     </div>
@@ -3073,14 +3073,14 @@ async function savePromo() {
     });
     var data = await res.json();
     if (!res.ok || !data.success) {
-      errDiv.textContent = data.error || 'No se pudo crear el especial';
+      errDiv.textContent = data.error || 'No se pudo crear la recomendación';
       errDiv.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Guardar y activar';
       return;
     }
 
-    dbg('⭐ Especial creado: ' + title);
+    dbg('⭐ Recomendación creada: ' + title);
     track('promo_created', { title: title, price: price });
     closePromoModal();
     loadPromos();
@@ -3100,12 +3100,12 @@ async function loadPromos() {
         "&wa_status=eq.published&select=id,title,description,price,image_url,is_active,product_id,created_at&order=created_at.desc",
       { headers: sbHeaders() }
     );
-    if (!res.ok) { showError('No se pudieron cargar los especiales'); return; }
+    if (!res.ok) { showError('No se pudieron cargar las recomendaciones'); return; }
     var promos = await res.json();
     renderPromosList(promos);
   } catch (e) {
     dbg('⚠️ loadPromos error: ' + e.message);
-    showError('Error cargando especiales');
+    showError('Error cargando recomendaciones');
   }
 }
 
@@ -3158,7 +3158,7 @@ async function togglePromo(promoId, isActive, checkbox) {
     });
     if (!res.ok) {
       checkbox.checked = !isActive;  // revert
-      showError('No se pudo actualizar el especial');
+      showError('No se pudo actualizar la recomendación');
       return;
     }
     card.classList.toggle('inactive', !isActive);
@@ -3171,7 +3171,7 @@ async function togglePromo(promoId, isActive, checkbox) {
 }
 
 async function deletePromo(promoId, title) {
-  if (!confirm('¿Eliminar el especial "' + title + '"? No se puede deshacer.')) return;
+  if (!confirm('¿Eliminar la recomendación "' + title + '"? No se puede deshacer.')) return;
   try {
     var token = localStorage.getItem('pincer_token') || '';
     var res = await fetch('/api/delete-promo', {
@@ -3181,10 +3181,10 @@ async function deletePromo(promoId, title) {
     });
     var data = await res.json();
     if (!res.ok || !data.success) {
-      showError(data.error || 'No se pudo eliminar el especial');
+      showError(data.error || 'No se pudo eliminar la recomendación');
       return;
     }
-    dbg('❌ Promo ' + promoId + ' eliminada');
+    dbg('❌ Recomendación ' + promoId + ' eliminada');
     loadPromos();
   } catch (e) {
     showError('Error de conexión');

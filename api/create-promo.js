@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       price: priceInt,
       description: description ? String(description).slice(0, 500) : null,
       img_url: image_url || null,
-      category: 'Especiales',
+      category: 'Recomendación del Chef',
       active: true,
       sold_out: false,
       display_order: 0,
