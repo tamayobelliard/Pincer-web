@@ -85,7 +85,7 @@ async function handleCallback(req, res) {
     const [agent, sessRows] = await Promise.all([
       Promise.resolve(getSSLAgent()),
       fetch(
-        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=azul_order_id,azul_merchant_id`,
+        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=azul_order_id`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -100,18 +100,6 @@ async function handleCallback(req, res) {
       return res.status(404).send('Session not found');
     }
     const azulOrderId = sessRows[0].azul_order_id;
-    const azulMerchantId = sessRows[0].azul_merchant_id;
-
-    // Fail loud if the session was created without a merchant (should never happen
-    // post-fix; can only happen for legacy rows created before the Apr 17 fix).
-    if (!azulMerchantId) {
-      console.error('3ds callback: missing azul_merchant_id', {
-        ts: new Date().toISOString(),
-        session_id: sessionId,
-        azul_order_id: azulOrderId,
-      });
-      return res.status(500).send('Session missing merchant — contact support');
-    }
 
     const auth1 = process.env.AZUL_AUTH1 || '3dsecure';
     const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
@@ -121,7 +109,7 @@ async function handleCallback(req, res) {
       { 'Auth1': auth1, 'Auth2': auth2 },
       {
         Channel: "EC",
-        Store: azulMerchantId,
+        Store: process.env.AZUL_MERCHANT_ID,
         AzulOrderId: azulOrderId,
         CRes: cRes,
       },
@@ -213,7 +201,7 @@ async function handleContinue(req, res) {
     const [agent, sessRows] = await Promise.all([
       Promise.resolve(getSSLAgent()),
       fetch(
-        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received,azul_merchant_id`,
+        `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}&select=method_notification_received`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -224,21 +212,10 @@ async function handleContinue(req, res) {
       ).then(r => r.json()).catch(() => []),
     ]);
     const methodReceived = sessRows[0]?.method_notification_received === true;
-    const azulMerchantId = sessRows[0]?.azul_merchant_id;
-
-    // Fail loud if merchant is missing on the session (legacy row or schema mismatch).
-    if (!azulMerchantId) {
-      console.error('3ds continue: missing azul_merchant_id', {
-        ts: new Date().toISOString(),
-        session_id: sessionId,
-        azul_order_id: azulOrderId,
-      });
-      return res.status(500).json({ error: 'Session missing merchant. Restart payment.' });
-    }
 
     const requestBody = {
       Channel: "EC",
-      Store: azulMerchantId,
+      Store: process.env.AZUL_MERCHANT_ID,
       AzulOrderId: azulOrderId,
       MethodNotificationStatus: methodReceived ? "RECEIVED" : "EXPECTED_BUT_NOT_RECEIVED",
     };

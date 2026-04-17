@@ -133,10 +133,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Monto inválido' });
     }
 
-    // Look up merchant ID server-side per restaurant. Never fall back to an env
-    // var — a silent fallback is what hid a pre-existing bug where 3DS
-    // Continue/Callback ran against the wrong merchant (see docs/multi-tenant-plan.md §7).
-    let merchantId = null;
+    // Look up merchant ID server-side (never trust client-sent merchant IDs)
+    let merchantId = process.env.AZUL_MERCHANT_ID || null;
     if (restaurantSlug) {
       try {
         const supabaseUrl = sbUrl();
@@ -235,7 +233,7 @@ export default async function handler(req, res) {
     // Build Azul request with 3DS
     const azulRequest = {
       Channel: "EC",
-      Store: merchantId,
+      Store: merchantId || process.env.AZUL_MERCHANT_ID,
       CardNumber: cardNumber.replace(/\s/g, ''),
       Expiration: expiration,
       CVC: cvc,
@@ -287,13 +285,10 @@ export default async function handler(req, res) {
     const result = await callAzul(AZUL_URL, { 'Auth1': auth1, 'Auth2': auth2 }, azulRequest, agent);
 
     // Save 3DS session (awaited — we need it created before continue/callback reference it)
-    // azul_merchant_id is persisted so Continue/Callback use the same merchant
-    // that initiated the transaction (fix for the hardcoded env var bug).
     await supabasePostAwait('sessions_3ds', {
       session_id: sessionId,
       azul_order_id: result.AzulOrderId || null,
       custom_order_id: customOrderId || null,
-      azul_merchant_id: merchantId,
       status: 'initiated',
       method_notification_received: false,
       final_response: result,
