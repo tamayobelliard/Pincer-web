@@ -4399,6 +4399,13 @@ async function sendAIMessage() {
       })
     }, 30000);
 
+    // 503 = backend fail-closed (Supabase unreachable or restaurant not found).
+    // Show an owner-facing outage message and DO NOT push to aiChatHistory
+    // — the turn didn't happen so it shouldn't appear as a real exchange.
+    if (res.status === 503) {
+      addAIMessage('⚠️ No puedo acceder a los datos de tu restaurante en este momento. Intenta de nuevo en unos minutos. Si el problema persiste, contáctanos.');
+      return;
+    }
     if (!res.ok) throw new Error('Error del servidor');
     const data = await res.json();
     aiChatHistory.push({ role: 'user', content: question });
