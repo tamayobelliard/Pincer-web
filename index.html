@@ -1654,6 +1654,14 @@
     hideTyping();
 
     try {
+      // 503 = backend fail-closed (Supabase unreachable). Don't render a
+      // normal chat turn and don't push to chatHistory — show the outage
+      // message and bail out. The bot without the restaurant directory
+      // would invent fake places.
+      if (res.status === 503) {
+        showBotMessage('⚠️ Estoy teniendo problemas para cargar la información. Por favor intenta de nuevo en unos minutos.');
+        return;
+      }
       if (res.ok) {
         var data = await res.json();
         var rawAnswer = data.answer || 'Ups, algo salio mal 😅';
