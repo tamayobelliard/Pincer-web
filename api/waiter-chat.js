@@ -1,5 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { logFailClosed } from './ai-failclosed-log.js';
 
 const PERSONALITIES = {
   dominicano: {
@@ -218,14 +219,49 @@ export default async function handler(req, res) {
 
   const { messages, menuData, restaurant_slug, restaurant_name, browserLanguage, currentLanguage, insights: clientInsights, sessionId, storeClosed: clientStoreClosed } = req.body;
 
+  // ─────────────────────────────────────────────────────────────
+  // FAIL-CLOSED GUARDS (see docs/backlog/warm-standby-neon.md context,
+  // incident kj2hm399j9cw on 2026-04-17). If we cannot trust the context,
+  // refuse to call Claude — a bot with no menu hallucinates items and
+  // that's worse than an error message.
+  // ─────────────────────────────────────────────────────────────
+
+  // Gate 1: menuData is client-provided, so validate strictly before we
+  // inject it into the system prompt. Must be a non-trivial string that
+  // looks like our buildMenuData() output (lines of "[id:xxx] name - RD$...").
+  const menuDataValid =
+    typeof menuData === 'string' &&
+    menuData.length >= 20 &&
+    menuData.includes('[id:');
+  if (!menuDataValid) {
+    const correlation_id = logFailClosed({
+      endpoint: 'waiter-chat',
+      restaurant_slug,
+      reason: menuData == null || menuData === '' ? 'menu_empty' : 'context_invalid',
+      extra: { menuData_type: typeof menuData, menuData_length: menuData?.length ?? 0 },
+    });
+    return res.status(503).json({
+      error: 'context_unavailable',
+      reason: 'menu_empty',
+      message: 'En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.',
+      correlation_id,
+    });
+  }
+
   try {
     const rName = restaurant_name || 'este restaurante';
 
-    // Fetch chatbot personality, plan, and hours from restaurant_users
+    // Fetch chatbot personality, plan, and hours from restaurant_users.
+    // This is the CRITICAL context query: without it we don't know whether
+    // the restaurant is premium (chatbot-enabled) or what personality to use.
+    // If this fetch fails in any way, we fail-closed.
     let personality = 'casual';
-    let plan = 'premium'; // default to premium (legacy restaurants predate plan field)
+    let plan = null;
     let restaurantHours = '';
-    if (restaurant_slug) {
+    let criticalFetchFailure = null;
+    if (!restaurant_slug) {
+      criticalFetchFailure = 'missing_slug';
+    } else {
       try {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -239,21 +275,35 @@ export default async function handler(req, res) {
             signal: AbortSignal.timeout(3000),
           }
         );
-        if (pRes.ok) {
+        if (!pRes.ok) {
+          criticalFetchFailure = 'supabase_unreachable';
+        } else {
           const rows = await pRes.json();
-          if (rows.length > 0) {
-            if (rows[0].chatbot_personality) {
-              personality = rows[0].chatbot_personality;
-            }
-            if (rows[0].plan) {
-              plan = rows[0].plan;
-            }
-            if (rows[0].hours) {
-              restaurantHours = rows[0].hours;
-            }
+          if (rows.length === 0) {
+            criticalFetchFailure = 'restaurant_not_found';
+          } else {
+            if (rows[0].chatbot_personality) personality = rows[0].chatbot_personality;
+            plan = rows[0].plan || 'premium'; // legacy rows without plan treated as premium
+            if (rows[0].hours) restaurantHours = rows[0].hours;
           }
         }
-      } catch { /* fallback to casual + free */ }
+      } catch (e) {
+        criticalFetchFailure = 'supabase_unreachable';
+      }
+    }
+
+    if (criticalFetchFailure) {
+      const correlation_id = logFailClosed({
+        endpoint: 'waiter-chat',
+        restaurant_slug,
+        reason: criticalFetchFailure,
+      });
+      return res.status(503).json({
+        error: 'context_unavailable',
+        reason: criticalFetchFailure,
+        message: 'En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.',
+        correlation_id,
+      });
     }
 
     // Determine if restaurant is open (server-side check)
