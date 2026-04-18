@@ -1,5 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { logFailClosed } from './ai-failclosed-log.js';
 
 export const config = { maxDuration: 30 };
 
@@ -170,16 +171,23 @@ async function fetchLastShift(slug) {
   } catch { return null; }
 }
 
+// Fail-closed fetcher: returns { ok: true, name } or { ok: false, reason }.
+// The dashboard AI chat depends on this — without the restaurant name (and
+// implicitly the ability to read its orders/insights) the AI's answers would
+// be hallucinated business advice based on nothing.
 async function fetchRestaurantName(slug) {
   try {
     const res = await fetch(
       `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=display_name&limit=1`,
       { headers: sbHeaders(), signal: AbortSignal.timeout(3000) }
     );
-    if (!res.ok) return slug;
+    if (!res.ok) return { ok: false, reason: 'supabase_unreachable' };
     const rows = await res.json();
-    return rows[0]?.display_name || slug;
-  } catch { return slug; }
+    if (!rows[0]) return { ok: false, reason: 'restaurant_not_found' };
+    return { ok: true, name: rows[0].display_name || slug };
+  } catch (e) {
+    return { ok: false, reason: 'supabase_unreachable' };
+  }
 }
 
 // ── System prompt builder ──
@@ -336,13 +344,31 @@ export default async function handler(req, res) {
 
   try {
     // Fetch all data in parallel
-    const [orderData, insights, conversion, lastShift, restaurantName] = await Promise.all([
+    const [orderData, insights, conversion, lastShift, nameResult] = await Promise.all([
       fetchWeeklyOrders(restaurant_slug),
       fetchInsights(restaurant_slug),
       fetchConversionData(restaurant_slug),
       fetchLastShift(restaurant_slug),
       fetchRestaurantName(restaurant_slug),
     ]);
+
+    // Fail-closed: if we cannot even resolve the restaurant name, we cannot
+    // trust any of the other fetches either. Refuse to call Claude — a
+    // dashboard AI response built on empty/stale data is worse than an error.
+    if (!nameResult.ok) {
+      const correlation_id = logFailClosed({
+        endpoint: 'chat',
+        restaurant_slug,
+        reason: nameResult.reason,
+      });
+      return res.status(503).json({
+        error: 'context_unavailable',
+        reason: nameResult.reason,
+        message: 'No puedo acceder a los datos de tu restaurante en este momento. Intenta de nuevo en unos minutos. Si el problema persiste, contáctanos.',
+        correlation_id,
+      });
+    }
+    const restaurantName = nameResult.name;
 
     const thisWeekMetrics = computeOrderMetrics(orderData.thisWeek);
     const lastWeekMetrics = computeOrderMetrics(orderData.lastWeek);
