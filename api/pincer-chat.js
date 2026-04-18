@@ -1,5 +1,6 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { logFailClosed } from './ai-failclosed-log.js';
 
 export const config = { maxDuration: 30 };
 
@@ -25,8 +26,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch active restaurants
+    // Fetch active restaurants — THIS is the critical canary. If Supabase
+    // is unreachable we must refuse to call Claude (the bot without the
+    // restaurant directory invents place names). Distinguish "fetch failed"
+    // from "zero active restaurants" (legitimate state).
     let restaurants = [];
+    let restaurantsFetchFailed = false;
     try {
       const rRes = await fetch(
         `${supabaseUrl}/rest/v1/restaurant_users?status=eq.active&role=eq.restaurant&select=display_name,restaurant_slug,order_types,hours,address,business_type`,
@@ -35,10 +40,34 @@ export default async function handler(req, res) {
           signal: AbortSignal.timeout(5000),
         }
       );
-      if (rRes.ok) restaurants = await rRes.json();
-    } catch (e) { console.error('pincer-chat: restaurants fetch error:', e.message); }
+      if (!rRes.ok) {
+        restaurantsFetchFailed = true;
+        console.error('pincer-chat: restaurants fetch !ok:', rRes.status);
+      } else {
+        restaurants = await rRes.json();
+      }
+    } catch (e) {
+      restaurantsFetchFailed = true;
+      console.error('pincer-chat: restaurants fetch error:', e.message);
+    }
 
-    // Fetch all products grouped by restaurant
+    if (restaurantsFetchFailed) {
+      const correlation_id = logFailClosed({
+        endpoint: 'pincer-chat',
+        restaurant_slug: null,
+        reason: 'supabase_unreachable',
+      });
+      return res.status(503).json({
+        error: 'context_unavailable',
+        reason: 'supabase_unreachable',
+        message: 'Estoy teniendo problemas para cargar la información. Por favor intenta de nuevo en unos minutos.',
+        correlation_id,
+      });
+    }
+
+    // Fetch all products grouped by restaurant. Non-critical — if this fails
+    // the directory still has value (restaurants + hours + address), just
+    // without menu previews. Keep silent fallback.
     let products = [];
     try {
       const pRes = await fetch(
