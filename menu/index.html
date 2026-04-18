@@ -3069,6 +3069,13 @@ async function loadRestaurantData() {
     var rows = await res.json();
     if (!rows.length) return null;
     if (rows[0].status !== 'active') return null;
+    // Cache the WhatsApp phone for this slug so the outage fallback can
+    // still show a CTA to WhatsApp when Supabase is unreachable on the next visit.
+    try {
+      if (rows[0].phone) {
+        localStorage.setItem('pincer_whatsapp_' + SLUG, rows[0].phone);
+      }
+    } catch (e) { /* localStorage disabled — non-critical */ }
     return rows[0];
   } catch (e) { return null; }
 }
@@ -6111,6 +6118,22 @@ async function sendToAI(userMessage) {
   hideTypingIndicator();
 
   try {
+    // 503 = fail-closed from backend (Supabase unreachable or context invalid).
+    // The bot without context hallucinates menu items, so refuse to render.
+    if (res.status === 503) {
+      var cachedPhone = null;
+      try { cachedPhone = localStorage.getItem('pincer_whatsapp_' + SLUG); } catch (e) {}
+      var waDigits = (cachedPhone || '').replace(/\D/g, '');
+      if (waDigits) {
+        // Format phone as DR-local (XXX-XXX-XXXX) for display.
+        var tail = waDigits.length >= 10 ? waDigits.slice(-10) : waDigits;
+        var display = tail.length === 10 ? tail.slice(0,3) + '-' + tail.slice(3,6) + '-' + tail.slice(6) : waDigits;
+        pinzerSay('⚠️ En este momento no puedo ayudarte con el menú. Por favor escribe directamente al restaurante por WhatsApp: ' + display);
+      } else {
+        pinzerSay('⚠️ En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.');
+      }
+      return;
+    }
     if (res.ok) {
       const data = await res.json();
       const rawAnswer = data.answer || 'Algo salió mal 😅 Intenta de nuevo.';
@@ -6335,7 +6358,17 @@ async function init() {
       // Nuke document.body so the chatbot FAB and pinzer-modal (which sit outside
       // .container) can't show — the bot without restaurant context hallucinates.
       document.body.style.background = '#f1f5f9';
-      document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;font-family:-apple-system,system-ui,sans-serif;"><div style="background:white;border-radius:16px;padding:40px 28px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-width:440px;width:100%;text-align:center;"><div style="font-size:3em;margin-bottom:16px;">⚠️</div><h2 style="color:#1e293b;margin:0 0 12px 0;font-size:1.4em;">Servicio en línea temporalmente fuera</h2><p style="color:#475569;margin:0 0 24px 0;line-height:1.5;">Estamos atendiendo un inconveniente técnico. Mientras tanto, toma tu pedido por WhatsApp:</p><a href="https://wa.me/18494722797?text=Hola%2C%20quiero%20hacer%20un%20pedido" style="display:inline-block;background:#25D366;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:1.05em;box-shadow:0 4px 12px rgba(37,211,102,0.3);">Pedir por WhatsApp</a><p style="color:#64748b;font-size:0.85em;margin:24px 0 0 0;">Disculpa las molestias. Volveremos en línea pronto.</p></div></div>';
+      // Try to read the cached WhatsApp phone for this slug. If a previous
+      // visit succeeded (Supabase was up), loadRestaurantData cached it. If
+      // not (visitor's first time during outage), fall back to generic copy.
+      var cachedPhone = null;
+      try { cachedPhone = localStorage.getItem('pincer_whatsapp_' + SLUG); } catch (e) {}
+      var waDigits = (cachedPhone || '').replace(/\D/g, '');
+      var waCta = waDigits
+        ? '<p style="color:#475569;margin:0 0 24px 0;line-height:1.5;">Estamos atendiendo un inconveniente técnico. Mientras tanto, toma tu pedido por WhatsApp:</p>'
+          + '<a href="https://wa.me/' + waDigits + '?text=Hola%2C%20quiero%20hacer%20un%20pedido" style="display:inline-block;background:#25D366;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:1.05em;box-shadow:0 4px 12px rgba(37,211,102,0.3);">Pedir por WhatsApp</a>'
+        : '<p style="color:#475569;margin:0 0 8px 0;line-height:1.5;">Estamos experimentando un inconveniente técnico temporal. Por favor intenta de nuevo en unos minutos.</p>';
+      document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;font-family:-apple-system,system-ui,sans-serif;"><div style="background:white;border-radius:16px;padding:40px 28px;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-width:440px;width:100%;text-align:center;"><div style="font-size:3em;margin-bottom:16px;">⚠️</div><h2 style="color:#1e293b;margin:0 0 12px 0;font-size:1.4em;">Servicio en línea temporalmente fuera</h2>' + waCta + '<p style="color:#64748b;font-size:0.85em;margin:24px 0 0 0;">Disculpa las molestias. Volveremos en línea pronto.</p></div></div>';
     } else {
       document.querySelector('.container').innerHTML = '<div style="text-align:center;padding:80px 20px;"><div style="background:white;border-radius:16px;padding:40px 24px;box-shadow:0 8px 16px rgba(0,0,0,0.15);max-width:400px;margin:0 auto;"><div style="font-size:3em;margin-bottom:16px;">🔍</div><h2 style="color:#1e293b;margin-bottom:8px;">Restaurante no encontrado</h2><p style="color:#64748b;">El restaurante "' + escHtml(SLUG) + '" no existe o no está disponible.</p><p style="margin-top:20px;"><a href="https://www.pincerweb.com" style="color:#4338ca;font-weight:600;text-decoration:none;">Ir a Pincer →</a></p></div></div>';
     }
