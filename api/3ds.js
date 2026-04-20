@@ -53,20 +53,39 @@ const AZUL_URL_3DS_METHOD = AZUL_BASE + (AZUL_BASE.includes('?') ? '&' : '?') + 
 // operation="processthreedschallenge" for its process_challenge call).
 const AZUL_URL_3DS_CHALLENGE = AZUL_BASE + (AZUL_BASE.includes('?') ? '&' : '?') + 'processthreedschallenge';
 
-// Fire-and-forget Supabase PATCH
-function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
-  fetch(
-    `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+// Awaited Supabase PATCH. Previously this was fire-and-forget, but Vercel
+// serverless functions may suspend the event loop once the response is sent,
+// cancelling in-flight fetches. During the 2026-04-20 Azul ?processthreedschallenge
+// test the DB row never moved past 'status=3ds_method' even though Azul approved
+// the payment with auth_code 022684 — Vercel logs showed "Session patch error:
+// fetch failed", confirming the fetch was aborted after the response.
+//
+// Awaiting here adds ~200ms before the response is flushed, which is invisible
+// to the user (they're watching the "Procesando..." page). In exchange the
+// sessions_3ds row reliably reflects the true state for reporting / auditoría
+// / conciliación with Azul.
+async function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
+  try {
+    const r = await fetch(
+      `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+        signal: AbortSignal.timeout(4000),
+      }
+    );
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      console.error('Session patch failed:', r.status, body, 'session_id:', sessionId);
     }
-  ).catch(e => console.error('Session patch error:', e.message));
+  } catch (e) {
+    console.error('Session patch error:', e.message, 'session_id:', sessionId);
+  }
 }
 
 // Escape for safe JS string interpolation in HTML script blocks
@@ -138,7 +157,7 @@ async function handleCallback(req, res) {
 
     const approved = result.IsoCode === '00';
 
-    patchSession(supabaseUrl, supabaseKey, sessionId, {
+    await patchSession(supabaseUrl, supabaseKey, sessionId, {
       status: approved ? 'approved' : 'declined',
       cres: cRes,
       final_response: result,
@@ -180,7 +199,7 @@ async function handleCallback(req, res) {
   } catch (error) {
     console.error('3ds callback error:', error);
 
-    patchSession(supabaseUrl, supabaseKey, sessionId, {
+    await patchSession(supabaseUrl, supabaseKey, sessionId, {
       status: 'error',
       final_response: { error: error.message },
     });
@@ -255,7 +274,7 @@ async function handleContinue(req, res) {
 
     // CASE 1: Approved (frictionless after method)
     if (result.IsoCode === '00') {
-      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'approved', final_response: result });
+      await patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'approved', final_response: result });
 
       return res.status(200).json({
         approved: true,
@@ -270,7 +289,7 @@ async function handleContinue(req, res) {
 
     // CASE 2: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
-      patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
+      await patchSession(supabaseUrl, supabaseKey, sessionId, { status: 'challenge' });
 
       // 3DS 2.0 uses ThreeDSChallenge object, 3DS 1.0 uses top-level RedirectUrl
       const challenge = result.ThreeDSChallenge || {};
@@ -285,7 +304,7 @@ async function handleContinue(req, res) {
     }
 
     // CASE 3: Declined or error
-    patchSession(supabaseUrl, supabaseKey, sessionId, {
+    await patchSession(supabaseUrl, supabaseKey, sessionId, {
       status: result.ResponseCode === 'Error' ? 'error' : 'declined',
       final_response: result,
     });
@@ -315,7 +334,7 @@ async function handleMethodNotify(req, res) {
     const supabaseUrl = process.env.SUPABASE_URL || 'https://tcwujslibopzfyufhjsr.supabase.co';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    await fetch(
+    const r = await fetch(
       `${supabaseUrl}/rest/v1/sessions_3ds?session_id=eq.${encodeURIComponent(sessionId)}`,
       {
         method: 'PATCH',
@@ -328,10 +347,14 @@ async function handleMethodNotify(req, res) {
           method_notification_received: true,
           updated_at: new Date().toISOString(),
         }),
+        signal: AbortSignal.timeout(4000),
       }
     );
+    if (!r.ok) {
+      console.error('method-notify patch failed:', r.status, 'session_id:', sessionId);
+    }
   } catch (err) {
-    console.error('method-notify supabase error:', err);
+    console.error('method-notify supabase error:', err.message, 'session_id:', sessionId);
   }
 
   // Return minimal HTML — the ACS expects a 200 response
@@ -413,10 +436,25 @@ export default async function handler(req, res) {
     allowNoOrigin: true,
     extraAllowedOriginPatterns: THREEDS_ALLOWED_ORIGIN_PATTERNS,
   })) return;
-  // Rate limit: 10 3DS requests per minute per IP
-  if (rateLimit(req, res, { max: 10, windowMs: 60000, prefix: '3ds' })) return;
 
   const action = req.query.action;
+
+  // Split rate limits per action. method-notify is a webhook from Visa ACS
+  // (methodurl.vcas.visa.com) — rate-limiting it by IP caused a 429 during
+  // the 2026-04-20 Azul 3DS test, which left method_notification_received=false
+  // and degraded the 3DS risk signal sent to the issuer. Webhooks from known
+  // ACS origins should not share a bucket with user-facing actions.
+  //
+  // callback is ALSO a browser redirect from Cardinal Commerce (challenge page),
+  // but it's safer to keep some limit on it to guard against replay attempts.
+  // continue and status are invoked by the customer's browser during the flow
+  // (status is polled), so they deserve separate, higher buckets.
+  if (action === 'continue' || action === 'status') {
+    if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: '3ds-' + action })) return;
+  } else if (action === 'callback') {
+    if (rateLimit(req, res, { max: 30, windowMs: 60000, prefix: '3ds-callback' })) return;
+  }
+  // action === 'method-notify' passes without rate limit — it's a webhook.
 
   switch (action) {
     case 'callback':      return handleCallback(req, res);
