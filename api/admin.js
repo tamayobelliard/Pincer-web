@@ -394,6 +394,135 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ACTION: transfer — move a demo restaurant to production
+// Expects: id (restaurant_users row), email (cliente real), phone (opcional),
+//          + cualquier otro campo editable para ajustar antes de transfer.
+// Requiere: email no vacío (la transferencia no puede ocurrir sin destinatario).
+// Efecto: status → 'active', genera password temporal nuevo, envía welcome email
+//         con credenciales al email del cliente.
+// ══════════════════════════════════════════════════════════════
+async function handleTransferToProd(req, res, supabaseUrl, supabaseKey) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { id, email, phone, contact_name } = req.body;
+
+  if (!id) return res.status(400).json({ success: false, error: 'id requerido' });
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ success: false, error: 'email del cliente requerido (válido)' });
+  }
+
+  try {
+    // Verify current state: debe ser un demo para poder transferir
+    const currentRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}&select=username,restaurant_slug,display_name,logo_url,trial_expires_at,status&limit=1`,
+      { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+    );
+    if (!currentRes.ok) return res.status(500).json({ success: false, error: 'DB lookup error' });
+    const rows = await currentRes.json();
+    if (!rows.length) return res.status(404).json({ success: false, error: 'Restaurante no encontrado' });
+
+    const current = rows[0];
+    if (current.status !== 'demo') {
+      return res.status(400).json({
+        success: false,
+        error: `Solo restaurantes en estado 'demo' pueden transferirse (actual: ${current.status})`,
+      });
+    }
+
+    // Generate new temp password (el password original del demo se descarta)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const bytes = randomBytes(8);
+    let temp_password = '';
+    for (let i = 0; i < 8; i++) {
+      temp_password += chars.charAt(bytes[i] % chars.length);
+    }
+    const password_hash = await bcrypt.hash(temp_password, 12);
+
+    // Update: status→active, guardar email + password nuevo + phone/contact opcionales
+    const update = {
+      status: 'active',
+      email,
+      password_hash,
+      must_change_password: true,
+    };
+    if (phone !== undefined) update.phone = phone || null;
+    if (contact_name !== undefined) update.contact_name = contact_name || null;
+
+    const patchRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(update),
+      }
+    );
+    if (!patchRes.ok) {
+      console.error('transfer PATCH error:', await patchRes.text());
+      return res.status(500).json({ success: false, error: 'Error actualizando el restaurante' });
+    }
+
+    // Welcome email con credenciales (reusa el helper sendEmail de este archivo)
+    const username = current.username;
+    const name = current.display_name;
+    const dashboardUrl = `https://www.pincerweb.com/${username}/dashboard`;
+    const menuUrl = `https://www.pincerweb.com/${username}`;
+    const expiryDate = current.trial_expires_at
+      ? new Date(current.trial_expires_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+
+    // QR PDF (opcional)
+    let qrAttachments = [];
+    try {
+      const qrPdfBase64 = await generateQRPdf(username, name, current.logo_url || null);
+      qrAttachments = [{ filename: `QR-${username}.pdf`, content: qrPdfBase64 }];
+    } catch (e) {
+      console.error('transfer: QR PDF generation error:', e.message);
+    }
+
+    sendEmail(
+      email,
+      `Bienvenido a Pincer — ${name}`,
+      `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fff;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <img src="https://i.imgur.com/FaOdU4D.png" alt="Pincer" style="width:48px;height:48px;">
+        </div>
+        <h1 style="color:#E8191A;text-align:center;margin-bottom:8px;">Bienvenido a Pincer!</h1>
+        <p style="text-align:center;color:#64748B;">Tu menu digital esta listo</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:8px 0;color:#64748B;">Restaurante</td><td style="padding:8px 0;font-weight:bold;">${name}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748B;">Email de acceso</td><td style="padding:8px 0;font-weight:bold;">${email}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748B;">Contrasena</td><td style="padding:8px 0;font-weight:bold;font-family:monospace;font-size:16px;letter-spacing:1px;">${temp_password}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748B;">Dashboard</td><td style="padding:8px 0;"><a href="${dashboardUrl}" style="color:#E8191A;font-weight:bold;">${dashboardUrl}</a></td></tr>
+          <tr><td style="padding:8px 0;color:#64748B;">Tu menu</td><td style="padding:8px 0;"><a href="${menuUrl}" style="color:#E8191A;font-weight:bold;">${menuUrl}</a></td></tr>
+        </table>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+        ${expiryDate ? `<div style="background:#FFF3F3;padding:14px;border-radius:8px;text-align:center;">
+          <p style="color:#E8191A;font-weight:bold;margin:0;">Prueba gratuita de 30 dias</p>
+          <p style="color:#64748B;font-size:13px;margin:4px 0 0;">Vence el ${expiryDate}</p>
+        </div>` : ''}
+        <p style="color:#94a3b8;font-size:12px;margin-top:24px;text-align:center;">— El equipo de Pincer</p>
+      </div>`,
+      qrAttachments
+    ).catch(e => console.error('transfer welcome email error:', e.message));
+
+    return res.status(200).json({
+      success: true,
+      username,
+      restaurant_slug: current.restaurant_slug,
+      email,
+    });
+  } catch (error) {
+    console.error('transfer error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // ACTION: reset-password — generate new password for restaurant
 // ══════════════════════════════════════════════════════════════
 async function handleResetPassword(req, res, supabaseUrl, supabaseKey) {
@@ -519,6 +648,7 @@ export default async function handler(req, res) {
     case 'restaurants':     return handleRestaurants(req, res, supabaseUrl, supabaseKey);
     case 'create':          return handleCreate(req, res, supabaseUrl, supabaseKey);
     case 'update':          return handleUpdate(req, res, supabaseUrl, supabaseKey);
+    case 'transfer':        return handleTransferToProd(req, res, supabaseUrl, supabaseKey);
     case 'reset-password':  return handleResetPassword(req, res, supabaseUrl, supabaseKey);
     case 'delete':          return handleDelete(req, res, supabaseUrl, supabaseKey);
     default:
