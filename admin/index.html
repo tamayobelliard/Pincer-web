@@ -900,6 +900,16 @@ async function openDashboard(slug) {
     });
     if (res.ok) {
       const data = await res.json();
+      // El dashboard verifica sesión leyendo sessionStorage (la cookie pincer_session
+      // es httpOnly y no se lee desde JS). Poblamos sessionStorage con los campos
+      // que espera checkSession() antes de navegar — mismo shape que login/index.html.
+      if (data.session) {
+        try {
+          const sessionStr = JSON.stringify(data.session);
+          sessionStorage.setItem('dashboard_session', sessionStr);
+          sessionStorage.setItem('dashboard_session_' + slug, sessionStr);
+        } catch (e) { /* storage quota / privacy mode — cookie aún valida server-side */ }
+      }
       // Navegar en la misma pestaña — el Set-Cookie ya vino en la response.
       window.location.href = data.redirect || ('/' + slug + '/dashboard');
       return;

@@ -633,10 +633,14 @@ async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
     return res.status(500).json({ error: 'DB error' });
   }
 
-  // Verify target slug exists (any status — incluso suspended se puede impersonar para soporte)
+  // Verify target slug exists (any status — incluso suspended se puede impersonar para soporte).
+  // También traemos display_name porque el frontend lo necesita para poblar sessionStorage
+  // (el dashboard hace su auth check client-side leyendo sessionStorage — la cookie httpOnly
+  // no es accesible desde JS).
+  let targetDisplayName = slug;
   try {
     const targetRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`,
+      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=id,display_name&limit=1`,
       {
         headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
         signal: AbortSignal.timeout(3000),
@@ -645,6 +649,7 @@ async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
     if (!targetRes.ok) return res.status(500).json({ error: 'DB error verifying target' });
     const rows = await targetRes.json();
     if (!rows.length) return res.status(404).json({ error: 'Target restaurant not found' });
+    if (rows[0].display_name) targetDisplayName = rows[0].display_name;
   } catch {
     return res.status(500).json({ error: 'DB error' });
   }
@@ -684,12 +689,23 @@ async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
     return res.status(500).json({ error: 'DB error' });
   }
 
-  // Set pincer_session cookie + return redirect URL. Frontend navigates.
+  // Set pincer_session cookie + return redirect + session-shape fields for the
+  // frontend to seed sessionStorage (mirror de lo que hace login/index.html
+  // al login normal). El dashboard's checkSession() rechaza role='admin', por
+  // eso devolvemos role='restaurant' — semánticamente "estás actuando como el
+  // restaurante" durante esta impersonación. La verdad persistida en la DB es
+  // user_id=admin + restaurant_slug=target, ahí vive la identidad real.
   const maxAge = 24 * 60 * 60;
   res.setHeader('Set-Cookie', `pincer_session=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
   return res.status(200).json({
     success: true,
     redirect: `/${slug}/dashboard`,
+    session: {
+      role: 'restaurant',
+      restaurant_slug: slug,
+      display_name: targetDisplayName,
+      username: 'admin',
+    },
   });
 }
 
