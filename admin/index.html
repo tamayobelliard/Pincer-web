@@ -666,12 +666,17 @@ function getSession() {
   } catch { return null; }
 }
 
-// Helper: fetch with auto-logout on 403 (expired/invalid session token)
+// Helper: fetch with auto-logout on 403 (expired/invalid admin session).
+// IMPORTANT: el auto-logout solo aplica a 403s desde el endpoint /api/admin.
+// Endpoints auxiliares (parse-menu, etc.) pueden devolver 403 por razones
+// ajenas a la sesión admin — tratarlo como "sesión expirada" botaba al
+// usuario equivocadamente (bug descubierto con parse-menu durante el flujo
+// de demos de The Deck, 2026-04-20).
 async function adminFetch(url, opts = {}) {
   // Admin token is in httpOnly cookie — no need to send header
   opts.headers = { ...opts.headers };
   const res = await fetch(url, opts);
-  if (res.status === 403) {
+  if (res.status === 403 && url.startsWith('/api/admin')) {
     sessionStorage.removeItem('dashboard_session');
     location.reload();
     throw new Error('Session expired');

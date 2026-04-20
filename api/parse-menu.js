@@ -1,15 +1,22 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
-import { getAdminToken } from './verify-session.js';
+import { getAdminToken, hashToken } from './verify-session.js';
 
 export const config = { maxDuration: 60 };
 
-// Verify admin session token against Supabase
+// Verify admin session token against Supabase.
+// BUG HISTÓRICO: esta función queryaba ?token=eq.<raw> cuando ya se había
+// migrado a token_hash en admin_sessions. Resultado: isAdmin siempre false
+// para sesiones admin reales → 403 desde parse-menu → adminFetch interpretaba
+// como "sesión expirada" y deslogueaba al usuario. Se descubrió durante el
+// flujo de demos con The Deck (2026-04-20). Canonical pattern ahora alineado
+// con api/admin.js:verifyAdmin y api/verify-session.js:hashToken.
 async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   if (!token) return false;
   try {
+    const tokenH = hashToken(token);
     const r = await fetch(
-      `${supabaseUrl}/rest/v1/admin_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gt.${new Date().toISOString()}&select=user_id`,
+      `${supabaseUrl}/rest/v1/admin_sessions?token_hash=eq.${encodeURIComponent(tokenH)}&expires_at=gt.${new Date().toISOString()}&select=user_id`,
       {
         headers: {
           'apikey': supabaseKey,
