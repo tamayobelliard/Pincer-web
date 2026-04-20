@@ -46,6 +46,28 @@ async function verifyAdmin(token, supabaseUrl, supabaseKey) {
   } catch { return false; }
 }
 
+// Verify admin + return user_id so the handler can use it for impersonation.
+async function verifyAdminWithUserId(token, supabaseUrl, supabaseKey) {
+  if (!token) return null;
+  try {
+    const tokenH = hashToken(token);
+    const r = await fetch(
+      `${supabaseUrl}/rest/v1/admin_sessions?token_hash=eq.${encodeURIComponent(tokenH)}&expires_at=gt.${new Date().toISOString()}&select=user_id`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (rows.length === 0) return null;
+    return rows[0].user_id;
+  } catch { return null; }
+}
+
 // ══════════════════════════════════════════════════════════════
 // ACTION: restaurants — list + toggle status
 // ══════════════════════════════════════════════════════════════
@@ -567,6 +589,108 @@ async function handleResetPassword(req, res, supabaseUrl, supabaseKey) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ACTION: impersonate — create a restaurant_sessions row under
+// the target slug on behalf of the admin user. Requires the admin
+// user to have is_pincer_staff=true on their restaurant_users row.
+// Sets the pincer_session cookie and responds with { redirect }.
+// The frontend navigates the browser to that URL, arriving at the
+// dashboard already authenticated for the target restaurant.
+// ══════════════════════════════════════════════════════════════
+async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { slug } = req.body;
+  if (!slug || typeof slug !== 'string' || !/^[a-z0-9_-]{2,50}$/.test(slug)) {
+    return res.status(400).json({ error: 'slug requerido (slug válido)' });
+  }
+
+  // Re-verify admin session AND fetch admin's user_id (we need it for the new session row).
+  // Note: handler() already verified via verifyAdmin at the top; we re-query here to get the user_id.
+  const adminUserId = await verifyAdminWithUserId(getAdminToken(req), supabaseUrl, supabaseKey);
+  if (!adminUserId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  // Gate crítico: el admin user debe tener is_pincer_staff=true.
+  // Sin este flag, la impersonación está prohibida aunque sea admin.
+  try {
+    const staffRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?id=eq.${encodeURIComponent(adminUserId)}&select=is_pincer_staff,username&limit=1`,
+      {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!staffRes.ok) return res.status(500).json({ error: 'DB error verifying staff flag' });
+    const rows = await staffRes.json();
+    if (!rows.length || rows[0].is_pincer_staff !== true) {
+      return res.status(403).json({ error: 'Impersonation requires is_pincer_staff' });
+    }
+  } catch {
+    return res.status(500).json({ error: 'DB error' });
+  }
+
+  // Verify target slug exists (any status — incluso suspended se puede impersonar para soporte)
+  try {
+    const targetRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`,
+      {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!targetRes.ok) return res.status(500).json({ error: 'DB error verifying target' });
+    const rows = await targetRes.json();
+    if (!rows.length) return res.status(404).json({ error: 'Target restaurant not found' });
+  } catch {
+    return res.status(500).json({ error: 'DB error' });
+  }
+
+  // Create restaurant_sessions row. user_id = admin's user_id (Tamayo). restaurant_slug = target.
+  // token_hash = SHA-256 del token aleatorio que vamos a set en el cookie.
+  const rawToken = randomBytes(32).toString('hex');
+  const tokenH = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+  try {
+    const insertRes = await fetch(
+      `${supabaseUrl}/rest/v1/restaurant_sessions`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          token_hash: tokenH,
+          user_id: adminUserId,
+          restaurant_slug: slug,
+          expires_at: expiresAt,
+        }),
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (!insertRes.ok) {
+      console.error('impersonate session insert error:', await insertRes.text());
+      return res.status(500).json({ error: 'Failed to create session' });
+    }
+  } catch (e) {
+    console.error('impersonate session insert exception:', e.message);
+    return res.status(500).json({ error: 'DB error' });
+  }
+
+  // Set pincer_session cookie + return redirect URL. Frontend navigates.
+  const maxAge = 24 * 60 * 60;
+  res.setHeader('Set-Cookie', `pincer_session=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
+  return res.status(200).json({
+    success: true,
+    redirect: `/${slug}/dashboard`,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // ACTION: delete — delete restaurant and all associated data
 // ══════════════════════════════════════════════════════════════
 async function handleDelete(req, res, supabaseUrl, supabaseKey) {
@@ -649,6 +773,7 @@ export default async function handler(req, res) {
     case 'create':          return handleCreate(req, res, supabaseUrl, supabaseKey);
     case 'update':          return handleUpdate(req, res, supabaseUrl, supabaseKey);
     case 'transfer':        return handleTransferToProd(req, res, supabaseUrl, supabaseKey);
+    case 'impersonate':     return handleImpersonate(req, res, supabaseUrl, supabaseKey);
     case 'reset-password':  return handleResetPassword(req, res, supabaseUrl, supabaseKey);
     case 'delete':          return handleDelete(req, res, supabaseUrl, supabaseKey);
     default:
