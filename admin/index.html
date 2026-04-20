@@ -70,6 +70,12 @@
       border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9em;
     }
     .btn-danger:hover { background: #b91c1c; }
+    .btn-transfer {
+      background: #059669; color: white; border: none; padding: 8px 14px;
+      border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85em;
+      transition: all 0.15s;
+    }
+    .btn-transfer:hover { background: #047857; }
     .btn-delete {
       background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
       padding: 8px 12px; border-radius: 8px; cursor: pointer;
@@ -522,6 +528,45 @@
   </div>
 </div>
 
+<!-- Transfer-to-production modal (solo para demos) -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal" style="max-width:520px;">
+    <h2>Pasar a Producción</h2>
+    <p style="color:#64748b;font-size:0.95em;margin-bottom:16px;">
+      El restaurante <strong id="transferRestaurantName"></strong> va a cambiar de demo a activo. Se enviará un email con credenciales al cliente.
+    </p>
+    <label>Email del cliente (obligatorio) *</label>
+    <input type="email" id="transferEmail" placeholder="cliente@ejemplo.com">
+    <label>WhatsApp (obligatorio) *</label>
+    <input type="text" id="transferPhone" placeholder="809-000-0000">
+    <label>Persona de contacto (opcional)</label>
+    <input type="text" id="transferContact" placeholder="Nombre del dueño">
+    <div id="transferError" style="color:#dc2626;font-size:0.9em;margin:8px 0;display:none;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn-toggle" onclick="closeTransferModal()">Cancelar</button>
+      <button class="btn-primary" onclick="submitTransferConfirm()" id="transferConfirmBtn">Confirmar transferencia</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sub-confirmación antes de enviar credenciales -->
+<div class="modal-overlay" id="transferConfirmModal">
+  <div class="modal" style="max-width:480px;">
+    <h2 style="margin-bottom:12px;">¿Confirmar transferencia?</h2>
+    <p style="color:#475569;line-height:1.5;margin-bottom:12px;">
+      Vas a transferir <strong id="transferConfirmName"></strong> a producción.
+    </p>
+    <p style="color:#475569;line-height:1.5;margin-bottom:20px;">
+      Las credenciales se enviarán a:
+    </p>
+    <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 14px;border-radius:6px;margin-bottom:20px;font-family:monospace;font-size:1.05em;color:#78350f;word-break:break-all;" id="transferConfirmEmail"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-toggle" onclick="closeTransferConfirm()">Cancelar</button>
+      <button class="btn-transfer" onclick="submitTransferFinal()" id="transferFinalBtn" style="flex:1;">Sí, transferir</button>
+    </div>
+  </div>
+</div>
+
 <!-- QR Print Template (hidden on screen, visible on print) -->
 <div id="qrPrintArea">
   <div class="print-header" id="printHeader">
@@ -765,6 +810,7 @@ function renderRestaurants() {
           <button class="btn-edit" onclick="openEditModal('${r.id}')">Editar</button>
           <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}', '_blank')">Ver Men\u00fa</button>
           <button class="btn-edit" onclick="window.open('/${escapeHtml(r.restaurant_slug || '')}/dashboard', '_blank')">Dashboard</button>
+          ${r.status === 'demo' ? `<button class="btn-transfer" onclick="openTransferModal('${r.id}')">Pasar a Producci\u00f3n</button>` : ''}
           ${r.status === 'active' ? `<button class="btn-qr" onclick="showQR('${r.id}')">Ver QR</button>` : ''}
           <span class="badge ${badgeClass}">${statusText}</span>
           <button class="btn-toggle" onclick="toggleStatus('${r.id}', '${r.status}')">${toggleText}</button>
@@ -828,6 +874,103 @@ async function deleteRestaurant(id) {
     }
   } catch (err) {
     alert('Error de conexión');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// TRANSFER TO PROD (demo → active)
+// ══════════════════════════════════════════════════════════════
+
+let currentTransferRestaurant = null;
+
+function openTransferModal(id) {
+  const r = restaurants.find(x => String(x.id) === String(id));
+  if (!r) return;
+  if (r.status !== 'demo') {
+    alert('Solo se pueden transferir restaurantes en estado demo.');
+    return;
+  }
+  currentTransferRestaurant = r;
+  document.getElementById('transferRestaurantName').textContent = r.display_name;
+  document.getElementById('transferEmail').value = r.email || '';
+  document.getElementById('transferPhone').value = r.phone || '';
+  document.getElementById('transferContact').value = r.contact_name || '';
+  document.getElementById('transferError').style.display = 'none';
+  document.getElementById('transferModal').classList.add('active');
+}
+
+function closeTransferModal() {
+  document.getElementById('transferModal').classList.remove('active');
+  currentTransferRestaurant = null;
+}
+
+// Validación del form → abre la sub-confirmación
+function submitTransferConfirm() {
+  if (!currentTransferRestaurant) return;
+  const email = document.getElementById('transferEmail').value.trim();
+  const phone = document.getElementById('transferPhone').value.trim();
+  const err = document.getElementById('transferError');
+  err.style.display = 'none';
+  if (!email || !email.includes('@')) {
+    err.textContent = 'Email del cliente es obligatorio y debe ser válido.';
+    err.style.display = 'block';
+    return;
+  }
+  if (!phone) {
+    err.textContent = 'WhatsApp del cliente es obligatorio.';
+    err.style.display = 'block';
+    return;
+  }
+  // Abre sub-confirmación con el email destacado
+  document.getElementById('transferConfirmName').textContent = currentTransferRestaurant.display_name;
+  document.getElementById('transferConfirmEmail').textContent = email;
+  document.getElementById('transferConfirmModal').classList.add('active');
+}
+
+function closeTransferConfirm() {
+  document.getElementById('transferConfirmModal').classList.remove('active');
+}
+
+// Click final: dispara el POST al endpoint
+async function submitTransferFinal() {
+  if (!currentTransferRestaurant) return;
+  const btn = document.getElementById('transferFinalBtn');
+  const err = document.getElementById('transferError');
+  const email = document.getElementById('transferEmail').value.trim();
+  const phone = document.getElementById('transferPhone').value.trim();
+  const contact_name = document.getElementById('transferContact').value.trim();
+
+  btn.disabled = true;
+  btn.textContent = 'Transfiriendo...';
+  try {
+    const res = await adminFetch('/api/admin?action=transfer', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: currentTransferRestaurant.id,
+        email,
+        phone,
+        contact_name,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      closeTransferConfirm();
+      err.textContent = data.error || 'Error en la transferencia';
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sí, transferir';
+      return;
+    }
+    // Éxito: cerrar ambos modales + refrescar lista
+    closeTransferConfirm();
+    closeTransferModal();
+    alert('Transferencia exitosa. Email enviado a ' + email);
+    loadRestaurants();
+  } catch (e) {
+    err.textContent = 'Error de red. Intenta de nuevo.';
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sí, transferir';
   }
 }
 
