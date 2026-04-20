@@ -495,7 +495,7 @@
         </div>
         <div id="menuPreviewContainer" style="display:none;"></div>
       </div>
-      <input type="file" id="menuFileInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handleMenuFile(event)">
+      <input type="file" id="menuFileInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="handleMenuFile(event)">
 
       <!-- Password Reset (edit mode only) -->
       <div id="passwordResetSection" style="display:none; border-top:1px solid #e2e8f0; margin:20px 0 0 0; padding-top:16px;">
@@ -1601,41 +1601,65 @@ function triggerMenuUpload() {
 }
 
 function handleMenuFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!validTypes.includes(file.type)) {
-    alert('Formato no soportado. Usa JPG, PNG o WebP.');
-    return;
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    alert('La imagen es muy grande. Máximo 10MB.');
-    return;
-  }
-
+  const files = Array.from(event.target.files || []);
   event.target.value = '';
+  if (!files.length) return;
 
-  // If file is over 1MB, resize to max 1200px width to reduce base64 payload
-  if (file.size > 1 * 1024 * 1024) {
-    const img = new Image();
-    img.onload = function() {
-      const MAX_W = 1200;
-      let w = img.width, h = img.height;
-      if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      uploadMenuPhoto(canvas.toDataURL('image/jpeg', 0.8));
-    };
-    img.src = URL.createObjectURL(file);
-    return;
+  // Validate all files up-front (fail fast si alguna no califica)
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  for (const file of files) {
+    if (!validTypes.includes(file.type)) {
+      alert('Formato no soportado en "' + file.name + '". Usa JPG, PNG o WebP.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen "' + file.name + '" es muy grande. Máximo 10MB por foto.');
+      return;
+    }
   }
 
-  const reader = new FileReader();
-  reader.onload = function(e) { uploadMenuPhoto(e.target.result); };
-  reader.readAsDataURL(file);
+  // Procesar secuencialmente — parse-menu es costoso (Claude API + tokens),
+  // en paralelo podríamos saturar rate limits y desordenar accumulatedItems.
+  processMenuFilesSequentially(files);
+}
+
+// Convierte un File a dataURI. Si >1MB, redimensiona a 1200px para reducir payload.
+function fileToDataUri(file) {
+  return new Promise(function(resolve, reject) {
+    if (file.size > 1 * 1024 * 1024) {
+      const img = new Image();
+      img.onload = function() {
+        const MAX_W = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX_W) { h = Math.round(h * (MAX_W / w)); w = MAX_W; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = function() { reject(new Error('No se pudo leer "' + file.name + '"')); };
+      img.src = URL.createObjectURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result); };
+      reader.onerror = function() { reject(new Error('No se pudo leer "' + file.name + '"')); };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+async function processMenuFilesSequentially(files) {
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const dataUri = await fileToDataUri(files[i]);
+      await uploadMenuPhoto(dataUri);
+    } catch (e) {
+      console.error('Menu file error:', e);
+      alert('Error procesando "' + files[i].name + '": ' + (e.message || 'error desconocido'));
+      // Seguir con las siguientes si una falla — el user puede quitar items parciales después
+    }
+  }
 }
 
 async function uploadMenuPhoto(dataUri) {
