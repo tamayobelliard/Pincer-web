@@ -44,6 +44,14 @@ function callAzul(url, headers, body, agent, timeoutMs = 9500) {
 
 const AZUL_BASE = process.env.AZUL_URL || 'https://pruebas.azul.com.do/WebServices/JSON/default.aspx';
 const AZUL_URL_3DS_METHOD = AZUL_BASE + (AZUL_BASE.includes('?') ? '&' : '?') + 'processthreedsmethod';
+// Azul uses two distinct operations in its 3DS 2.0 flow, each appended as a
+// query param: ?processthreedsmethod for the post-fingerprinting step, and
+// ?processthreedschallenge for the post-SMS Challenge completion. Posting the
+// CRes to the base URL without this marker makes Azul treat it as a brand-new
+// payment request and reject with VALIDATION_ERROR:CVC because CardNumber/CVC
+// aren't present. Reference: indexa-git/pyazul (pyazul/services/secure.py uses
+// operation="processthreedschallenge" for its process_challenge call).
+const AZUL_URL_3DS_CHALLENGE = AZUL_BASE + (AZUL_BASE.includes('?') ? '&' : '?') + 'processthreedschallenge';
 
 // Fire-and-forget Supabase PATCH
 function patchSession(supabaseUrl, supabaseKey, sessionId, data) {
@@ -117,7 +125,7 @@ async function handleCallback(req, res) {
     const auth2 = process.env.AZUL_AUTH2 || '3dsecure';
 
     const result = await callAzul(
-      AZUL_BASE,
+      AZUL_URL_3DS_CHALLENGE,
       { 'Auth1': auth1, 'Auth2': auth2 },
       {
         Channel: "EC",
