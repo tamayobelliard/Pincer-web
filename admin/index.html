@@ -1529,7 +1529,10 @@ async function createRestaurant() {
       `;
       loadRestaurants();
     } else {
-      alert(data.error || 'Error al crear cliente');
+      // Si el backend nos pasa supabase_error (diagnóstico temporal), mostrarlo.
+      var msg = data.error || 'Error al crear cliente';
+      if (data.supabase_error) msg += '\n\nDetalle: ' + data.supabase_error;
+      alert(msg);
     }
   } catch (err) {
     alert('Error de conexión');

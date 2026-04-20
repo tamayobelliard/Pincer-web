@@ -243,11 +243,25 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 
     if (!insertRes.ok) {
       const errText = await insertRes.text();
-      console.error('Failed to create restaurant user:', errText);
+      console.error('Failed to create restaurant user:', {
+        status: insertRes.status,
+        errText,
+        username,
+        email: email || null,
+        email_was_provided: !!email,
+        status_sent: email ? 'active' : 'demo',
+      });
       if (errText.includes('duplicate') || errText.includes('unique')) {
         return res.status(409).json({ success: false, error: 'Ya existe un usuario con ese nombre' });
       }
-      return res.status(500).json({ success: false, error: 'Error al crear usuario' });
+      // Surface Supabase error for diagnosis (admin-only panel, safe to expose here).
+      // Truncate to 500 chars para no filtrar payload completo.
+      return res.status(500).json({
+        success: false,
+        error: 'Error al crear usuario',
+        supabase_status: insertRes.status,
+        supabase_error: errText.substring(0, 500),
+      });
     }
 
     // Create store_settings row (default open) — fire and forget
