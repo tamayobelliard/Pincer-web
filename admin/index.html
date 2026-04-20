@@ -895,6 +895,7 @@ async function openDashboard(slug) {
   try {
     const res = await adminFetch('/api/admin?action=impersonate', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slug }),
     });
     if (res.ok) {
@@ -986,6 +987,7 @@ async function submitTransferFinal() {
   try {
     const res = await adminFetch('/api/admin?action=transfer', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: currentTransferRestaurant.id,
         email,
