@@ -3068,7 +3068,11 @@ async function loadRestaurantData() {
     if (!res.ok) return null;
     var rows = await res.json();
     if (!rows.length) return null;
-    if (rows[0].status !== 'active') return null;
+    // Canónicos visibles: 'active' (cliente en producción) + 'demo' (Tamayo
+    // muestra el menú al cliente antes de cerrar venta). 'suspended' y
+    // legacy ('pending'/'disabled') siguen rechazados — el menú no debe
+    // cargar para clientes suspendidos.
+    if (rows[0].status !== 'active' && rows[0].status !== 'demo') return null;
     // Cache the WhatsApp phone for this slug so the outage fallback can
     // still show a CTA to WhatsApp when Supabase is unreachable on the next visit.
     try {
