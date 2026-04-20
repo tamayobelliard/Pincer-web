@@ -192,7 +192,10 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           restaurant_slug: username,
           display_name: name,
           role: 'restaurant',
-          status: 'pending',
+          // Creates with email → 'active' directly (supply-chain admin con creds del cliente).
+          // Creates without email → 'demo' (Tamayo arma antes de cerrar venta; transfer endpoint
+          // lo mueve a 'active' cuando hay email real). RLS anon permite ambos en menu público.
+          status: email ? 'active' : 'demo',
           plan: 'premium',
           trial_expires_at: trialExpires,
           menu_style: { theme: 'rojo-clasico', bg: '#1a1a1a', primary: '#E8191A', text: '#ffffff', accent: '#ffffff' },
