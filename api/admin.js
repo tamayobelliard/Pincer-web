@@ -100,7 +100,10 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
   // PATCH — toggle status
   if (req.method === 'PATCH') {
     const { id, status } = req.body;
-    if (!id || !status || !['active', 'pending', 'disabled'].includes(status)) {
+    // Canónicos: 'active', 'demo', 'suspended'.
+    // Legacy: 'pending', 'disabled' se aceptan para no romper datos existentes pero
+    // no se escriben desde código nuevo.
+    if (!id || !status || !['active', 'demo', 'suspended', 'pending', 'disabled'].includes(status)) {
       return res.status(400).json({ error: 'Valid id and status required' });
     }
     try {

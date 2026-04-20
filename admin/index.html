@@ -797,7 +797,7 @@ function renderRestaurants() {
       r.status === 'active' ? 'ACTIVO' :
       r.status === 'demo' ? 'DEMO' :
       'SUSPENDIDO';
-    const toggleText = r.status === 'active' ? 'Desactivar' : 'Activar';
+    const toggleText = r.status === 'active' ? 'Suspender' : 'Reactivar';
     const date = new Date(r.created_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
 
     return `
@@ -832,7 +832,10 @@ function escapeHtml(str) {
 // ══════════════════════════════════════════════════════════════
 
 async function toggleStatus(id, currentStatus) {
-  const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+  // Canónico: active ↔ suspended. Si el row está en 'demo', 'pending' o 'disabled'
+  // (legacy), la acción de reactivar lo mueve a 'active' — eso hace que el toggle
+  // también sirva como herramienta para normalizar status viejos a la nomenclatura nueva.
+  const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
   try {
     const res = await adminFetch('/api/admin?action=restaurants', {
       method: 'PATCH',
