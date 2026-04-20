@@ -59,14 +59,25 @@ function supabasePostFire(table, data) {
   }).catch(e => console.error(`supabase POST ${table} error:`, e.message));
 }
 
+// Returns the fetch promise so callers can `await` for reliable persistence
+// (Vercel may suspend the event loop after response, cancelling unawaited
+// fetches — see 2026-04-20 incident where the sessions_3ds row never moved
+// past 3ds_method even though Azul approved the payment). The inner .catch
+// still swallows the error + logs it, so awaiting can't throw the caller.
 function supabasePatchFire(table, matchCol, matchVal, data) {
   const key = sbKey();
-  fetch(`${sbUrl()}/rest/v1/${table}?${matchCol}=eq.${encodeURIComponent(matchVal)}`, {
+  return fetch(`${sbUrl()}/rest/v1/${table}?${matchCol}=eq.${encodeURIComponent(matchVal)}`, {
     method: 'PATCH',
     headers: sbHeaders(key),
     body: JSON.stringify(data),
     signal: AbortSignal.timeout(4000),
-  }).catch(e => console.error(`supabase PATCH ${table} error:`, e.message));
+  }).then(r => {
+    if (!r.ok) {
+      return r.text().catch(() => '').then(body => {
+        console.error(`supabase PATCH ${table} failed:`, r.status, body, `${matchCol}=${matchVal}`);
+      });
+    }
+  }).catch(e => console.error(`supabase PATCH ${table} error:`, e.message, `${matchCol}=${matchVal}`));
 }
 
 // Awaited version only when we need the result before responding
@@ -301,7 +312,7 @@ export default async function handler(req, res) {
 
     // CASE 1: Direct approval (frictionless)
     if (result.IsoCode === '00') {
-      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
+      await supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: 'approved',
         final_response: result,
       });
@@ -319,7 +330,7 @@ export default async function handler(req, res) {
 
     // CASE 2: 3DS Method required (hidden iframe)
     if (result.ResponseMessage === '3D_SECURE_2_METHOD') {
-      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
+      await supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: '3ds_method',
         azul_order_id: result.AzulOrderId,
       });
@@ -335,7 +346,7 @@ export default async function handler(req, res) {
 
     // CASE 3: Challenge required
     if (result.ResponseMessage === '3D_SECURE_CHALLENGE' || result.ResponseMessage === '3D_SECURE_2_CHALLENGE') {
-      supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
+      await supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
         status: 'challenge',
         azul_order_id: result.AzulOrderId,
       });
@@ -352,7 +363,7 @@ export default async function handler(req, res) {
 
     // CASE 4: Error or declined
     const status = result.ResponseCode === 'Error' ? 'error' : 'declined';
-    supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
+    await supabasePatchFire('sessions_3ds', 'session_id', sessionId, {
       status,
       final_response: result,
     });
