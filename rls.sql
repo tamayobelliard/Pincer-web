@@ -473,3 +473,23 @@ CREATE INDEX IF NOT EXISTS idx_sessions_3ds_created_at ON sessions_3ds(created_a
 
 ALTER TABLE sessions_3ds ENABLE ROW LEVEL SECURITY;
 -- No anon policies = service role only
+
+
+-- ──────────────────────────────────────────────────────────────
+-- Custom menu templates — per-restaurant HTML/CSS (Apr 20, 2026)
+-- Primer consumidor: The Deck (docs/the-deck-custom-template-plan.md).
+-- ──────────────────────────────────────────────────────────────
+ALTER TABLE restaurant_users
+  ADD COLUMN IF NOT EXISTS custom_template BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE restaurant_users
+  ADD COLUMN IF NOT EXISTS custom_template_path TEXT;
+
+-- Notes on routing: el flag custom_template es advisory. El routing real
+-- vive en vercel.json como rewrite especifico por slug ANTES del catch-all
+-- /:slug -> /menu/index.html. Al agregar un custom template nuevo:
+--   1. Crear menu/templates/<slug>/index.html.
+--   2. Agregar rewrite { "source": "/<slug>", "destination": "/menu/templates/<slug>/index.html" }.
+--   3. UPDATE restaurant_users SET custom_template=true, custom_template_path='<slug>' WHERE restaurant_slug='<slug>'.
+-- Al remover: revert cada paso. El flag permite rollback desde DB sin redeploy
+-- si el template se guarda como fallback/redirect en menu/index.html (opcional,
+-- no implementado en el MVP).
