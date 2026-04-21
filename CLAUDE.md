@@ -266,6 +266,38 @@ See `.env.example` for the full list. Critical ones:
 
 ---
 
+## Cuando modificas `menu/index.html` — checklist de paralelismo
+
+Pincer ahora tiene **dos tipos de menú público**:
+
+1. **Genérico** — `menu/index.html`. Usa el sistema de 6 themes (ver `api/parse-menu.js`). Todos los restaurantes con `custom_template = false` (default) caen acá via el rewrite `/:slug → /menu/index.html`.
+2. **Custom (por restaurante)** — `menu/templates/<slug>/index.html`. HTML/CSS/JS aislados por restaurante. Activos: ver lista abajo. Routing vía rewrite específico en `vercel.json`.
+
+La decisión arquitectónica fue **NO compartir JS** entre los dos (aislamiento total). Eso simplifica el ship del primer custom (The Deck) y evita que un cambio en un custom contamine al genérico, pero abre un riesgo de drift: cualquier fix funcional que llegue al genérico debe re-aplicarse a cada custom, y viceversa.
+
+**Antes de mergear un cambio a `menu/index.html`, decide:**
+
+- **CSS/estilos solamente** (colores, spacing, layout, variables) → **no aplica** a customs. Cada uno tiene su propio design system. Merge normal.
+- **Lógica funcional** (cart, checkout, chatbot, fail-closed handlers, outage fallback, payment/Azul flow, tracking, localStorage cache, rate limit, session handling, loyalty, promo, store open/closed, order submit, etc.) → **REVISAR** cada custom template para decidir si hay que portar el cambio.
+  - En la mayoría de los casos, **sí hay que portar**. Los bugs de lógica (fail-closed, await patches, rate limit splits, etc.) afectan a todos los clientes por igual.
+  - Casos donde NO se porta: cambios cosméticos a la UI del carrito genérico (el custom tiene su propia UI).
+
+**Templates custom activos** (mantener esta lista al día al agregar/remover):
+
+- `menu/templates/thedeck/index.html` — The Deck (primer cliente piloto, commit 2026-04-20+).
+
+**Cómo portar un cambio a un custom:**
+
+1. Identificar la función o bloque afectado en `menu/index.html`.
+2. Abrir el custom template, ubicar la función equivalente (puede tener nombre ligeramente distinto).
+3. Aplicar el mismo cambio conceptual adaptado a la estética del template (ej: si el genérico usa `alert(...)`, el custom puede mostrar el mensaje dentro del design system — mismo comportamiento, distinta presentación).
+4. Si el bloque no existe en el custom (porque el custom decidió una arquitectura distinta), decidir: (a) agregarlo, (b) documentar el gap en comentario inline, (c) evaluar si es aceptable no portarlo.
+5. Smoke test el custom específicamente antes del merge.
+
+**Trigger de re-evaluación arquitectónica:** cuando haya **3-4 custom templates activos**, considerar refactor a shared JS modules + slot-based templating para reducir duplicación. Antes de eso, el costo de mantener la arquitectura isolate-por-template es menor que el costo de una abstracción prematura. Razón: con 1 template custom no sabemos cuál sería la abstracción correcta; con 3-4 reales hay data suficiente para diseñarla bien.
+
+---
+
 ## Deployment
 
 - Push to `main` branch on GitHub auto-deploys via Vercel
