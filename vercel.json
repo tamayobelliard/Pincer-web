@@ -11,6 +11,8 @@
     { "source": "/politicas/seguridad", "destination": "/politicas/seguridad.html" },
     { "source": "/politicas/entrega", "destination": "/politicas/entrega.html" },
     { "source": "/:slug/dashboard", "destination": "/dashboard/index.html" },
+    { "source": "/thedeck", "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Googlebot|Slackbot|TelegramBot).*" }], "destination": "/api/og?slug=thedeck" },
+    { "source": "/thedeck", "destination": "/menu/templates/thedeck/index.html" },
     { "source": "/:slug", "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(facebookexternalhit|WhatsApp|Twitterbot|LinkedInBot|Googlebot|Slackbot|TelegramBot).*" }], "destination": "/api/og?slug=:slug" },
     { "source": "/:slug", "destination": "/menu/index.html" }
   ],
