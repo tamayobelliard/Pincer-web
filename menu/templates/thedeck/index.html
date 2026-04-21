@@ -268,60 +268,13 @@
 <!-- ═════════════ TABS ═════════════ -->
 <div class="tabs">
   <div class="tabs-scroll no-scrollbar" id="tabsScroll">
-    <!-- Placeholder tabs para QA visual — commit 3 los puebla desde Supabase -->
-    <button class="tab active" data-category="TINTOS">Tintos</button>
-    <button class="tab" data-category="BLANCOS">Blancos</button>
-    <button class="tab" data-category="SANDWICHES">Sandwiches</button>
-    <button class="tab" data-category="ENSALADAS">Ensaladas</button>
-    <button class="tab" data-category="POSTRES">Postres</button>
+    <!-- Populado dinámicamente desde products.category -->
   </div>
 </div>
 
 <!-- ═════════════ MENU SECTIONS ═════════════ -->
 <main id="menuSections">
-  <!-- Sample section — commit 3 reemplaza con render dinámico -->
-  <section data-category="TINTOS">
-    <div class="sec-hdr">
-      <div class="sec-group">Vinos</div>
-      <div class="sec-title">Tintos</div>
-      <div class="sec-orn">
-        <span class="line"></span>
-        <svg viewBox="0 0 8 8"><path d="M4 0 L8 4 L4 8 L0 4 Z" fill="currentColor"/></svg>
-        <span class="line"></span>
-      </div>
-    </div>
-    <div class="item-list">
-      <div class="item-row" data-placeholder="true">
-        <div class="item-main">
-          <div class="item-row-inner">
-            <span class="item-name">Woodbridge Red Blend</span>
-            <span class="item-leader"></span>
-            <span class="item-price">RD$1,750</span>
-          </div>
-        </div>
-      </div>
-      <div class="item-row" data-placeholder="true">
-        <div class="item-main">
-          <div class="item-row-inner">
-            <span class="item-name">Glorioso Crianza</span>
-            <span class="item-leader"></span>
-            <span class="item-price">RD$2,150</span>
-          </div>
-        </div>
-      </div>
-      <div class="item-row" data-placeholder="true">
-        <div class="item-main">
-          <div class="item-row-inner">
-            <span class="item-name">Marques de Riscal Reserva</span>
-            <span class="item-leader"></span>
-            <span class="item-price">RD$2,250</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="loading" id="menuLoading" style="display:none;">Cargando carta…</div>
+  <div class="loading" id="menuLoading">Cargando carta…</div>
 </main>
 
 <!-- ═════════════ FOOTER ═════════════ -->
@@ -371,44 +324,305 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// THE DECK — Custom Template (skeleton, commit 2)
-// Próximos commits añaden: product loading (3), item popup (4), cart (5),
-// checkout + Azul (6), chatbot (7), confirmación + comprobante (8).
+// THE DECK — Custom Template
+// Próximos commits: item popup (4), cart (5), checkout + Azul (6),
+// chatbot (7), confirmación + comprobante (8).
 // ══════════════════════════════════════════════════════════════
 
-// Hardcoded para QA visual. Commit 3 reemplaza con query a Supabase.
 const SLUG = 'thedeck';
 const SUPABASE_URL = 'https://tcwujslibopzfyufhjsr.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ib1XEv6lNe5jYXULeUo6tg_dcO0hRMt';
+const WHATSAPP_FALLBACK_PHONE = '18293823549'; // The Deck; cached to localStorage on success
 
-// Tab click → scroll a la sección correspondiente (funciona con sample data del commit 2).
+// State — commits 4+ poblan estos.
+let restaurantData = null;
+let products = [];
+let productsByCategory = new Map(); // preserva orden de inserción
+let cart = [];
+let soldOutSet = new Set();
+
+// ── Helpers ──
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+  };
+}
+
+function fmtPrice(n) {
+  return 'RD$' + (Number(n) || 0).toLocaleString('en-US');
+}
+
+// Para categorías que son claramente de vino, agregamos el kicker "Vinos".
+// Simple map hardcoded — si en el futuro queremos extenderlo, moverlo a DB.
+const GROUP_MAP = {
+  'TINTOS': 'Vinos',
+  'BLANCOS': 'Vinos',
+  'ROSADOS': 'Vinos',
+  'ESPUMANTES': 'Vinos',
+  'SANGRÍAS': 'Vinos',
+  'MOJITOS': 'Cocteles',
+  'MARGARITAS': 'Cocteles',
+  'MENÚ DE COCTELES': 'Cocteles',
+  'COFFEE CORNER': 'Café y Bebidas',
+  'SMOOTHIES': 'Café y Bebidas',
+  'DETOX & BOOSTERS': 'Café y Bebidas',
+  'PROTEIN BOOST': 'Café y Bebidas',
+  'CERVEZAS': 'Café y Bebidas',
+  'DESAYUNOS': 'Desayunos',
+  'OMELETTE CORNER': 'Desayunos',
+  'SANDWICHES': 'Sandwiches y Wraps',
+  'PANINIS': 'Sandwiches y Wraps',
+  'WRAPS': 'Sandwiches y Wraps',
+  'QUESADILLAS Y NACHOS': 'Sandwiches y Wraps',
+  'BURRATAS': 'Entradas',
+  'PARA PICAR...': 'Entradas',
+  'GUARNICIONES ESPECIALES': 'Entradas',
+  'ENSALADAS': 'Ensaladas',
+  'PASTAS': 'Platos Fuertes',
+  'SALMÓN': 'Platos Fuertes',
+  'CARNES': 'Platos Fuertes',
+  'PLATOS FUERTE': 'Platos Fuertes',
+  'ESPECIALIDADES': 'Platos Fuertes',
+  'MENÚ DE NIÑOS': 'Menú de Niños',
+  'POSTRES': 'Postres',
+};
+
+// ── Capitalize category name for display (TINTOS → Tintos) ──
+function titleCase(s) {
+  return String(s).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).replace('...', '…');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Outage fallback: si Supabase no carga, mostrar CTA WhatsApp.
+// Pattern portado de menu/index.html commits 4ae8d24 + 2631e31,
+// adaptado a design system (navy + gold + Playfair).
+// Self-healing: cuando Supabase vuelve, loadAll() renderea normal.
+// ══════════════════════════════════════════════════════════════
+function renderOutageFallback() {
+  let cachedPhone = null;
+  try { cachedPhone = localStorage.getItem('pincer_whatsapp_' + SLUG); } catch (e) {}
+  const waDigits = (cachedPhone || WHATSAPP_FALLBACK_PHONE || '').replace(/\D/g, '');
+  const waCta = waDigits
+    ? `<a href="https://wa.me/${waDigits}?text=Hola%2C%20quiero%20hacer%20un%20pedido" style="display:inline-block;background:var(--color-primary);color:var(--color-bg);padding:14px 32px;border-radius:var(--radius-md);border:1.5px solid var(--color-accent);text-decoration:none;font-family:var(--font-serif);font-size:13px;letter-spacing:2.5px;text-transform:uppercase;font-weight:600;box-shadow:var(--shadow-cta);">Pedir por WhatsApp</a>`
+    : '';
+  document.body.style.background = 'var(--color-bg)';
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;font-family:var(--font-body);">
+      <div style="background:var(--color-surface);border-radius:var(--radius-lg);padding:48px 32px;max-width:440px;width:100%;text-align:center;box-shadow:var(--shadow-lg);border-top:2px solid var(--color-accent);">
+        <div style="font-family:var(--font-heading);font-size:28px;color:var(--color-primary);margin-bottom:4px;">The Deck</div>
+        <div style="font-size:10px;letter-spacing:3px;color:var(--color-accent-3);text-transform:uppercase;font-family:var(--font-serif);margin-bottom:24px;">Servicio en Línea</div>
+        <div style="height:1px;background:linear-gradient(90deg,transparent,var(--color-accent),transparent);margin-bottom:24px;"></div>
+        <h2 style="font-family:var(--font-heading);font-size:22px;color:var(--color-primary);margin-bottom:12px;font-weight:500;">Temporalmente fuera de línea</h2>
+        <p style="color:var(--color-text-soft);line-height:1.55;margin-bottom:${waDigits ? '24px' : '0'};font-size:14px;">
+          Estamos atendiendo un inconveniente técnico. ${waDigits ? 'Mientras tanto, toma tu pedido por WhatsApp:' : 'Por favor intenta de nuevo en unos minutos.'}
+        </p>
+        ${waCta}
+        <p style="color:var(--color-text-mute);font-size:11px;margin-top:32px;font-family:var(--font-serif);letter-spacing:1px;">
+          Disculpa las molestias.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Loaders
+// ══════════════════════════════════════════════════════════════
+
+async function fetchRestaurantData() {
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,status,hours,phone,address,business_type,logo_url&limit=1',
+      { headers: sbHeaders(), signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!rows.length) return null;
+    if (rows[0].status !== 'active' && rows[0].status !== 'demo') return null;
+    // Cache phone for outage fallback on next visit
+    try {
+      if (rows[0].phone) localStorage.setItem('pincer_whatsapp_' + SLUG, rows[0].phone);
+    } catch (e) {}
+    return rows[0];
+  } catch (e) { return null; }
+}
+
+async function fetchProducts() {
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&active=eq.true&order=display_order.asc&select=*',
+      { headers: sbHeaders(), signal: AbortSignal.timeout(12000) }
+    );
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function fetchSoldOut() {
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&sold_out=eq.true&select=id',
+      { headers: sbHeaders(), signal: AbortSignal.timeout(5000) }
+    );
+    if (!r.ok) return new Set();
+    const rows = await r.json();
+    return new Set(rows.map(r => r.id));
+  } catch (e) { return new Set(); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Render
+// ══════════════════════════════════════════════════════════════
+
+function groupProducts(items) {
+  // Orden de categorías = primer aparición (los products vienen ordenados por display_order).
+  const map = new Map();
+  for (const item of items) {
+    const cat = item.category || 'OTROS';
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat).push(item);
+  }
+  return map;
+}
+
+function renderTabs(categories) {
+  const tabs = document.getElementById('tabsScroll');
+  const first = categories[0];
+  tabs.innerHTML = categories.map((cat, i) => {
+    const label = titleCase(cat);
+    const active = i === 0 ? ' active' : '';
+    return `<button class="tab${active}" data-category="${esc(cat)}">${esc(label)}</button>`;
+  }).join('');
+}
+
+function renderSections(byCategory) {
+  const main = document.getElementById('menuSections');
+  const sections = [];
+  for (const [cat, items] of byCategory.entries()) {
+    const group = GROUP_MAP[cat] || '';
+    const label = titleCase(cat);
+    const rows = items.map(item => {
+      const soldOut = soldOutSet.has(item.id);
+      if (soldOut) return ''; // oculta agotados (mismo comportamiento que menu/index.html)
+      const desc = item.desc || item.description || '';
+      const descHtml = desc ? `<div class="item-desc">${esc(desc)}</div>` : '';
+      return `
+        <div class="item-row" data-item-id="${esc(item.id)}" data-category="${esc(cat)}">
+          <div class="item-main">
+            <div class="item-row-inner">
+              <span class="item-name">${esc(item.name)}</span>
+              <span class="item-leader"></span>
+              <span class="item-price">${fmtPrice(item.price)}</span>
+            </div>
+            ${descHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+    // Skip categoría si todas las rows son agotadas
+    if (!rows.trim()) continue;
+    sections.push(`
+      <section data-category="${esc(cat)}">
+        <div class="sec-hdr">
+          ${group ? `<div class="sec-group">${esc(group)}</div>` : ''}
+          <div class="sec-title">${esc(label)}</div>
+          <div class="sec-orn">
+            <span class="line"></span>
+            <svg viewBox="0 0 8 8"><path d="M4 0 L8 4 L4 8 L0 4 Z" fill="currentColor"/></svg>
+            <span class="line"></span>
+          </div>
+        </div>
+        <div class="item-list">${rows}</div>
+      </section>
+    `);
+  }
+  main.innerHTML = sections.join('');
+}
+
+function applyRestaurantBranding(data) {
+  if (data.display_name) {
+    document.title = data.display_name + ' — Menú';
+  }
+  if (data.hours) {
+    document.getElementById('hoursLabel').textContent = data.hours;
+  }
+  if (data.logo_url) {
+    document.getElementById('logoImg').src = data.logo_url;
+  }
+  if (data.business_type) {
+    document.getElementById('footerTag').textContent = data.business_type;
+  }
+  if (data.address) {
+    document.getElementById('footerAddr').innerHTML = esc(data.address);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════════════════════
+
+async function init() {
+  const [resData, prodData, soldOut] = await Promise.all([
+    fetchRestaurantData(),
+    fetchProducts(),
+    fetchSoldOut(),
+  ]);
+
+  if (!resData || !prodData) {
+    renderOutageFallback();
+    return;
+  }
+
+  restaurantData = resData;
+  products = prodData;
+  soldOutSet = soldOut;
+  productsByCategory = groupProducts(products);
+
+  applyRestaurantBranding(resData);
+  const categories = Array.from(productsByCategory.keys());
+  renderTabs(categories);
+  renderSections(productsByCategory);
+
+  document.getElementById('menuLoading').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Event handlers (tabs click; items+FAB+CTA se cablean en commits 4-7)
+// ══════════════════════════════════════════════════════════════
+
 document.getElementById('tabsScroll').addEventListener('click', (e) => {
   const tab = e.target.closest('.tab');
   if (!tab) return;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   const cat = tab.dataset.category;
-  const section = document.querySelector(`section[data-category="${cat}"]`);
+  const section = document.querySelector(`section[data-category="${CSS.escape(cat)}"]`);
   if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-// Placeholder click handler en items — commit 4 conecta al popup real.
 document.addEventListener('click', (e) => {
-  const row = e.target.closest('.item-row[data-placeholder]');
+  const row = e.target.closest('.item-row[data-item-id]');
   if (row) {
-    console.log('[thedeck] item click (placeholder):', row.querySelector('.item-name').textContent);
+    console.log('[thedeck] item click (popup wired en commit 4):', row.dataset.itemId);
   }
 });
 
-// FAB click placeholder — commit 7 conecta al chatbot.
 document.getElementById('fabWaiter').addEventListener('click', () => {
-  console.log('[thedeck] waiter FAB clicked (chatbot wired en commit 7)');
+  console.log('[thedeck] waiter FAB (chatbot wired en commit 7)');
 });
 
-// CTA click placeholder — commit 5 conecta al carrito.
 document.getElementById('ctaOrder').addEventListener('click', () => {
-  console.log('[thedeck] CTA clicked (cart wired en commit 5)');
+  console.log('[thedeck] CTA (cart wired en commit 5)');
 });
+
+// Kick off
+init();
 </script>
 </body>
 </html>
