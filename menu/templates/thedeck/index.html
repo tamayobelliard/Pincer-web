@@ -212,6 +212,130 @@
     text-transform: uppercase;
   }
 
+  /* ═══════════ Item popup modal ═══════════ */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 80; background: rgba(8,16,32,0.55);
+    backdrop-filter: blur(2px); display: none; animation: fadeIn 0.2s ease-out;
+  }
+  .modal-backdrop.open { display: block; }
+  .modal {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: 20px; top: auto; width: calc(100% - 28px); max-width: 560px;
+    max-height: 90vh; z-index: 81;
+    background: var(--color-surface); border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg); overflow: hidden;
+    display: none; flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+  }
+  .modal.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+
+  .modal-hero {
+    position: relative; height: 200px; overflow: hidden;
+    background: linear-gradient(135deg, #2a1d12 0%, #4a2b1a 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .modal-hero-chip {
+    position: absolute; top: 14px; left: 14px; z-index: 2;
+    background: rgba(246,239,218,0.95); color: var(--color-primary);
+    border: 1px solid var(--color-accent);
+    padding: 4px 12px; border-radius: var(--radius-pill);
+    font-family: var(--font-serif); font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .modal-hero-close {
+    position: absolute; top: 14px; right: 14px; z-index: 2;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(246,239,218,0.95); color: var(--color-primary);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--color-border);
+  }
+  .modal-hero-placeholder {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(201,169,97,0.2); border: 1px solid var(--color-accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--color-accent-2);
+  }
+
+  .modal-body { padding: 20px 22px; overflow-y: auto; flex: 1; }
+  .modal-title {
+    font-family: var(--font-heading); font-size: 22px; color: var(--color-primary);
+    font-weight: 600; line-height: 1.25; margin-bottom: 6px;
+  }
+  .modal-price {
+    font-family: var(--font-heading); font-size: 20px; color: var(--color-primary);
+    font-weight: 600; margin-bottom: 10px;
+  }
+  .modal-desc {
+    font-size: 13.5px; color: var(--color-text-soft); line-height: 1.55;
+    margin-bottom: 16px; text-wrap: pretty;
+  }
+
+  .modal-notes-label {
+    font-family: var(--font-serif); font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--color-accent-3); margin-bottom: 6px;
+  }
+  .modal-notes {
+    width: 100%; min-height: 60px; padding: 10px 12px;
+    background: var(--color-bg); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); resize: vertical;
+    font-family: var(--font-body); font-size: 13.5px; color: var(--color-text);
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .modal-notes:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(201,169,97,0.2); }
+  .modal-notes::placeholder { color: rgba(11,30,58,0.4); font-style: italic; }
+
+  .modal-qty-row {
+    display: flex; align-items: center; gap: 14px; margin-top: 18px;
+  }
+  .modal-qty-label {
+    font-family: var(--font-serif); font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--color-accent-3);
+  }
+  .qty {
+    display: inline-flex; align-items: center; border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill); overflow: hidden;
+  }
+  .qty button {
+    width: 36px; height: 36px; color: var(--color-primary); font-size: 18px;
+    transition: background 0.15s;
+  }
+  .qty button:hover { background: rgba(201,169,97,0.1); }
+  .qty button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .qty span {
+    min-width: 32px; text-align: center; font-family: var(--font-heading);
+    font-size: 16px; color: var(--color-primary);
+  }
+
+  .modal-actions {
+    padding: 14px 20px 18px; display: flex; gap: 10px;
+    border-top: 1px solid var(--color-border);
+    background: rgba(11,30,58,0.02);
+  }
+  .btn {
+    flex: 1; padding: 13px; border-radius: var(--radius-md);
+    font-family: var(--font-serif); font-size: 13px; letter-spacing: 2px;
+    text-transform: uppercase; font-weight: 600; transition: all 0.15s;
+  }
+  .btn-secondary {
+    background: transparent; color: var(--color-primary); border: 1px solid var(--color-border);
+  }
+  .btn-secondary:hover { background: rgba(11,30,58,0.04); }
+  .btn-primary {
+    background: var(--color-primary); color: var(--color-bg);
+    border: 1.5px solid var(--color-accent);
+    box-shadow: 0 8px 20px rgba(11,30,58,0.3);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary .tag {
+    background: var(--color-accent); color: var(--color-primary);
+    border-radius: 999px; padding: 2px 9px; font-size: 11px; letter-spacing: 0;
+  }
+
   /* ═══════════ Responsive tweaks ═══════════ */
   @media (min-width: 900px) {
     .arch-title { font-size: 36px; }
@@ -312,6 +436,45 @@
     <span>Ordenar Ahora</span>
     <span class="cta-badge" id="ctaCount">0</span>
   </button>
+</div>
+
+<!-- ═════════════ ITEM POPUP MODAL ═════════════ -->
+<div class="modal-backdrop" id="itemModalBackdrop"></div>
+<div class="modal" id="itemModal" role="dialog" aria-modal="true">
+  <div class="modal-hero" id="modalHero">
+    <div class="modal-hero-chip" id="modalHeroChip" hidden></div>
+    <button class="modal-hero-close" id="modalClose" aria-label="Cerrar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
+    </button>
+    <div class="modal-hero-placeholder" id="modalHeroPlaceholder">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2 L14 8 L20 9 L15.5 13 L17 19 L12 16 L7 19 L8.5 13 L4 9 L10 8 Z"/>
+      </svg>
+    </div>
+    <img id="modalHeroImg" src="" alt="" style="display:none;">
+  </div>
+  <div class="modal-body">
+    <div class="modal-title" id="modalTitle">—</div>
+    <div class="modal-price" id="modalPrice">—</div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <div class="modal-notes-label">Notas especiales (opcional)</div>
+    <textarea class="modal-notes" id="modalNotes" placeholder="Ej: sin cebolla, término medio, extra queso..." maxlength="200"></textarea>
+    <div class="modal-qty-row">
+      <span class="modal-qty-label">Cantidad</span>
+      <div class="qty">
+        <button id="qtyMinus" aria-label="Restar">−</button>
+        <span id="qtyValue">1</span>
+        <button id="qtyPlus" aria-label="Sumar">+</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn btn-secondary" id="modalCancel">Cancelar</button>
+    <button class="btn btn-primary" id="modalAdd">
+      <span>Agregar</span>
+      <span class="tag" id="modalAddTotal">RD$0</span>
+    </button>
+  </div>
 </div>
 
 <!-- ═════════════ FAB (Mesero Virtual) ═════════════ -->
@@ -606,11 +769,96 @@ document.getElementById('tabsScroll').addEventListener('click', (e) => {
   if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
+// ══════════════════════════════════════════════════════════════
+// Item popup modal
+// ══════════════════════════════════════════════════════════════
+let modalState = { itemId: null, qty: 1, item: null };
+
+function openItemModal(itemId) {
+  const item = products.find(p => String(p.id) === String(itemId));
+  if (!item) return;
+  modalState = { itemId, qty: 1, item };
+
+  document.getElementById('modalTitle').textContent = item.name;
+  document.getElementById('modalPrice').textContent = fmtPrice(item.price);
+  const desc = item.desc || item.description || '';
+  const descEl = document.getElementById('modalDesc');
+  descEl.textContent = desc;
+  descEl.style.display = desc ? '' : 'none';
+
+  // Chip con el nombre de la categoría
+  const chipEl = document.getElementById('modalHeroChip');
+  if (item.category) {
+    chipEl.textContent = titleCase(item.category);
+    chipEl.hidden = false;
+  } else {
+    chipEl.hidden = true;
+  }
+
+  // Hero image — si el producto tiene photo_url, mostrarlo; si no, placeholder
+  const heroImg = document.getElementById('modalHeroImg');
+  const heroPh = document.getElementById('modalHeroPlaceholder');
+  const photoUrl = item.photo_url || item.image_url || null;
+  if (photoUrl) {
+    heroImg.src = photoUrl;
+    heroImg.style.display = 'block';
+    heroPh.style.display = 'none';
+  } else {
+    heroImg.style.display = 'none';
+    heroPh.style.display = 'flex';
+  }
+
+  document.getElementById('modalNotes').value = '';
+  document.getElementById('qtyValue').textContent = '1';
+  updateModalAddTotal();
+
+  document.getElementById('itemModalBackdrop').classList.add('open');
+  document.getElementById('itemModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeItemModal() {
+  document.getElementById('itemModalBackdrop').classList.remove('open');
+  document.getElementById('itemModal').classList.remove('open');
+  document.body.style.overflow = '';
+  modalState = { itemId: null, qty: 1, item: null };
+}
+
+function updateModalAddTotal() {
+  if (!modalState.item) return;
+  const total = modalState.item.price * modalState.qty;
+  document.getElementById('modalAddTotal').textContent = fmtPrice(total);
+}
+
+function setQty(newQty) {
+  modalState.qty = Math.max(1, Math.min(99, newQty));
+  document.getElementById('qtyValue').textContent = modalState.qty;
+  document.getElementById('qtyMinus').disabled = modalState.qty <= 1;
+  updateModalAddTotal();
+}
+
+// Listeners del modal
 document.addEventListener('click', (e) => {
   const row = e.target.closest('.item-row[data-item-id]');
   if (row) {
-    console.log('[thedeck] item click (popup wired en commit 4):', row.dataset.itemId);
+    openItemModal(row.dataset.itemId);
   }
+});
+document.getElementById('modalClose').addEventListener('click', closeItemModal);
+document.getElementById('modalCancel').addEventListener('click', closeItemModal);
+document.getElementById('itemModalBackdrop').addEventListener('click', closeItemModal);
+document.getElementById('qtyMinus').addEventListener('click', () => setQty(modalState.qty - 1));
+document.getElementById('qtyPlus').addEventListener('click', () => setQty(modalState.qty + 1));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('itemModal').classList.contains('open')) {
+    closeItemModal();
+  }
+});
+
+// Commit 5 conecta modalAdd al carrito. Por ahora: feedback visual simple.
+document.getElementById('modalAdd').addEventListener('click', () => {
+  console.log('[thedeck] modalAdd (cart wired en commit 5):', modalState);
+  closeItemModal();
 });
 
 document.getElementById('fabWaiter').addEventListener('click', () => {
