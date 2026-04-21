@@ -458,6 +458,66 @@
     width: 100%; padding: 16px;
   }
 
+  /* ═══════════ Checkout modal ═══════════ */
+  .checkout-modal {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: 20px; width: calc(100% - 28px); max-width: 560px;
+    max-height: 90vh; z-index: 83;
+    background: var(--color-surface); border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border); border-top: 2px solid var(--color-accent);
+    box-shadow: var(--shadow-lg); overflow: hidden;
+    display: none; flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+  }
+  .checkout-modal.open { display: flex; }
+  .checkout-hdr {
+    padding: 22px 22px 10px; display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .checkout-title {
+    flex: 1; font-family: var(--font-heading); font-size: 22px;
+    color: var(--color-primary); font-weight: 500;
+  }
+  .checkout-body {
+    padding: 18px 22px; overflow-y: auto; flex: 1;
+  }
+  .checkout-field { margin-bottom: 14px; }
+  .checkout-field label {
+    display: block; font-family: var(--font-serif); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--color-accent-3);
+    margin-bottom: 6px;
+  }
+  .input {
+    width: 100%; padding: 11px 14px;
+    background: var(--color-bg); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 14px; color: var(--color-text);
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(201,169,97,0.2); }
+  .input::placeholder { color: rgba(11,30,58,0.4); font-style: italic; }
+  .input.invalid { border-color: var(--color-danger); }
+  .checkout-error {
+    color: var(--color-danger); font-size: 12px; margin-top: 4px;
+    font-family: var(--font-body);
+  }
+  .checkout-summary {
+    background: rgba(11,30,58,0.02); border-radius: var(--radius-md);
+    padding: 12px 14px; margin-bottom: 16px; border: 1px dotted var(--color-border);
+  }
+  .checkout-summary-row {
+    display: flex; justify-content: space-between; font-family: var(--font-serif);
+    font-size: 12.5px; color: var(--color-text-soft); margin-bottom: 4px;
+  }
+  .checkout-summary-row.total {
+    color: var(--color-primary); font-weight: 600; font-size: 14px;
+    border-top: 1px dotted var(--color-border); padding-top: 6px; margin-top: 6px;
+  }
+  .checkout-actions {
+    padding: 14px 22px 20px; display: flex; gap: 10px;
+    border-top: 1px solid var(--color-border); background: rgba(11,30,58,0.02);
+  }
+
   /* ═══════════ Responsive tweaks ═══════════ */
   @media (min-width: 900px) {
     .arch-title { font-size: 36px; }
@@ -582,6 +642,46 @@
     <button class="btn btn-primary" id="cartCheckout">
       <span>Completar Orden</span>
       <span class="tag" id="cartCheckoutTotal">RD$0</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═════════════ CHECKOUT MODAL ═════════════ -->
+<div class="modal-backdrop" id="checkoutBackdrop"></div>
+<div class="checkout-modal" id="checkoutModal" role="dialog" aria-modal="true">
+  <div class="checkout-hdr">
+    <button class="cart-back" id="checkoutBack" aria-label="Volver">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18 l-6 -6 l6 -6"/>
+      </svg>
+    </button>
+    <div class="checkout-title">Confirmar Pedido</div>
+  </div>
+  <div class="checkout-body">
+    <div class="checkout-summary" id="checkoutSummary"></div>
+    <div class="checkout-field">
+      <label for="chkName">Nombre</label>
+      <input class="input" type="text" id="chkName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+    </div>
+    <div class="checkout-field">
+      <label for="chkPhone">WhatsApp / Teléfono</label>
+      <input class="input" type="tel" id="chkPhone" placeholder="809-000-0000" maxlength="20" autocomplete="tel">
+      <div class="checkout-error" id="chkPhoneError" style="display:none;">Número inválido. Usa formato 809-000-0000.</div>
+    </div>
+    <div class="checkout-field">
+      <label for="chkTable">Número de mesa (opcional)</label>
+      <input class="input" type="text" id="chkTable" placeholder="Ej: 5" maxlength="10">
+    </div>
+    <div class="checkout-field">
+      <label for="chkNotes">Notas adicionales (opcional)</label>
+      <textarea class="input" id="chkNotes" rows="2" placeholder="Alergias, instrucciones especiales..." maxlength="200" style="resize:vertical;"></textarea>
+    </div>
+    <div class="checkout-error" id="checkoutGlobalError" style="display:none;"></div>
+  </div>
+  <div class="checkout-actions">
+    <button class="btn btn-secondary" id="checkoutCancel">Cancelar</button>
+    <button class="btn btn-primary" id="checkoutSubmit">
+      <span id="checkoutSubmitLabel">Enviar Pedido</span>
     </button>
   </div>
 </div>
@@ -1163,10 +1263,153 @@ document.getElementById('fabWaiter').addEventListener('click', () => {
 
 document.getElementById('ctaOrder').addEventListener('click', openCart);
 
-// Cart "Completar Orden" button — commit 6 conecta al checkout
-document.getElementById('cartCheckout').addEventListener('click', () => {
-  console.log('[thedeck] checkout (wired en commit 6):', cart);
-});
+// ══════════════════════════════════════════════════════════════
+// Checkout modal — cash/table flow (The Deck no tiene Azul merchant aún)
+// Commit futuro añade el flow de tarjeta cuando Chef Elly provisione Azul.
+// ══════════════════════════════════════════════════════════════
+
+function openCheckout() {
+  if (!cart.length) return;
+  // Pre-fill nombre + phone si ya los escribió antes (persistido en localStorage
+  // por visita — UX: cliente de The Deck probablemente pide varios días)
+  try {
+    document.getElementById('chkName').value = localStorage.getItem('thedeck_cust_name') || '';
+    document.getElementById('chkPhone').value = localStorage.getItem('thedeck_cust_phone') || '';
+  } catch (e) {}
+  document.getElementById('chkTable').value = '';
+  document.getElementById('chkNotes').value = '';
+  document.getElementById('chkPhoneError').style.display = 'none';
+  document.getElementById('checkoutGlobalError').style.display = 'none';
+  renderCheckoutSummary();
+  document.getElementById('checkoutBackdrop').classList.add('open');
+  document.getElementById('checkoutModal').classList.add('open');
+}
+
+function closeCheckout() {
+  document.getElementById('checkoutBackdrop').classList.remove('open');
+  document.getElementById('checkoutModal').classList.remove('open');
+}
+
+function renderCheckoutSummary() {
+  const el = document.getElementById('checkoutSummary');
+  const rows = cart.map(r => `
+    <div class="checkout-summary-row">
+      <span>${r.qty}× ${esc(r.name)}${r.notes ? ' <em style="opacity:0.7;font-size:11px;">(' + esc(r.notes) + ')</em>' : ''}</span>
+      <span>${fmtPrice(r.price * r.qty)}</span>
+    </div>
+  `).join('');
+  const total = cartTotal();
+  el.innerHTML = rows + `
+    <div class="checkout-summary-row total">
+      <span>Total</span>
+      <span>${fmtPrice(total)}</span>
+    </div>
+  `;
+}
+
+function isValidDRPhone(raw) {
+  const digits = (raw || '').replace(/\D/g, '');
+  // 10 digits (809/829/849 + 7) OR 11 digits starting with 1 (country code)
+  return (digits.length === 10 && /^(809|829|849)/.test(digits)) ||
+         (digits.length === 11 && digits.startsWith('1') && /^1(809|829|849)/.test(digits));
+}
+
+async function submitCheckout() {
+  const name = document.getElementById('chkName').value.trim();
+  const phoneRaw = document.getElementById('chkPhone').value.trim();
+  const table = document.getElementById('chkTable').value.trim();
+  const notesGlobal = document.getElementById('chkNotes').value.trim();
+  const phoneErr = document.getElementById('chkPhoneError');
+  const globalErr = document.getElementById('checkoutGlobalError');
+  const phoneInput = document.getElementById('chkPhone');
+  const nameInput = document.getElementById('chkName');
+  const submitBtn = document.getElementById('checkoutSubmit');
+  const submitLabel = document.getElementById('checkoutSubmitLabel');
+
+  phoneErr.style.display = 'none';
+  globalErr.style.display = 'none';
+  phoneInput.classList.remove('invalid');
+  nameInput.classList.remove('invalid');
+
+  if (!name) {
+    nameInput.classList.add('invalid');
+    nameInput.focus();
+    return;
+  }
+  if (!isValidDRPhone(phoneRaw)) {
+    phoneErr.style.display = 'block';
+    phoneInput.classList.add('invalid');
+    phoneInput.focus();
+    return;
+  }
+
+  // Persistir para próximas visitas
+  try {
+    localStorage.setItem('thedeck_cust_name', name);
+    localStorage.setItem('thedeck_cust_phone', phoneRaw);
+  } catch (e) {}
+
+  submitBtn.disabled = true;
+  submitLabel.textContent = 'Enviando…';
+
+  const combinedNotes = [
+    table ? 'Mesa: ' + table : '',
+    notesGlobal
+  ].filter(Boolean).join(' · ');
+
+  const orderPayload = {
+    restaurant_slug: SLUG,
+    items: cart.map(c => ({
+      id: c.id, name: c.name, price: c.price, qty: c.qty, notes: c.notes || '',
+    })),
+    total: cartTotal(),
+    order_type: 'dine_in',
+    status: 'pending',
+    customer_name: name,
+    customer_phone: phoneRaw.replace(/\D/g, ''),
+    notes: combinedNotes || null,
+  };
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/orders', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'return=representation' },
+      body: JSON.stringify(orderPayload),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error('order insert failed', res.status, errText);
+      globalErr.textContent = 'No pudimos enviar tu pedido. Intenta de nuevo.';
+      globalErr.style.display = 'block';
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Enviar Pedido';
+      return;
+    }
+    const rows = await res.json();
+    const orderId = (rows && rows[0] && rows[0].id) || null;
+
+    // Commit 8 reemplaza el alert por pantalla de confirmación elegante
+    console.log('[thedeck] order submitted:', orderId);
+    cart = [];
+    updateCtaAndBadge();
+    closeCheckout();
+    closeCart();
+    alert('¡Pedido enviado! Número de orden: ' + (orderId || '-') + '\nTe notificaremos por WhatsApp.');
+  } catch (e) {
+    console.error('checkout error', e);
+    globalErr.textContent = 'Error de conexión. Verifica tu internet e intenta de nuevo.';
+    globalErr.style.display = 'block';
+    submitBtn.disabled = false;
+    submitLabel.textContent = 'Enviar Pedido';
+  }
+}
+
+document.getElementById('cartCheckout').addEventListener('click', openCheckout);
+document.getElementById('checkoutBack').addEventListener('click', closeCheckout);
+document.getElementById('checkoutCancel').addEventListener('click', closeCheckout);
+document.getElementById('checkoutBackdrop').addEventListener('click', closeCheckout);
+document.getElementById('checkoutSubmit').addEventListener('click', submitCheckout);
 
 // Kick off
 init();
