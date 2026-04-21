@@ -518,6 +518,123 @@
     border-top: 1px solid var(--color-border); background: rgba(11,30,58,0.02);
   }
 
+  /* ═══════════ Chat panel (mesero virtual) ═══════════ */
+  .chat-panel {
+    position: fixed; right: 20px; bottom: 88px; z-index: 70;
+    width: calc(100% - 40px); max-width: 400px; height: 560px; max-height: 75vh;
+    background: var(--color-bg); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg); border: 1px solid var(--color-border);
+    overflow: hidden; display: none; flex-direction: column;
+    animation: chatSlideUp 0.25s ease-out;
+  }
+  .chat-panel.open { display: flex; }
+  @keyframes chatSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .chat-header {
+    position: relative; padding: 14px 14px 12px; color: var(--color-bg);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .chat-header-tile { position: absolute; inset: 0; background: var(--color-primary); }
+  .chat-header-tile svg { width: 100%; height: 100%; display: block; }
+  .chat-header > * { position: relative; z-index: 2; }
+  .chat-logo {
+    width: 38px; height: 38px; border-radius: 50%; background: var(--color-bg);
+    border: 1.5px solid var(--color-accent); padding: 2px; flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .chat-logo img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+  .chat-title-wrap { flex: 1 1 auto; min-width: 0; }
+  .chat-name {
+    font-family: var(--font-heading); font-size: 15px; letter-spacing: 0.3px; line-height: 1.15;
+  }
+  .chat-role {
+    font-size: 9.5px; letter-spacing: 2px; color: var(--color-accent-2);
+    text-transform: uppercase; margin-top: 3px; display: flex; align-items: center; gap: 5px;
+    font-family: var(--font-serif);
+  }
+  .chat-role .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
+  .chat-close {
+    background: transparent; border: 1px solid rgba(246,239,218,0.3); color: var(--color-bg);
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+    flex-shrink: 0;
+  }
+
+  .chat-msgs {
+    flex: 1; overflow-y: auto; padding: 16px 14px 8px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .bubble-bot, .bubble-user {
+    max-width: 84%; padding: 10px 13px; font-size: 13.5px; line-height: 1.45;
+    border-radius: 16px;
+  }
+  .bubble-bot {
+    align-self: flex-start; background: var(--color-surface); color: var(--color-primary);
+    border: 1px solid var(--color-border); border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(11,30,58,0.06);
+  }
+  .bubble-user {
+    align-self: flex-end; background: var(--color-primary); color: var(--color-bg);
+    border-bottom-right-radius: 4px;
+  }
+  .bubble-outage {
+    align-self: flex-start; background: rgba(181,74,58,0.08);
+    color: var(--color-danger); border: 1px solid rgba(181,74,58,0.3);
+    max-width: 90%; padding: 10px 13px; font-size: 13px; line-height: 1.45;
+    border-radius: 16px; border-bottom-left-radius: 4px;
+  }
+  .typing-dots { display: inline-flex; gap: 3px; padding: 2px 0; }
+  .typing-dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--color-text-mute);
+    animation: typingDot 1.2s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typingDot {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  .chat-replies {
+    padding: 4px 14px 10px; display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .chat-reply {
+    background: var(--color-surface); border: 1px solid var(--color-accent);
+    color: var(--color-primary); border-radius: var(--radius-pill);
+    padding: 8px 14px; font-family: var(--font-serif); font-size: 12.5px;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 1px 2px rgba(11,30,58,0.06); white-space: nowrap;
+  }
+  .chat-reply:hover { background: var(--color-accent-2); }
+
+  .chat-input-row {
+    padding: 10px 12px 12px; display: flex; gap: 8px; align-items: center;
+    border-top: 1px solid var(--color-border); background: rgba(11,30,58,0.02);
+    flex-shrink: 0;
+  }
+  .chat-input-row input {
+    flex: 1; border: 1px solid var(--color-border); background: var(--color-surface);
+    border-radius: var(--radius-pill); padding: 10px 14px; font-size: 13.5px;
+    color: var(--color-primary); outline: none; font-family: var(--font-body);
+  }
+  .chat-input-row input:focus {
+    border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(201,169,97,0.18);
+  }
+  .chat-input-row input::placeholder {
+    color: rgba(11,30,58,0.4); font-style: italic; font-family: var(--font-serif);
+  }
+  .chat-send {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary);
+    color: var(--color-bg); border: 1.5px solid var(--color-accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
   /* ═══════════ Responsive tweaks ═══════════ */
   @media (min-width: 900px) {
     .arch-title { font-size: 36px; }
@@ -620,6 +737,39 @@
     <span>Ordenar Ahora</span>
     <span class="cta-badge" id="ctaCount">0</span>
   </button>
+</div>
+
+<!-- ═════════════ CHAT PANEL (Mesero Virtual) ═════════════ -->
+<div class="chat-panel" id="chatPanel" role="dialog" aria-modal="true">
+  <div class="chat-header">
+    <div class="chat-header-tile">
+      <svg aria-hidden="true"><rect width="100%" height="100%" fill="url(#tile-hdr)"/></svg>
+    </div>
+    <div class="chat-logo">
+      <img src="https://tcwujslibopzfyufhjsr.supabase.co/storage/v1/object/public/product-images/logos/thedeck.jpg" alt="The Deck" onerror="this.style.display='none'">
+    </div>
+    <div class="chat-title-wrap">
+      <div class="chat-name">Mesero Virtual</div>
+      <div class="chat-role"><span class="dot"></span> En línea · The Deck</div>
+    </div>
+    <button class="chat-close" id="chatCloseBtn" aria-label="Cerrar chat">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
+    </button>
+  </div>
+  <div class="gold-rule"></div>
+  <div class="chat-msgs" id="chatMsgs">
+    <!-- Populado por chat logic -->
+  </div>
+  <div class="chat-replies" id="chatReplies"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Escribe tu pregunta..." maxlength="200" autocomplete="off">
+    <button class="chat-send" id="chatSendBtn" aria-label="Enviar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 2 L11 13"/>
+        <path d="M22 2 L15 22 L11 13 L2 9 L22 2 Z" fill="currentColor" fill-opacity="0.15"/>
+      </svg>
+    </button>
+  </div>
 </div>
 
 <!-- ═════════════ CART PANEL ═════════════ -->
@@ -1257,8 +1407,211 @@ document.getElementById('cartBack').addEventListener('click', closeCart);
 window.updateCartQty = updateCartQty;
 window.removeFromCart = removeFromCart;
 
+// ══════════════════════════════════════════════════════════════
+// Chatbot (mesero virtual) — wire al endpoint /api/waiter-chat
+// Con fail-closed handler (commit 2fb78ef del genérico) adaptado al design.
+// ══════════════════════════════════════════════════════════════
+
+let chatHistory = [];
+let chatSessionId = null;
+
+function getChatSessionId() {
+  if (chatSessionId) return chatSessionId;
+  try {
+    chatSessionId = sessionStorage.getItem('thedeck_chat_session') ||
+                    (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
+    sessionStorage.setItem('thedeck_chat_session', chatSessionId);
+  } catch (e) {
+    chatSessionId = 'sid-' + Date.now();
+  }
+  return chatSessionId;
+}
+
+// Build menuData string en formato que /api/waiter-chat espera
+// (validación server-side commit 9c3073d requiere "[id:" markers)
+function buildMenuData() {
+  const lines = [];
+  for (const [cat, items] of productsByCategory.entries()) {
+    for (const item of items) {
+      if (soldOutSet.has(item.id)) continue;
+      const desc = item.desc || item.description || '';
+      lines.push(`${cat}: [id:${item.id}] ${item.name} - RD$${item.price} - ${desc}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderBotMessage(text, replies) {
+  const el = document.createElement('div');
+  el.className = 'bubble-bot';
+  el.textContent = text;
+  document.getElementById('chatMsgs').appendChild(el);
+  renderReplies(replies || []);
+  scrollChatToBottom();
+}
+
+function renderUserMessage(text) {
+  const el = document.createElement('div');
+  el.className = 'bubble-user';
+  el.textContent = text;
+  document.getElementById('chatMsgs').appendChild(el);
+  document.getElementById('chatReplies').innerHTML = '';
+  scrollChatToBottom();
+}
+
+function renderOutageBubble(message) {
+  const el = document.createElement('div');
+  el.className = 'bubble-outage';
+  el.innerHTML = '⚠️ ' + esc(message);
+  document.getElementById('chatMsgs').appendChild(el);
+  document.getElementById('chatReplies').innerHTML = '';
+  scrollChatToBottom();
+}
+
+function showTyping() {
+  const el = document.createElement('div');
+  el.className = 'bubble-bot';
+  el.id = 'chatTyping';
+  el.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+  document.getElementById('chatMsgs').appendChild(el);
+  scrollChatToBottom();
+}
+
+function hideTyping() {
+  const el = document.getElementById('chatTyping');
+  if (el) el.remove();
+}
+
+function scrollChatToBottom() {
+  const msgs = document.getElementById('chatMsgs');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function renderReplies(labels) {
+  const el = document.getElementById('chatReplies');
+  if (!labels.length) { el.innerHTML = ''; return; }
+  el.innerHTML = labels.map(l => `<button class="chat-reply" data-reply="${esc(l)}">${esc(l)}</button>`).join('');
+}
+
+// Parsing light de respuesta del bot — extrae [BUTTONS: a | b | c] y [ADD_TO_CART: id | qty | notes]
+function parseBotResponse(text) {
+  const result = { clean: text, buttons: [], cartAdds: [] };
+
+  const btnMatch = text.match(/\[BUTTONS:\s*([^\]]+)\]/);
+  if (btnMatch) {
+    result.buttons = btnMatch[1].split('|').map(s => s.trim()).filter(Boolean);
+    result.clean = result.clean.replace(btnMatch[0], '').trim();
+  }
+  const addRegex = /\[ADD_TO_CART:\s*([^\]]+)\]/g;
+  let m;
+  while ((m = addRegex.exec(text)) !== null) {
+    const parts = m[1].split('|').map(s => s.trim());
+    const id = parts[0];
+    const qty = parts[1] && /^\d+$/.test(parts[1]) ? parseInt(parts[1], 10) : 1;
+    const note = parts[1] && !/^\d+$/.test(parts[1]) ? parts[1] : (parts[2] || '');
+    result.cartAdds.push({ id, qty, note });
+  }
+  result.clean = result.clean.replace(/\[ADD_TO_CART:[^\]]+\]/g, '').replace(/\[SHOW_PHOTO:[^\]]+\]/g, '').trim();
+
+  return result;
+}
+
+async function sendChatMessage(userText) {
+  if (!userText.trim()) return;
+  renderUserMessage(userText);
+  chatHistory.push({ role: 'user', content: userText });
+  showTyping();
+  document.getElementById('chatSendBtn').disabled = true;
+
+  try {
+    const payload = {
+      messages: chatHistory.slice(-10),
+      menuData: buildMenuData(),
+      restaurant_slug: SLUG,
+      restaurant_name: (restaurantData && restaurantData.display_name) || 'The Deck',
+      browserLanguage: navigator.language || 'es',
+      sessionId: getChatSessionId(),
+    };
+    const res = await fetch('/api/waiter-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
+    });
+    hideTyping();
+    document.getElementById('chatSendBtn').disabled = false;
+
+    // Fail-closed 503 handler — port de menu/index.html commit 2fb78ef
+    if (res.status === 503) {
+      renderOutageBubble('En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.');
+      return;
+    }
+    if (!res.ok) {
+      renderOutageBubble('Tardé un poco, intenta de nuevo.');
+      return;
+    }
+    const data = await res.json();
+    const raw = data.answer || 'Algo salió mal. Intenta de nuevo.';
+    chatHistory.push({ role: 'assistant', content: raw });
+    const parsed = parseBotResponse(raw);
+    renderBotMessage(parsed.clean, parsed.buttons);
+
+    // Ejecutar [ADD_TO_CART] comandos del bot — busca el item real en products,
+    // agrega al carrito si no está sold out
+    parsed.cartAdds.forEach(ci => {
+      const item = products.find(p => String(p.id) === String(ci.id));
+      if (!item) return;
+      if (soldOutSet.has(item.id)) {
+        renderBotMessage(`❌ Lo siento, ${item.name} se acaba de agotar.`, []);
+        return;
+      }
+      addToCart(item, ci.qty, ci.note);
+      renderBotMessage(`✅ ${ci.qty > 1 ? ci.qty + 'x ' : ''}${item.name} agregado a tu pedido${ci.note ? ' (' + ci.note + ')' : ''}`, []);
+    });
+  } catch (e) {
+    hideTyping();
+    document.getElementById('chatSendBtn').disabled = false;
+    renderOutageBubble('Error de conexión. Intenta de nuevo.');
+  }
+}
+
+function openChat() {
+  const panel = document.getElementById('chatPanel');
+  panel.classList.add('open');
+  // Primera apertura → welcome message
+  if (!chatHistory.length) {
+    const name = (restaurantData && restaurantData.display_name) || 'The Deck';
+    renderBotMessage(`¡Bienvenido a ${name}! 🍷 Soy tu mesero virtual. ¿Te ayudo a elegir del menú?`, [
+      'Guíame tú', 'Voy a ver el menú', 'Recomiéndame algo',
+    ]);
+  }
+  setTimeout(() => document.getElementById('chatInput').focus(), 50);
+}
+
+function closeChat() {
+  document.getElementById('chatPanel').classList.remove('open');
+}
+
 document.getElementById('fabWaiter').addEventListener('click', () => {
-  console.log('[thedeck] waiter FAB (chatbot wired en commit 7)');
+  const panel = document.getElementById('chatPanel');
+  if (panel.classList.contains('open')) closeChat();
+  else openChat();
+});
+document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
+document.getElementById('chatSendBtn').addEventListener('click', () => {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendChatMessage(text);
+});
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('chatSendBtn').click();
+});
+document.getElementById('chatReplies').addEventListener('click', (e) => {
+  const r = e.target.closest('.chat-reply');
+  if (!r) return;
+  sendChatMessage(r.dataset.reply);
 });
 
 document.getElementById('ctaOrder').addEventListener('click', openCart);
