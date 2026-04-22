@@ -2960,6 +2960,10 @@ const ORDER_PREFIX = SLUG.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4
 
 // ── Payment toggle (set dynamically from restaurant_users_public.payment_enabled) ──
 var PAYMENT_ENABLED = false;
+// Sprint-2 C3: default true respeta convención legacy (5 restaurantes).
+// thedeck y futuros con precios sin ITBIS se leen del campo
+// prices_include_tax del view público.
+var PRICES_INCLUDE_TAX = true;
 var BUSINESS_TYPE = '';
 
 // ── Debug logger ──
@@ -4072,9 +4076,13 @@ async function placeOrder() {
       source: item.source || 'menu'
     }));
 
-    const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
-    const deliveryFeeCharged = getDeliveryFee();
-    const total = itemsTotal + deliveryFeeCharged;
+    // Sprint-2 C3: orders.total = precio final cobrado al cliente.
+    // Con PRICES_INCLUDE_TAX=false suma ITBIS al subtotal. Fórmula
+    // simétrica habilita C5 dashboard sin condicional.
+    const _t1 = computeTotals();
+    const itemsTotal = _t1.itemsSum;
+    const deliveryFeeCharged = _t1.deliveryFee;
+    const total = _t1.grand;
 
     const nextNum = await getNextOrderNumber();
 
@@ -4420,16 +4428,23 @@ function openCheckoutModal() {
     </div>`;
   });
   summaryDiv.innerHTML = html;
-  var fee = getDeliveryFee();
-  var grandTotal = total + fee;
+  // Sprint-2 C3: checkout modal desglosa ITBIS si PRICES_INCLUDE_TAX=false.
+  var tChk = computeTotals();
   var totalHTML = '';
-  if (fee > 0) {
-    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Subtotal</span><span>RD$' + total.toLocaleString() + '</span></div>';
-    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Delivery</span><span>RD$' + fee.toLocaleString() + '</span></div>';
+  if (!PRICES_INCLUDE_TAX) {
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Subtotal</span><span>RD$' + tChk.subtotal.toLocaleString() + '</span></div>';
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>ITBIS (18%)</span><span>RD$' + tChk.tax.toLocaleString() + '</span></div>';
   }
-  totalHTML += '<span>TOTAL</span><span>RD$' + grandTotal.toLocaleString() + '</span>';
+  if (tChk.deliveryFee > 0) {
+    if (PRICES_INCLUDE_TAX) {
+      totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Subtotal</span><span>RD$' + tChk.itemsSum.toLocaleString() + '</span></div>';
+    }
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Delivery</span><span>RD$' + tChk.deliveryFee.toLocaleString() + '</span></div>';
+  }
+  var chkLabel = PRICES_INCLUDE_TAX ? 'TOTAL' : 'TOTAL A PAGAR';
+  totalHTML += '<span>' + chkLabel + '</span><span>RD$' + tChk.grand.toLocaleString() + '</span>';
   totalDiv.innerHTML = totalHTML;
-  payBtn.textContent = 'Pagar RD$' + grandTotal.toLocaleString();
+  payBtn.textContent = 'Pagar RD$' + tChk.grand.toLocaleString();
   payBtn.disabled = false;
 
   // Pre-fill phone from existing field
@@ -4617,23 +4632,59 @@ function getDeliveryFee() {
   return (selectedOrderType === 'delivery') ? restaurantDeliveryFee : 0;
 }
 
-function updateTotalWithDeliveryFee() {
-  var itemsTotal = order.reduce(function(s, i) { return s + i.price * i.qty; }, 0);
+// Sprint-2 C3: computeTotals(itemsSum, deliveryFee) calcula los valores
+// correctos según PRICES_INCLUDE_TAX. orders.total = grand en todos los
+// casos (precio final cobrado al cliente). Fórmula simétrica habilita
+// C5 dashboard: itbis = total - total / 1.18.
+var TAX_RATE = 0.18;
+function computeTotals() {
+  var itemsSum = order.reduce(function(s, i) { return s + i.price * i.qty; }, 0);
   var fee = getDeliveryFee();
-  var grandTotal = itemsTotal + fee;
-
-  var totalDiv = document.getElementById('orderTotal');
-  if (totalDiv && order.length > 0) {
-    var html = '';
-    if (fee > 0) {
-      html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
-        '<span>Subtotal:</span><span>RD$' + itemsTotal.toLocaleString() + '</span></div>';
-      html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;border-top:1px dashed #e2e8f0;">' +
-        '<span>Delivery:</span><span>RD$' + fee.toLocaleString() + '</span></div>';
-    }
-    html += '<div class="order-total"><span>TOTAL:</span><span>RD$' + grandTotal.toLocaleString() + '</span></div>';
-    totalDiv.innerHTML = html;
+  if (PRICES_INCLUDE_TAX) {
+    var grand1 = itemsSum + fee;
+    return {
+      subtotal: itemsSum,
+      tax: Math.round(grand1 - grand1 / (1 + TAX_RATE)),
+      grand: grand1,
+      itemsSum: itemsSum,
+      deliveryFee: fee,
+    };
   }
+  var tax2 = Math.round(itemsSum * TAX_RATE);
+  return {
+    subtotal: itemsSum,
+    tax: tax2,
+    grand: itemsSum + tax2 + fee,
+    itemsSum: itemsSum,
+    deliveryFee: fee,
+  };
+}
+
+function updateTotalWithDeliveryFee() {
+  var t = computeTotals();
+  var totalDiv = document.getElementById('orderTotal');
+  if (!totalDiv || order.length === 0) return;
+
+  var html = '';
+  // Desglose ITBIS solo cuando los precios NO lo incluyen (thedeck).
+  if (!PRICES_INCLUDE_TAX) {
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
+      '<span>Subtotal:</span><span>RD$' + t.subtotal.toLocaleString() + '</span></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
+      '<span>ITBIS (18%):</span><span>RD$' + t.tax.toLocaleString() + '</span></div>';
+  }
+  if (t.deliveryFee > 0) {
+    var borderTop = (!PRICES_INCLUDE_TAX) ? '' : 'border-top:1px dashed #e2e8f0;';
+    if (PRICES_INCLUDE_TAX) {
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
+        '<span>Subtotal:</span><span>RD$' + t.itemsSum.toLocaleString() + '</span></div>';
+    }
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;' + borderTop + '">' +
+      '<span>Delivery:</span><span>RD$' + t.deliveryFee.toLocaleString() + '</span></div>';
+  }
+  var label = PRICES_INCLUDE_TAX ? 'TOTAL:' : 'TOTAL A PAGAR:';
+  html += '<div class="order-total"><span>' + label + '</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
+  totalDiv.innerHTML = html;
 }
 
 function isInAppBrowser() {
@@ -5156,9 +5207,11 @@ async function submitOrderToSupabase(status, azulOrderId, customerName) {
       source: item.source || 'menu'
     }));
 
-    const itemsTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
-    const deliveryFeeCharged = getDeliveryFee();
-    const total = itemsTotal + deliveryFeeCharged;
+    // Sprint-2 C3: mismo patrón que ruta sin-pago (line ~4079).
+    const _t2 = computeTotals();
+    const itemsTotal = _t2.itemsSum;
+    const deliveryFeeCharged = _t2.deliveryFee;
+    const total = _t2.grand;
 
     const nextNum = await getNextOrderNumber();
 
@@ -6460,6 +6513,8 @@ async function init() {
   enabledOrderTypes = Array.isArray(rawOT) && rawOT.length > 0 ? rawOT : ['dine_in'];
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
   PAYMENT_ENABLED = !!(restaurantData.payment_enabled);
+  // Sprint-2 C3: fallback a true cuando el campo no vino (pre-migration).
+  PRICES_INCLUDE_TAX = restaurantData.prices_include_tax !== false;
   BUSINESS_TYPE = restaurantData.business_type || '';
   console.log('[Pincer Debug] payment_enabled:', restaurantData.payment_enabled, 'business_type:', restaurantData.business_type);
   console.log('[Pincer Debug] PAYMENT_ENABLED:', PAYMENT_ENABLED, 'BUSINESS_TYPE:', BUSINESS_TYPE);

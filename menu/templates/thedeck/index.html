@@ -987,7 +987,8 @@
     <div class="footer-title">The Deck</div>
     <div class="footer-tag" id="footerTag">Restaurante</div>
     <div class="footer-addr" id="footerAddr">Residencial Thomas IV, Av. Rafael Vidal 51<br>Santiago de los Caballeros, R.D.</div>
-    <div class="footer-tax">Impuestos no incluidos</div>
+    <!-- Sprint-2 C3: línea "Impuestos no incluidos" eliminada — el
+         desglose en Tu Pedido + checkout ahora comunica ITBIS explícito. -->
     <div class="footer-powered"><span>Powered by</span><span style="font-family:var(--font-heading);font-size:11px;letter-spacing:1px;">Pincer</span></div>
   </div>
 </div>
@@ -1281,6 +1282,10 @@ let enabledOrderTypes = ['dine_in'];
 let restaurantDeliveryFee = 0;
 let PAYMENT_ENABLED = false;
 let BUSINESS_TYPE = '';
+// Sprint-2 C3: define cómo se muestra el total en el cart + checkout
+// y qué valor va en orders.total. Default true (convención legacy).
+let PRICES_INCLUDE_TAX = true;
+const TAX_RATE = 0.18;
 
 // Chat session id — alineado al genérico (menu/index.html:5684-5686)
 const CHAT_SESSION_KEY = 'pincer_chat_session_' + SLUG;
@@ -2161,6 +2166,9 @@ async function init() {
   restaurantDeliveryFee = restaurantData.delivery_fee || 0;
   PAYMENT_ENABLED = !!(restaurantData.payment_enabled);
   BUSINESS_TYPE = restaurantData.business_type || '';
+  // Sprint-2 C3: fallback a true si el campo no vino (restaurante
+  // pre-migration). Convención legacy.
+  PRICES_INCLUDE_TAX = restaurantData.prices_include_tax !== false;
 
   // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in.
   // Case-insensitive (parity con hotfix #1.2 en menu/index.html:6398).
@@ -2457,6 +2465,88 @@ function cartTotal() {
   return cart.reduce((sum, r) => sum + (r.price * r.qty), 0);
 }
 
+// Sprint-2 C3: computeTotals calcula los 3 valores (subtotal, tax,
+// grand) según si los precios ya incluyen ITBIS o si hay que sumarlo.
+// En AMBOS casos el "grand" es el precio final cobrado al cliente —
+// es el valor que va a orders.total. Esto permite que C5 (dashboard)
+// use una sola fórmula simétrica: itbis = total - total/1.18.
+//
+// Con prices_include_tax=true (convención legacy):
+//   subtotal = sum(items * qty)            ← ya incluye ITBIS
+//   grand    = subtotal + deliveryFee       ← el cart no suma tax extra
+//   tax      = grand - grand / 1.18         ← reverse math, solo para display
+//
+// Con prices_include_tax=false (thedeck):
+//   subtotal = sum(items * qty)            ← sin ITBIS
+//   tax      = round(subtotal * 0.18)       ← ITBIS sobre items (no sobre delivery)
+//   grand    = subtotal + tax + deliveryFee
+function computeTotals() {
+  const itemsSum = cartTotal();
+  const deliveryFeeVal = getDeliveryFee();
+  if (PRICES_INCLUDE_TAX) {
+    const grand = itemsSum + deliveryFeeVal;
+    return {
+      subtotal: itemsSum,
+      tax: Math.round(grand - grand / (1 + TAX_RATE)),
+      grand: grand,
+      itemsSum: itemsSum,
+      deliveryFee: deliveryFeeVal,
+    };
+  } else {
+    const tax = Math.round(itemsSum * TAX_RATE);
+    const grand = itemsSum + tax + deliveryFeeVal;
+    return {
+      subtotal: itemsSum,
+      tax: tax,
+      grand: grand,
+      itemsSum: itemsSum,
+      deliveryFee: deliveryFeeVal,
+    };
+  }
+}
+
+// Sprint-2 C3: render del bloque de totales — condicional según
+// PRICES_INCLUDE_TAX. Cuando true: 1 línea (TOTAL). Cuando false:
+// 3 líneas (SUBTOTAL / ITBIS / TOTAL A PAGAR) + delivery si aplica.
+function renderTotalsBlock() {
+  const t = computeTotals();
+  const feeRow = t.deliveryFee > 0 ? `
+    <div class="cart-totals-row">
+      <span class="cart-totals-label">Delivery</span>
+      <span class="cart-totals-value">${fmtPrice(t.deliveryFee)}</span>
+    </div>` : '';
+
+  if (PRICES_INCLUDE_TAX) {
+    return `
+      <div class="cart-totals">
+        ${feeRow}
+        ${feeRow ? '<div class="cart-totals-divider"></div>' : ''}
+        <div class="cart-totals-row grand">
+          <span class="cart-totals-label">Total</span>
+          <span class="cart-totals-value">${fmtPrice(t.grand)}</span>
+        </div>
+      </div>`;
+  }
+  // !PRICES_INCLUDE_TAX → desglose completo
+  return `
+    <div class="cart-totals">
+      <div class="cart-totals-row">
+        <span class="cart-totals-label">Subtotal</span>
+        <span class="cart-totals-value">${fmtPrice(t.subtotal)}</span>
+      </div>
+      <div class="cart-totals-row">
+        <span class="cart-totals-label">ITBIS (18%)</span>
+        <span class="cart-totals-value">${fmtPrice(t.tax)}</span>
+      </div>
+      ${feeRow}
+      <div class="cart-totals-divider"></div>
+      <div class="cart-totals-row grand">
+        <span class="cart-totals-label">Total a pagar</span>
+        <span class="cart-totals-value">${fmtPrice(t.grand)}</span>
+      </div>
+    </div>`;
+}
+
 function cartItemCount() {
   return cart.reduce((sum, r) => sum + r.qty, 0);
 }
@@ -2542,25 +2632,11 @@ function renderCart() {
         </div>
       </div>
     `;
-  }).join('') + `
-    <div class="cart-totals">
-      <div class="cart-totals-row">
-        <span class="cart-totals-label">Subtotal</span>
-        <span class="cart-totals-value">${fmtPrice(cartTotal())}</span>
-      </div>
-      <div class="cart-totals-row">
-        <span class="cart-totals-label" style="font-style:italic;">Impuestos no incluidos</span>
-        <span class="cart-totals-value" style="font-size:12px;color:var(--color-text-mute);">—</span>
-      </div>
-      <div class="cart-totals-divider"></div>
-      <div class="cart-totals-row grand">
-        <span class="cart-totals-label">Total a pagar</span>
-        <span class="cart-totals-value">${fmtPrice(cartTotal())}</span>
-      </div>
-    </div>
-  `;
+  }).join('') + renderTotalsBlock();
 
-  document.getElementById('cartCheckoutTotal').textContent = fmtPrice(cartTotal());
+  // El botón "Completar Orden" muestra el TOTAL FINAL (grand), no el
+  // subtotal. Para thedeck (tax exclusivo): subtotal + ITBIS sumados.
+  document.getElementById('cartCheckoutTotal').textContent = fmtPrice(computeTotals().grand);
   footer.style.display = '';
 }
 
@@ -2927,19 +3003,30 @@ function renderCheckoutSummary() {
       <span>${fmtPrice(r.price * r.qty)}</span>
     </div>
   `).join('');
-  const itemsTotal = cartTotal();
-  const fee = getDeliveryFee();
-  const grandTotal = itemsTotal + fee;
-  const feeRow = fee > 0 ? `
+  // Sprint-2 C3: mismo desglose condicional que en "Tu Pedido".
+  const t = computeTotals();
+  const feeRow = t.deliveryFee > 0 ? `
     <div class="checkout-summary-row">
       <span>Delivery</span>
-      <span>${fmtPrice(fee)}</span>
-    </div>
-  ` : '';
-  el.innerHTML = rows + feeRow + `
+      <span>${fmtPrice(t.deliveryFee)}</span>
+    </div>` : '';
+  let taxBlock = '';
+  if (!PRICES_INCLUDE_TAX) {
+    taxBlock = `
+      <div class="checkout-summary-row">
+        <span>Subtotal</span>
+        <span>${fmtPrice(t.subtotal)}</span>
+      </div>
+      <div class="checkout-summary-row">
+        <span>ITBIS (18%)</span>
+        <span>${fmtPrice(t.tax)}</span>
+      </div>`;
+  }
+  const totalLabel = PRICES_INCLUDE_TAX ? 'Total' : 'Total a pagar';
+  el.innerHTML = rows + taxBlock + feeRow + `
     <div class="checkout-summary-row total">
-      <span>Total</span>
-      <span>${fmtPrice(grandTotal)}</span>
+      <span>${totalLabel}</span>
+      <span>${fmtPrice(t.grand)}</span>
     </div>
   `;
 }
@@ -3026,9 +3113,13 @@ async function submitCheckout() {
     notes: item.notes || null,
     source: item.source || 'menu'
   }));
-  const itemsTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const deliveryFeeCharged = getDeliveryFee();
-  const total = itemsTotal + deliveryFeeCharged;
+  // Sprint-2 C3: orders.total = precio final cobrado al cliente, para
+  // TODOS los restaurantes. Si PRICES_INCLUDE_TAX=false, suma ITBIS.
+  // Esto habilita C5 (dashboard) a usar fórmula simétrica sin condicional.
+  const totals = computeTotals();
+  const itemsTotal = totals.itemsSum;
+  const deliveryFeeCharged = totals.deliveryFee;
+  const total = totals.grand;
   const nextNum = await getNextOrderNumber();
 
   const orderPayload = {
