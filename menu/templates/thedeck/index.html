@@ -1341,9 +1341,10 @@ async function init() {
   BUSINESS_TYPE = restaurantData.business_type || '';
 
   // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in.
+  // Case-insensitive (parity con hotfix #1.2 en menu/index.html:6398).
   if (PAYMENT_ENABLED) {
-    const nodineinTypes = ['Restaurante', 'Cafeteria', 'Bar', 'Panaderia', 'Otro'];
-    if (nodineinTypes.includes(BUSINESS_TYPE)) {
+    const nodineinTypes = ['restaurante', 'cafeteria', 'bar', 'panaderia', 'otro'];
+    if (nodineinTypes.includes((BUSINESS_TYPE || '').toLowerCase())) {
       enabledOrderTypes = enabledOrderTypes.filter(t => t !== 'dine_in');
       if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
     }

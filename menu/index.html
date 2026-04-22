@@ -6393,10 +6393,12 @@ async function init() {
   console.log('[Pincer Debug] payment_enabled:', restaurantData.payment_enabled, 'business_type:', restaurantData.business_type);
   console.log('[Pincer Debug] PAYMENT_ENABLED:', PAYMENT_ENABLED, 'BUSINESS_TYPE:', BUSINESS_TYPE);
 
-  // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in (solo pickup/delivery)
+  // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in (solo pickup/delivery).
+  // Case-insensitive (hotfix #1.2 2026-04-22): holyharmonycafe tenía 'cafeteria'
+  // lowercase en DB, evadía el filter. Ver docs/generic-menu-known-issues.md.
   if (PAYMENT_ENABLED) {
-    var nodineinTypes = ['Restaurante', 'Cafeteria', 'Bar', 'Panaderia', 'Otro'];
-    if (nodineinTypes.includes(BUSINESS_TYPE)) {
+    var nodineinTypes = ['restaurante', 'cafeteria', 'bar', 'panaderia', 'otro'];
+    if (nodineinTypes.includes((BUSINESS_TYPE || '').toLowerCase())) {
       enabledOrderTypes = enabledOrderTypes.filter(function(t) { return t !== 'dine_in'; });
       if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
     }
