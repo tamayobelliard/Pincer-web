@@ -1899,6 +1899,10 @@ function openCheckout() {
   document.getElementById('chkPhoneError').style.display = 'none';
   document.getElementById('checkoutGlobalError').style.display = 'none';
 
+  // Defensive reset: cualquier flujo que haya salido dejando el botón en
+  // 'Enviando...' (ej: cierre del modal mid-submit) se sanea al reabrir.
+  resetSubmitButton();
+
   // Render order-type selector si hay >1 opción, auto-select el único
   // si solo hay uno (parity con menu/index.html:3913-3916 y :4441).
   const otSection = document.getElementById('checkoutOrderTypeSection');
@@ -1951,6 +1955,17 @@ function isValidDRPhone(raw) {
   // 10 digits (809/829/849 + 7) OR 11 digits starting with 1 (country code)
   return (digits.length === 10 && /^(809|829|849)/.test(digits)) ||
          (digits.length === 11 && digits.startsWith('1') && /^1(809|829|849)/.test(digits));
+}
+
+// Parity regla #2 (CLAUDE.md Plantillas custom — reglas obligatorias):
+// Resetear explícitamente el estado del botón submit en TODOS los exit paths
+// (happy + error + catch) + defensive reset en openCheckout. Cubre el bug
+// "Enviando..." stuck al hacer 'Seguir ordenando' post-submit.
+function resetSubmitButton() {
+  const btn = document.getElementById('checkoutSubmit');
+  const lbl = document.getElementById('checkoutSubmitLabel');
+  if (btn) btn.disabled = false;
+  if (lbl) lbl.textContent = 'Enviar Pedido';
 }
 
 // Parity con menu/index.html:3986-4200 (ruta sin pago).
@@ -2076,37 +2091,37 @@ async function submitCheckout() {
           throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
         }
         const retryRows = await retryRes.json();
-        const retryOrderId = (retryRows && retryRows[0] && retryRows[0].id) || null;
+        const retryRecord = (retryRows && retryRows[0]) || null;
         cart = [];
         updateCtaAndBadge();
+        resetSubmitButton();
         closeCheckout();
         closeCart();
-        showConfirmation(retryOrderId, total);
+        showConfirmation(retryRecord, total);
         return;
       }
 
       globalErr.textContent = 'No pudimos enviar tu pedido. Intenta de nuevo.';
       globalErr.style.display = 'block';
-      submitBtn.disabled = false;
-      submitLabel.textContent = 'Enviar Pedido';
+      resetSubmitButton();
       return;
     }
 
     const rows = await res.json();
-    const orderId = (rows && rows[0] && rows[0].id) || null;
+    const record = (rows && rows[0]) || null;
 
-    dbg('✅ order submitted: ' + orderId);
+    dbg('✅ order submitted: id=' + (record && record.id) + ' order_number=' + (record && record.order_number));
     cart = [];
     updateCtaAndBadge();
+    resetSubmitButton();
     closeCheckout();
     closeCart();
-    showConfirmation(orderId, total);
+    showConfirmation(record, total);
   } catch (e) {
     dbg('❌ checkout error: ' + (e?.message || e));
     globalErr.textContent = 'Error de conexión. Verifica tu internet e intenta de nuevo.';
     globalErr.style.display = 'block';
-    submitBtn.disabled = false;
-    submitLabel.textContent = 'Enviar Pedido';
+    resetSubmitButton();
   }
 }
 
@@ -2120,13 +2135,17 @@ document.getElementById('checkoutSubmit').addEventListener('click', submitChecko
 // Confirmation screen — reemplaza el alert del submit exitoso
 // Per receta §4.3 del DEVELOPER-GUIDE (check dorado pulsante + orden + CTA)
 // ══════════════════════════════════════════════════════════════
-function showConfirmation(orderId, total) {
-  const shortId = orderId ? String(orderId).slice(-8).toUpperCase() : '---';
-  document.getElementById('confirmOrderNumber').textContent = '#' + shortId;
+// Parity regla #1 (CLAUDE.md Plantillas custom — reglas obligatorias):
+// El número al cliente debe ser record.order_number (count por-restaurante),
+// NO record.id (sequence INT global). Alinea con el dashboard que lee
+// order.order_number — ambos lados muestran #4, no #266.
+function showConfirmation(record, total) {
+  const orderNumber = record && (record.order_number || record.id);
+  const display = orderNumber != null ? '#' + orderNumber : '---';
+  document.getElementById('confirmOrderNumber').textContent = display;
   document.getElementById('confirmOrderTotal').textContent = fmtPrice(total);
   document.getElementById('confirmPanel').classList.add('open');
   document.body.style.overflow = 'hidden';
-  // Scroll al top del panel por si venía con scroll residual
   setTimeout(() => {
     const p = document.getElementById('confirmPanel');
     if (p) p.scrollTop = 0;
