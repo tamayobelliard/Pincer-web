@@ -1517,6 +1517,14 @@
       }
     }
 
+    #pinzer-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 998;
+    }
+    #pinzer-backdrop.show { display: block; }
     #pinzer-modal {
       display: none;
       position: fixed;
@@ -2692,6 +2700,7 @@
   </div>
 </div>
 
+<div id="pinzer-backdrop" onclick="closePinzer()"></div>
 <div id="pinzer-modal">
   <div style="
     background: linear-gradient(135deg, var(--primary-light), var(--primary));
@@ -5839,6 +5848,9 @@ function openPinzer(trigger = 'user_click') {
   track('chat_open', { trigger: trigger });
   const modal = document.getElementById('pinzer-modal');
   modal.style.display = 'flex';
+  // Sprint-2 A2: backdrop para click-outside-close
+  const backdrop = document.getElementById('pinzer-backdrop');
+  if (backdrop) backdrop.classList.add('show');
   chatOpen = true;
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'none';
@@ -5858,11 +5870,18 @@ function openPinzer(trigger = 'user_click') {
 function closePinzer() {
   track('chat_close', {});
   document.getElementById('pinzer-modal').style.display = 'none';
+  const backdrop = document.getElementById('pinzer-backdrop');
+  if (backdrop) backdrop.classList.remove('show');
   chatOpen = false;
   const clippy = document.querySelector('.chef-clippy');
   if (clippy) clippy.style.display = 'block';
   popPopupState();
 }
+
+// Sprint-2 A2: Esc key cierra el chat abierto (parity con thedeck).
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && chatOpen) closePinzer();
+});
 
 async function showWelcomeMessages() {
   // If store is closed, show closed message instead of normal welcome

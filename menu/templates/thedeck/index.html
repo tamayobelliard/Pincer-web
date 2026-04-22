@@ -544,6 +544,12 @@
   }
 
   /* ═══════════ Chat panel (mesero virtual) ═══════════ */
+  .chat-backdrop {
+    position: fixed; inset: 0; z-index: 65;
+    background: rgba(11,30,58,0.4); backdrop-filter: blur(1px);
+    display: none;
+  }
+  .chat-backdrop.open { display: block; }
   .chat-panel {
     position: fixed; right: 20px; bottom: 88px; z-index: 70;
     width: calc(100% - 40px); max-width: 400px; height: 560px; max-height: 75vh;
@@ -580,9 +586,13 @@
   }
   .chat-role .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); }
   .chat-close {
-    background: transparent; border: 1px solid rgba(246,239,218,0.3); color: var(--color-bg);
-    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(246,239,218,0.15); border: 1.5px solid var(--color-accent); color: var(--color-accent);
+    width: 32px; height: 32px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .chat-close:hover, .chat-close:active {
+    background: var(--color-accent); color: var(--color-primary);
   }
   .gold-rule {
     height: 1px;
@@ -1019,6 +1029,7 @@
 </div>
 
 <!-- ═════════════ CHAT PANEL (Mesero Virtual) ═════════════ -->
+<div class="chat-backdrop" id="chatBackdrop"></div>
 <div class="chat-panel" id="chatPanel" role="dialog" aria-modal="true">
   <div class="chat-header">
     <div class="chat-header-tile">
@@ -2701,8 +2712,10 @@ async function sendChatMessage(userText) {
 // vs auto-open. Permite filtrar chat_open events a intención real del usuario.
 function openChat(trigger) {
   const panel = document.getElementById('chatPanel');
+  const backdrop = document.getElementById('chatBackdrop');
   if (panel.classList.contains('open')) return;
   panel.classList.add('open');
+  if (backdrop) backdrop.classList.add('open');
   track('chat_open', { trigger: trigger || 'user_click' });
 
   // Primera apertura → welcome message (hardcoded; Commit #6 puede migrar a
@@ -2718,12 +2731,23 @@ function openChat(trigger) {
 
 function closeChat() {
   document.getElementById('chatPanel').classList.remove('open');
+  const backdrop = document.getElementById('chatBackdrop');
+  if (backdrop) backdrop.classList.remove('open');
 }
 
 document.getElementById('fabWaiter').addEventListener('click', () => {
   const panel = document.getElementById('chatPanel');
   if (panel.classList.contains('open')) closeChat();
   else openChat('user_click');
+});
+
+// Sprint-2 A2: click-outside + Esc cierran el chat.
+document.getElementById('chatBackdrop').addEventListener('click', closeChat);
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const panel = document.getElementById('chatPanel');
+    if (panel && panel.classList.contains('open')) closeChat();
+  }
 });
 document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
 document.getElementById('chatSendBtn').addEventListener('click', () => {
