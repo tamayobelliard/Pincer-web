@@ -55,6 +55,14 @@ Se aplicará en el próximo sprint cuando se agregue CI automation (hoy no hay C
 
 **Resolución pendiente:** founder contactará a cada restaurante post-deploy para re-guardar desde dashboard. Ahora que update-settings funciona, los saves persistirán. Si alguno necesita migración forzada, generar archivo SQL aparte.
 
+## 7. Copy condicional de pago/retiro (RESUELTO 2026-04-22 sprint #6)
+
+**Observado:** `dashboard/index.html:3891` y `:4053` generaban WhatsApp messages con "Pasa por la caja a pagar y recogerla" — copy de flujo dine-in legacy aplicado a pedidos take_out (donde no hay caja para el cliente). `menu/templates/thedeck/index.html:1001` tenía "Conserva este número para reclamar tu pedido en la mesa" — residuo del mismo legacy. `menu/index.html:5586` y `:5621` también tenían "Pasa a la caja" en receipt del cliente post-ready.
+
+**Resolución:** Commit #6 del sprint de parity introdujo copy condicional basado en `payment_enabled` (frontend, global del restaurante) o `isPaid` (dashboard, per-order). Matriz completa documentada en CLAUDE.md → Plantillas custom → Regla #4. Aplica a 4 sitios: showConfirmation de thedeck (+ equivalente genérico futuro), showReadyBanner, status badge ready, dashboard WhatsApp message (2 sitios idénticos).
+
+**Follow-up:** cuando se construya el flujo dine-in con cuenta abierta para restaurantes tipo Restaurante, la matriz necesita una fila adicional con el copy de cuenta cerrada. Hoy dine_in cae al mismo mensaje de take_out en el MVP (acceptable porque solo Food Truck/Cafetería/Bar/Panadería usan dine_in y ahí funciona como take_out).
+
 ## 6. Cambios de comportamiento sutiles en #1.1
 
 **Observado:** el hotfix #1.1 reemplazó `typeof body[key] !== expectedType` por `!isValidType(body[key], expectedType)`. La lógica es equivalente para string/boolean/array pero **más estricta para number**: `isValidType` agrega `&& Number.isFinite(value)`, por lo que rechaza `NaN` e `Infinity`.

@@ -3882,13 +3882,19 @@ async function loadOrders() {
       const totalLabel = isPaid
         ? '<i data-lucide="credit-card"></i> Total pagado:'
         : '<i data-lucide="banknote"></i> TOTAL A COBRAR:';
+      // Copy matrix — founder decision 2026-04-22. Condicional por
+      // order_type + isPaid (per-order, más preciso que payment_enabled).
+      // Elimina "Pasa por la caja" (era lenguaje dine-in residual).
       let waMsg;
       if (order.order_type === 'delivery') {
-        waMsg = `Hola! Tu orden #${orderNum} de ${DISPLAY_NAME} va en camino!`;
-      } else if (isPaid) {
-        waMsg = `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Ya está pagada, solo pasa a recogerla.`;
+        waMsg = isPaid
+          ? `Hola! Tu orden #${orderNum} de ${DISPLAY_NAME} va en camino.`
+          : `Hola! Tu orden #${orderNum} de ${DISPLAY_NAME} va en camino. Recuerda que el pago se realiza al momento de recibirla.`;
       } else {
-        waMsg = `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} está lista! Pasa por la caja a pagar y recogerla.`;
+        // take_out (y dine_in cae al mismo mensaje de recoger en el MVP).
+        waMsg = isPaid
+          ? `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} ya está lista para recoger. Te esperamos.`
+          : `Hola! Tu orden #${orderNum} en ${DISPLAY_NAME} ya está lista para recoger. Te esperamos. Recuerda que el pago se realiza al momento de entregarla.`;
       }
 
       const orderTypeLabels = {
@@ -4044,13 +4050,19 @@ async function markReady(id) {
     var order = _ordersMap[id];
     if (order && order.phone) {
       var orderNum = order.order_number || id;
+      // Copy matrix — founder decision 2026-04-22. isPaid deriva de
+      // azul_order_id o status='paid'. Sincronizado con el bloque gemelo
+      // ~línea 3885 de este mismo archivo (dos sitios idénticos).
+      var isPaid = !!order.azul_order_id || order.status === 'paid';
       var waMsg;
       if (order.order_type === 'delivery') {
-        waMsg = 'Hola! Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' va en camino!';
-      } else if (order.azul_order_id) {
-        waMsg = 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' está lista! Ya está pagada, solo pasa a recogerla.';
+        waMsg = isPaid
+          ? 'Hola! Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' va en camino.'
+          : 'Hola! Tu orden #' + orderNum + ' de ' + DISPLAY_NAME + ' va en camino. Recuerda que el pago se realiza al momento de recibirla.';
       } else {
-        waMsg = 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' está lista! Pasa por la caja a pagar y recogerla.';
+        waMsg = isPaid
+          ? 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' ya está lista para recoger. Te esperamos.'
+          : 'Hola! Tu orden #' + orderNum + ' en ' + DISPLAY_NAME + ' ya está lista para recoger. Te esperamos. Recuerda que el pago se realiza al momento de entregarla.';
       }
       window.open('https://wa.me/1' + order.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(waMsg), 'pincer_whatsapp');
     }

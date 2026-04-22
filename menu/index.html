@@ -5583,7 +5583,10 @@ async function checkOrderStatus(orderId) {
       if (statusDiv) {
         statusDiv.style.background = '#dcfce7';
         statusDiv.style.color = '#166534';
-        statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA! — Pasa a recogerla";
+        // Copy alineado al founder matrix 2026-04-22 (neutro entre
+        // take-out/delivery; aplica a ambos). El detalle de pago va
+        // en el ready banner + mensaje de WhatsApp (más contextual).
+        statusDiv.innerHTML = "🎉 ¡TU ORDEN ESTÁ LISTA!";
       }
 
       if (orderStatusChecker) { clearInterval(orderStatusChecker); orderStatusChecker = null; }
@@ -5614,11 +5617,17 @@ window.addEventListener('focus', () => {
 
 function showReadyBanner(orderId) {
   if (document.getElementById('readyBanner')) return;
+  // Copy condicional — founder matrix 2026-04-22. PAYMENT_ENABLED true
+  // implica que el pedido ya se pagó al ordenar con Azul. False = cobrar
+  // al retirar / recibir.
+  const subcopy = PAYMENT_ENABLED
+    ? 'Pago confirmado. Retira tu orden cuando puedas.'
+    : 'Retira tu orden en el local. El pago se realiza al momento de entregarla.';
   const banner = document.createElement('div');
   banner.id = 'readyBanner';
   banner.className = 'ready-banner';
   banner.innerHTML = `🎉 ¡TU ORDEN #${orderId} ESTÁ LISTA!<br>
-    <span style="font-weight:400; font-size:0.92em;">Pasa a la caja a pagar y retira tu orden</span>
+    <span style="font-weight:400; font-size:0.92em;">${subcopy}</span>
     <button onclick="document.getElementById('readyBanner').remove()">Entendido</button>`;
   document.body.prepend(banner);
 }

@@ -326,6 +326,34 @@ Los botones "submit" (Enviar Pedido, Completar Orden, Procesando...) tienen esta
 
 **Lo que está prohibido:** setear `disabled = false` solo en algunos paths (ej: errores sí, success no). Ese anti-pattern causó Bug 6 de thedeck: botón stuck como "Enviando..." tras submit exitoso, bloqueando la segunda orden de la sesión.
 
+### Regla #4 — Copy condicional: payment_enabled + order_type
+
+Los mensajes al cliente sobre **cómo se paga** y **cómo se retira** el pedido deben ser condicionales según dos variables: `PAYMENT_ENABLED` (bool, proviene de `restaurant_users_public.payment_enabled`) y `order_type` del pedido. No hardcodear textos tipo "pasa por la caja" ni "reclamar en la mesa" — ambos pertenecían al flujo dine-in legacy y causan confusión en take-out y delivery.
+
+**Matriz (founder 2026-04-22):**
+
+|                    | payment_enabled=false      | payment_enabled=true |
+|--------------------|----------------------------|----------------------|
+| take_out           | "paga al recoger"          | "ya pagado"          |
+| delivery           | "paga al recibir"          | "ya pagado"          |
+| dine_in (futuro)   | cuenta abierta — fuera de scope hoy | n/a          |
+
+**Sitios donde aplica:**
+- Confirmation screen post-orden (`showConfirmation` en thedeck + equivalente genérico).
+- Ready banner en el receipt del cliente (`showReadyBanner` en `menu/index.html`).
+- Status badge cuando la orden pasa a `ready` o `notified`.
+- WhatsApp message que el dashboard genera al notificar "orden lista" / "en camino".
+
+**Variante del flag en dashboard:** el mensaje de WhatsApp se genera en el browser del mesero, donde el per-order `isPaid = azul_order_id || status === 'paid'` es más preciso que `payment_enabled` global. Ambos cumplen el spirit de la matrix.
+
+Ejemplos validados (copy exacto autorizado por founder):
+- Take-out + no pago: "Tu orden #N en <restaurant> ya está lista para recoger. Te esperamos. Recuerda que el pago se realiza al momento de entregarla."
+- Take-out + pagado: "Tu orden #N en <restaurant> ya está lista para recoger. Te esperamos."
+- Delivery + no pago: "Tu orden #N de <restaurant> va en camino. Recuerda que el pago se realiza al momento de recibirla."
+- Delivery + pagado: "Tu orden #N de <restaurant> va en camino."
+
+Si agregas un nuevo sitio que muestra copy de pago/retiro (email, SMS, banner), aplica la matrix. No inventes variantes.
+
 ### Regla #3 — Lógica interna byte-idéntica al genérico
 
 Las plantillas custom **solo** difieren en visual (HTML estructural, CSS, fuentes, imágenes, copy, emblemas decorativos, ornamentos SVG). **Toda** la lógica interna — payload de orders, llamadas a Supabase, lectura de configuración, cart logic, chatbot wiring, validaciones de formulario, session management, tracking, loyalty, promos, sold_out polling, store_settings gating, flujo Azul — es copia byte-por-byte de `menu/index.html`. Mismos nombres de variables, mismos comentarios cuando sea posible, misma estructura de funciones. Solo se adaptan selectores CSS/IDs cuando el custom tenga clases distintas — nunca la lógica.

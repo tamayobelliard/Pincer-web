@@ -997,8 +997,12 @@
         Total: <strong id="confirmOrderTotal">RD$0</strong>
       </div>
     </div>
-    <div class="confirm-notice">
-      <strong style="font-family:var(--font-heading);">The Deck</strong> · Conserva este número para reclamar tu pedido en la mesa. El pago se realiza al momento de la entrega.
+    <!-- El texto se pobla dinámicamente en showConfirmation según
+         order_type + payment_enabled. Copy matrix definida por founder
+         (2026-04-22); ver CLAUDE.md "Plantillas custom — Regla #4". -->
+    <div class="confirm-notice" id="confirmNotice">
+      <strong style="font-family:var(--font-heading);" id="confirmNoticeRestaurant">—</strong>
+      <span id="confirmNoticeText"></span>
     </div>
     <div class="confirm-actions">
       <button class="btn btn-primary" id="confirmNewOrder">
@@ -2728,21 +2732,17 @@ function openCheckout() {
   _loyaltyRewardAdded = false;
   document.getElementById('loyaltyVipBox').style.display = 'none';
 
-  // Pre-fill name/phone — se persisten se remueve en Commit #6 (parity strict).
-  let savedName = '', savedPhone = '';
-  try {
-    savedName = localStorage.getItem('thedeck_cust_name') || '';
-    savedPhone = localStorage.getItem('thedeck_cust_phone') || '';
-  } catch (e) {}
-
+  // Parity strict: no persistencia de PII cross-visit. El genérico tampoco
+  // guarda name/phone entre sesiones — cada visita el cliente vuelve a
+  // ingresar. Privacidad > conveniencia. Commit #6 removió thedeck_cust_*.
   const takeoutName = document.getElementById('takeoutName');
   const deliveryName = document.getElementById('deliveryName');
   const deliveryAddress = document.getElementById('deliveryAddress');
   const chkPhone = document.getElementById('chkPhone');
-  if (takeoutName) takeoutName.value = savedName;
-  if (deliveryName) deliveryName.value = savedName;
+  if (takeoutName) takeoutName.value = '';
+  if (deliveryName) deliveryName.value = '';
   if (deliveryAddress) deliveryAddress.value = '';
-  if (chkPhone) chkPhone.value = savedPhone;
+  if (chkPhone) chkPhone.value = '';
 
   document.getElementById('chkPhoneError').style.display = 'none';
   document.getElementById('checkoutGlobalError').style.display = 'none';
@@ -2799,11 +2799,12 @@ function renderCheckoutSummary() {
   `;
 }
 
+// Parity con menu/index.html:3444-3447 — solo 10 dígitos DR (809/829/849).
+// Rechaza 11-dígitos con country code: el payload guarda solo-dígitos en
+// orders.phone y el dashboard asume formato 10-dígitos para normalizar.
 function isValidDRPhone(raw) {
   const digits = (raw || '').replace(/\D/g, '');
-  // 10 digits (809/829/849 + 7) OR 11 digits starting with 1 (country code)
-  return (digits.length === 10 && /^(809|829|849)/.test(digits)) ||
-         (digits.length === 11 && digits.startsWith('1') && /^1(809|829|849)/.test(digits));
+  return /^(809|829|849)\d{7}$/.test(digits);
 }
 
 // Parity regla #2 (CLAUDE.md Plantillas custom — reglas obligatorias):
@@ -2866,12 +2867,6 @@ async function submitCheckout() {
       return;
     }
   }
-
-  // Persistir para próximas visitas (remoción final en Commit #6).
-  try {
-    if (name) localStorage.setItem('thedeck_cust_name', name);
-    localStorage.setItem('thedeck_cust_phone', phoneRaw);
-  } catch (e) {}
 
   submitBtn.disabled = true;
   submitLabel.textContent = 'Enviando…';
@@ -3029,17 +3024,53 @@ document.getElementById('checkoutSubmit').addEventListener('click', submitChecko
 // El número al cliente debe ser record.order_number (count por-restaurante),
 // NO record.id (sequence INT global). Alinea con el dashboard que lee
 // order.order_number — ambos lados muestran #4, no #266.
+//
+// Copy condicional según order_type + PAYMENT_ENABLED — matriz del founder
+// 2026-04-22 (CLAUDE.md Regla #4). Elimina el texto residual de dine-in.
 function showConfirmation(record, total) {
   const orderNumber = record && (record.order_number || record.id);
   const display = orderNumber != null ? '#' + orderNumber : '---';
   document.getElementById('confirmOrderNumber').textContent = display;
   document.getElementById('confirmOrderTotal').textContent = fmtPrice(total);
+
+  // Nombre del restaurante + mensaje condicional
+  const restaurantName = (restaurantData && restaurantData.display_name) || 'The Deck';
+  const noticeR = document.getElementById('confirmNoticeRestaurant');
+  if (noticeR) noticeR.textContent = restaurantName;
+  const noticeT = document.getElementById('confirmNoticeText');
+  if (noticeT) noticeT.textContent = ' · ' + confirmationNoticeCopy(record && record.order_type);
+
   document.getElementById('confirmPanel').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  // Precalentar permisos de notificaciones web-push para futuras
+  // notifs de estado de orden (parity con menu/index.html:5463-5465).
+  try {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  } catch (e) {}
+
   setTimeout(() => {
     const p = document.getElementById('confirmPanel');
     if (p) p.scrollTop = 0;
   }, 50);
+}
+
+// Matriz de copy (2026-04-22 founder decision): depende de order_type y
+// payment_enabled del restaurante. Elimina "Pasa por la caja" y "reclamar
+// en la mesa" (lenguaje dine-in residual). Aplica también al genérico.
+function confirmationNoticeCopy(orderType) {
+  const ot = orderType || selectedOrderType || 'take_out';
+  if (ot === 'delivery') {
+    return PAYMENT_ENABLED
+      ? 'Conserva este número de orden. Pago confirmado. Te avisaremos por WhatsApp cuando el repartidor esté en camino.'
+      : 'Conserva este número de orden. Te avisaremos por WhatsApp cuando el repartidor esté en camino. El pago se realiza al momento de recibirla.';
+  }
+  // take_out (y dine_in que hoy cae al mismo flujo "ordena y paga" del MVP)
+  return PAYMENT_ENABLED
+    ? 'Conserva este número de orden. Pago confirmado. Te avisaremos por WhatsApp cuando esté lista para recoger.'
+    : 'Conserva este número de orden. Te avisaremos por WhatsApp cuando esté lista para recoger. El pago se realiza al momento de recogerla.';
 }
 
 function hideConfirmation() {
