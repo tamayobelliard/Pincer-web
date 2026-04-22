@@ -654,6 +654,39 @@
   }
   .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ═══════════ Store closed overlay ═══════════ */
+  .closed-overlay {
+    position: fixed; inset: 0; z-index: 95;
+    background: var(--color-bg);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .closed-overlay.open { display: flex; }
+  .closed-overlay-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: var(--color-primary); color: var(--color-accent);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; box-shadow: 0 6px 18px rgba(11,30,58,0.3);
+  }
+  .closed-overlay-title {
+    font-family: var(--font-heading); font-size: 28px; color: var(--color-primary);
+    margin-bottom: 12px; letter-spacing: 0.3px;
+  }
+  .closed-overlay-next {
+    font-family: var(--font-serif); font-size: 14px; color: var(--color-accent-3);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 18px;
+  }
+  .closed-overlay-schedule {
+    font-family: var(--font-body); font-size: 13px; color: var(--color-text-soft);
+    max-width: 360px; line-height: 1.5;
+    padding: 14px 18px; background: var(--color-surface);
+    border: 1px dotted var(--color-border); border-radius: var(--radius-md);
+  }
+  .closed-overlay-name {
+    font-family: var(--font-serif); font-size: 11px; color: var(--color-accent-3);
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+  }
+
   /* ═══════════ Confirmation screen ═══════════ */
   .confirm-panel {
     position: fixed; inset: 0; background: var(--color-bg); z-index: 90;
@@ -1020,6 +1053,20 @@
   </div>
 </div>
 
+<!-- ═════════════ Store closed overlay ═════════════ -->
+<div class="closed-overlay" id="closedOverlay" role="alert" aria-live="polite">
+  <div class="closed-overlay-name" id="closedOverlayName"></div>
+  <div class="closed-overlay-icon">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6 v6 l4 2"/>
+    </svg>
+  </div>
+  <div class="closed-overlay-title">Estamos cerrados</div>
+  <div class="closed-overlay-next" id="closedOverlayNext"></div>
+  <div class="closed-overlay-schedule" id="closedOverlaySchedule"></div>
+</div>
+
 <!-- ═════════════ FAB (Mesero Virtual) ═════════════ -->
 <button class="fab" id="fabWaiter" aria-label="Mesero virtual">
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -1091,6 +1138,304 @@ function fetchWithTimeout(url, options, timeoutMs = 15000) {
 
 // dbg — shim alineado al genérico (usa console.log)
 function dbg(msg) { try { console.log('[thedeck]', msg); } catch (e) {} }
+
+// ── Date helpers — parity byte-por-byte con menu/index.html:2751-2941 ──
+function getDRDate() {
+  var now = new Date();
+  var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + (-4 * 3600000));
+}
+
+function isOpenBySchedule(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return true;
+  var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var now = getDRDate();
+  var currentDay = now.getDay();
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    var match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    var h = parseInt(match[1]);
+    var m = parseInt(match[2]);
+    var ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      var parts = dayStr.split('-');
+      var startIdx = DAY_ORDER.indexOf(parts[0].trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'));
+      var endIdx = DAY_ORDER.indexOf(parts[1].trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'));
+      if (startIdx === -1 || endIdx === -1) return [];
+      var days = [];
+      var i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    var normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    var dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  var segments = hoursStr.split(',');
+  for (var s = 0; s < segments.length; s++) {
+    var seg = segments[s].trim();
+    var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    var days = expandDays(timeMatch[1]);
+    var openMin = parseTime(timeMatch[2]);
+    var closeMin = parseTime(timeMatch[3]);
+    if (openMin === -1 || closeMin === -1) continue;
+    if (closeMin <= openMin) {
+      var todayMatch = days.indexOf(currentDay) !== -1 && currentMinutes >= openMin;
+      var yesterday = (currentDay + 6) % 7;
+      var yesterdayMatch = days.indexOf(yesterday) !== -1 && currentMinutes < closeMin;
+      if (todayMatch || yesterdayMatch) return true;
+    } else {
+      if (days.indexOf(currentDay) !== -1 && currentMinutes >= openMin && currentMinutes < closeMin) return true;
+    }
+  }
+  return false;
+}
+
+function getNextOpenTime(hoursStr) {
+  if (!hoursStr || hoursStr === 'Selecciona días y horario') return null;
+  var DAY_MAP = { 'dom': 0, 'lun': 1, 'mar': 2, 'mie': 3, 'mié': 3, 'jue': 4, 'vie': 5, 'sab': 6, 'sáb': 6 };
+  var DAY_ORDER = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+  var DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  var now = getDRDate();
+  var currentDay = now.getDay();
+  var currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  function parseTime(str) {
+    str = str.trim();
+    var match = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return -1;
+    var h = parseInt(match[1]);
+    var m = parseInt(match[2]);
+    var ampm = match[3].toUpperCase();
+    if (ampm === 'AM' && h === 12) h = 0;
+    if (ampm === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  function expandDays(dayStr) {
+    dayStr = dayStr.trim().toLowerCase();
+    if (dayStr.includes('-')) {
+      var parts = dayStr.split('-');
+      var normalize = function(s) { return s.trim().replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u'); };
+      var startIdx = DAY_ORDER.indexOf(normalize(parts[0]));
+      var endIdx = DAY_ORDER.indexOf(normalize(parts[1]));
+      if (startIdx === -1 || endIdx === -1) return [];
+      var days = [];
+      var i = startIdx;
+      while (true) {
+        days.push(DAY_MAP[DAY_ORDER[i]] !== undefined ? DAY_MAP[DAY_ORDER[i]] : i);
+        if (i === endIdx) break;
+        i = (i + 1) % 7;
+      }
+      return days;
+    }
+    var normalized = dayStr.replace(/á/g,'a').replace(/é/g,'e').replace(/í/g,'i').replace(/ó/g,'o').replace(/ú/g,'u');
+    var dayNum = DAY_MAP[normalized];
+    return dayNum !== undefined ? [dayNum] : [];
+  }
+
+  function formatMinutes(min) {
+    var h = Math.floor(min / 60);
+    var m = min % 60;
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+  }
+
+  var parsed = [];
+  var segments = hoursStr.split(',');
+  for (var s = 0; s < segments.length; s++) {
+    var seg = segments[s].trim();
+    var timeMatch = seg.match(/^(.+?)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)$/i);
+    if (!timeMatch) continue;
+    var days = expandDays(timeMatch[1]);
+    var openMin = parseTime(timeMatch[2]);
+    if (openMin === -1 || days.length === 0) continue;
+    parsed.push({ days: days, openMin: openMin });
+  }
+  if (parsed.length === 0) return null;
+
+  function earliestOpenForDay(dayNum) {
+    var earliest = -1;
+    for (var p = 0; p < parsed.length; p++) {
+      if (parsed[p].days.indexOf(dayNum) !== -1) {
+        if (earliest === -1 || parsed[p].openMin < earliest) earliest = parsed[p].openMin;
+      }
+    }
+    return earliest;
+  }
+
+  for (var p = 0; p < parsed.length; p++) {
+    if (parsed[p].days.indexOf(currentDay) !== -1 && parsed[p].openMin > currentMinutes) {
+      var todayEarliest = -1;
+      for (var q = 0; q < parsed.length; q++) {
+        if (parsed[q].days.indexOf(currentDay) !== -1 && parsed[q].openMin > currentMinutes) {
+          if (todayEarliest === -1 || parsed[q].openMin < todayEarliest) todayEarliest = parsed[q].openMin;
+        }
+      }
+      var label = formatMinutes(todayEarliest);
+      return { text: 'Abrimos hoy a las ' + label, time: label, isToday: true };
+    }
+  }
+
+  for (var offset = 1; offset <= 7; offset++) {
+    var checkDay = (currentDay + offset) % 7;
+    var earliest = earliestOpenForDay(checkDay);
+    if (earliest !== -1) {
+      var label = formatMinutes(earliest);
+      return { text: 'Abrimos el ' + DAY_NAMES[checkDay] + ' a las ' + label, time: label, day: DAY_NAMES[checkDay], isToday: false };
+    }
+  }
+  return null;
+}
+
+// ── Store open/closed state — parity con menu/index.html:6210-6350 ──
+// Adapta selectores DOM a la estructura custom de thedeck (closedOverlay +
+// menuSections/cta/fab visibility), manteniendo la lógica idéntica al genérico.
+let storeClosed = false;
+let soldOutPoller = null;
+
+async function checkStoreOpen() {
+  try {
+    var storeSettings = null;
+    try {
+      var res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG) + '&select=*',
+        { headers: sbHeaders() }, 10000
+      );
+      if (res.ok) {
+        var data = await res.json();
+        if (data.length > 0) storeSettings = data[0];
+      }
+    } catch (e) { /* continue without store_settings */ }
+
+    var isOpen = true;
+    var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
+
+    if (storeSettings) {
+      var hasOverride = storeSettings.schedule_override === true;
+      if (hasOverride && scheduleStr && scheduleStr !== 'Selecciona días y horario' &&
+          storeSettings.schedule_state_at_override !== null && storeSettings.schedule_state_at_override !== undefined) {
+        var currentScheduleState = isOpenBySchedule(scheduleStr);
+        if (currentScheduleState !== storeSettings.schedule_state_at_override) {
+          hasOverride = false;
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbHeaders(),
+            body: JSON.stringify({ is_open: currentScheduleState, schedule_override: false, schedule_state_at_override: null })
+          }).catch(function() {});
+        }
+      }
+
+      if (storeSettings.is_open === false && hasOverride) {
+        isOpen = false;
+      } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario' && !hasOverride) {
+        var scheduleResult = isOpenBySchedule(scheduleStr);
+        isOpen = scheduleResult;
+        if (storeSettings.is_open !== scheduleResult) {
+          fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
+            method: 'PATCH', headers: sbHeaders(),
+            body: JSON.stringify({ is_open: scheduleResult })
+          }).catch(function() {});
+        }
+      } else if (!hasOverride && (!scheduleStr || scheduleStr === 'Selecciona días y horario')) {
+        isOpen = storeSettings.is_open !== false;
+      } else {
+        isOpen = storeSettings.is_open !== false;
+      }
+    } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario') {
+      isOpen = isOpenBySchedule(scheduleStr);
+    }
+
+    var overlay = document.getElementById('closedOverlay');
+    var main = document.getElementById('menuSections');
+    var ctaWrap = document.querySelector('.cta-wrap');
+
+    if (!isOpen) {
+      storeClosed = true;
+      var nameEl = document.getElementById('closedOverlayName');
+      var nextEl = document.getElementById('closedOverlayNext');
+      var schedEl = document.getElementById('closedOverlaySchedule');
+      if (restaurantData && nameEl) nameEl.textContent = restaurantData.display_name || '';
+      var nextOpen = getNextOpenTime(scheduleStr);
+      if (nextEl) nextEl.textContent = nextOpen ? nextOpen.text : '';
+      if (schedEl) schedEl.textContent = scheduleStr || '';
+      if (overlay) overlay.classList.add('open');
+      if (main) main.style.display = 'none';
+      if (ctaWrap) ctaWrap.style.display = 'none';
+      dbg('🔒 Tienda cerrada');
+      return false;
+    } else {
+      storeClosed = false;
+      if (overlay) overlay.classList.remove('open');
+      if (main) main.style.display = '';
+      if (ctaWrap) ctaWrap.style.display = '';
+      return true;
+    }
+  } catch (e) {
+    dbg('⚠️ checkStoreOpen error: ' + e.message);
+    return true;
+  }
+}
+
+// ── Sold-out poller — parity con menu/index.html:3404-3438 ──
+// Adapta: usa `cart` (no `order`), `renderSections` (no `renderMenu`), dbg
+// de thedeck. Sin popup visual al remover items del cart (TODO Commit #6
+// agregar toast estilizado). Hoy silent remove + re-render.
+function startSoldOutPoller() {
+  if (soldOutPoller) return;
+  soldOutPoller = setInterval(async () => {
+    try {
+      const res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/products?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&sold_out=eq.true&select=id',
+        { headers: sbHeaders(), cache: 'no-store' },
+        10000
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const newSet = new Set(data.map(r => r.id));
+      const oldSet = soldOutSet;
+      const changed = newSet.size !== oldSet.size ||
+        [...newSet].some(id => !oldSet.has(id)) ||
+        [...oldSet].some(id => !newSet.has(id));
+      if (!changed) return;
+
+      soldOutSet = newSet;
+      renderSections(productsByCategory);
+      dbg('🔄 soldOut actualizado: ' + JSON.stringify([...soldOutSet]));
+
+      // Remove sold-out items from cart and alert customer (silent today).
+      const removedNames = [];
+      for (let i = cart.length - 1; i >= 0; i--) {
+        if (soldOutSet.has(cart[i].id)) {
+          removedNames.push(cart[i].name);
+          cart.splice(i, 1);
+        }
+      }
+      if (removedNames.length > 0) {
+        updateCtaAndBadge();
+        if (document.getElementById('cartPanel').classList.contains('open')) renderCart();
+        dbg('⚠️ Items removidos del carrito (sold-out): ' + removedNames.join(', '));
+      }
+    } catch (e) { /* silent */ }
+  }, 5000);
+}
 
 function fmtPrice(n) {
   return 'RD$' + (Number(n) || 0).toLocaleString('en-US');
@@ -1359,6 +1704,11 @@ async function init() {
   renderSections(productsByCategory);
 
   document.getElementById('menuLoading').style.display = 'none';
+
+  // Store open/closed check + sold_out polling (parity con menu/index.html:6455-6485)
+  await checkStoreOpen();
+  if (!storeClosed) startSoldOutPoller();
+  setInterval(checkStoreOpen, 5 * 60 * 1000);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1537,7 +1887,7 @@ document.getElementById('modalAdd').addEventListener('click', () => {
 // sold_out guard: hoy silent return (Commit #3 agregará thedeck-styled popup
 // cuando se implemente sold_out polling). track() llamada defer para Commit #4.
 function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
-  // storeClosed guard llega en Commit #3 junto con store_settings polling.
+  if (storeClosed) return;
   if (soldOutSet.has(id)) return;
 
   const idx = cart.findIndex(c => c.id === id && c.notes === notes);
@@ -1975,6 +2325,14 @@ function resetSubmitButton() {
 
 // Parity con menu/index.html:3986-4200 (ruta sin pago).
 async function submitCheckout() {
+  if (storeClosed) {
+    const globalErr = document.getElementById('checkoutGlobalError');
+    if (globalErr) {
+      globalErr.textContent = 'Estamos cerrados en este momento.';
+      globalErr.style.display = 'block';
+    }
+    return;
+  }
   const phoneRaw = document.getElementById('chkPhone').value.trim();
   const phoneErr = document.getElementById('chkPhoneError');
   const globalErr = document.getElementById('checkoutGlobalError');
