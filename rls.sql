@@ -3,6 +3,12 @@
 -- Run this in Supabase SQL Editor after deploying the code changes.
 -- Service role key bypasses RLS, so all api/ endpoints are unaffected.
 -- These policies protect against direct anon key abuse.
+--
+-- ⚠️ TODO (2026-04-22 hotfix #1.5): este archivo NO es fuente de
+-- verdad actualizada. La view `restaurant_users_public` en prod
+-- acepta status IN ('active','demo') mientras acá está `status =
+-- 'active'`. Sincronizar en la próxima revisión de RLS/views.
+-- Ver docs/generic-menu-known-issues.md #3.
 -- ══════════════════════════════════════════════════════════════
 
 

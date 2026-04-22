@@ -298,6 +298,50 @@ La decisión arquitectónica fue **NO compartir JS** entre los dos (aislamiento 
 
 ---
 
+## Plantillas custom — reglas obligatorias
+
+Estas reglas son **inviolables** al construir o modificar cualquier template custom (`menu/templates/<slug>/index.html`). Surgieron de bugs reales encontrados durante el audit de parity de The Deck (hotfix 2026-04-22). Cada regla tiene un precedente concreto.
+
+### Regla #1 — Displays al cliente usan `record.order_number`, nunca `record.id`
+
+`orders.id` es un **sequence INT global** compartido entre todos los restaurantes (Pincer hoy va por 266+ órdenes acumuladas entre los 6 clientes). `orders.order_number` es el **count por-restaurante** (1, 2, 3… asignado por `getNextOrderNumber()` del frontend).
+
+**El dashboard muestra `order_number`.** Cualquier display al cliente (confirmation screen, receipt, WhatsApp message, email) **debe** mostrar el mismo número para que ambos lados concuerden. Usar `record.id` genera discrepancias tipo "cliente ve #266, mesero ve #4".
+
+El genérico lo hace correctamente en `menu/index.html:4190`: `const orderNumber = record.order_number || orderId;` — fallback a `orderId` solo por defensa, pero el patrón visible al cliente siempre es `order_number` primero.
+
+### Regla #2 — Estado de botones submit: render-driven O reset explícito + defensive
+
+Los botones "submit" (Enviar Pedido, Completar Orden, Procesando...) tienen estado imperativo (`disabled`, `textContent`) que puede quedar stuck si no se resetea en todos los exit paths.
+
+**Dos patrones aceptables. Elegir uno y ser consistente:**
+
+**(a) Render-driven (patrón del genérico):** El estado del botón se **deriva del estado del cart**. Una función `renderOrder()` (o equivalente) se llama después de cualquier mutación (incluido el clear post-success), y dentro de ella se hace `placeOrderBtn.disabled = false` + label correcto. No hay `isSubmitting` flag separado — el botón siempre refleja `cart.length > 0 && !submitting`. Ejemplo: `menu/index.html:3909, 3925` dentro de `renderOrder()`.
+
+**(b) Reset explícito en TODOS los exit paths + defensive reset en el opener:** Crear un helper `resetSubmitButton()` y llamarlo en:
+- Success path (después de mostrar confirmación).
+- Error path (cada `return` tras setear mensaje de error).
+- Catch path (exception).
+- **Defensive reset al abrir el modal nuevamente** (`openCheckout`) para cubrir regresiones futuras donde algún exit path olvide llamar al helper. Ejemplo: `menu/templates/thedeck/index.html` líneas 1964 (helper), 1904 (defensive), 2097/2106/2117/2124 (exit paths).
+
+**Lo que está prohibido:** setear `disabled = false` solo en algunos paths (ej: errores sí, success no). Ese anti-pattern causó Bug 6 de thedeck: botón stuck como "Enviando..." tras submit exitoso, bloqueando la segunda orden de la sesión.
+
+### Regla #3 — Lógica interna byte-idéntica al genérico
+
+Las plantillas custom **solo** difieren en visual (HTML estructural, CSS, fuentes, imágenes, copy, emblemas decorativos, ornamentos SVG). **Toda** la lógica interna — payload de orders, llamadas a Supabase, lectura de configuración, cart logic, chatbot wiring, validaciones de formulario, session management, tracking, loyalty, promos, sold_out polling, store_settings gating, flujo Azul — es copia byte-por-byte de `menu/index.html`. Mismos nombres de variables, mismos comentarios cuando sea posible, misma estructura de funciones. Solo se adaptan selectores CSS/IDs cuando el custom tenga clases distintas — nunca la lógica.
+
+**Por qué:** permite propagar fixes del genérico al custom sin pensar, y evita drifts silenciosos como los 52 detectados en el audit inicial de The Deck (parity audit 2026-04-22).
+
+**Cuando encuentras divergencia:** primero decide si es visual (Categoría B, OK) o lógica (Categoría A, hay que alinear). Si hay duda (Categoría C), consulta al founder antes de tocar.
+
+### Known issues del genérico
+
+Si durante el trabajo en un template custom detectas un bug o drift del genérico que esté fuera del scope inmediato, **no lo arregles ahí**. Documenta en `docs/generic-menu-known-issues.md` con: qué se observó, por qué no se resolvió en el momento, y cuándo se debería volver. El archivo es la fuente de verdad de issues pendientes del genérico.
+
+Ref: `docs/generic-menu-known-issues.md`. Tag actual: `thedeck-pre-parity-v1` (rollback válido). Audit de referencia: conversación del 2026-04-22 (52 items Cat A detectados, hotfix #1.1-#1.5 resuelve los P0).
+
+---
+
 ## Deployment
 
 - Push to `main` branch on GitHub auto-deploys via Vercel
