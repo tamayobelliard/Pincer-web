@@ -1522,8 +1522,10 @@ document.addEventListener('keydown', (e) => {
 
 document.getElementById('modalAdd').addEventListener('click', () => {
   if (!modalState.item) return;
-  const notes = document.getElementById('modalNotes').value.trim();
-  addToCart(modalState.item, modalState.qty, notes);
+  const notesRaw = document.getElementById('modalNotes').value.trim();
+  const notes = notesRaw || null;
+  const it = modalState.item;
+  addItem(it.id, it.name, it.price, notes, modalState.qty, 'menu');
   closeItemModal();
 });
 
@@ -1531,22 +1533,25 @@ document.getElementById('modalAdd').addEventListener('click', () => {
 // Cart state + rendering
 // ══════════════════════════════════════════════════════════════
 
-function addToCart(item, qty, notes) {
-  // Si el mismo item + mismas notes ya existe, sumamos qty en lugar de duplicar row
-  const existing = cart.find(c => c.id === item.id && (c.notes || '') === (notes || ''));
-  if (existing) {
-    existing.qty = Math.min(99, existing.qty + qty);
+// Parity con menu/index.html:3853-3869. Firma idéntica.
+// sold_out guard: hoy silent return (Commit #3 agregará thedeck-styled popup
+// cuando se implemente sold_out polling). track() llamada defer para Commit #4.
+function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
+  // storeClosed guard llega en Commit #3 junto con store_settings polling.
+  if (soldOutSet.has(id)) return;
+
+  const idx = cart.findIndex(c => c.id === id && c.notes === notes);
+  if (idx !== -1) {
+    cart[idx].qty += qty;
+    // Track origin across merges: if a menu-added item is re-added by the bot
+    // (or vice versa), tag the line as 'mixed' so analytics stay honest.
+    const existingSource = cart[idx].source || 'menu';
+    cart[idx].source = existingSource === source ? source : 'mixed';
   } else {
-    cart.push({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      qty,
-      notes: notes || '',
-    });
+    cart.push({ id, name, price, qty, notes, source });
   }
   updateCtaAndBadge();
-  // Si el carrito está abierto, re-render
+  // Re-render the cart panel si está abierto (UI-specific, no toca lógica)
   if (document.getElementById('cartPanel').classList.contains('open')) {
     renderCart();
   }
@@ -1821,7 +1826,7 @@ async function sendChatMessage(userText) {
         renderBotMessage(`❌ Lo siento, ${item.name} se acaba de agotar.`, []);
         return;
       }
-      addToCart(item, ci.qty, ci.note);
+      addItem(item.id, item.name, item.price, ci.note || null, ci.qty, 'bot');
       renderBotMessage(`✅ ${ci.qty > 1 ? ci.qty + 'x ' : ''}${item.name} agregado a tu pedido${ci.note ? ' (' + ci.note + ')' : ''}`, []);
     });
   } catch (e) {
