@@ -103,7 +103,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // Whitelist of allowed fields with type validation
+    // Whitelist of allowed fields with type validation.
+    // Types: 'string' | 'number' | 'boolean' | 'array'.
+    // Hotfix #1.1 (2026-04-22): order_types was declared 'string' but the
+    // dashboard sends it as an array → all saves silently failed with 400.
+    // Root cause of data drift across restaurants (see thedeck, hummus,
+    // tastystoriescafe all stuck with signup default ['dine_in']).
     const ALLOWED = {
       business_type: 'string',
       address: 'string',
@@ -113,22 +118,72 @@ export default async function handler(req, res) {
       website: 'string',
       notes: 'string',
       chatbot_personality: 'string',
-      order_types: 'string',
+      order_types: 'array',
       delivery_fee: 'number',
       logo_url: 'string',
     };
 
+    // order_types only accepts these three enum values (mirrors the UI).
+    const ORDER_TYPE_VALUES = ['dine_in', 'take_out', 'delivery'];
+
     const update = {};
     for (const [key, expectedType] of Object.entries(ALLOWED)) {
-      if (body[key] !== undefined) {
-        if (body[key] !== null && typeof body[key] !== expectedType) {
-          return res.status(400).json({ success: false, error: `Campo '${key}' debe ser tipo ${expectedType}` });
-        }
-        if (typeof body[key] === 'string' && body[key].length > 2000) {
-          return res.status(400).json({ success: false, error: `Campo '${key}' excede el limite de 2000 caracteres` });
-        }
-        update[key] = body[key];
+      if (body[key] === undefined) continue;
+
+      // null is always acceptable (clears an optional field)
+      if (body[key] === null) { update[key] = null; continue; }
+
+      // Type validation via isValidType (see bottom of this file)
+      if (!isValidType(body[key], expectedType)) {
+        const receivedType = Array.isArray(body[key]) ? 'array' : typeof body[key];
+        console.error(JSON.stringify({
+          event: 'update_settings_validation_rejected',
+          reason: 'wrong_type',
+          restaurant_slug,
+          field: key,
+          expected_type: expectedType,
+          received_type: receivedType,
+          received_value: safeValueForLog(body[key]),
+        }));
+        return res.status(400).json({ success: false, error: `Campo '${key}' debe ser tipo ${expectedType}` });
       }
+
+      // Length check for strings
+      if (expectedType === 'string' && body[key].length > 2000) {
+        console.error(JSON.stringify({
+          event: 'update_settings_validation_rejected',
+          reason: 'length_exceeded',
+          restaurant_slug,
+          field: key,
+          expected_type: expectedType,
+          received_type: 'string',
+          received_value: safeValueForLog(body[key]),
+          length: body[key].length,
+          max_length: 2000,
+        }));
+        return res.status(400).json({ success: false, error: `Campo '${key}' excede el limite de 2000 caracteres` });
+      }
+
+      // Per-field semantic validation
+      if (key === 'order_types') {
+        const r = validateOrderTypes(body[key], ORDER_TYPE_VALUES);
+        if (!r.ok) {
+          console.error(JSON.stringify({
+            event: 'update_settings_validation_rejected',
+            reason: r.reason,
+            restaurant_slug,
+            field: key,
+            expected_type: expectedType,
+            received_type: Array.isArray(body[key]) ? 'array' : typeof body[key],
+            received_value: safeValueForLog(body[key]),
+            invalid_items: r.invalid,
+            allowed_values: ORDER_TYPE_VALUES,
+          }));
+          return res.status(400).json({ success: false, error: `Campo 'order_types' invalido: ${r.reason}` });
+        }
+      }
+
+      update[key] = body[key];
     }
 
     console.log('update-settings: fields to update:', JSON.stringify(update));
@@ -161,4 +216,52 @@ export default async function handler(req, res) {
     console.error('update-settings error:', error);
     return res.status(500).json({ success: false, error: 'Error del servidor' });
   }
+}
+
+// ── Validation helpers (hotfix #1.1) ───────────────────────────────────────
+// isValidType accepts the four primitives the whitelist uses. NaN and
+// Infinity are rejected for 'number' because they round-trip as null in JSON
+// and are never valid settings values.
+function isValidType(value, expected) {
+  if (expected === 'string')  return typeof value === 'string';
+  if (expected === 'number')  return typeof value === 'number' && Number.isFinite(value);
+  if (expected === 'boolean') return typeof value === 'boolean';
+  if (expected === 'array')   return Array.isArray(value);
+  return false;
+}
+
+// order_types must be a non-empty array of strings drawn from allowedValues.
+function validateOrderTypes(value, allowedValues) {
+  if (!Array.isArray(value)) return { ok: false, reason: 'not_array' };
+  if (value.length === 0)    return { ok: false, reason: 'empty_array' };
+  const invalid = value.filter(v => typeof v !== 'string' || !allowedValues.includes(v));
+  if (invalid.length > 0)    return { ok: false, reason: 'invalid_values', invalid };
+  return { ok: true };
+}
+
+// Serialize a rejected value into a bounded, JSON-safe form for structured
+// logs. Strings truncated to 60 chars. Objects/arrays JSON'd; if the JSON
+// exceeds 200 chars, the truncated string preview is returned instead of
+// the raw reference. Primitives pass through. Defensive against unexpected
+// types (functions, symbols, circular refs) even though JSON.parse can't
+// produce them from a client body — future-proofing.
+function safeValueForLog(value) {
+  if (typeof value === 'string') {
+    return value.length > 60 ? value.substring(0, 60) + '…' : value;
+  }
+  if (value !== null && typeof value === 'object') {
+    try {
+      const json = JSON.stringify(value);
+      if (typeof json !== 'string') return '[unloggable:' + (typeof value) + ']';
+      if (json.length > 200) return json.substring(0, 200) + '…';
+      return value;
+    } catch (e) {
+      return '[unloggable:' + (typeof value) + ']';
+    }
+  }
+  // primitives (number, boolean, null, undefined) and bigint/symbol fallback
+  if (typeof value === 'bigint' || typeof value === 'symbol') {
+    return String(value);
+  }
+  return value;
 }
