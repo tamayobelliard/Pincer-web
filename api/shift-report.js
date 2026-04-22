@@ -185,7 +185,11 @@ function calculateMetrics(orders) {
     } catch {}
   }
 
-  const itbis = Math.round(total_bruto * 0.18);
+  // Sprint-2 C5 (2026-04-22): ITBIS reverse math — parity con dashboard
+  // UI y con el receipt del cliente. Post-sprint-2 C3, orders.total =
+  // precio final cobrado (incluye ITBIS en los 6 restaurantes), así que
+  // la fórmula simétrica da el ITBIS contenido sin sobre-estimar 18%.
+  const itbis = Math.round(total_bruto - total_bruto / 1.18);
   const fee_pincer = 0;
   const total_neto = total_bruto - itbis - fee_pincer;
 

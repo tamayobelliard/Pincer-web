@@ -3517,7 +3517,12 @@ function openCloseShiftModal() {
     });
 
     var top5 = Object.entries(itemCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-    var itbis = Math.round(totalSales * 0.18);
+    // Sprint-2 C5 (2026-04-22): ITBIS reverse math — parity con el receipt
+    // del cliente (menu/index.html:5458). Post-sprint-2 C3, orders.total =
+    // precio final cobrado (incluye ITBIS en los 6 restaurantes), así que
+    // la fórmula simétrica total - total/1.18 da el ITBIS contenido.
+    // Antes: totalSales * 0.18 inflaba ~18% el ITBIS reportado.
+    var itbis = Math.round(totalSales - totalSales / 1.18);
 
     var html = '';
     html += '<div class="shift-stat"><span class="label">Encargado</span><span class="value">' + currentShift.nombre_encargado + '</span></div>';
