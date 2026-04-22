@@ -75,6 +75,43 @@ Se aplicará en el próximo sprint cuando se agregue CI automation (hoy no hay C
 
 **Documentado por completitud del audit** — si en el futuro alguien detecta un 400 inesperado en `delivery_fee`, buscar `update_settings_validation_rejected` con `received_type: 'number'` en Vercel logs.
 
+## 8. ITBIS inflado ~18% en shift reports (RESUELTO Sprint-2 C5)
+
+**Observado:** `dashboard/index.html:3520` y `api/shift-report.js:188` usaban `totalSales * 0.18` para calcular el ITBIS del shift. Esto aplica 18% sobre un total que YA incluía ITBIS → sobre-estimación consistente. El receipt del cliente (`menu/index.html:5458`) hace reverse math (`total - total/1.18`) y da el valor correcto; los dos lados reportaban números distintos para el mismo pedido.
+
+**Detectado en:** Sprint-2 C1 (investigación ITBIS, 2026-04-22).
+
+**Impacto numérico medido sobre orders reales:**
+- thedeck: RD$487 → RD$413 (−17.92%)
+- mrsandwich: RD$7,506 → RD$6,361 (−18.00%)
+- squareone: RD$1,787 → RD$1,515 (−17.95%)
+
+**Resolución:** Sprint-2 C5 cambió la fórmula a `totalSales - totalSales / 1.18` en ambos sitios. Simétrica post-C3 (donde `orders.total` = precio final cobrado). Tres sitios de ITBIS en la app ahora concuerdan: cliente receipt, dashboard UI, PDF del shift report.
+
+**Nota contable:** el ITBIS real recaudado no cambia (el dinero salió del precio con tax incluido). Solo se corrige el reporte — venta neta sube proporcionalmente, que es la cifra correcta para presentar a contabilidad.
+
+## 9. "CREATE OR REPLACE VIEW" requiere mantener orden exacto de columnas
+
+**Observado:** Al correr la SQL migration de Sprint-2 C2 (agregar `prices_include_tax` a `restaurant_users_public`), el patrón `CREATE OR REPLACE VIEW` falla si el orden/tipo de las columnas existentes cambia — PostgreSQL exige que la nueva definición sea "compatible" con la anterior. La solución en C2 fue recrear el view respetando el orden original más la nueva columna al final.
+
+**Impacto:** menor si se es cuidadoso, pero fácil de romper. Si alguien reordena columnas por legibilidad, el REPLACE falla con mensaje poco obvio.
+
+**Pendiente:** para próximas migraciones de views, preferir `DROP VIEW` + `CREATE VIEW` cuando el view es read-only desde frontend (sin dependencias estructurales de DB tipo materialized view o views anidados). Es más explícito y evita confusión sobre por qué el REPLACE falla. Ejemplo de patrón a usar:
+
+```sql
+DROP VIEW IF EXISTS restaurant_users_public;
+CREATE VIEW restaurant_users_public AS SELECT ... ;
+GRANT SELECT ON restaurant_users_public TO anon;
+```
+
+El único costo es que durante ~milisegundos la view no existe, lo cual es aceptable para cualquier operación offline de migración (el frontend tiene fallback a `restaurant_users` directo en fetchRestaurantData).
+
+## 10. Azul ITBIS cálculo asume prices_include_tax=true
+
+**Observado:** `menu/index.html:4797` calcula `itbisCents = Math.round((total - total/1.18) * 100)` para el payload Azul. Post-Sprint-2 C3, `total` refleja el precio final (incluye ITBIS para ambos tipos de restaurante), así que la fórmula sigue siendo correcta para los 5 restaurantes con Azul activo — todos tienen `prices_include_tax=true`.
+
+**Pendiente:** si algún restaurante con `prices_include_tax=false` activara Azul en el futuro (caso hipotético: thedeck decide aceptar pago upfront algún día), la fórmula seguiría funcionando porque `total` incluye el ITBIS sumado, pero el desglose granular (base vs ITBIS) sobre el delivery fee quedaría ligeramente distribuido. No es incorrecto — Azul acepta el amount total + el ITBIS extraído — pero conviene auditar el día que ocurra.
+
 ---
 
 ## Principios

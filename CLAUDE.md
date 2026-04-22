@@ -362,6 +362,24 @@ Las plantillas custom **solo** difieren en visual (HTML estructural, CSS, fuente
 
 **Cuando encuentras divergencia:** primero decide si es visual (Categoría B, OK) o lógica (Categoría A, hay que alinear). Si hay duda (Categoría C), consulta al founder antes de tocar.
 
+### Regla #5 — ITBIS condicional por `prices_include_tax`
+
+Pincer soporta dos convenciones fiscales simultáneas:
+- **`prices_include_tax = true`** (5 restaurantes hoy): los precios del menú YA contienen el ITBIS 18%. El cart/checkout muestra solo `TOTAL`. El receipt post-orden desglosa con reverse math (`total - total/1.18`).
+- **`prices_include_tax = false`** (thedeck): los precios son sin ITBIS. El cart/checkout desglosa explícitamente `SUBTOTAL · ITBIS (18%) · TOTAL A PAGAR`. El total mostrado = subtotal × 1.18 + delivery.
+
+**Invariante crítico:** `orders.total` siempre = precio final cobrado al cliente, sin importar qué convención tenga el restaurante. Esto permite que dashboard reports, shift reports, loyalty increments y cualquier otro consumer calculen ITBIS con la fórmula simétrica `total - total / 1.18` sin condicional. Ver Sprint-2 C3 + C5 (2026-04-22).
+
+**Cuando construyas un template custom o toques checkout:**
+- Leer `restaurantData.prices_include_tax` con fallback `!== false` (default true para pre-migration).
+- Usar el helper `computeTotals()` que ya existe en ambos archivos (genérico + thedeck) — devuelve `{subtotal, tax, grand, itemsSum, deliveryFee}`.
+- El campo `total` del payload a `/rest/v1/orders` = `computeTotals().grand`.
+- No hardcodear `0.18` ni `1.18` fuera de `TAX_RATE`/`computeTotals`.
+
+**Cuando toques reportes o analítica del lado dashboard/API:**
+- ITBIS contenido en un `total` = `total - total / 1.18`. Nunca `total * 0.18` (inflaba 18% — Sprint-2 C5 fix).
+- Venta neta = `total - itbis`.
+
 ### Known issues del genérico
 
 Si durante el trabajo en un template custom detectas un bug o drift del genérico que esté fuera del scope inmediato, **no lo arregles ahí**. Documenta en `docs/generic-menu-known-issues.md` con: qué se observó, por qué no se resolvió en el momento, y cuándo se debería volver. El archivo es la fuente de verdad de issues pendientes del genérico.
