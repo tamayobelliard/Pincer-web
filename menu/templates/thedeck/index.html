@@ -654,6 +654,113 @@
   }
   .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  /* ═══════════ Loyalty VIP box ═══════════ */
+  .loyalty-vip-box {
+    margin-bottom: 16px; padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(201,169,97,0.08), rgba(11,30,58,0.03));
+    border: 1px solid var(--color-accent); border-radius: var(--radius-md);
+    display: none;
+  }
+  .loyalty-vip-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .loyalty-vip-title {
+    font-family: var(--font-serif); font-size: 10px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--color-accent-3); font-weight: 600;
+  }
+  .loyalty-vip-badge {
+    font-family: var(--font-body); font-size: 14px;
+    color: var(--color-accent);
+  }
+  .loyalty-progress {
+    height: 5px; background: rgba(11,30,58,0.1); border-radius: 999px;
+    overflow: hidden; margin-bottom: 8px;
+  }
+  .loyalty-progress-fill {
+    height: 100%; background: var(--color-accent);
+    transition: width 0.4s ease;
+  }
+  .loyalty-progress-text {
+    font-family: var(--font-body); font-size: 12.5px; color: var(--color-text-soft);
+  }
+  .loyalty-reward-box {
+    margin-top: 10px; padding: 10px 12px;
+    background: var(--color-primary); color: var(--color-bg);
+    border-radius: var(--radius-md);
+    display: none; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .loyalty-reward-text {
+    font-family: var(--font-body); font-size: 13px; flex: 1;
+  }
+  .loyalty-reward-btn {
+    background: var(--color-accent); color: var(--color-primary); border: none;
+    padding: 6px 12px; border-radius: var(--radius-pill);
+    font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+    cursor: pointer;
+  }
+  .loyalty-reward-added {
+    display: none; margin-top: 8px; padding: 8px 10px;
+    background: rgba(86,171,47,0.08); border: 1px dotted rgba(86,171,47,0.4);
+    border-radius: var(--radius-md); color: var(--color-success);
+    font-family: var(--font-body); font-size: 12.5px;
+  }
+
+  /* ═══════════ Promo popup ═══════════ */
+  .promo-overlay {
+    position: fixed; inset: 0; background: rgba(11,30,58,0.6); z-index: 92;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .promo-overlay.show { display: flex; }
+  .promo-popup {
+    position: relative; max-width: 360px; width: 100%;
+    background: var(--color-bg); border-radius: var(--radius-lg);
+    border: 2px solid var(--color-accent);
+    box-shadow: 0 20px 60px rgba(11,30,58,0.4);
+    overflow: hidden; animation: slideUpFull 0.3s ease-out;
+    display: none; flex-direction: column;
+  }
+  .promo-popup.show { display: flex; }
+  .promo-close {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255,255,255,0.9); border: 1px solid var(--color-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--color-primary);
+  }
+  .promo-badge {
+    position: absolute; top: 12px; left: 12px; z-index: 2;
+    background: var(--color-accent); color: var(--color-primary);
+    padding: 4px 10px; border-radius: var(--radius-pill);
+    font-family: var(--font-serif); font-size: 10px;
+    letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+  }
+  .promo-image {
+    width: 100%; height: 180px; object-fit: cover; display: block;
+    background: var(--color-surface);
+  }
+  .promo-content {
+    padding: 20px; text-align: center;
+  }
+  .promo-title {
+    font-family: var(--font-heading); font-size: 22px; color: var(--color-primary);
+    margin-bottom: 8px; letter-spacing: 0.3px;
+  }
+  .promo-price {
+    font-family: var(--font-body); font-size: 18px; font-weight: 600;
+    color: var(--color-primary); margin-bottom: 14px;
+  }
+  .promo-old-price {
+    font-size: 13px; color: var(--color-text-mute); text-decoration: line-through;
+    margin-right: 8px; font-weight: 400;
+  }
+  .promo-cta {
+    width: 100%; background: var(--color-primary); color: var(--color-bg);
+    border: none; padding: 12px 20px; border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 14px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.5px;
+  }
+
   /* ═══════════ Store closed overlay ═══════════ */
   .closed-overlay {
     position: fixed; inset: 0; z-index: 95;
@@ -972,6 +1079,25 @@
   <div class="checkout-body">
     <div class="checkout-summary" id="checkoutSummary"></div>
 
+    <!-- Loyalty VIP box (oculto hasta que el cliente escriba teléfono válido) -->
+    <div class="loyalty-vip-box" id="loyaltyVipBox">
+      <div class="loyalty-vip-header">
+        <span class="loyalty-vip-title" id="loyaltyProgramName">VIP CLUB</span>
+        <span class="loyalty-vip-badge">★</span>
+      </div>
+      <div class="loyalty-progress">
+        <div class="loyalty-progress-fill" id="loyaltyProgressFill" style="width:0%;"></div>
+      </div>
+      <div class="loyalty-progress-text" id="loyaltyProgressText"></div>
+      <div class="loyalty-reward-box" id="loyaltyRewardBox">
+        <span class="loyalty-reward-text" id="loyaltyRewardText"></span>
+        <button type="button" class="loyalty-reward-btn" id="loyaltyRewardBtn" onclick="addLoyaltyReward()">+ Agregar</button>
+      </div>
+      <div class="loyalty-reward-added" id="loyaltyRewardAdded">
+        🎁 <span id="loyaltyRewardAddedName"></span> agregado gratis a tu orden
+      </div>
+    </div>
+
     <!-- Order-type selector (oculto si solo hay 1 tipo habilitado) -->
     <div class="checkout-order-type-section" id="checkoutOrderTypeSection" style="display:none;">
       <div class="checkout-order-type-title">Tipo de orden</div>
@@ -1000,7 +1126,7 @@
 
     <div class="checkout-field">
       <label for="chkPhone">WhatsApp / Teléfono</label>
-      <input class="input" type="tel" id="chkPhone" placeholder="809-000-0000" maxlength="20" autocomplete="tel">
+      <input class="input" type="tel" id="chkPhone" placeholder="809-000-0000" maxlength="20" autocomplete="tel" oninput="onCheckoutPhoneChange()">
       <div class="checkout-error" id="chkPhoneError" style="display:none;">Número inválido. Usa formato 809-000-0000.</div>
     </div>
 
@@ -1050,6 +1176,21 @@
       <span>Agregar</span>
       <span class="tag" id="modalAddTotal">RD$0</span>
     </button>
+  </div>
+</div>
+
+<!-- ═════════════ Promo popup ═════════════ -->
+<div class="promo-overlay" id="promoOverlay"></div>
+<div class="promo-popup" id="promoPopup" role="dialog" aria-modal="true" data-product-id="">
+  <button class="promo-close" id="promoCloseBtn" aria-label="Cerrar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
+  </button>
+  <div class="promo-badge" id="promoBadge" style="display:none;">NUEVO</div>
+  <img class="promo-image" id="promoImage" src="" alt="" style="display:none;">
+  <div class="promo-content">
+    <div class="promo-title" id="promoTitle">—</div>
+    <div class="promo-price" id="promoPrice" style="display:none;">—</div>
+    <button class="promo-cta" id="promoCtaBtn" onclick="promoCtaClick()">¡Pruébalo Ya!</button>
   </div>
 </div>
 
@@ -1346,6 +1487,226 @@ function getNextOpenTime(hoursStr) {
     }
   }
   return null;
+}
+
+// ── Loyalty state + storage keys (parity con menu/index.html:4260-4262, 2946-2950) ──
+var _loyaltyData = null;
+var _loyaltyRewardAdded = false;
+var _loyaltyPhoneTimer = null;
+const SESSION_KEY = 'pincer_orders_' + SLUG;
+const PROMO_SEEN_KEY = 'pincer_promo_seen_' + SLUG;
+
+// Session orders history — data-layer solo (UI panel llega en Commit #6).
+// Cap top-50 (parity con menu/index.html:5211-5320).
+let sessionOrders = [];
+
+function loadSessionOrders() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) sessionOrders = JSON.parse(raw);
+    if (!Array.isArray(sessionOrders)) sessionOrders = [];
+  } catch (e) { sessionOrders = []; }
+}
+
+function saveSessionOrders() {
+  try {
+    if (sessionOrders.length > 50) sessionOrders = sessionOrders.slice(-50);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionOrders));
+  } catch (e) { /* localStorage full or disabled */ }
+}
+
+// ── Loyalty helpers (parity con menu/index.html:4264-4379) ──
+function onCheckoutPhoneChange() {
+  clearTimeout(_loyaltyPhoneTimer);
+  _loyaltyPhoneTimer = setTimeout(fetchLoyaltyProgress, 600);
+}
+
+async function fetchLoyaltyProgress() {
+  const box = document.getElementById('loyaltyVipBox');
+  const phone = (document.getElementById('chkPhone').value || '').trim().replace(/\D/g, '');
+  if (phone.length < 10) {
+    box.style.display = 'none';
+    _loyaltyData = null;
+    return;
+  }
+  try {
+    const res = await fetchWithTimeout(
+      '/api/loyalty-progress?phone=' + encodeURIComponent(phone) + '&slug=' + encodeURIComponent(SLUG),
+      {}, 5000
+    );
+    if (!res.ok) { box.style.display = 'none'; return; }
+    const data = await res.json();
+    _loyaltyData = data;
+    if (!data.active) { box.style.display = 'none'; return; }
+    renderLoyaltyVipBox(data);
+  } catch (e) {
+    dbg('⚠️ loyalty-progress error: ' + (e?.message || e));
+    box.style.display = 'none';
+  }
+}
+
+function renderLoyaltyVipBox(data) {
+  const box = document.getElementById('loyaltyVipBox');
+  document.getElementById('loyaltyProgramName').textContent = data.program_name || 'VIP CLUB';
+  const pct = Math.round((data.progress_toward_next / data.orders_needed) * 100);
+  document.getElementById('loyaltyProgressFill').style.width = pct + '%';
+
+  if (data.rewards_available > 0) {
+    const rewardCount = data.rewards_available > 1 ? data.rewards_available + 'x ' : '';
+    document.getElementById('loyaltyProgressText').textContent = '🏆 ¡Llevas ' + data.orders_count + ' órdenes!';
+    document.getElementById('loyaltyRewardText').textContent = rewardCount + data.reward_name + ' disponible';
+    document.getElementById('loyaltyRewardBtn').textContent = '+ Agregar ' + data.reward_name;
+    document.getElementById('loyaltyRewardBox').style.display = _loyaltyRewardAdded ? 'none' : 'flex';
+    document.getElementById('loyaltyRewardAdded').style.display = _loyaltyRewardAdded ? 'block' : 'none';
+    if (_loyaltyRewardAdded) document.getElementById('loyaltyRewardAddedName').textContent = data.reward_name;
+  } else {
+    document.getElementById('loyaltyProgressText').textContent =
+      'Llevas ' + data.progress_toward_next + ' de ' + data.orders_needed +
+      ' — ' + data.remaining + ' más para tu ' + data.reward_name;
+    document.getElementById('loyaltyRewardBox').style.display = 'none';
+    document.getElementById('loyaltyRewardAdded').style.display = 'none';
+  }
+  box.style.display = '';
+}
+
+function addLoyaltyReward() {
+  if (!_loyaltyData || _loyaltyData.rewards_available <= 0) return;
+  if (_loyaltyRewardAdded) return;
+
+  const productId = _loyaltyData.reward_product_id;
+  const rewardName = _loyaltyData.reward_name || 'Reward';
+  const menuItem = products.find(p => p.id === productId);
+  const itemName = menuItem ? menuItem.name : rewardName;
+
+  // Push directo al cart (bypass addItem para evitar storeClosed/soldOut
+  // guards — el reward es una excepción deliberada con source='loyalty').
+  cart.push({ id: productId, name: itemName, price: 0, qty: 1, notes: '🎁 Cortesía VIP', source: 'loyalty' });
+  _loyaltyRewardAdded = true;
+
+  document.getElementById('loyaltyRewardBox').style.display = 'none';
+  document.getElementById('loyaltyRewardAdded').style.display = 'block';
+  document.getElementById('loyaltyRewardAddedName').textContent = itemName;
+
+  renderCheckoutSummary();
+  updateCtaAndBadge();
+  dbg('🎁 Loyalty reward added: ' + itemName + ' at RD$0');
+  track('loyalty_reward_added', { product_id: productId, reward_name: rewardName });
+}
+
+// Called from submitCheckout success — fire-and-forget (parity :4362-4379).
+function triggerLoyaltyIncrement(orderId, slug) {
+  if (!_loyaltyData || !_loyaltyData.active) return;
+  fetch('/api/loyalty-increment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: orderId, slug: slug }),
+    signal: AbortSignal.timeout(10000),
+  }).then(r => r.ok ? r.json() : null).then(d => {
+    if (d && d.counted) dbg('⭐ Loyalty increment: count=' + d.orders_count + ' earned=' + d.rewards_earned);
+  }).catch(e => dbg('⚠️ loyalty-increment error: ' + (e?.message || e)));
+}
+
+// ── Promo popup (parity con menu/index.html:6495-6700) ──
+// MVP: solo 1 slide (sin carousel). Multi-promo carousel llega en Commit #6
+// si hay demanda. La mayoría de restaurantes tiene ≤1 promo activa hoy.
+var _activePromo = null;
+var _promoList = [];
+
+async function checkAndShowPromo() {
+  if (sessionStorage.getItem(PROMO_SEEN_KEY)) return;
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/promotions?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
+        '&is_active=eq.true&select=title,description,price,original_price,badge_text,cta_text,image_url,product_id,created_at&order=created_at.desc&limit=10',
+      { headers: sbHeaders() }, 8000
+    );
+    if (!res.ok) return;
+    const allPromos = await res.json();
+
+    const liveIds = new Set();
+    for (const [cat, items] of productsByCategory.entries()) {
+      for (const it of items) if (!soldOutSet.has(it.id)) liveIds.add(it.id);
+    }
+    _promoList = allPromos.filter(p => p.product_id && liveIds.has(p.product_id));
+    if (!_promoList.length) return;
+
+    _activePromo = _promoList[0];
+    renderPromoSlide(_activePromo);
+    setTimeout(() => {
+      document.getElementById('promoOverlay').classList.add('show');
+      document.getElementById('promoPopup').classList.add('show');
+      track('promotion_viewed', { promotion_id: _activePromo.product_id || '', item_name: _activePromo.title || '', price: _activePromo.price || 0 });
+    }, 1500);
+  } catch (e) {
+    dbg('⚠️ promo check error: ' + (e?.message || e));
+  }
+}
+
+function renderPromoSlide(promo) {
+  const popup = document.getElementById('promoPopup');
+  popup.setAttribute('data-product-id', promo.product_id || '');
+  document.getElementById('promoTitle').textContent = promo.title || '';
+
+  const badgeEl = document.getElementById('promoBadge');
+  let isRecent = false;
+  if (promo.created_at) {
+    const ageDays = (Date.now() - new Date(promo.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    isRecent = ageDays < 3;
+  }
+  if (isRecent && promo.badge_text) {
+    badgeEl.textContent = promo.badge_text;
+    badgeEl.style.display = '';
+  } else {
+    badgeEl.style.display = 'none';
+  }
+
+  const imgEl = document.getElementById('promoImage');
+  if (promo.image_url) {
+    imgEl.src = promo.image_url;
+    imgEl.style.display = 'block';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  const priceEl = document.getElementById('promoPrice');
+  if (promo.price) {
+    let html = '';
+    if (promo.original_price && promo.original_price > promo.price) {
+      html += '<span class="promo-old-price">RD$' + promo.original_price.toLocaleString() + '</span>';
+    }
+    html += 'RD$' + promo.price.toLocaleString();
+    priceEl.innerHTML = html;
+    priceEl.style.display = '';
+  } else {
+    priceEl.style.display = 'none';
+  }
+
+  document.getElementById('promoCtaBtn').textContent = promo.cta_text || '¡Pruébalo Ya!';
+}
+
+function closePromoPopup() {
+  document.getElementById('promoOverlay').classList.remove('show');
+  document.getElementById('promoPopup').classList.remove('show');
+  try { sessionStorage.setItem(PROMO_SEEN_KEY, 'true'); } catch (e) {}
+}
+
+function promoCtaClick() {
+  if (_activePromo) {
+    track('promotion_clicked', { promotion_id: _activePromo.product_id || '', item_name: _activePromo.title || '' });
+  }
+  const productId = document.getElementById('promoPopup').getAttribute('data-product-id');
+  closePromoPopup();
+  if (productId) {
+    setTimeout(() => {
+      const card = document.querySelector('[data-item-id="' + productId + '"]');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.style.transition = 'box-shadow 0.3s';
+        card.style.boxShadow = '0 0 0 3px var(--color-accent)';
+        setTimeout(() => { card.style.boxShadow = ''; }, 1500);
+      }
+    }, 300);
+  }
 }
 
 // ── Store open/closed state — parity con menu/index.html:6210-6350 ──
@@ -1772,6 +2133,12 @@ async function init() {
 
   // Analytics: page_view (parity con menu/index.html:6488)
   track('page_view', { url: location.href, referrer: document.referrer });
+
+  // Session orders history (data layer — UI panel en Commit #6)
+  loadSessionOrders();
+
+  // Promo popup (parity :6476)
+  if (!storeClosed) checkAndShowPromo();
 
   // Auto-open chatbot después de 1.5s — skip si tienda cerrada o si user
   // ya lo abrió por click (parity con menu/index.html:6191-6196).
@@ -2355,6 +2722,12 @@ document.getElementById('ctaOrder').addEventListener('click', openCart);
 function openCheckout() {
   if (!cart.length) return;
 
+  // Limpia loyalty reward si está en el cart (el usuario puede haberlo
+  // agregado en un checkout anterior y volvió al menú). Parity :4397.
+  cart = cart.filter(i => i.source !== 'loyalty');
+  _loyaltyRewardAdded = false;
+  document.getElementById('loyaltyVipBox').style.display = 'none';
+
   // Pre-fill name/phone — se persisten se remueve en Commit #6 (parity strict).
   let savedName = '', savedPhone = '';
   try {
@@ -2603,6 +2976,26 @@ async function submitCheckout() {
       order_type: selectedOrderType,
       item_count: itemsArray.length,
     });
+
+    // Loyalty increment fire-and-forget (parity :4197).
+    if (record && record.id) triggerLoyaltyIncrement(record.id, SLUG);
+
+    // Persist this order to session history (parity :4209-4218).
+    if (record && record.id) {
+      sessionOrders.push({
+        orderId: record.id,
+        orderNumber: record.order_number || record.id,
+        items: itemsArray.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
+        total: total,
+        status: record.status || 'pending',
+        orderType: record.order_type || selectedOrderType,
+        customerName: record.customer_name || '',
+        phone: customerPhone,
+        createdAt: record.created_at || new Date().toISOString(),
+      });
+      saveSessionOrders();
+    }
+
     cart = [];
     updateCtaAndBadge();
     resetSubmitButton();
@@ -2617,6 +3010,10 @@ async function submitCheckout() {
     resetSubmitButton();
   }
 }
+
+// Promo close handlers (X button + overlay click)
+document.getElementById('promoCloseBtn').addEventListener('click', closePromoPopup);
+document.getElementById('promoOverlay').addEventListener('click', closePromoPopup);
 
 document.getElementById('cartCheckout').addEventListener('click', openCheckout);
 document.getElementById('checkoutBack').addEventListener('click', closeCheckout);
