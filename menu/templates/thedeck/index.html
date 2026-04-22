@@ -366,6 +366,18 @@
     font-family: var(--font-heading); font-size: 24px; color: var(--color-primary);
     font-weight: 500; line-height: 1.1;
   }
+  .cart-order-type-row {
+    padding: 10px 20px 0; display: flex; justify-content: space-between;
+    align-items: center; font-family: var(--font-serif);
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--color-accent-3);
+  }
+  .cart-order-type-row span.label { color: var(--color-accent-3); }
+  .cart-order-type-row span.value {
+    color: var(--color-primary); font-family: var(--font-body);
+    font-size: 13px; letter-spacing: 0.5px; text-transform: none;
+    font-weight: 600;
+  }
   .cart-count-label {
     font-size: 10px; letter-spacing: 2.5px; color: var(--color-accent-3);
     text-transform: uppercase; font-family: var(--font-serif); margin-top: 4px;
@@ -1074,6 +1086,12 @@
       <div class="cart-title">Tu Pedido</div>
       <div class="cart-count-label" id="cartCountLabel">0 items</div>
     </div>
+  </div>
+  <!-- Tipo de orden (Sprint-2 B1): display-only cuando hay 1 tipo,
+       botones clickeables cuando hay >1 — se pueblan desde renderCart. -->
+  <div class="cart-order-type-row" id="cartOrderTypeRow" style="display:none;">
+    <span class="label">Tipo</span>
+    <span class="value" id="cartOrderTypeValue">—</span>
   </div>
   <div class="cart-body" id="cartBody">
     <!-- Populado por renderCart() -->
@@ -2212,12 +2230,27 @@ function initChatbot() {
 function renderOrderTypeButtons(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
+  // Sprint-2 B2: labels sin emoji (dashboard mantiene emojis aparte).
   const typeConfig = {
-    dine_in:  { label: '🍽️ Comer aquí' },
-    take_out: { label: '🥡 Para Llevar' },
-    delivery: { label: '🛵 Delivery' }
+    dine_in:  { label: 'Comer aquí' },
+    take_out: { label: 'Para Llevar' },
+    delivery: { label: 'Delivery' }
   };
   container.innerHTML = '';
+
+  // Sprint-2 B1: display-only label cuando hay 1 solo tipo habilitado.
+  if (enabledOrderTypes.length === 1) {
+    const only = enabledOrderTypes[0];
+    const cfg1 = typeConfig[only];
+    if (!cfg1) return;
+    const span = document.createElement('span');
+    span.className = 'checkout-order-type-single';
+    span.style.cssText = 'display:inline-block;padding:8px 14px;color:var(--color-primary);font-weight:600;font-size:13px;font-family:var(--font-body);';
+    span.textContent = cfg1.label;
+    container.appendChild(span);
+    return;
+  }
+
   enabledOrderTypes.forEach(type => {
     const cfg = typeConfig[type];
     if (!cfg) return;
@@ -2440,12 +2473,33 @@ function updateCtaAndBadge() {
   }
 }
 
+// Sprint-2 B1: labels sin emoji para display del lado cliente.
+// Dashboard conserva emojis (fuera de scope). Aplica parity con typeConfig.
+const ORDER_TYPE_LABELS = {
+  dine_in: 'Comer aquí',
+  take_out: 'Para Llevar',
+  delivery: 'Delivery',
+};
+
 function renderCart() {
   const body = document.getElementById('cartBody');
   const footer = document.getElementById('cartFooter');
   const countLabel = document.getElementById('cartCountLabel');
   const count = cartItemCount();
   countLabel.textContent = count + ' ' + (count === 1 ? 'item' : 'items');
+
+  // Mostrar tipo de orden (display-only; selector real vive en checkout).
+  // Oculto cuando el cart está vacío — no hay contexto.
+  const otRow = document.getElementById('cartOrderTypeRow');
+  const otValue = document.getElementById('cartOrderTypeValue');
+  if (otRow && otValue) {
+    if (count > 0) {
+      otValue.textContent = ORDER_TYPE_LABELS[selectedOrderType] || selectedOrderType;
+      otRow.style.display = '';
+    } else {
+      otRow.style.display = 'none';
+    }
+  }
 
   if (!cart.length) {
     body.innerHTML = `
@@ -2842,13 +2896,13 @@ function openCheckout() {
   // 'Enviando...' (ej: cierre del modal mid-submit) se sanea al reabrir.
   resetSubmitButton();
 
-  // Render order-type selector si hay >1 opción, auto-select el único
-  // si solo hay uno (parity con menu/index.html:3913-3916 y :4441).
+  // Sprint-2 B1: mostrar siempre el selector (display-only cuando hay 1
+  // tipo, botones cuando >1). Matches generic menu/index.html:4449-4454.
   const otSection = document.getElementById('checkoutOrderTypeSection');
-  if (enabledOrderTypes.length > 1) {
+  if (otSection && enabledOrderTypes.length >= 1) {
     otSection.style.display = '';
     renderOrderTypeButtons('checkoutOrderTypeButtons');
-  } else {
+  } else if (otSection) {
     otSection.style.display = 'none';
   }
   selectOrderType(selectedOrderType);
@@ -2878,7 +2932,7 @@ function renderCheckoutSummary() {
   const grandTotal = itemsTotal + fee;
   const feeRow = fee > 0 ? `
     <div class="checkout-summary-row">
-      <span>🛵 Delivery</span>
+      <span>Delivery</span>
       <span>${fmtPrice(fee)}</span>
     </div>
   ` : '';

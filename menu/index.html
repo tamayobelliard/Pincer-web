@@ -2418,7 +2418,7 @@
         </div>
       </div>
       <div class="delivery-fee-line" id="deliveryFeeLine" style="display:none;">
-        <span>🛵 Delivery</span>
+        <span>Delivery</span>
         <span id="deliveryFeeAmount">RD$0</span>
       </div>
     </div>
@@ -2640,7 +2640,7 @@
       </div>
     </div>
     <div class="delivery-fee-line" id="checkoutDeliveryFeeLine" style="display:none;">
-      <span>🛵 Delivery</span>
+      <span>Delivery</span>
       <span id="checkoutDeliveryFeeAmount">RD$0</span>
     </div>
   </div>
@@ -3917,12 +3917,14 @@ function renderOrder() {
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
   phoneField.style.display = 'block';
-  // Show order type selector (only if more than 1 type enabled)
+  // Sprint-2 B1: mostrar el order-type selector SIEMPRE que haya ≥1 tipo.
+  // Con 1 solo tipo: renderOrderTypeButtons dibuja un label display-only
+  // (no botón). Con >1: botones clickeables como antes.
   var orderTypeSec2 = document.getElementById('orderTypeSection');
-  if (orderTypeSec2 && enabledOrderTypes.length > 1) {
+  if (orderTypeSec2 && enabledOrderTypes.length >= 1) {
     orderTypeSec2.style.display = 'block';
     renderOrderTypeButtons('orderTypeButtons');
-    selectOrderType(selectedOrderType);
+    if (enabledOrderTypes.length > 1) selectOrderType(selectedOrderType);
   } else if (orderTypeSec2) {
     orderTypeSec2.style.display = 'none';
   }
@@ -4423,7 +4425,7 @@ function openCheckoutModal() {
   var totalHTML = '';
   if (fee > 0) {
     totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Subtotal</span><span>RD$' + total.toLocaleString() + '</span></div>';
-    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>🛵 Delivery</span><span>RD$' + fee.toLocaleString() + '</span></div>';
+    totalHTML += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;"><span>Delivery</span><span>RD$' + fee.toLocaleString() + '</span></div>';
   }
   totalHTML += '<span>TOTAL</span><span>RD$' + grandTotal.toLocaleString() + '</span>';
   totalDiv.innerHTML = totalHTML;
@@ -4443,12 +4445,13 @@ function openCheckoutModal() {
   }
   document.getElementById('checkoutName').value = prefillName;
 
-  // Render order type selector in checkout (only if more than 1 type enabled)
+  // Sprint-2 B1: mostrar siempre el selector (display-only cuando hay 1
+  // tipo, botones cuando >1) — parity con la pantalla "Tu Pedido".
   var checkoutOTSection = document.getElementById('checkoutOrderTypeSection');
-  if (checkoutOTSection && enabledOrderTypes.length > 1) {
+  if (checkoutOTSection && enabledOrderTypes.length >= 1) {
     checkoutOTSection.style.display = 'block';
     renderOrderTypeButtons('checkoutOrderTypeButtons');
-    selectOrderType(selectedOrderType);
+    if (enabledOrderTypes.length > 1) selectOrderType(selectedOrderType);
   }
 
   // Pre-fill delivery address and GPS if captured in main flow
@@ -4537,15 +4540,33 @@ function selectPayMethod(method) {
 // ORDER TYPE SELECTOR
 // ══════════════════════════════════════════════════════════════
 
+// Sprint-2 B2: labels sin emoji para display del lado cliente. Dashboard
+// conserva emojis — ese lado es interfaz interna para el mesero.
 function renderOrderTypeButtons(containerId) {
   var container = document.getElementById(containerId);
   if (!container) return;
   var typeConfig = {
-    dine_in:  { label: '🍽️ Comer aquí' },
-    take_out: { label: '🥡 Para Llevar' },
-    delivery: { label: '🛵 Delivery' }
+    dine_in:  { label: 'Comer aquí' },
+    take_out: { label: 'Para Llevar' },
+    delivery: { label: 'Delivery' }
   };
   container.innerHTML = '';
+
+  // Sprint-2 B1: cuando hay 1 solo tipo, render como label display-only
+  // en vez de botón clickable. Parity con thedeck que usa la misma
+  // filosofía (ver cart-order-type-row).
+  if (enabledOrderTypes.length === 1) {
+    var only = enabledOrderTypes[0];
+    var cfg1 = typeConfig[only];
+    if (!cfg1) return;
+    var span = document.createElement('span');
+    span.className = 'order-type-single';
+    span.style.cssText = 'display:inline-block;padding:8px 14px;color:var(--primary);font-weight:600;font-size:0.95em;';
+    span.textContent = cfg1.label;
+    container.appendChild(span);
+    return;
+  }
+
   enabledOrderTypes.forEach(function(type) {
     var cfg = typeConfig[type];
     if (!cfg) return;
@@ -4608,7 +4629,7 @@ function updateTotalWithDeliveryFee() {
       html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;">' +
         '<span>Subtotal:</span><span>RD$' + itemsTotal.toLocaleString() + '</span></div>';
       html += '<div style="display:flex;justify-content:space-between;font-size:0.9em;color:#475569;padding:4px 0;border-top:1px dashed #e2e8f0;">' +
-        '<span>🛵 Delivery:</span><span>RD$' + fee.toLocaleString() + '</span></div>';
+        '<span>Delivery:</span><span>RD$' + fee.toLocaleString() + '</span></div>';
     }
     html += '<div class="order-total"><span>TOTAL:</span><span>RD$' + grandTotal.toLocaleString() + '</span></div>';
     totalDiv.innerHTML = html;
