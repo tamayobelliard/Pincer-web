@@ -1111,6 +1111,48 @@ let chatSessionId = (function() {
   } catch (e) { return 'sid-' + Date.now(); }
 })();
 
+// Language state + insights + page load timestamp — parity con menu/index.html:5683, 3039, 5699
+let currentLanguage = null; // null = not yet confirmed; 'es' | 'en' | etc
+let restaurantInsights = null;
+const _pageLoadTime = Date.now();
+
+// Track language detection once per session (parity :5688-5696).
+// Se dispara después de que track() está definido, vía setTimeout.
+var _langTracked = null;
+try { _langTracked = sessionStorage.getItem('pincer_lang_tracked_' + SLUG); } catch (e) {}
+if (!_langTracked) {
+  try { sessionStorage.setItem('pincer_lang_tracked_' + SLUG, '1'); } catch (e) {}
+  setTimeout(function() {
+    track('language_detected', { browser_language: navigator.language || 'es', language_primary: (navigator.language || 'es').split('-')[0] });
+  }, 0);
+}
+
+// Analytics tracking helper — fire-and-forget (parity con menu/index.html:5698-5717)
+function track(eventType, eventData) {
+  try {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: chatSessionId,
+        restaurant_slug: SLUG,
+        event_type: eventType,
+        event_data: eventData || {},
+        browser_language: navigator.language || 'es',
+        device_type: window.innerWidth <= 768 ? 'mobile' : 'desktop',
+      }),
+      keepalive: true,
+    }).catch(function() {});
+  } catch (e) {}
+}
+
+window.addEventListener('beforeunload', function() {
+  track('page_exit', {
+    time_on_page_seconds: Math.round((Date.now() - _pageLoadTime) / 1000),
+    cart_items: cart.length,
+  });
+});
+
 // ── Helpers ──
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1557,6 +1599,21 @@ async function fetchProducts() {
   } catch (e) { return null; }
 }
 
+// Load AI insights for chatbot (parity con menu/index.html:3039-3051)
+async function loadRestaurantInsights() {
+  try {
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_insights?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=ai_insights&order=created_at.desc&limit=1',
+      { headers: sbHeaders() }, 5000
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.length > 0 && data[0].ai_insights && data[0].ai_insights.hero_insight) {
+      restaurantInsights = data[0].ai_insights.hero_insight;
+    }
+  } catch (e) { /* insights not critical */ }
+}
+
 async function fetchSoldOut() {
   try {
     const r = await fetch(
@@ -1709,6 +1766,21 @@ async function init() {
   await checkStoreOpen();
   if (!storeClosed) startSoldOutPoller();
   setInterval(checkStoreOpen, 5 * 60 * 1000);
+
+  // AI insights para el chatbot (contexto mejorado en recomendaciones)
+  loadRestaurantInsights();
+
+  // Analytics: page_view (parity con menu/index.html:6488)
+  track('page_view', { url: location.href, referrer: document.referrer });
+
+  // Auto-open chatbot después de 1.5s — skip si tienda cerrada o si user
+  // ya lo abrió por click (parity con menu/index.html:6191-6196).
+  if (!storeClosed) {
+    setTimeout(function() {
+      const panel = document.getElementById('chatPanel');
+      if (!panel.classList.contains('open')) openChat('auto');
+    }, 1500);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1900,6 +1972,7 @@ function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
   } else {
     cart.push({ id, name, price, qty, notes, source });
   }
+  track('cart_add', { item_id: id, item_name: name, price: price, quantity: qty, source: source });
   updateCtaAndBadge();
   // Re-render the cart panel si está abierto (UI-specific, no toca lógica)
   if (document.getElementById('cartPanel').classList.contains('open')) {
@@ -1908,6 +1981,8 @@ function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
 }
 
 function removeFromCart(idx) {
+  const row = cart[idx];
+  if (row) track('cart_remove', { item_id: row.id, item_name: row.name });
   cart.splice(idx, 1);
   updateCtaAndBadge();
   renderCart();
@@ -2014,6 +2089,7 @@ function renderCart() {
 
 function openCart() {
   renderCart();
+  track('cart_view', { item_count: cartItemCount(), total: cartTotal() });
   document.getElementById('cartPanel').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -2039,14 +2115,17 @@ let chatHistory = [];
 function getChatSessionId() { return chatSessionId; }
 
 // Build menuData string en formato que /api/waiter-chat espera
-// (validación server-side commit 9c3073d requiere "[id:" markers)
+// (validación server-side commit 9c3073d requiere "[id:" markers).
+// Parity con menu/index.html:5761: marca items agotados con [AGOTADO]
+// inline en vez de filtrarlos — el bot puede decir "ese está agotado,
+// te recomiendo otra cosa" en vez de alucinar que el item no existe.
 function buildMenuData() {
   const lines = [];
   for (const [cat, items] of productsByCategory.entries()) {
     for (const item of items) {
-      if (soldOutSet.has(item.id)) continue;
       const desc = item.desc || item.description || '';
-      lines.push(`${cat}: [id:${item.id}] ${item.name} - RD$${item.price} - ${desc}`);
+      const agotado = soldOutSet.has(item.id) ? ' [AGOTADO]' : '';
+      lines.push(`${cat}: [id:${item.id}] ${item.name} - RD$${item.price} - ${desc}${agotado}`);
     }
   }
   return lines.join('\n');
@@ -2127,69 +2206,110 @@ function parseBotResponse(text) {
   return result;
 }
 
+// Parity con menu/index.html:6087-6170 — payload completo, retry 1×,
+// fail-closed 503 con WhatsApp link, tracking de mensajes + bot adds.
 async function sendChatMessage(userText) {
   if (!userText.trim()) return;
   renderUserMessage(userText);
   chatHistory.push({ role: 'user', content: userText });
+  track('chatbot_message_sent', { message_length: userText.length, session_id: chatSessionId });
   showTyping();
   document.getElementById('chatSendBtn').disabled = true;
 
-  try {
-    const payload = {
-      messages: chatHistory.slice(-10),
+  const fetchOpts = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: chatHistory,  // full history (parity :6096)
       menuData: buildMenuData(),
       restaurant_slug: SLUG,
       restaurant_name: (restaurantData && restaurantData.display_name) || 'The Deck',
       browserLanguage: navigator.language || 'es',
-      sessionId: getChatSessionId(),
-    };
-    const res = await fetch('/api/waiter-chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
-    });
-    hideTyping();
-    document.getElementById('chatSendBtn').disabled = false;
+      currentLanguage: currentLanguage,
+      insights: restaurantInsights || undefined,
+      sessionId: chatSessionId,
+      storeClosed: storeClosed,
+    }),
+  };
 
-    // Fail-closed 503 handler — port de menu/index.html commit 2fb78ef
+  let res;
+  try {
+    res = await fetch('/api/waiter-chat', { ...fetchOpts, signal: AbortSignal.timeout(30000) });
+  } catch (e1) {
+    // Retry once on exception (parity :6111-6120)
+    try {
+      res = await fetch('/api/waiter-chat', { ...fetchOpts, signal: AbortSignal.timeout(30000) });
+    } catch (e2) {
+      hideTyping();
+      document.getElementById('chatSendBtn').disabled = false;
+      renderOutageBubble('Tardé un poco, intenta de nuevo.');
+      return;
+    }
+  }
+
+  hideTyping();
+  document.getElementById('chatSendBtn').disabled = false;
+
+  try {
+    // Fail-closed 503 — backend detectó Supabase/context inválido.
+    // Sin contexto el bot alucina items inexistentes; mejor rechazar +
+    // ofrecer WhatsApp del restaurante. Parity :6127-6140.
     if (res.status === 503) {
-      renderOutageBubble('En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.');
+      let cachedPhone = null;
+      try { cachedPhone = localStorage.getItem('pincer_whatsapp_' + SLUG); } catch (e) {}
+      const waDigits = (cachedPhone || '').replace(/\D/g, '');
+      if (waDigits) {
+        const tail = waDigits.length >= 10 ? waDigits.slice(-10) : waDigits;
+        const display = tail.length === 10
+          ? tail.slice(0,3) + '-' + tail.slice(3,6) + '-' + tail.slice(6)
+          : waDigits;
+        renderOutageBubble('En este momento no puedo ayudarte con el menú. Por favor escribe directamente al restaurante por WhatsApp: ' + display);
+      } else {
+        renderOutageBubble('En este momento no puedo ayudarte con el menú. Por favor intenta de nuevo en unos minutos.');
+      }
       return;
     }
     if (!res.ok) {
       renderOutageBubble('Tardé un poco, intenta de nuevo.');
       return;
     }
+
     const data = await res.json();
     const raw = data.answer || 'Algo salió mal. Intenta de nuevo.';
     chatHistory.push({ role: 'assistant', content: raw });
     const parsed = parseBotResponse(raw);
     renderBotMessage(parsed.clean, parsed.buttons);
 
-    // Ejecutar [ADD_TO_CART] comandos del bot — busca el item real en products,
-    // agrega al carrito si no está sold out
+    // Ejecutar [ADD_TO_CART] comandos del bot — busca el item real, agrega
+    // al carrito si no está sold out. Track por cada acción.
     parsed.cartAdds.forEach(ci => {
       const item = products.find(p => String(p.id) === String(ci.id));
       if (!item) return;
       if (soldOutSet.has(item.id)) {
-        renderBotMessage(`❌ Lo siento, ${item.name} se acaba de agotar.`, []);
+        // Race condition: bot issued ADD_TO_CART for an item que se agotó.
+        renderBotMessage(`❌ Lo siento, ${item.name} se acaba de agotar. ¿Te gustaría elegir otra opción?`, []);
+        track('chatbot_add_blocked_sold_out', { item_id: ci.id, item_name: item.name });
         return;
       }
       addItem(item.id, item.name, item.price, ci.note || null, ci.qty, 'bot');
       renderBotMessage(`✅ ${ci.qty > 1 ? ci.qty + 'x ' : ''}${item.name} agregado a tu pedido${ci.note ? ' (' + ci.note + ')' : ''}`, []);
+      track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: ci.qty });
     });
   } catch (e) {
-    hideTyping();
-    document.getElementById('chatSendBtn').disabled = false;
     renderOutageBubble('Error de conexión. Intenta de nuevo.');
   }
 }
 
-function openChat() {
+// Parity con menu/index.html:6191-6196 — trigger param distingue user_click
+// vs auto-open. Permite filtrar chat_open events a intención real del usuario.
+function openChat(trigger) {
   const panel = document.getElementById('chatPanel');
+  if (panel.classList.contains('open')) return;
   panel.classList.add('open');
-  // Primera apertura → welcome message
+  track('chat_open', { trigger: trigger || 'user_click' });
+
+  // Primera apertura → welcome message (hardcoded; Commit #6 puede migrar a
+  // welcome dinámico via fetch /api/waiter-chat con welcome:true).
   if (!chatHistory.length) {
     const name = (restaurantData && restaurantData.display_name) || 'The Deck';
     renderBotMessage(`¡Bienvenido a ${name}! 🍷 Soy tu mesero virtual. ¿Te ayudo a elegir del menú?`, [
@@ -2206,7 +2326,7 @@ function closeChat() {
 document.getElementById('fabWaiter').addEventListener('click', () => {
   const panel = document.getElementById('chatPanel');
   if (panel.classList.contains('open')) closeChat();
-  else openChat();
+  else openChat('user_click');
 });
 document.getElementById('chatCloseBtn').addEventListener('click', closeChat);
 document.getElementById('chatSendBtn').addEventListener('click', () => {
@@ -2270,6 +2390,7 @@ function openCheckout() {
   selectOrderType(selectedOrderType);
 
   renderCheckoutSummary();
+  track('checkout_start', { order_type: selectedOrderType, total: cartTotal(), item_count: cartItemCount() });
   document.getElementById('checkoutBackdrop').classList.add('open');
   document.getElementById('checkoutModal').classList.add('open');
 }
@@ -2466,6 +2587,7 @@ async function submitCheckout() {
 
       globalErr.textContent = 'No pudimos enviar tu pedido. Intenta de nuevo.';
       globalErr.style.display = 'block';
+      track('checkout_failed', { error_type: 'server', error_code: res.status, order_type: selectedOrderType });
       resetSubmitButton();
       return;
     }
@@ -2474,6 +2596,13 @@ async function submitCheckout() {
     const record = (rows && rows[0]) || null;
 
     dbg('✅ order submitted: id=' + (record && record.id) + ' order_number=' + (record && record.order_number));
+    track('order_complete', {
+      order_id: record && record.id,
+      order_number: record && record.order_number,
+      order_total: total,
+      order_type: selectedOrderType,
+      item_count: itemsArray.length,
+    });
     cart = [];
     updateCtaAndBadge();
     resetSubmitButton();
@@ -2482,6 +2611,7 @@ async function submitCheckout() {
     showConfirmation(record, total);
   } catch (e) {
     dbg('❌ checkout error: ' + (e?.message || e));
+    track('checkout_failed', { error_type: 'network', error_message: (e && e.message) || String(e), order_type: selectedOrderType });
     globalErr.textContent = 'Error de conexión. Verifica tu internet e intenta de nuevo.';
     globalErr.style.display = 'block';
     resetSubmitButton();
