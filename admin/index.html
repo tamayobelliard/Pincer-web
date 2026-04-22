@@ -465,6 +465,16 @@
         <input type="number" id="fieldDeliveryFee" placeholder="0" min="0" step="1">
       </div>
 
+      <!-- Sprint-2 C2: config fiscal — define si los precios del menú ya
+           incluyen ITBIS o si se suma al total en checkout. -->
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:0.9em;cursor:pointer;">
+          <input type="checkbox" id="fieldPricesIncludeTax" checked>
+          Los precios del menú incluyen ITBIS
+        </label>
+        <small style="color:#94a3b8;display:block;margin-top:4px;">Si no está marcado, el ITBIS (18%) se muestra desglosado en el checkout del cliente.</small>
+      </div>
+
       <!-- Menu Upload: URL + Photo modes -->
       <div id="menuUploadSection" class="menu-upload-section disabled">
         <div id="menuUploadIdle">
@@ -1319,6 +1329,8 @@ function openEditModal(id) {
   document.getElementById('chkDelivery').checked = types.includes('delivery');
   document.getElementById('fieldDeliveryFee').value = r.delivery_fee || 0;
   toggleDeliveryFeeField();
+  // Sprint-2 C2: default true si el campo no vino (restaurante pre-migration).
+  document.getElementById('fieldPricesIncludeTax').checked = r.prices_include_tax !== false;
 
   // Schedule: show current hours, reset builder for optional overwrite
   resetSchedule();
@@ -1404,6 +1416,7 @@ async function updateRestaurant() {
   body.chatbot_personality = document.getElementById('fieldPersonality').value;
   body.order_types = getOrderTypes();
   body.delivery_fee = parseInt(document.getElementById('fieldDeliveryFee').value) || 0;
+  body.prices_include_tax = document.getElementById('fieldPricesIncludeTax').checked;
   body.azul_merchant_id = document.getElementById('fieldMerchantId').value.trim() || null;
 
   // Send logo as base64 if new file selected (server will upload to Storage)
@@ -1490,6 +1503,7 @@ async function createRestaurant() {
       order_types: getOrderTypes(),
       delivery_fee: parseInt(document.getElementById('fieldDeliveryFee').value) || 0,
       azul_merchant_id: document.getElementById('fieldMerchantId').value.trim() || null,
+      prices_include_tax: document.getElementById('fieldPricesIncludeTax').checked,
     };
     if (logoBase64) createBody.logo_base64 = logoBase64;
 

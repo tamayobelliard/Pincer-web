@@ -139,7 +139,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
 async function handleCreate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id } = req.body;
+  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax } = req.body;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'El nombre es requerido' });
@@ -237,6 +237,10 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           order_types: order_types || ["dine_in"],
           delivery_fee: delivery_fee || 0,
           azul_merchant_id: azul_merchant_id || null,
+          // Sprint-2 C2: default true respeta la convención legacy.
+          // El admin form explícitamente pasa false cuando el restaurante
+          // tiene precios sin ITBIS (como The Deck).
+          prices_include_tax: typeof prices_include_tax === 'boolean' ? prices_include_tax : true,
         }),
       }
     );
@@ -336,7 +340,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id } = req.body;
+  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'id is required' });
@@ -400,6 +404,8 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (order_types !== undefined) update.order_types = order_types;
   if (delivery_fee !== undefined) update.delivery_fee = delivery_fee;
   if (azul_merchant_id !== undefined) update.azul_merchant_id = azul_merchant_id || null;
+  // Sprint-2 C2: boolean explícito. Rechaza truthy coercion accidental.
+  if (typeof prices_include_tax === 'boolean') update.prices_include_tax = prices_include_tax;
 
   if (Object.keys(update).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });

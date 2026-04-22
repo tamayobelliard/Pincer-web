@@ -121,6 +121,7 @@ export default async function handler(req, res) {
       order_types: 'array',
       delivery_fee: 'number',
       logo_url: 'string',
+      prices_include_tax: 'boolean',
     };
 
     // order_types only accepts these three enum values (mirrors the UI).
