@@ -513,6 +513,25 @@
     color: var(--color-primary); font-weight: 600; font-size: 14px;
     border-top: 1px dotted var(--color-border); padding-top: 6px; margin-top: 6px;
   }
+  .checkout-order-type-section { margin-bottom: 14px; }
+  .checkout-order-type-title {
+    font-family: var(--font-serif); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--color-accent-3);
+    margin-bottom: 8px;
+  }
+  .checkout-order-type-options { display: flex; gap: 8px; margin-bottom: 4px; }
+  .checkout-order-type-btn {
+    flex: 1; padding: 10px 12px; background: var(--color-bg);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    font-family: var(--font-body); font-size: 13px; color: var(--color-text);
+    cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .checkout-order-type-btn.active {
+    border-color: var(--color-accent); background: rgba(201,169,97,0.08);
+    color: var(--color-primary); font-weight: 600;
+  }
+  .checkout-order-type-extra-fields { display: none; }
+  .checkout-order-type-extra-fields.show { display: block; }
   .checkout-actions {
     padding: 14px 22px 20px; display: flex; gap: 10px;
     border-top: 1px solid var(--color-border); background: rgba(11,30,58,0.02);
@@ -919,23 +938,39 @@
   </div>
   <div class="checkout-body">
     <div class="checkout-summary" id="checkoutSummary"></div>
-    <div class="checkout-field">
-      <label for="chkName">Nombre</label>
-      <input class="input" type="text" id="chkName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+
+    <!-- Order-type selector (oculto si solo hay 1 tipo habilitado) -->
+    <div class="checkout-order-type-section" id="checkoutOrderTypeSection" style="display:none;">
+      <div class="checkout-order-type-title">Tipo de orden</div>
+      <div class="checkout-order-type-options" id="checkoutOrderTypeButtons"></div>
     </div>
+
+    <!-- Take-out fields -->
+    <div class="checkout-order-type-extra-fields" id="takeoutFields">
+      <div class="checkout-field">
+        <label for="takeoutName">Nombre de quien recoge</label>
+        <input class="input" type="text" id="takeoutName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+      </div>
+    </div>
+
+    <!-- Delivery fields -->
+    <div class="checkout-order-type-extra-fields" id="deliveryFields">
+      <div class="checkout-field">
+        <label for="deliveryName">Nombre</label>
+        <input class="input" type="text" id="deliveryName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+      </div>
+      <div class="checkout-field">
+        <label for="deliveryAddress">Dirección de entrega</label>
+        <input class="input" type="text" id="deliveryAddress" placeholder="Calle, número, sector, referencia" maxlength="200">
+      </div>
+    </div>
+
     <div class="checkout-field">
       <label for="chkPhone">WhatsApp / Teléfono</label>
       <input class="input" type="tel" id="chkPhone" placeholder="809-000-0000" maxlength="20" autocomplete="tel">
       <div class="checkout-error" id="chkPhoneError" style="display:none;">Número inválido. Usa formato 809-000-0000.</div>
     </div>
-    <div class="checkout-field">
-      <label for="chkTable">Número de mesa (opcional)</label>
-      <input class="input" type="text" id="chkTable" placeholder="Ej: 5" maxlength="10">
-    </div>
-    <div class="checkout-field">
-      <label for="chkNotes">Notas adicionales (opcional)</label>
-      <textarea class="input" id="chkNotes" rows="2" placeholder="Alergias, instrucciones especiales..." maxlength="200" style="resize:vertical;"></textarea>
-    </div>
+
     <div class="checkout-error" id="checkoutGlobalError" style="display:none;"></div>
   </div>
   <div class="checkout-actions">
@@ -1012,18 +1047,50 @@ let productsByCategory = new Map(); // preserva orden de inserción
 let cart = [];
 let soldOutSet = new Set();
 
+// Order-type state (parity con menu/index.html:3276-3279, 6387-6406)
+let selectedOrderType = 'dine_in';
+let enabledOrderTypes = ['dine_in'];
+let restaurantDeliveryFee = 0;
+let PAYMENT_ENABLED = false;
+let BUSINESS_TYPE = '';
+
+// Chat session id — alineado al genérico (menu/index.html:5684-5686)
+const CHAT_SESSION_KEY = 'pincer_chat_session_' + SLUG;
+let chatSessionId = (function() {
+  try {
+    var id = sessionStorage.getItem(CHAT_SESSION_KEY) || (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
+    sessionStorage.setItem(CHAT_SESSION_KEY, id);
+    return id;
+  } catch (e) { return 'sid-' + Date.now(); }
+})();
+
 // ── Helpers ──
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function sbHeaders() {
+// sbHeaders(extra) — parity con menu/index.html:2988-2997
+function sbHeaders(extra = {}) {
   return {
     'Content-Type': 'application/json',
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    ...extra
   };
 }
+
+// fetchWithTimeout — parity con menu/index.html:3000-3007
+function fetchWithTimeout(url, options, timeoutMs = 15000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout: el servidor no respondió en ' + (timeoutMs/1000) + ' segundos')), timeoutMs)
+    )
+  ]);
+}
+
+// dbg — shim alineado al genérico (usa console.log)
+function dbg(msg) { try { console.log('[thedeck]', msg); } catch (e) {} }
 
 function fmtPrice(n) {
   return 'RD$' + (Number(n) || 0).toLocaleString('en-US');
@@ -1106,17 +1173,27 @@ function renderOutageFallback() {
 // Loaders
 // ══════════════════════════════════════════════════════════════
 
+// Parity con menu/index.html:3054-3085 (loadRestaurantData)
 async function fetchRestaurantData() {
   try {
-    const r = await fetch(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,status,hours,phone,address,business_type,logo_url&limit=1',
-      { headers: sbHeaders(), signal: AbortSignal.timeout(8000) }
+    // Try public view first (has payment_enabled boolean, no sensitive fields)
+    let res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type&limit=1',
+      { headers: sbHeaders() }, 10000
     );
-    if (!r.ok) return null;
-    const rows = await r.json();
+    // Fallback to original table if view doesn't exist yet
+    if (!res.ok) {
+      res = await fetchWithTimeout(
+        SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,business_type&limit=1',
+        { headers: sbHeaders() }, 10000
+      );
+    }
+    if (!res.ok) return null;
+    const rows = await res.json();
     if (!rows.length) return null;
+    // Canónicos visibles: 'active' + 'demo' (parity con genérico:3075).
     if (rows[0].status !== 'active' && rows[0].status !== 'demo') return null;
-    // Cache phone for outage fallback on next visit
+    // Cache WhatsApp phone para outage fallback.
     try {
       if (rows[0].phone) localStorage.setItem('pincer_whatsapp_' + SLUG, rows[0].phone);
     } catch (e) {}
@@ -1255,12 +1332,91 @@ async function init() {
   soldOutSet = soldOut;
   productsByCategory = groupProducts(products);
 
+  // Parse order_types — parity con menu/index.html:6387-6406.
+  let rawOT = restaurantData.order_types;
+  if (typeof rawOT === 'string') { try { rawOT = JSON.parse(rawOT); } catch (e) { rawOT = null; } }
+  enabledOrderTypes = Array.isArray(rawOT) && rawOT.length > 0 ? rawOT : ['dine_in'];
+  restaurantDeliveryFee = restaurantData.delivery_fee || 0;
+  PAYMENT_ENABLED = !!(restaurantData.payment_enabled);
+  BUSINESS_TYPE = restaurantData.business_type || '';
+
+  // Restaurante/Café/Bar/Panadería con pago activo: deshabilitar dine_in.
+  if (PAYMENT_ENABLED) {
+    const nodineinTypes = ['Restaurante', 'Cafeteria', 'Bar', 'Panaderia', 'Otro'];
+    if (nodineinTypes.includes(BUSINESS_TYPE)) {
+      enabledOrderTypes = enabledOrderTypes.filter(t => t !== 'dine_in');
+      if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
+    }
+  }
+
+  selectedOrderType = enabledOrderTypes[0] || 'dine_in';
+  dbg('order_types: ' + JSON.stringify(restaurantData.order_types) + ' -> enabledOrderTypes: ' + JSON.stringify(enabledOrderTypes) + ' business_type: ' + BUSINESS_TYPE);
+
   applyRestaurantBranding(resData);
   const categories = Array.from(productsByCategory.keys());
   renderTabs(categories);
   renderSections(productsByCategory);
 
   document.getElementById('menuLoading').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// Order-type helpers — parity con menu/index.html:4531-4607
+// ══════════════════════════════════════════════════════════════
+function renderOrderTypeButtons(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const typeConfig = {
+    dine_in:  { label: '🍽️ Comer aquí' },
+    take_out: { label: '🥡 Para Llevar' },
+    delivery: { label: '🛵 Delivery' }
+  };
+  container.innerHTML = '';
+  enabledOrderTypes.forEach(type => {
+    const cfg = typeConfig[type];
+    if (!cfg) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'checkout-order-type-btn' + (type === selectedOrderType ? ' active' : '');
+    btn.dataset.type = type;
+    btn.textContent = cfg.label;
+    btn.onclick = function() { selectOrderType(type); };
+    container.appendChild(btn);
+  });
+}
+
+function selectOrderType(type) {
+  selectedOrderType = type;
+  document.querySelectorAll('.checkout-order-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+  const takeoutFields = document.getElementById('takeoutFields');
+  const deliveryFields = document.getElementById('deliveryFields');
+  if (takeoutFields) takeoutFields.classList.toggle('show', type === 'take_out');
+  if (deliveryFields) deliveryFields.classList.toggle('show', type === 'delivery');
+  renderCheckoutSummary();
+}
+
+function getDeliveryFee() {
+  return (selectedOrderType === 'delivery') ? (restaurantDeliveryFee || 0) : 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Order number — parity con menu/index.html:3967-3980
+// ══════════════════════════════════════════════════════════════
+async function getNextOrderNumber() {
+  try {
+    const countRes = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=id',
+      { headers: sbHeaders({ 'Prefer': 'count=exact' }), method: 'HEAD' },
+      5000
+    );
+    const total = parseInt(countRes.headers.get('content-range')?.split('/')[1] || '0', 10);
+    return total + 1;
+  } catch (e) {
+    dbg('⚠️ getNextOrderNumber error: ' + e.message);
+    return null;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1523,19 +1679,8 @@ window.removeFromCart = removeFromCart;
 // ══════════════════════════════════════════════════════════════
 
 let chatHistory = [];
-let chatSessionId = null;
-
-function getChatSessionId() {
-  if (chatSessionId) return chatSessionId;
-  try {
-    chatSessionId = sessionStorage.getItem('thedeck_chat_session') ||
-                    (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
-    sessionStorage.setItem('thedeck_chat_session', chatSessionId);
-  } catch (e) {
-    chatSessionId = 'sid-' + Date.now();
-  }
-  return chatSessionId;
-}
+// chatSessionId inicializado eager arriba (parity con menu/index.html:5684-5686)
+function getChatSessionId() { return chatSessionId; }
 
 // Build menuData string en formato que /api/waiter-chat espera
 // (validación server-side commit 9c3073d requiere "[id:" markers)
@@ -1733,16 +1878,37 @@ document.getElementById('ctaOrder').addEventListener('click', openCart);
 
 function openCheckout() {
   if (!cart.length) return;
-  // Pre-fill nombre + phone si ya los escribió antes (persistido en localStorage
-  // por visita — UX: cliente de The Deck probablemente pide varios días)
+
+  // Pre-fill name/phone — se persisten se remueve en Commit #6 (parity strict).
+  let savedName = '', savedPhone = '';
   try {
-    document.getElementById('chkName').value = localStorage.getItem('thedeck_cust_name') || '';
-    document.getElementById('chkPhone').value = localStorage.getItem('thedeck_cust_phone') || '';
+    savedName = localStorage.getItem('thedeck_cust_name') || '';
+    savedPhone = localStorage.getItem('thedeck_cust_phone') || '';
   } catch (e) {}
-  document.getElementById('chkTable').value = '';
-  document.getElementById('chkNotes').value = '';
+
+  const takeoutName = document.getElementById('takeoutName');
+  const deliveryName = document.getElementById('deliveryName');
+  const deliveryAddress = document.getElementById('deliveryAddress');
+  const chkPhone = document.getElementById('chkPhone');
+  if (takeoutName) takeoutName.value = savedName;
+  if (deliveryName) deliveryName.value = savedName;
+  if (deliveryAddress) deliveryAddress.value = '';
+  if (chkPhone) chkPhone.value = savedPhone;
+
   document.getElementById('chkPhoneError').style.display = 'none';
   document.getElementById('checkoutGlobalError').style.display = 'none';
+
+  // Render order-type selector si hay >1 opción, auto-select el único
+  // si solo hay uno (parity con menu/index.html:3913-3916 y :4441).
+  const otSection = document.getElementById('checkoutOrderTypeSection');
+  if (enabledOrderTypes.length > 1) {
+    otSection.style.display = '';
+    renderOrderTypeButtons('checkoutOrderTypeButtons');
+  } else {
+    otSection.style.display = 'none';
+  }
+  selectOrderType(selectedOrderType);
+
   renderCheckoutSummary();
   document.getElementById('checkoutBackdrop').classList.add('open');
   document.getElementById('checkoutModal').classList.add('open');
@@ -1755,17 +1921,26 @@ function closeCheckout() {
 
 function renderCheckoutSummary() {
   const el = document.getElementById('checkoutSummary');
+  if (!el) return;
   const rows = cart.map(r => `
     <div class="checkout-summary-row">
       <span>${r.qty}× ${esc(r.name)}${r.notes ? ' <em style="opacity:0.7;font-size:11px;">(' + esc(r.notes) + ')</em>' : ''}</span>
       <span>${fmtPrice(r.price * r.qty)}</span>
     </div>
   `).join('');
-  const total = cartTotal();
-  el.innerHTML = rows + `
+  const itemsTotal = cartTotal();
+  const fee = getDeliveryFee();
+  const grandTotal = itemsTotal + fee;
+  const feeRow = fee > 0 ? `
+    <div class="checkout-summary-row">
+      <span>🛵 Delivery</span>
+      <span>${fmtPrice(fee)}</span>
+    </div>
+  ` : '';
+  el.innerHTML = rows + feeRow + `
     <div class="checkout-summary-row total">
       <span>Total</span>
-      <span>${fmtPrice(total)}</span>
+      <span>${fmtPrice(grandTotal)}</span>
     </div>
   `;
 }
@@ -1777,26 +1952,28 @@ function isValidDRPhone(raw) {
          (digits.length === 11 && digits.startsWith('1') && /^1(809|829|849)/.test(digits));
 }
 
+// Parity con menu/index.html:3986-4200 (ruta sin pago).
 async function submitCheckout() {
-  const name = document.getElementById('chkName').value.trim();
   const phoneRaw = document.getElementById('chkPhone').value.trim();
-  const table = document.getElementById('chkTable').value.trim();
-  const notesGlobal = document.getElementById('chkNotes').value.trim();
   const phoneErr = document.getElementById('chkPhoneError');
   const globalErr = document.getElementById('checkoutGlobalError');
   const phoneInput = document.getElementById('chkPhone');
-  const nameInput = document.getElementById('chkName');
   const submitBtn = document.getElementById('checkoutSubmit');
   const submitLabel = document.getElementById('checkoutSubmitLabel');
+
+  // Resolver el input de nombre según el tipo de orden seleccionado.
+  const nameInputId = selectedOrderType === 'delivery' ? 'deliveryName' : 'takeoutName';
+  const nameInput = document.getElementById(nameInputId);
+  const name = (nameInput?.value || '').trim();
 
   phoneErr.style.display = 'none';
   globalErr.style.display = 'none';
   phoneInput.classList.remove('invalid');
-  nameInput.classList.remove('invalid');
+  if (nameInput) nameInput.classList.remove('invalid');
 
-  if (!name) {
-    nameInput.classList.add('invalid');
-    nameInput.focus();
+  // Nombre requerido en take_out y delivery (parity :4022-4041).
+  if ((selectedOrderType === 'take_out' || selectedOrderType === 'delivery') && !name) {
+    if (nameInput) { nameInput.classList.add('invalid'); nameInput.focus(); }
     return;
   }
   if (!isValidDRPhone(phoneRaw)) {
@@ -1806,61 +1983,125 @@ async function submitCheckout() {
     return;
   }
 
-  // Persistir para próximas visitas
+  // Delivery exige dirección (parity :4036-4041).
+  let deliveryAddressValue = '';
+  if (selectedOrderType === 'delivery') {
+    const addrInput = document.getElementById('deliveryAddress');
+    deliveryAddressValue = (addrInput?.value || '').trim();
+    if (!deliveryAddressValue) {
+      if (addrInput) { addrInput.classList.add('invalid'); addrInput.focus(); }
+      return;
+    }
+  }
+
+  // Persistir para próximas visitas (remoción final en Commit #6).
   try {
-    localStorage.setItem('thedeck_cust_name', name);
+    if (name) localStorage.setItem('thedeck_cust_name', name);
     localStorage.setItem('thedeck_cust_phone', phoneRaw);
   } catch (e) {}
 
   submitBtn.disabled = true;
   submitLabel.textContent = 'Enviando…';
 
-  const combinedNotes = [
-    table ? 'Mesa: ' + table : '',
-    notesGlobal
-  ].filter(Boolean).join(' · ');
+  // ── Construcción del payload — parity con menu/index.html:4055-4086 ──
+  const customerPhone = phoneRaw.replace(/\D/g, '');
+  const itemsArray = cart.map(item => ({
+    id: item.id,
+    name: item.name,
+    qty: item.qty,
+    price: item.price,
+    notes: item.notes || null,
+    source: item.source || 'menu'
+  }));
+  const itemsTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const deliveryFeeCharged = getDeliveryFee();
+  const total = itemsTotal + deliveryFeeCharged;
+  const nextNum = await getNextOrderNumber();
 
   const orderPayload = {
-    restaurant_slug: SLUG,
-    items: cart.map(c => ({
-      id: c.id, name: c.name, price: c.price, qty: c.qty, notes: c.notes || '',
-    })),
-    total: cartTotal(),
-    order_type: 'dine_in',
+    items: JSON.stringify(itemsArray),
+    total: total,
     status: 'pending',
-    customer_name: name,
-    customer_phone: phoneRaw.replace(/\D/g, ''),
-    notes: combinedNotes || null,
+    phone: customerPhone,
+    restaurant_slug: SLUG,
+    order_type: selectedOrderType,
+    session_id: chatSessionId
   };
+  if (nextNum) orderPayload.order_number = nextNum;
+  if (selectedOrderType === 'take_out') {
+    orderPayload.customer_name = name;
+  } else if (selectedOrderType === 'delivery') {
+    orderPayload.customer_name = name;
+    orderPayload.customer_address = deliveryAddressValue;
+    orderPayload.delivery_fee = deliveryFeeCharged;
+  }
+
+  dbg('📤 Enviando orden #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
 
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/orders', {
-      method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'return=representation' },
-      body: JSON.stringify(orderPayload),
-      signal: AbortSignal.timeout(12000),
-    });
+    const res = await fetchWithTimeout(
+      SUPABASE_URL + '/rest/v1/orders',
+      {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'return=representation' }),
+        body: JSON.stringify(orderPayload)
+      },
+      15000
+    );
+    dbg('📥 Response status: ' + res.status);
+
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error('order insert failed', res.status, errText);
+      dbg('❌ Error body: ' + errText);
+
+      // Retry con items como objeto si el backend rechaza el string JSON
+      // (parity :4108-4148).
+      if (res.status === 400 && errText.includes('json')) {
+        dbg('🔄 Reintentando con items como array JSON directo...');
+        const retryPayload = { ...orderPayload, items: itemsArray };
+        const retryRes = await fetchWithTimeout(
+          SUPABASE_URL + '/rest/v1/orders',
+          {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(retryPayload)
+          },
+          15000
+        );
+        dbg('📥 Retry status: ' + retryRes.status);
+        if (!retryRes.ok) {
+          const retryErr = await retryRes.text().catch(() => '');
+          dbg('❌ Retry error: ' + retryErr);
+          throw new Error('Supabase rechazó la orden (HTTP ' + retryRes.status + ')');
+        }
+        const retryRows = await retryRes.json();
+        const retryOrderId = (retryRows && retryRows[0] && retryRows[0].id) || null;
+        cart = [];
+        updateCtaAndBadge();
+        closeCheckout();
+        closeCart();
+        showConfirmation(retryOrderId, total);
+        return;
+      }
+
       globalErr.textContent = 'No pudimos enviar tu pedido. Intenta de nuevo.';
       globalErr.style.display = 'block';
       submitBtn.disabled = false;
       submitLabel.textContent = 'Enviar Pedido';
       return;
     }
+
     const rows = await res.json();
     const orderId = (rows && rows[0] && rows[0].id) || null;
-    const totalSubmitted = cartTotal();
 
-    console.log('[thedeck] order submitted:', orderId);
+    dbg('✅ order submitted: ' + orderId);
     cart = [];
     updateCtaAndBadge();
     closeCheckout();
     closeCart();
-    showConfirmation(orderId, totalSubmitted);
+    showConfirmation(orderId, total);
   } catch (e) {
-    console.error('checkout error', e);
+    dbg('❌ checkout error: ' + (e?.message || e));
     globalErr.textContent = 'Error de conexión. Verifica tu internet e intenta de nuevo.';
     globalErr.style.display = 'block';
     submitBtn.disabled = false;
