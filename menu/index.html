@@ -5971,10 +5971,19 @@ function pinzerUserSay(message) {
   container.scrollTop = container.scrollHeight;
 }
 
-function pinzerShowReplies(replies) {
+// Sprint-2 A3: paginación cuando hay más de MAX_VISIBLE_REPLIES.
+// Muestra primeros (MAX-1) + botón "+ N más" que expande en-place.
+const MAX_VISIBLE_REPLIES = 6;
+
+function pinzerShowReplies(replies, showAll) {
   const container = document.getElementById('pinzer-replies');
   container.innerHTML = '';
-  replies.forEach(r => {
+  if (!replies || !replies.length) return;
+
+  const paginate = !showAll && replies.length > MAX_VISIBLE_REPLIES;
+  const visible = paginate ? replies.slice(0, MAX_VISIBLE_REPLIES - 1) : replies;
+
+  visible.forEach(r => {
     const btn = document.createElement('button');
     btn.className = 'pinzer-reply-btn';
     if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
@@ -5982,6 +5991,19 @@ function pinzerShowReplies(replies) {
     btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
   });
+
+  if (paginate) {
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'pinzer-reply-btn';
+    moreBtn.style.cssText = 'font-style:italic;opacity:0.85;';
+    moreBtn.textContent = '+ ' + (replies.length - visible.length) + ' más';
+    moreBtn.onclick = function() {
+      pinzerShowReplies(replies, true);
+      track('chat_replies_expanded', { total: replies.length });
+    };
+    container.appendChild(moreBtn);
+  }
+
   const msgs = document.getElementById('pinzer-messages');
   msgs.scrollTop = msgs.scrollHeight;
 }
