@@ -2181,14 +2181,29 @@ async function init() {
   // Promo popup (parity :6476)
   if (!storeClosed) checkAndShowPromo();
 
-  // Auto-open chatbot después de 1.5s — skip si tienda cerrada o si user
-  // ya lo abrió por click (parity con menu/index.html:6191-6196).
-  if (!storeClosed) {
-    setTimeout(function() {
-      const panel = document.getElementById('chatPanel');
-      if (!panel.classList.contains('open')) openChat('auto');
-    }, 1500);
+  // Chatbot auto-open (parity con menu/index.html:6197-6213 initChatbot).
+  if (!storeClosed) initChatbot();
+}
+
+// Sprint-2 A4: refactored en función dedicada para parity byte-por-byte
+// con menu/index.html:6197-6213. Usa WELCOMED_KEY en sessionStorage para
+// evitar re-disparar dentro de la misma sesión si el usuario lo cerró.
+// dbg() tracing para que el founder pueda verificar en DevTools.
+function initChatbot() {
+  const WELCOMED_KEY = 'pincer_welcomed_' + SLUG;
+  const alreadyWelcomed = sessionStorage.getItem(WELCOMED_KEY);
+  dbg('initChatbot: alreadyWelcomed=' + alreadyWelcomed + ' storeClosed=' + storeClosed);
+  if (alreadyWelcomed) {
+    dbg('initChatbot: skip auto-open (ya se abrió en esta sesión)');
+    return;
   }
+  setTimeout(function() {
+    const panel = document.getElementById('chatPanel');
+    if (!panel) { dbg('initChatbot: panel no encontrado'); return; }
+    if (panel.classList.contains('open')) { dbg('initChatbot: panel ya abierto'); return; }
+    dbg('initChatbot: disparando auto-open');
+    openChat('auto');
+  }, 1500);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2731,6 +2746,9 @@ function openChat(trigger) {
   if (panel.classList.contains('open')) return;
   panel.classList.add('open');
   if (backdrop) backdrop.classList.add('open');
+  // Marca session como welcomed (parity con menu/index.html:5853).
+  // Evita re-auto-open si el user cierra y recarga la misma tab.
+  try { sessionStorage.setItem('pincer_welcomed_' + SLUG, 'true'); } catch (e) {}
   track('chat_open', { trigger: trigger || 'user_click' });
 
   // Primera apertura → welcome message (hardcoded; Commit #6 puede migrar a
