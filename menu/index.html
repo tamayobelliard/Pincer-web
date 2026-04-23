@@ -3999,7 +3999,17 @@ async function getNextOrderNumber() {
 // ══════════════════════════════════════════════════════════════
 
 async function placeOrder() {
-  if (storeClosed) { showError('Estamos cerrados en este momento.'); return; }
+  // Sprint-2 Bug1 Capa 3: doble-guard (parity con thedeck). El flag
+  // storeClosed puede estar stale si checkStoreOpen no completó o
+  // tuvo error de red. Re-chequear el schedule síncrono aquí.
+  var scheduleClosed = restaurantData && restaurantData.hours &&
+    !isOpenBySchedule(restaurantData.hours);
+  if (storeClosed || scheduleClosed) {
+    storeClosed = true;
+    showError('Estamos cerrados en este momento. No podemos procesar órdenes ahora.');
+    dbg('🔒 placeOrder bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ')');
+    return;
+  }
   if (order.length === 0) return;
 
   const placeOrderBtn = document.getElementById("placeOrderBtn");
@@ -4769,6 +4779,18 @@ async function processPayment() {
   // Clear previous errors
   errorDiv.style.display = 'none';
   document.querySelectorAll('.checkout-modal input').forEach(i => i.classList.remove('invalid'));
+
+  // Sprint-2 Bug1 Capa 3: doble-guard también en la ruta Azul. Mismo
+  // pattern que placeOrder — re-chequear schedule sync + storeClosed.
+  var _scheduleClosedAzul = restaurantData && restaurantData.hours &&
+    !isOpenBySchedule(restaurantData.hours);
+  if (storeClosed || _scheduleClosedAzul) {
+    storeClosed = true;
+    errorDiv.textContent = 'Estamos cerrados en este momento. No podemos procesar órdenes ahora.';
+    errorDiv.style.display = 'block';
+    dbg('🔒 processPayment bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + _scheduleClosedAzul + ')');
+    return;
+  }
 
   // Validate name
   const name = document.getElementById('checkoutName').value.trim();

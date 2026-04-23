@@ -1760,6 +1760,51 @@ function promoCtaClick() {
 let storeClosed = false;
 let soldOutPoller = null;
 
+// Sprint-2 Bug1 Capa 2: helper que aplica/desaplica el overlay de cerrado.
+// Refactored fuera de checkStoreOpen para poder invocar síncrono desde init
+// (capa 1 sync gate) sin duplicar el DOM handling.
+//
+// Cobertura completa: además de mostrar overlay + hide menu/cta, también
+// cierra cart/chat/item modal si estuvieran abiertos, y esconde FAB. Esto
+// previene el path del bug donde un cart-panel pre-existente permitía
+// clickear "Completar Orden" mientras el menú estaba overlay-cubierto.
+function applyClosedOverlay(rData, scheduleStr) {
+  const overlay = document.getElementById('closedOverlay');
+  const main = document.getElementById('menuSections');
+  const ctaWrap = document.querySelector('.cta-wrap');
+  const fab = document.getElementById('fabWaiter');
+  const nameEl = document.getElementById('closedOverlayName');
+  const nextEl = document.getElementById('closedOverlayNext');
+  const schedEl = document.getElementById('closedOverlaySchedule');
+
+  if (rData && nameEl) nameEl.textContent = rData.display_name || '';
+  const nextOpen = getNextOpenTime(scheduleStr || '');
+  if (nextEl) nextEl.textContent = nextOpen ? nextOpen.text : '';
+  if (schedEl) schedEl.textContent = scheduleStr || '';
+  if (overlay) overlay.classList.add('open');
+  if (main) main.style.display = 'none';
+  if (ctaWrap) ctaWrap.style.display = 'none';
+  if (fab) fab.style.display = 'none';
+
+  // Cerrar cualquier modal/panel abierto — previene el path del bug #9.
+  try { if (typeof closeCart === 'function') closeCart(); } catch (e) {}
+  try { if (typeof closeChat === 'function') closeChat(); } catch (e) {}
+  try { if (typeof closeCheckout === 'function') closeCheckout(); } catch (e) {}
+  try { if (typeof closeItemModal === 'function') closeItemModal(); } catch (e) {}
+  try { if (typeof closePromoPopup === 'function') closePromoPopup(); } catch (e) {}
+}
+
+function clearClosedOverlay() {
+  const overlay = document.getElementById('closedOverlay');
+  const main = document.getElementById('menuSections');
+  const ctaWrap = document.querySelector('.cta-wrap');
+  const fab = document.getElementById('fabWaiter');
+  if (overlay) overlay.classList.remove('open');
+  if (main) main.style.display = '';
+  if (ctaWrap) ctaWrap.style.display = '';
+  if (fab) fab.style.display = '';
+}
+
 async function checkStoreOpen() {
   try {
     var storeSettings = null;
@@ -1811,29 +1856,14 @@ async function checkStoreOpen() {
       isOpen = isOpenBySchedule(scheduleStr);
     }
 
-    var overlay = document.getElementById('closedOverlay');
-    var main = document.getElementById('menuSections');
-    var ctaWrap = document.querySelector('.cta-wrap');
-
     if (!isOpen) {
       storeClosed = true;
-      var nameEl = document.getElementById('closedOverlayName');
-      var nextEl = document.getElementById('closedOverlayNext');
-      var schedEl = document.getElementById('closedOverlaySchedule');
-      if (restaurantData && nameEl) nameEl.textContent = restaurantData.display_name || '';
-      var nextOpen = getNextOpenTime(scheduleStr);
-      if (nextEl) nextEl.textContent = nextOpen ? nextOpen.text : '';
-      if (schedEl) schedEl.textContent = scheduleStr || '';
-      if (overlay) overlay.classList.add('open');
-      if (main) main.style.display = 'none';
-      if (ctaWrap) ctaWrap.style.display = 'none';
+      applyClosedOverlay(restaurantData, scheduleStr);
       dbg('🔒 Tienda cerrada');
       return false;
     } else {
       storeClosed = false;
-      if (overlay) overlay.classList.remove('open');
-      if (main) main.style.display = '';
-      if (ctaWrap) ctaWrap.style.display = '';
+      clearClosedOverlay();
       return true;
     }
   } catch (e) {
@@ -2190,7 +2220,19 @@ async function init() {
 
   document.getElementById('menuLoading').style.display = 'none';
 
-  // Store open/closed check + sold_out polling (parity con menu/index.html:6455-6485)
+  // Sprint-2 Bug1 Capa 1: sync gate pre-await. Si el schedule dice
+  // cerrado, aplicar overlay INMEDIATAMENTE sin esperar al fetch de
+  // store_settings (puede tomar 1-3s en red lenta). Esto cierra el
+  // race condition que coló la orden #9 el 2026-04-23.
+  if (restaurantData.hours && !isOpenBySchedule(restaurantData.hours)) {
+    storeClosed = true;
+    applyClosedOverlay(restaurantData, restaurantData.hours);
+    dbg('🔒 schedule sync gate: thedeck cerrado por horario');
+  }
+
+  // Store open/closed check + sold_out polling (parity con menu/index.html:6455-6485).
+  // El fetch a store_settings sigue corriendo para cubrir override case
+  // (dueño cerró/abrió manualmente antes del schedule).
   await checkStoreOpen();
   if (!storeClosed) startSoldOutPoller();
   setInterval(checkStoreOpen, 5 * 60 * 1000);
@@ -3052,12 +3094,21 @@ function resetSubmitButton() {
 
 // Parity con menu/index.html:3986-4200 (ruta sin pago).
 async function submitCheckout() {
-  if (storeClosed) {
+  // Sprint-2 Bug1 Capa 3: doble-guard. Además del flag storeClosed
+  // (que puede estar stale si checkStoreOpen aún no corrió o tuvo
+  // error de red), re-chequear el schedule SÍNCRONO aquí mismo.
+  // Cualquiera de los dos siendo true → bloquea + re-aplica overlay.
+  const scheduleClosed = restaurantData && restaurantData.hours &&
+    !isOpenBySchedule(restaurantData.hours);
+  if (storeClosed || scheduleClosed) {
+    storeClosed = true;
+    if (restaurantData) applyClosedOverlay(restaurantData, restaurantData.hours);
     const globalErr = document.getElementById('checkoutGlobalError');
     if (globalErr) {
-      globalErr.textContent = 'Estamos cerrados en este momento.';
+      globalErr.textContent = 'Estamos cerrados en este momento. No podemos procesar órdenes ahora.';
       globalErr.style.display = 'block';
     }
+    dbg('🔒 submitCheckout bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ')');
     return;
   }
   const phoneRaw = document.getElementById('chkPhone').value.trim();
