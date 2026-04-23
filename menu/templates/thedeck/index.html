@@ -1792,6 +1792,7 @@ let soldOutPoller = null;
 // previene el path del bug donde un cart-panel pre-existente permitía
 // clickear "Completar Orden" mientras el menú estaba overlay-cubierto.
 function applyClosedOverlay(rData, scheduleStr) {
+  console.log('[thedeck applyClosedOverlay] called with scheduleStr:', scheduleStr);
   const overlay = document.getElementById('closedOverlay');
   const main = document.getElementById('menuSections');
   const ctaWrap = document.querySelector('.cta-wrap');
@@ -1799,6 +1800,10 @@ function applyClosedOverlay(rData, scheduleStr) {
   const nameEl = document.getElementById('closedOverlayName');
   const nextEl = document.getElementById('closedOverlayNext');
   const schedEl = document.getElementById('closedOverlaySchedule');
+  console.log('[thedeck applyClosedOverlay] DOM elements:', {
+    overlay: !!overlay, main: !!main, ctaWrap: !!ctaWrap,
+    logoEl: !!logoEl, nameEl: !!nameEl, nextEl: !!nextEl, schedEl: !!schedEl
+  });
 
   // Sprint-2 post-validation 2026-04-23: poblar logo dinámico.
   // Parity con menu/index.html:6450-6452. Fallback: el <div class=
@@ -1812,7 +1817,16 @@ function applyClosedOverlay(rData, scheduleStr) {
   const nextOpen = getNextOpenTime(scheduleStr || '');
   if (nextEl) nextEl.textContent = nextOpen ? nextOpen.text : '';
   if (schedEl) schedEl.textContent = scheduleStr || '';
-  if (overlay) overlay.classList.add('open');
+  if (overlay) {
+    overlay.classList.add('open');
+    // Verificación post-DOM-write para diagnosticar cache/CSS issues
+    setTimeout(function() {
+      const cs = window.getComputedStyle(overlay);
+      console.log('[thedeck applyClosedOverlay] overlay computed display:', cs.display, 'visibility:', cs.visibility, 'z-index:', cs.zIndex);
+    }, 50);
+  } else {
+    console.error('[thedeck applyClosedOverlay] ❌ overlay element NOT FOUND — HTML puede estar cacheado');
+  }
   if (main) main.style.display = 'none';
   if (ctaWrap) ctaWrap.style.display = 'none';
   // Sprint-2 post-validation 2026-04-23: NO se esconde FAB ni se cierra
@@ -1852,6 +1866,7 @@ function clearClosedOverlay() {
 }
 
 async function checkStoreOpen() {
+  console.log('[thedeck checkStoreOpen] === START ===');
   try {
     var storeSettings = null;
     try {
@@ -1863,18 +1878,25 @@ async function checkStoreOpen() {
         var data = await res.json();
         if (data.length > 0) storeSettings = data[0];
       }
-    } catch (e) { /* continue without store_settings */ }
+    } catch (e) {
+      console.error('[thedeck checkStoreOpen] store_settings fetch failed:', e.message);
+    }
 
     var isOpen = true;
     var scheduleStr = restaurantData ? (restaurantData.hours || '') : '';
+    console.log('[thedeck checkStoreOpen] storeSettings:', storeSettings, 'scheduleStr:', scheduleStr);
 
     if (storeSettings) {
       var hasOverride = storeSettings.schedule_override === true;
+      console.log('[thedeck checkStoreOpen] hasOverride:', hasOverride, 'is_open:', storeSettings.is_open, 'schedule_state_at_override:', storeSettings.schedule_state_at_override);
+
       if (hasOverride && scheduleStr && scheduleStr !== 'Selecciona días y horario' &&
           storeSettings.schedule_state_at_override !== null && storeSettings.schedule_state_at_override !== undefined) {
         var currentScheduleState = isOpenBySchedule(scheduleStr);
+        console.log('[thedeck checkStoreOpen] auto-reset check: currentScheduleState=', currentScheduleState, '!== schedule_state_at_override=', storeSettings.schedule_state_at_override, '?', currentScheduleState !== storeSettings.schedule_state_at_override);
         if (currentScheduleState !== storeSettings.schedule_state_at_override) {
           hasOverride = false;
+          console.log('[thedeck checkStoreOpen] auto-reset triggered → hasOverride=false');
           fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
             method: 'PATCH', headers: sbHeaders(),
             body: JSON.stringify({ is_open: currentScheduleState, schedule_override: false, schedule_state_at_override: null })
@@ -1882,30 +1904,38 @@ async function checkStoreOpen() {
         }
       }
 
-      if (storeSettings.is_open === false && hasOverride) {
+      // FAIL-CLOSED SAFETY: si is_open=false en DB, overlay SIEMPRE.
+      // No importa lo que diga el schedule — un dueño que explícitamente
+      // cerró quiere que NADIE ordene. Path ultra-seguro (Sprint-2
+      // post-validation 2026-04-23 Bug A/B diagnostic).
+      if (storeSettings.is_open === false) {
+        console.log('[thedeck checkStoreOpen] FAIL-CLOSED SAFETY: is_open=false → forzando isOpen=false');
         isOpen = false;
       } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario' && !hasOverride) {
         var scheduleResult = isOpenBySchedule(scheduleStr);
         isOpen = scheduleResult;
+        console.log('[thedeck checkStoreOpen] schedule branch: isOpen=' + isOpen);
         if (storeSettings.is_open !== scheduleResult) {
           fetch(SUPABASE_URL + '/rest/v1/store_settings?id=eq.' + encodeURIComponent(SLUG), {
             method: 'PATCH', headers: sbHeaders(),
             body: JSON.stringify({ is_open: scheduleResult })
           }).catch(function() {});
         }
-      } else if (!hasOverride && (!scheduleStr || scheduleStr === 'Selecciona días y horario')) {
-        isOpen = storeSettings.is_open !== false;
       } else {
         isOpen = storeSettings.is_open !== false;
+        console.log('[thedeck checkStoreOpen] DB is_open branch: isOpen=' + isOpen);
       }
     } else if (scheduleStr && scheduleStr !== 'Selecciona días y horario') {
       isOpen = isOpenBySchedule(scheduleStr);
+      console.log('[thedeck checkStoreOpen] no storeSettings, schedule-only: isOpen=' + isOpen);
     }
+
+    console.log('[thedeck checkStoreOpen] === FINAL isOpen=' + isOpen + ' ===');
 
     if (!isOpen) {
       storeClosed = true;
       applyClosedOverlay(restaurantData, scheduleStr);
-      dbg('🔒 Tienda cerrada');
+      console.log('[thedeck checkStoreOpen] 🔒 applied closed overlay');
       return false;
     } else {
       storeClosed = false;
@@ -1913,7 +1943,7 @@ async function checkStoreOpen() {
       return true;
     }
   } catch (e) {
-    dbg('⚠️ checkStoreOpen error: ' + e.message);
+    console.error('[thedeck checkStoreOpen] top-level error:', e.message, e.stack);
     return true;
   }
 }
