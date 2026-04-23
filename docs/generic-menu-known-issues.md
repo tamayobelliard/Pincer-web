@@ -63,6 +63,24 @@ Se aplicará en el próximo sprint cuando se agregue CI automation (hoy no hay C
 
 **Follow-up:** cuando se construya el flujo dine-in con cuenta abierta para restaurantes tipo Restaurante, la matriz necesita una fila adicional con el copy de cuenta cerrada. Hoy dine_in cae al mismo mensaje de take_out en el MVP (acceptable porque solo Food Truck/Cafetería/Bar/Panadería usan dine_in y ahí funciona como take_out).
 
+## 11. Chatbot auto-open es "una vez por sesión del navegador" (testing contamination)
+
+**Observado:** `menu/index.html:6198` y `menu/templates/thedeck/index.html` (initChatbot) checkean `sessionStorage.getItem('pincer_welcomed_<slug>')`. Si la flag existe, el auto-open NO dispara. `openPinzer`/`openChat` setea la flag al primer open (click manual o auto). Dura hasta que el usuario cierra la tab (sessionStorage).
+
+**Comportamiento intencional**, no es bug — evita molestar al cliente que ya vio el chat dentro de la misma sesión de navegación. Parity con el genérico desde hace mucho; replicado en thedeck en Sprint-2 A4.
+
+**Implicación para testing:** después de cerrar el chat o tras primera visita, los siguientes refreshes (incluso hard refresh Ctrl+Shift+R) NO limpiarán `sessionStorage`. El auto-open no disparará. El founder reportó Bug 3 Sprint-2 validation creyendo que el auto-open no funcionaba — en realidad la flag estaba seteada de testings previos.
+
+**Para re-validar el auto-open en clean state:**
+1. DevTools → Application (Chrome) / Storage (Firefox) → Session Storage.
+2. Seleccionar `https://www.pincerweb.com`.
+3. Eliminar la key `pincer_welcomed_<slug>` (ej: `pincer_welcomed_thedeck`).
+4. Recargar la página.
+
+Alternativa: abrir `/slug` en tab incógnito — cada incógnito tab tiene su propio sessionStorage vacío.
+
+**Pendiente (opcional):** si el founder quiere que el auto-open sea más agresivo (ej: auto-open cada N minutos o cada nueva visita), revisar la política. Por ahora: documentado.
+
 ## 6. Cambios de comportamiento sutiles en #1.1
 
 **Observado:** el hotfix #1.1 reemplazó `typeof body[key] !== expectedType` por `!isValidType(body[key], expectedType)`. La lógica es equivalente para string/boolean/array pero **más estricta para number**: `isValidType` agrega `&& Number.isFinite(value)`, por lo que rechaza `NaN` e `Infinity`.
