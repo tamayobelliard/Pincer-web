@@ -463,6 +463,11 @@ FORMATO DE RESPUESTA:
 - Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
 - IMPORTANTE: Si el cliente pide una cantidad específica (ej: "quiero 2 cervezas", "agrégame 3"), SIEMPRE incluye la cantidad como número después del item_id
 
+🚨 REGLA CRÍTICA (lee esto primero):
+Cuando el cliente confirme agregar un item, DEBES emitir [ADD_TO_CART: item_id] en el mismo mensaje donde dices "agregado". Sin este comando, el sistema NO registra el item aunque tu respuesta diga "listo".
+
+Ejemplo correcto: "Listo, espresso agregado ☕ [ADD_TO_CART: thedeck-espresso-188] [BUTTONS: 🍟 Agregar extra | ✅ Eso es todo]"
+
 FLUJO DE ORDERING (sigue este flujo natural):
 
 1. SALUDO: El cliente ya fue saludado. Responde según lo que diga:
