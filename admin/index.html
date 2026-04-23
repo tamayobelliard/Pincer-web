@@ -391,7 +391,7 @@
       <label>Nombre del negocio *</label>
       <input type="text" id="fieldName" placeholder="Ej: La Cocina de María">
       <label>Tipo de negocio</label>
-      <select id="fieldType">
+      <select id="fieldType" onchange="onAdminBusinessTypeChange()">
         <option value="">Seleccionar...</option>
         <option value="Restaurante">Restaurante</option>
         <option value="Cafetería">Cafetería</option>
@@ -473,6 +473,36 @@
           Los precios del menú incluyen ITBIS
         </label>
         <small style="color:#94a3b8;display:block;margin-top:4px;">Si no está marcado, el ITBIS (18%) se muestra desglosado en el checkout del cliente.</small>
+      </div>
+
+      <!-- Sprint-3 Etapa 1: service model + charge + split checks.
+           Defaults se pre-seleccionan según business_type al crear nuevo
+           restaurante; admin puede override. -->
+      <div style="margin-bottom:12px;">
+        <label style="font-weight:600;font-size:0.9em;">Modelo de servicio</label>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.9em;cursor:pointer;">
+            <input type="radio" name="fieldServiceModel" id="fieldServiceModelSelf" value="self_service" onchange="onAdminServiceModelChange()" checked>
+            Self-service (food truck, cafetería, delivery)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;font-size:0.9em;cursor:pointer;">
+            <input type="radio" name="fieldServiceModel" id="fieldServiceModelWaiter" value="waiter_service" onchange="onAdminServiceModelChange()">
+            Con meseros (restaurante, bar)
+          </label>
+        </div>
+      </div>
+
+      <div id="fieldServiceChargeWrap" style="display:none;margin-bottom:12px;">
+        <label>Cargo por servicio (%)</label>
+        <input type="number" id="fieldServiceCharge" min="0" max="30" step="1" placeholder="10">
+        <small style="color:#94a3b8;">10% estándar DR. Mínimo 0, máximo 30.</small>
+      </div>
+
+      <div id="fieldAllowSplitChecksWrap" style="display:none;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:0.9em;cursor:pointer;">
+          <input type="checkbox" id="fieldAllowSplitChecks" checked>
+          Permitir cuentas separadas en la misma mesa
+        </label>
       </div>
 
       <!-- Menu Upload: URL + Photo modes -->
@@ -1245,6 +1275,43 @@ function getOrderTypes() {
   return types.length ? types : ['dine_in'];
 }
 
+// Sprint-3 Etapa 1: visibilidad + preset del charge. Espejo exacto del
+// onServiceModelChange del dashboard. Self_service oculta los 2 campos
+// dependientes (charge, split_checks) y resetea charge a 0 para alinear
+// con el default del backend.
+function onAdminServiceModelChange() {
+  var isWaiter = document.getElementById('fieldServiceModelWaiter').checked;
+  var chargeWrap = document.getElementById('fieldServiceChargeWrap');
+  var splitWrap = document.getElementById('fieldAllowSplitChecksWrap');
+  var chargeInput = document.getElementById('fieldServiceCharge');
+
+  if (isWaiter) {
+    chargeWrap.style.display = 'block';
+    splitWrap.style.display = 'block';
+    chargeInput.disabled = false;
+    if (!chargeInput.value || parseInt(chargeInput.value) === 0) {
+      chargeInput.value = 10;
+    }
+  } else {
+    chargeWrap.style.display = 'none';
+    splitWrap.style.display = 'none';
+    chargeInput.value = 0;
+    chargeInput.disabled = true;
+  }
+}
+
+// Sprint-3 Etapa 1: smart defaults por business_type — SOLO en modo create.
+// No tocar en edit mode porque pisa decisiones explícitas del founder.
+// Restaurante/Bar → waiter_service (+10% default). El resto → self_service.
+function onAdminBusinessTypeChange() {
+  if (modalMode !== 'create') return;
+  var type = (document.getElementById('fieldType').value || '').trim().toLowerCase();
+  var isWaiterType = (type === 'restaurante' || type === 'bar');
+  document.getElementById('fieldServiceModelSelf').checked = !isWaiterType;
+  document.getElementById('fieldServiceModelWaiter').checked = isWaiterType;
+  onAdminServiceModelChange();
+}
+
 function previewLogo() {
   var url = document.getElementById('fieldLogoUrl').value;
   var preview = document.getElementById('logoPreview');
@@ -1285,6 +1352,16 @@ function openNewModal() {
   document.getElementById('btnUploadMenu').disabled = true;
   document.getElementById('uploadTooltip').style.display = '';
   resetMenuUpload();
+
+  // Sprint-3 Etapa 1: defaults del nuevo cliente — self_service/0/true,
+  // con los campos dependientes ocultos. Si el admin luego selecciona
+  // 'Restaurante' o 'Bar' en el fieldType, onAdminBusinessTypeChange()
+  // auto-switch a waiter_service + 10.
+  document.getElementById('fieldServiceModelSelf').checked = true;
+  document.getElementById('fieldServiceModelWaiter').checked = false;
+  document.getElementById('fieldServiceCharge').value = 0;
+  document.getElementById('fieldAllowSplitChecks').checked = true;
+  onAdminServiceModelChange();
 
   // Hide password reset in create mode
   document.getElementById('passwordResetSection').style.display = 'none';
@@ -1331,6 +1408,15 @@ function openEditModal(id) {
   toggleDeliveryFeeField();
   // Sprint-2 C2: default true si el campo no vino (restaurante pre-migration).
   document.getElementById('fieldPricesIncludeTax').checked = r.prices_include_tax !== false;
+
+  // Sprint-3 Etapa 1: service_model + charge + split_checks. Defaults
+  // backward-compat (self_service/0/true) si el campo no vino.
+  var sm = (r.service_model === 'waiter_service') ? 'waiter_service' : 'self_service';
+  document.getElementById('fieldServiceModelSelf').checked = (sm === 'self_service');
+  document.getElementById('fieldServiceModelWaiter').checked = (sm === 'waiter_service');
+  document.getElementById('fieldServiceCharge').value = Number.isInteger(r.service_charge_percent) ? r.service_charge_percent : 0;
+  document.getElementById('fieldAllowSplitChecks').checked = r.allow_split_checks !== false;
+  onAdminServiceModelChange();
 
   // Schedule: show current hours, reset builder for optional overwrite
   resetSchedule();
@@ -1419,6 +1505,14 @@ async function updateRestaurant() {
   body.prices_include_tax = document.getElementById('fieldPricesIncludeTax').checked;
   body.azul_merchant_id = document.getElementById('fieldMerchantId').value.trim() || null;
 
+  // Sprint-3 Etapa 1: service_model + charge + split_checks.
+  // Si self_service: charge forzado a 0 y split_checks a true (no aplican).
+  // Si waiter_service: se leen los inputs (charge 0-30, split checkbox).
+  var isWaiter = document.getElementById('fieldServiceModelWaiter').checked;
+  body.service_model = isWaiter ? 'waiter_service' : 'self_service';
+  body.service_charge_percent = isWaiter ? (parseInt(document.getElementById('fieldServiceCharge').value) || 0) : 0;
+  body.allow_split_checks = isWaiter ? document.getElementById('fieldAllowSplitChecks').checked : true;
+
   // Send logo as base64 if new file selected (server will upload to Storage)
   if (adminLogoFile) {
     var logoBase64 = await getLogoBase64();
@@ -1505,6 +1599,13 @@ async function createRestaurant() {
       azul_merchant_id: document.getElementById('fieldMerchantId').value.trim() || null,
       prices_include_tax: document.getElementById('fieldPricesIncludeTax').checked,
     };
+
+    // Sprint-3 Etapa 1: misma lógica que update — self_service fuerza 0/true.
+    var isWaiterCreate = document.getElementById('fieldServiceModelWaiter').checked;
+    createBody.service_model = isWaiterCreate ? 'waiter_service' : 'self_service';
+    createBody.service_charge_percent = isWaiterCreate ? (parseInt(document.getElementById('fieldServiceCharge').value) || 0) : 0;
+    createBody.allow_split_checks = isWaiterCreate ? document.getElementById('fieldAllowSplitChecks').checked : true;
+
     if (logoBase64) createBody.logo_base64 = logoBase64;
 
     const res = await adminFetch('/api/admin?action=create', {
