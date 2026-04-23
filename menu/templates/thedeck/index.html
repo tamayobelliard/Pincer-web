@@ -651,8 +651,20 @@
     30% { opacity: 1; transform: translateY(-3px); }
   }
 
+  .chat-reply-more {
+    background: transparent !important;
+    border: 1px solid var(--color-accent) !important;
+    color: var(--color-accent-3) !important;
+    font-family: var(--font-serif) !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+  }
+  .chat-reply-more:hover { background: rgba(201,169,97,0.1) !important; }
   .chat-replies {
     padding: 4px 14px 10px; display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+    max-height: 180px; overflow-y: auto;
   }
   .chat-reply {
     background: var(--color-surface); border: 1px solid var(--color-accent);
@@ -2868,25 +2880,44 @@ function scrollChatToBottom() {
   msgs.scrollTop = msgs.scrollHeight;
 }
 
-// Sprint-2 A3: paginación cuando hay más de MAX_VISIBLE_REPLIES.
-// Muestra primeros (MAX-1) + un botón "+ N más" que expande el resto.
-// Sin paginación el bot puede listar opciones inaccesibles cuando renderiza
-// >6 buttons y el UI corta el overflow.
+// Paginación 6+ViewAll — 2026-04-23 post-validation.
+// Reemplaza la lógica previa (Sprint-2 A3) con UX simplificada:
+// - ≤6 buttons: mostrar todos.
+// - >6 buttons: mostrar 6 + "Ver todos (N)" que expande inline el resto.
+// - Expansión preserva los 6 iniciales arriba + N-6 restantes abajo.
+// - No hay botón "colapsar" (decisión del founder).
+// - chat-replies tiene max-height + overflow-y para scroll interno.
 const MAX_VISIBLE_REPLIES = 6;
 
-function renderReplies(labels, showAll) {
+// Sanitize defensive: el bot a veces emite "<slug>-<word>-NNN Nombre"
+// en vez de "Nombre" (copia el product_id del menuData). Strip defensivo
+// sin depender solo del prompt. Patrón: ID interno estilo slug-abc-123
+// seguido de espacio + nombre real.
+function sanitizeButtonLabel(label) {
+  if (typeof label !== 'string') return String(label || '').trim();
+  const trimmed = label.trim();
+  const m = trimmed.match(/^[a-z0-9][a-z0-9-]*-\d+\s+(.+)$/i);
+  if (m) return m[1].trim();
+  return trimmed;
+}
+
+function renderReplies(labels) {
   const el = document.getElementById('chatReplies');
-  if (!labels.length) { el.innerHTML = ''; return; }
+  if (!labels || !labels.length) { el.innerHTML = ''; return; }
 
-  const paginate = !showAll && labels.length > MAX_VISIBLE_REPLIES;
-  const visible = paginate ? labels.slice(0, MAX_VISIBLE_REPLIES - 1) : labels;
+  const clean = labels.map(sanitizeButtonLabel).filter(Boolean);
 
-  let html = visible.map(l => `<button class="chat-reply" data-reply="${esc(l)}">${esc(l)}</button>`).join('');
-  if (paginate) {
-    html += `<button class="chat-reply chat-reply-more" data-action="more">+ ${labels.length - visible.length} más</button>`;
+  if (clean.length <= MAX_VISIBLE_REPLIES) {
+    el.innerHTML = clean.map(l => `<button class="chat-reply" data-reply="${esc(l)}">${esc(l)}</button>`).join('');
+    return;
   }
-  el.innerHTML = html;
-  try { el.dataset.allReplies = JSON.stringify(labels); } catch (e) { el.dataset.allReplies = '[]'; }
+
+  const visible = clean.slice(0, MAX_VISIBLE_REPLIES);
+  const remaining = clean.slice(MAX_VISIBLE_REPLIES);
+  el.innerHTML =
+    visible.map(l => `<button class="chat-reply" data-reply="${esc(l)}">${esc(l)}</button>`).join('') +
+    `<button class="chat-reply chat-reply-more" data-action="expand">Ver todos (${clean.length})</button>`;
+  try { el.dataset.remaining = JSON.stringify(remaining); } catch (e) { el.dataset.remaining = '[]'; }
 }
 
 // Parsing light de respuesta del bot — extrae [BUTTONS: a | b | c] y [ADD_TO_CART: id | qty | notes].
@@ -2901,7 +2932,8 @@ function parseBotResponse(text) {
   const btnRegex = /\[BUTTONS:\s*([^\]]+)\]/g;
   let btnMatch;
   while ((btnMatch = btnRegex.exec(text)) !== null) {
-    const parts = btnMatch[1].split('|').map(s => s.trim()).filter(Boolean);
+    // Sanitize defensive: strip IDs internos que el bot a veces filtra.
+    const parts = btnMatch[1].split('|').map(s => sanitizeButtonLabel(s)).filter(Boolean);
     result.buttons.push(...parts);
   }
   result.clean = result.clean.replace(/\[BUTTONS:[^\]]+\]/g, '').trim();
@@ -3083,12 +3115,24 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
 document.getElementById('chatReplies').addEventListener('click', (e) => {
   const r = e.target.closest('.chat-reply');
   if (!r) return;
-  if (r.dataset.action === 'more') {
+  if (r.dataset.action === 'expand') {
     const el = document.getElementById('chatReplies');
-    let all = [];
-    try { all = JSON.parse(el.dataset.allReplies || '[]'); } catch (ex) {}
-    renderReplies(all, true);
-    track('chat_replies_expanded', { total: all.length });
+    let remaining = [];
+    try { remaining = JSON.parse(el.dataset.remaining || '[]'); } catch (ex) {}
+    // Remove the "Ver todos" button — no vuelve a aparecer en este message.
+    r.remove();
+    // Append remaining buttons inline después de los 6 iniciales.
+    remaining.forEach(lbl => {
+      const btn = document.createElement('button');
+      btn.className = 'chat-reply';
+      btn.dataset.reply = lbl;
+      btn.textContent = lbl;
+      el.appendChild(btn);
+    });
+    try { delete el.dataset.remaining; } catch (ex) {}
+    track('chat_replies_expanded', { total: remaining.length + MAX_VISIBLE_REPLIES });
+    // Scroll suave al nuevo contenido dentro del contenedor.
+    el.scrollTop = el.scrollHeight;
     return;
   }
   sendChatMessage(r.dataset.reply);

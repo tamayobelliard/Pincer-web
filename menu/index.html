@@ -5916,11 +5916,13 @@ function parseBotResponse(text) {
   }
   cleanText = cleanText.replace(/\[SHOW_PHOTO:\s*[^\]]+\]/g, '').trim();
 
-  // Extract ALL [BUTTONS:] groups and merge them
+  // Extract ALL [BUTTONS:] groups and merge them. Sanitize each label:
+  // strip "<slug>-<word>-NNN Name" pattern que el bot emite cuando copia
+  // el product_id del menuData como label (2026-04-23 post-validation).
   const btnRegex = /\[BUTTONS:\s*([^\]]+)\]/g;
   let btnMatch;
   while ((btnMatch = btnRegex.exec(cleanText)) !== null) {
-    const parsed = btnMatch[1].split('|').map(b => b.trim()).filter(Boolean);
+    const parsed = btnMatch[1].split('|').map(b => sanitizeButtonLabel(b)).filter(Boolean);
     buttons.push(...parsed);
   }
   cleanText = cleanText.replace(/\[BUTTONS:\s*[^\]]+\]/g, '').trim();
@@ -6067,35 +6069,55 @@ function pinzerUserSay(message) {
   container.scrollTop = container.scrollHeight;
 }
 
-// Sprint-2 A3: paginación cuando hay más de MAX_VISIBLE_REPLIES.
-// Muestra primeros (MAX-1) + botón "+ N más" que expande en-place.
+// Paginación 6+ViewAll — 2026-04-23 post-validation. Reemplaza la
+// lógica previa (Sprint-2 A3). UX simplificada:
+// - ≤6 replies: mostrar todos.
+// - >6 replies: mostrar 6 + "Ver todos (N)" que expande inline.
+// - Expansión preserva los 6 iniciales + N-6 restantes abajo.
+// - No hay colapsar. Los buttons viejos quedan como history del chat.
 const MAX_VISIBLE_REPLIES = 6;
 
-function pinzerShowReplies(replies, showAll) {
+// Sanitize defensive: strip "<slug>-<word>-NNN Name" pattern si el bot
+// lo emite por accidente (copiando product_id del menuData como label).
+function sanitizeButtonLabel(label) {
+  if (typeof label !== 'string') return String(label || '').trim();
+  const trimmed = label.trim();
+  const m = trimmed.match(/^[a-z0-9][a-z0-9-]*-\d+\s+(.+)$/i);
+  if (m) return m[1].trim();
+  return trimmed;
+}
+
+function pinzerShowReplies(replies) {
   const container = document.getElementById('pinzer-replies');
   container.innerHTML = '';
   if (!replies || !replies.length) return;
 
-  const paginate = !showAll && replies.length > MAX_VISIBLE_REPLIES;
-  const visible = paginate ? replies.slice(0, MAX_VISIBLE_REPLIES - 1) : replies;
+  // Sanitize labels (defensive por si el prompt falla).
+  const clean = replies.map(r => ({ ...r, label: sanitizeButtonLabel(r.label) }));
 
-  visible.forEach(r => {
+  function addBtn(r) {
     const btn = document.createElement('button');
     btn.className = 'pinzer-reply-btn';
     if (r.big) btn.style.cssText = 'font-size:15px;padding:10px 20px;';
     btn.textContent = r.label;
     btn.onclick = () => handleQuickReply(r.label);
     container.appendChild(btn);
-  });
+  }
 
-  if (paginate) {
+  if (clean.length <= MAX_VISIBLE_REPLIES) {
+    clean.forEach(addBtn);
+  } else {
+    clean.slice(0, MAX_VISIBLE_REPLIES).forEach(addBtn);
+    const remaining = clean.slice(MAX_VISIBLE_REPLIES);
     const moreBtn = document.createElement('button');
-    moreBtn.className = 'pinzer-reply-btn';
-    moreBtn.style.cssText = 'font-style:italic;opacity:0.85;';
-    moreBtn.textContent = '+ ' + (replies.length - visible.length) + ' más';
+    moreBtn.className = 'pinzer-reply-btn pinzer-reply-more';
+    moreBtn.style.cssText = 'border:1px solid #cbd5e1 !important;background:transparent !important;color:#475569 !important;font-style:normal;font-weight:600;letter-spacing:0.5px;';
+    moreBtn.textContent = 'Ver todos (' + clean.length + ')';
     moreBtn.onclick = function() {
-      pinzerShowReplies(replies, true);
-      track('chat_replies_expanded', { total: replies.length });
+      moreBtn.remove();
+      remaining.forEach(addBtn);
+      track('chat_replies_expanded', { total: clean.length });
+      container.scrollTop = container.scrollHeight;
     };
     container.appendChild(moreBtn);
   }

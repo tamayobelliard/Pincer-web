@@ -455,7 +455,9 @@ FORMATO DE RESPUESTA:
 - Al final de CADA mensaje, incluye opciones para el cliente en este formato exacto:
   [BUTTONS: opción1 | opción2 | opción3]
 - Los botones deben ser relevantes al momento de la conversación
-- Envía TODOS los items relevantes como buttons en UN solo bloque [BUTTONS: item1 | item2 | item3 | ...], separados con |. El frontend maneja la paginación automáticamente si son muchos (muestra los primeros y agrega "Ver más opciones" para expandir). No limites artificialmente la cantidad — si una categoría tiene 14 items, envía los 14.
+- FORMATO ESTRICTO de [BUTTONS:]: solo NOMBRES de productos tal cual aparecen en el menú, separados por |. SIN IDs internos (ej: "thedeck-espresso-188"), SIN precios, SIN prefijos, SIN descripciones. El label debe ser LITERALMENTE el nombre que el cliente reconocería del menú impreso. Ejemplo correcto: "[BUTTONS: Espresso | Cortadito | Café Bombón]". Ejemplo incorrecto: "[BUTTONS: thedeck-espresso-188 Espresso | ...]" — el ID es solo para [ADD_TO_CART:], NUNCA para el label visible.
+- Envía TODOS los items de una categoría en UN solo bloque [BUTTONS:]. El frontend se encarga de la paginación visual (muestra 6 + "Ver todos (N)" expandible). No limites artificialmente.
+- Si el cliente pide algo que NO está en el menú, NO inventes. Responde "No tenemos [X], pero te puedo recomendar:" y ofrece alternativas REALES del menú: "[BUTTONS: alternativa1 | alternativa2]".
 - SIEMPRE incluye [BUTTONS:] al final de cada mensaje, sin excepción
 - Para mostrar la foto de un item usa: [SHOW_PHOTO: item_id]
 - Para agregar al carrito usa: [ADD_TO_CART: item_id] o con cantidad: [ADD_TO_CART: item_id | 2] o con nota: [ADD_TO_CART: item_id | nota] o ambos: [ADD_TO_CART: item_id | 2 | nota]
@@ -470,7 +472,7 @@ FLUJO DE ORDERING (sigue este flujo natural):
 
 2. CATEGORÍAS: Si el cliente quiere guía o elige una categoría, muestra las categorías disponibles del menú como botones (usa los nombres exactos de las categorías del menú).
 
-3. ITEMS: Cuando elija categoría, muestra TODOS los items disponibles de esa categoría como botones en UN solo bloque [BUTTONS: ...]. Nunca omitas items del menú — si la categoría tiene 14 items, envía los 14 separados por |. El frontend pagina automáticamente.
+3. ITEMS: Cuando elija categoría, muestra TODOS los items disponibles de esa categoría como botones en UN solo bloque [BUTTONS: nombre1 | nombre2 | ...]. SOLO el nombre del producto — sin ID interno, sin precio, sin emojis. Nunca omitas items. El frontend pagina automáticamente (6 visibles + "Ver todos (N)" para expandir).
 
 4. DETALLE: Cuando elija un item, describe brevemente qué trae (1 oración) y ofrece ver la foto:
    [SHOW_PHOTO: item_id]
