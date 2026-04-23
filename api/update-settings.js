@@ -122,10 +122,21 @@ export default async function handler(req, res) {
       delivery_fee: 'number',
       logo_url: 'string',
       prices_include_tax: 'boolean',
+      // Sprint-3 Etapa 1 (2026-04-23): signals del flujo dine-in cuenta
+      // abierta. service_model decide el routing de checkout; charge y
+      // split_checks solo aplican a waiter_service.
+      service_model: 'string',
+      service_charge_percent: 'number',
+      allow_split_checks: 'boolean',
     };
 
     // order_types only accepts these three enum values (mirrors the UI).
     const ORDER_TYPE_VALUES = ['dine_in', 'take_out', 'delivery'];
+    // service_model enum (matches DB CHECK constraint).
+    const SERVICE_MODEL_VALUES = ['self_service', 'waiter_service'];
+    // service_charge_percent bounds (matches DB CHECK 0-30).
+    const SERVICE_CHARGE_MIN = 0;
+    const SERVICE_CHARGE_MAX = 30;
 
     const update = {};
     for (const [key, expectedType] of Object.entries(ALLOWED)) {
@@ -181,6 +192,40 @@ export default async function handler(req, res) {
             allowed_values: ORDER_TYPE_VALUES,
           }));
           return res.status(400).json({ success: false, error: `Campo 'order_types' invalido: ${r.reason}` });
+        }
+      }
+
+      // Sprint-3 Etapa 1: validar service_model contra enum DB CHECK.
+      if (key === 'service_model' && !SERVICE_MODEL_VALUES.includes(body[key])) {
+        console.error(JSON.stringify({
+          event: 'update_settings_validation_rejected',
+          reason: 'invalid_enum',
+          restaurant_slug,
+          field: key,
+          expected_type: expectedType,
+          received_type: typeof body[key],
+          received_value: safeValueForLog(body[key]),
+          allowed_values: SERVICE_MODEL_VALUES,
+        }));
+        return res.status(400).json({ success: false, error: `Campo 'service_model' invalido: debe ser ${SERVICE_MODEL_VALUES.join(' o ')}` });
+      }
+
+      // Sprint-3 Etapa 1: validar service_charge_percent range (matches DB CHECK).
+      if (key === 'service_charge_percent') {
+        const v = body[key];
+        if (!Number.isInteger(v) || v < SERVICE_CHARGE_MIN || v > SERVICE_CHARGE_MAX) {
+          console.error(JSON.stringify({
+            event: 'update_settings_validation_rejected',
+            reason: 'out_of_range',
+            restaurant_slug,
+            field: key,
+            expected_type: expectedType,
+            received_type: typeof v,
+            received_value: safeValueForLog(v),
+            min: SERVICE_CHARGE_MIN,
+            max: SERVICE_CHARGE_MAX,
+          }));
+          return res.status(400).json({ success: false, error: `Campo 'service_charge_percent' debe ser entero entre ${SERVICE_CHARGE_MIN} y ${SERVICE_CHARGE_MAX}` });
         }
       }
 

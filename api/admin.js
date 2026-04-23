@@ -139,7 +139,7 @@ async function handleRestaurants(req, res, supabaseUrl, supabaseKey) {
 async function handleCreate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax } = req.body;
+  const { name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax, service_model, service_charge_percent, allow_split_checks } = req.body;
 
   if (!name) {
     return res.status(400).json({ success: false, error: 'El nombre es requerido' });
@@ -241,6 +241,13 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
           // El admin form explícitamente pasa false cuando el restaurante
           // tiene precios sin ITBIS (como The Deck).
           prices_include_tax: typeof prices_include_tax === 'boolean' ? prices_include_tax : true,
+          // Sprint-3 Etapa 1: signals dine-in cuenta abierta. Defaults
+          // backward-compat (self_service, 0, true) — cero cambio para
+          // restaurantes existentes. El admin form sobrescribe según
+          // business_type al crear (waiter_service para Restaurante/Bar).
+          service_model: ['self_service', 'waiter_service'].includes(service_model) ? service_model : 'self_service',
+          service_charge_percent: Number.isInteger(service_charge_percent) && service_charge_percent >= 0 && service_charge_percent <= 30 ? service_charge_percent : 0,
+          allow_split_checks: typeof allow_split_checks === 'boolean' ? allow_split_checks : true,
         }),
       }
     );
@@ -340,7 +347,7 @@ async function handleCreate(req, res, supabaseUrl, supabaseKey) {
 async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax } = req.body;
+  const { id, display_name, business_type, address, phone, contact_name, email, hours, website, notes, chatbot_personality, logo_url, logo_base64, order_types, delivery_fee, azul_merchant_id, prices_include_tax, service_model, service_charge_percent, allow_split_checks } = req.body;
 
   if (!id) {
     return res.status(400).json({ error: 'id is required' });
@@ -406,6 +413,11 @@ async function handleUpdate(req, res, supabaseUrl, supabaseKey) {
   if (azul_merchant_id !== undefined) update.azul_merchant_id = azul_merchant_id || null;
   // Sprint-2 C2: boolean explícito. Rechaza truthy coercion accidental.
   if (typeof prices_include_tax === 'boolean') update.prices_include_tax = prices_include_tax;
+  // Sprint-3 Etapa 1: signals dine-in cuenta abierta. Validación estricta
+  // para alinear con CHECK constraints de la DB (enum + range).
+  if (['self_service', 'waiter_service'].includes(service_model)) update.service_model = service_model;
+  if (Number.isInteger(service_charge_percent) && service_charge_percent >= 0 && service_charge_percent <= 30) update.service_charge_percent = service_charge_percent;
+  if (typeof allow_split_checks === 'boolean') update.allow_split_checks = allow_split_checks;
 
   if (Object.keys(update).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });
