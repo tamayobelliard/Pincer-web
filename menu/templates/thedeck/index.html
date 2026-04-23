@@ -3135,6 +3135,21 @@ document.getElementById('chatReplies').addEventListener('click', (e) => {
     el.scrollTop = el.scrollHeight;
     return;
   }
+
+  // Sprint-2 post-validation 2026-04-23 Fix B: intercept close-labels
+  // localmente. Parity con menu/index.html:6133-6157 (handleQuickReply).
+  // Thedeck nunca tuvo este handler — drift histórico desde el commit
+  // 47aa31e (creación del template). Sin esto, click en "Cerrar" manda
+  // el texto al bot y el chat nunca se cierra.
+  const label = r.dataset.reply || '';
+  const CLOSE_LABELS = ['👋 Cerrar', '✅ Eso es todo', '👋 Close', "✅ That's all"];
+  if (CLOSE_LABELS.some(c => label.includes(c))) {
+    renderUserMessage(label);
+    renderBotMessage('¡Buen provecho! Si necesitas algo, aquí estoy 💪', []);
+    setTimeout(closeChat, 1200);
+    return;
+  }
+
   sendChatMessage(r.dataset.reply);
 });
 
