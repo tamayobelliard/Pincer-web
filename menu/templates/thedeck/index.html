@@ -2248,7 +2248,21 @@ function applyRestaurantBranding(data) {
 // Init
 // ══════════════════════════════════════════════════════════════
 
+// Init con catch global — Sprint-2 post-validation 2026-04-23.
+// Root cause histórico: una excepción silenciosa en init (ej: null DOM
+// access post-wipe) se convertía en unhandled promise rejection y
+// abortaba la inicialización sin feedback visible. Enmascaró múltiples
+// bugs durante 4+ sprints. Ver known-issues #11. Ver CLAUDE.md Regla #6.
 async function init() {
+  try {
+    await _initImpl();
+  } catch (err) {
+    console.error('[thedeck] init failed:', err);
+    try { if (typeof renderOutageFallback === 'function') renderOutageFallback(); } catch (e) {}
+  }
+}
+
+async function _initImpl() {
   const [resData, prodData, soldOut] = await Promise.all([
     fetchRestaurantData(),
     fetchProducts(),
@@ -2294,7 +2308,13 @@ async function init() {
   renderTabs(categories);
   renderSections(productsByCategory);
 
-  document.getElementById('menuLoading').style.display = 'none';
+  // Null-check defensivo — renderSections reemplaza main.innerHTML arriba,
+  // wipeando #menuLoading del DOM. Acceso directo sin guard throwaba
+  // TypeError 'Cannot read properties of null (reading style)', aborting
+  // init() como unhandled promise rejection. Bug histórico desde commit
+  // 47aa31e (creación del template). Ver known-issues #11.
+  const loadingEl = document.getElementById('menuLoading');
+  if (loadingEl) loadingEl.style.display = 'none';
 
   // Sprint-2 Bug1 Capa 1: sync gate pre-await. Si el schedule dice
   // cerrado, aplicar overlay INMEDIATAMENTE sin esperar al fetch de

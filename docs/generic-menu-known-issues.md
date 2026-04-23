@@ -63,23 +63,28 @@ Se aplicará en el próximo sprint cuando se agregue CI automation (hoy no hay C
 
 **Follow-up:** cuando se construya el flujo dine-in con cuenta abierta para restaurantes tipo Restaurante, la matriz necesita una fila adicional con el copy de cuenta cerrada. Hoy dine_in cae al mismo mensaje de take_out en el MVP (acceptable porque solo Food Truck/Cafetería/Bar/Panadería usan dine_in y ahí funciona como take_out).
 
-## 11. Chatbot auto-open es "una vez por sesión del navegador" (testing contamination)
+## 11. [RESUELTO — 2026-04-23] Diagnóstico inicial incorrecto: era un crash silencioso en init() de thedeck
 
-**Observado:** `menu/index.html:6198` y `menu/templates/thedeck/index.html` (initChatbot) checkean `sessionStorage.getItem('pincer_welcomed_<slug>')`. Si la flag existe, el auto-open NO dispara. `openPinzer`/`openChat` setea la flag al primer open (click manual o auto). Dura hasta que el usuario cierra la tab (sessionStorage).
+**Diagnóstico original (incorrecto):** atribuí el "auto-open no dispara" de Sprint-2 A4 a testing contamination con `sessionStorage.pincer_welcomed_<slug>` — "se seteó en testings previos, recomendación limpiar manualmente".
 
-**Comportamiento intencional**, no es bug — evita molestar al cliente que ya vio el chat dentro de la misma sesión de navegación. Parity con el genérico desde hace mucho; replicado en thedeck en Sprint-2 A4.
+**Root cause real:** un `TypeError: Cannot read properties of null (reading 'style')` en `menu/templates/thedeck/index.html:2297` accediendo a `#menuLoading` que había sido wipeado 2 líneas antes por `renderSections` vía `main.innerHTML = sections.join('')`. Como `init` es `async`, la excepción se convertía en unhandled promise rejection y **abortaba silenciosamente todo el código subsecuente** — incluyendo `checkStoreOpen`, `applyClosedOverlay`, `initChatbot`, tracking, promo check, setInterval.
 
-**Implicación para testing:** después de cerrar el chat o tras primera visita, los siguientes refreshes (incluso hard refresh Ctrl+Shift+R) NO limpiarán `sessionStorage`. El auto-open no disparará. El founder reportó Bug 3 Sprint-2 validation creyendo que el auto-open no funcionaba — en realidad la flag estaba seteada de testings previos.
+**Origen del bug:** commit `47aa31e feat(thedeck): wire Supabase product loading + dynamic tabs + outage fallback` — primer commit funcional del template custom, pre-Sprint-1. **Bug presente desde el día 1 de thedeck.**
 
-**Para re-validar el auto-open en clean state:**
-1. DevTools → Application (Chrome) / Storage (Firefox) → Session Storage.
-2. Seleccionar `https://www.pincerweb.com`.
-3. Eliminar la key `pincer_welcomed_<slug>` (ej: `pincer_welcomed_thedeck`).
-4. Recargar la página.
+**Bugs enmascarados** (diagnósticos previos que atribuyeron el síntoma a otra causa, cuando todos compartían esta raíz):
+- Sprint-1 hotfix 3-capas (overlay + race condition + submit gate): las capas agregadas son robustez genuina que se preserva, pero el síntoma principal (orden #9 con store cerrado) se explica por `storeClosed` nunca se seteaba a true porque `checkStoreOpen` nunca corría.
+- Sprint-2 A4 (auto-open chatbot): `initChatbot` nunca corría.
+- Hotfix post-Sprint-2 Bug A (overlay pobre): `applyClosedOverlay` nunca corría, por eso no poblaba logo + footer + etc.
+- Hotfix post-Sprint-2 Bug B (chatbot no auto-abre cerrado): el `setTimeout(openChat('auto'))` del `applyClosedOverlay` nunca encolaba.
 
-Alternativa: abrir `/slug` en tab incógnito — cada incógnito tab tiene su propio sessionStorage vacío.
+**Resolución (commit 2026-04-23):**
+1. Null-check defensivo en línea 2297: `const loadingEl = document.getElementById('menuLoading'); if (loadingEl) loadingEl.style.display = 'none';`.
+2. Refactor `init()` → wrapper con try/catch global que loguea `console.error('[thedeck] init failed:', err)` y dispara `renderOutageFallback()` en caso de crash. Cubre cualquier crash futuro similar.
+3. Código lógico real movido a `_initImpl()`. `init()` es solo el boundary de error handling.
 
-**Pendiente (opcional):** si el founder quiere que el auto-open sea más agresivo (ej: auto-open cada N minutos o cada nueva visita), revisar la política. Por ahora: documentado.
+**Lección (→ nueva regla en CLAUDE.md Regla #6):** funciones async init no deben fallar silenciosamente. Null-checks defensivos + try/catch global + fallback visible son requisitos — no opcionales.
+
+**Capas defensivas agregadas en sprints previos se preservan** — son robustez genuina (fail-closed safety del store_settings, double-guard en submit, sync gate pre-await). Ninguna era innecesaria; el bug raíz simplemente enmascaraba la necesidad de verlas activar bajo condiciones limpias.
 
 ## 6. Cambios de comportamiento sutiles en #1.1
 

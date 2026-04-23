@@ -380,6 +380,40 @@ Pincer soporta dos convenciones fiscales simultáneas:
 - ITBIS contenido en un `total` = `total - total / 1.18`. Nunca `total * 0.18` (inflaba 18% — Sprint-2 C5 fix).
 - Venta neta = `total - itbis`.
 
+### Regla #6 — async `init()` no puede fallar silenciosamente
+
+Las funciones async de inicialización (`init`, `initChatbot`, `loadSettings`, etc.) en cualquier archivo HTML público enmascaran crashes cuando una excepción se convierte en unhandled promise rejection. El flujo silencioso aborta toda la inicialización subsecuente sin feedback visible — el usuario ve la página cargada parcialmente pero con features rotas (overlay no aparece, chatbot no auto-abre, tracking no se dispara, etc.).
+
+Este anti-pattern enmascaró múltiples sprints de band-aids en thedeck (2026-04-23, known-issues #11). Un `TypeError` de 1 línea sabotó checkStoreOpen + applyClosedOverlay + initChatbot + tracking + promo check durante 4+ sprints.
+
+**Requisitos obligatorios al escribir o modificar un `async init()`:**
+
+**(a) Null-check defensivo en accesos DOM** cuyo elemento pueda haber sido wipeado por un render previo (`innerHTML = ...`), o que sea condicional en el HTML (ej: `#loyaltyVipBox` solo existe en checkout panel). Patrón:
+```js
+const el = document.getElementById('foo');
+if (el) el.style.display = 'none';
+```
+
+**(b) Catch global al nivel del init que loguee estructurado:**
+```js
+async function init() {
+  try {
+    await _initImpl();
+  } catch (err) {
+    console.error('[<slug>] init failed:', err);
+    try { renderOutageFallback(); } catch (e) {}
+  }
+}
+async function _initImpl() { /* lógica real */ }
+```
+
+Logging con prefijo `[<slug>]` permite filtrar fácilmente en Vercel logs / DevTools console.
+
+**(c) Fallback visible en caso de fallo.** `renderOutageFallback` (u equivalente) debe mostrarle al cliente que algo está mal, en vez de dejarle la UI parcial. Si el archivo no tiene un outage fallback, agregarlo como prerequisito.
+
+**Auditoría al tocar async init:**
+Cuando modifiques una función async de inicialización, grep `document.getElementById(` dentro de esa función y sus callees. Cualquier acceso sin null-check es potencial crash silencioso. Fix preemptivo.
+
 ### Known issues del genérico
 
 Si durante el trabajo en un template custom detectas un bug o drift del genérico que esté fuera del scope inmediato, **no lo arregles ahí**. Documenta en `docs/generic-menu-known-issues.md` con: qué se observó, por qué no se resolvió en el momento, y cuándo se debería volver. El archivo es la fuente de verdad de issues pendientes del genérico.
