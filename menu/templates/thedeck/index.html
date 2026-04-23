@@ -2843,6 +2843,18 @@ function renderBotMessage(text, replies) {
   scrollChatToBottom();
 }
 
+// Sprint-2 post-validation 2026-04-23 Fix B addendum: bubble sin tocar
+// replies. Uso en la confirmation "agregado a tu pedido" post-ADD_TO_CART
+// — la respuesta principal del bot ya trajo sus propios buttons
+// ("Eso es todo", etc.) y no queremos wipearlos con un array vacío.
+function renderBotInline(text) {
+  const el = document.createElement('div');
+  el.className = 'bubble-bot';
+  el.textContent = text;
+  document.getElementById('chatMsgs').appendChild(el);
+  scrollChatToBottom();
+}
+
 function renderUserMessage(text) {
   const el = document.createElement('div');
   el.className = 'bubble-user';
@@ -3033,12 +3045,17 @@ async function sendChatMessage(userText) {
       if (!item) return;
       if (soldOutSet.has(item.id)) {
         // Race condition: bot issued ADD_TO_CART for an item que se agotó.
-        renderBotMessage(`❌ Lo siento, ${item.name} se acaba de agotar. ¿Te gustaría elegir otra opción?`, []);
+        // Uso renderBotInline — preserva buttons del mensaje original del bot.
+        renderBotInline(`❌ Lo siento, ${item.name} se acaba de agotar. ¿Te gustaría elegir otra opción?`);
         track('chatbot_add_blocked_sold_out', { item_id: ci.id, item_name: item.name });
         return;
       }
       addItem(item.id, item.name, item.price, ci.note || null, ci.qty, 'bot');
-      renderBotMessage(`✅ ${ci.qty > 1 ? ci.qty + 'x ' : ''}${item.name} agregado a tu pedido${ci.note ? ' (' + ci.note + ')' : ''}`, []);
+      // Sprint-2 post-validation 2026-04-23 Fix B: inline bubble —
+      // NO wipea los buttons del bot ("Eso es todo", etc.) que vinieron
+      // en el mismo response con el [ADD_TO_CART:]. Sin esto, el user
+      // nunca podía clickear "Eso es todo" porque se borraba al instante.
+      renderBotInline(`✅ ${ci.qty > 1 ? ci.qty + 'x ' : ''}${item.name} agregado a tu pedido${ci.note ? ' (' + ci.note + ')' : ''}`);
       track('chatbot_order_completed', { item_id: ci.id, item_name: item.name, qty: ci.qty });
     });
   } catch (e) {
