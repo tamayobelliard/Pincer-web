@@ -793,7 +793,10 @@
     cursor: pointer; letter-spacing: 0.5px;
   }
 
-  /* ═══════════ Store closed overlay ═══════════ */
+  /* ═══════════ Store closed overlay ═══════════
+     Sprint-2 post-validation 2026-04-23: estructura parity con
+     menu/index.html:2337-2346 (logo → name → status → next → schedule
+     → footer). Design system custom preservado (navy/cream/gold/Playfair). */
   .closed-overlay {
     position: fixed; inset: 0; z-index: 95;
     background: var(--color-bg);
@@ -801,29 +804,43 @@
     padding: 40px 24px; text-align: center;
   }
   .closed-overlay.open { display: flex; }
-  .closed-overlay-icon {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: var(--color-primary); color: var(--color-accent);
+  .closed-overlay-logo {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: var(--color-primary);
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 20px; box-shadow: 0 6px 18px rgba(11,30,58,0.3);
+    margin-bottom: 24px; box-shadow: 0 8px 24px rgba(11,30,58,0.35);
+    border: 3px solid var(--color-accent); overflow: hidden;
   }
-  .closed-overlay-title {
-    font-family: var(--font-heading); font-size: 28px; color: var(--color-primary);
-    margin-bottom: 12px; letter-spacing: 0.3px;
+  .closed-overlay-logo img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .closed-overlay-logo .closed-logo-fallback {
+    font-family: var(--font-heading); font-size: 44px; color: var(--color-accent);
+    line-height: 1;
+  }
+  .closed-overlay-name {
+    font-family: var(--font-heading); font-size: 26px; color: var(--color-primary);
+    letter-spacing: 0.3px; margin-bottom: 8px; line-height: 1.15;
+    max-width: 360px;
+  }
+  .closed-overlay-status {
+    font-family: var(--font-serif); font-size: 13px; color: var(--color-accent-3);
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
   }
   .closed-overlay-next {
-    font-family: var(--font-serif); font-size: 14px; color: var(--color-accent-3);
-    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 18px;
+    font-family: var(--font-body); font-size: 15px; color: var(--color-primary);
+    font-weight: 600; margin-bottom: 18px;
   }
   .closed-overlay-schedule {
     font-family: var(--font-body); font-size: 13px; color: var(--color-text-soft);
     max-width: 360px; line-height: 1.5;
     padding: 14px 18px; background: var(--color-surface);
     border: 1px dotted var(--color-border); border-radius: var(--radius-md);
+    margin-bottom: 18px;
   }
-  .closed-overlay-name {
+  .closed-overlay-footer {
     font-family: var(--font-serif); font-size: 11px; color: var(--color-accent-3);
-    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+    letter-spacing: 2.5px; text-transform: uppercase;
   }
 
   /* ═══════════ Confirmation screen ═══════════ */
@@ -1238,18 +1255,20 @@
   </div>
 </div>
 
-<!-- ═════════════ Store closed overlay ═════════════ -->
+<!-- ═════════════ Store closed overlay ═════════════
+     Sprint-2 post-validation 2026-04-23: estructura parity con
+     menu/index.html:2337-2346 (logo → name → status → next →
+     schedule → footer). applyClosedOverlay puebla logo + name +
+     next + schedule. Status + footer son estáticos. -->
 <div class="closed-overlay" id="closedOverlay" role="alert" aria-live="polite">
-  <div class="closed-overlay-name" id="closedOverlayName"></div>
-  <div class="closed-overlay-icon">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M12 6 v6 l4 2"/>
-    </svg>
+  <div class="closed-overlay-logo" id="closedOverlayLogo">
+    <div class="closed-logo-fallback">✦</div>
   </div>
-  <div class="closed-overlay-title">Estamos cerrados</div>
+  <div class="closed-overlay-name" id="closedOverlayName"></div>
+  <div class="closed-overlay-status">Actualmente estamos cerrados 🕐</div>
   <div class="closed-overlay-next" id="closedOverlayNext"></div>
   <div class="closed-overlay-schedule" id="closedOverlaySchedule"></div>
+  <div class="closed-overlay-footer">¡Te esperamos!</div>
 </div>
 
 <!-- ═════════════ FAB (Mesero Virtual) — imagen se puebla con logo_url en init ═════════════ -->
@@ -1776,11 +1795,19 @@ function applyClosedOverlay(rData, scheduleStr) {
   const overlay = document.getElementById('closedOverlay');
   const main = document.getElementById('menuSections');
   const ctaWrap = document.querySelector('.cta-wrap');
-  const fab = document.getElementById('fabWaiter');
+  const logoEl = document.getElementById('closedOverlayLogo');
   const nameEl = document.getElementById('closedOverlayName');
   const nextEl = document.getElementById('closedOverlayNext');
   const schedEl = document.getElementById('closedOverlaySchedule');
 
+  // Sprint-2 post-validation 2026-04-23: poblar logo dinámico.
+  // Parity con menu/index.html:6450-6452. Fallback: el <div class=
+  // "closed-logo-fallback">✦</div> del HTML permanece si no logo_url.
+  if (rData && logoEl && rData.logo_url) {
+    logoEl.innerHTML = '<img src="' + rData.logo_url + '" alt="' +
+      (rData.display_name || '').replace(/"/g, '&quot;') +
+      '" onerror="this.parentElement.innerHTML=\'<div class=&quot;closed-logo-fallback&quot;>✦</div>\'">';
+  }
   if (rData && nameEl) nameEl.textContent = rData.display_name || '';
   const nextOpen = getNextOpenTime(scheduleStr || '');
   if (nextEl) nextEl.textContent = nextOpen ? nextOpen.text : '';
@@ -1788,25 +1815,40 @@ function applyClosedOverlay(rData, scheduleStr) {
   if (overlay) overlay.classList.add('open');
   if (main) main.style.display = 'none';
   if (ctaWrap) ctaWrap.style.display = 'none';
-  if (fab) fab.style.display = 'none';
+  // Sprint-2 post-validation 2026-04-23: NO se esconde FAB ni se cierra
+  // el chat — son regresiones del hotfix anterior Bug 1 capa 2. El
+  // genérico (menu/index.html:6472) explícitamente mantiene el chatbot
+  // accesible cuando la tienda está cerrada. El FAB solo se oculta
+  // accidentalmente en Mr. Sandwich porque el chat auto-abre lo cubre.
 
-  // Cerrar cualquier modal/panel abierto — previene el path del bug #9.
-  try { if (typeof closeCart === 'function') closeCart(); } catch (e) {}
-  try { if (typeof closeChat === 'function') closeChat(); } catch (e) {}
+  // Cerrar modals de ORDEN (previene el path del bug orden #9): NO cart
+  // (podría tener items del cliente), NO chat (auto-open con mensaje
+  // proactivo lo necesita abierto).
   try { if (typeof closeCheckout === 'function') closeCheckout(); } catch (e) {}
   try { if (typeof closeItemModal === 'function') closeItemModal(); } catch (e) {}
   try { if (typeof closePromoPopup === 'function') closePromoPopup(); } catch (e) {}
+
+  // Auto-open chat 1.5s con mensaje proactivo de cerrado — parity con
+  // menu/index.html:6475-6479. Respeta WELCOMED_KEY (una vez por sesión).
+  try {
+    const alreadyWelcomed = sessionStorage.getItem('pincer_welcomed_' + SLUG);
+    if (!alreadyWelcomed) {
+      setTimeout(function() {
+        const panel = document.getElementById('chatPanel');
+        if (panel && !panel.classList.contains('open')) openChat('auto');
+      }, 1500);
+    }
+  } catch (e) {}
 }
 
 function clearClosedOverlay() {
   const overlay = document.getElementById('closedOverlay');
   const main = document.getElementById('menuSections');
   const ctaWrap = document.querySelector('.cta-wrap');
-  const fab = document.getElementById('fabWaiter');
   if (overlay) overlay.classList.remove('open');
   if (main) main.style.display = '';
   if (ctaWrap) ctaWrap.style.display = '';
-  if (fab) fab.style.display = '';
+  // FAB no se re-muestra porque nunca se escondió (ver nota arriba).
 }
 
 async function checkStoreOpen() {
@@ -2935,13 +2977,24 @@ function openChat(trigger) {
   try { sessionStorage.setItem('pincer_welcomed_' + SLUG, 'true'); } catch (e) {}
   track('chat_open', { trigger: trigger || 'user_click' });
 
-  // Primera apertura → welcome message (hardcoded; Commit #6 puede migrar a
-  // welcome dinámico via fetch /api/waiter-chat con welcome:true).
+  // Primera apertura → welcome message.
+  // Sprint-2 post-validation 2026-04-23: branch storeClosed con mensaje
+  // proactivo hardcoded derivado del schedule. Parity con
+  // menu/index.html:5982-5994 (showWelcomeMessages branch cerrado).
   if (!chatHistory.length) {
     const name = (restaurantData && restaurantData.display_name) || 'The Deck';
-    renderBotMessage(`¡Bienvenido a ${name}! 🍷 Soy tu mesero virtual. ¿Te ayudo a elegir del menú?`, [
-      'Guíame tú', 'Voy a ver el menú', 'Recomiéndame algo',
-    ]);
+    if (storeClosed) {
+      const scheduleStr = (restaurantData && restaurantData.hours) || '';
+      const nextOpen = getNextOpenTime(scheduleStr);
+      let closedMsg = 'Estamos cerrados en este momento.';
+      if (nextOpen) closedMsg += ' ' + nextOpen.text + '.';
+      closedMsg += ' Puedes ver el menú pero no podemos procesar órdenes ahora.';
+      renderBotMessage(closedMsg, []);
+    } else {
+      renderBotMessage(`¡Bienvenido a ${name}! 🍷 Soy tu mesero virtual. ¿Te ayudo a elegir del menú?`, [
+        'Guíame tú', 'Voy a ver el menú', 'Recomiéndame algo',
+      ]);
+    }
   }
   setTimeout(() => document.getElementById('chatInput').focus(), 50);
 }
