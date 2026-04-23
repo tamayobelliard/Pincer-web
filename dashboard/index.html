@@ -1181,6 +1181,36 @@
           <small style="color:var(--muted);display:block;margin-top:4px;">Si no está marcado, el ITBIS (18%) se muestra desglosado en el checkout de tus clientes.</small>
         </div>
 
+        <!-- Sprint-3 Etapa 1: service model + cargo por servicio + cuentas separadas. -->
+        <div class="settings-field">
+          <label style="font-weight:600;">Modelo de servicio</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer;">
+              <input type="radio" name="sServiceModel" id="sServiceModelSelf" value="self_service" onchange="onServiceModelChange()">
+              Self-service (food truck, cafetería, delivery)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer;">
+              <input type="radio" name="sServiceModel" id="sServiceModelWaiter" value="waiter_service" onchange="onServiceModelChange()">
+              Con meseros (restaurante, bar)
+            </label>
+          </div>
+          <small style="color:var(--muted);display:block;margin-top:4px;">Determina el flujo de cobro. Con meseros habilita cuentas abiertas por mesa.</small>
+        </div>
+
+        <div class="settings-field" id="sServiceChargeWrap" style="display:none;">
+          <label>Cargo por servicio (%)</label>
+          <input type="number" id="sServiceCharge" min="0" max="30" step="1" placeholder="10">
+          <small style="color:var(--muted);display:block;margin-top:4px;">10% estándar en República Dominicana para restaurantes con meseros. 0% para self-service.</small>
+        </div>
+
+        <div class="settings-field" id="sAllowSplitChecksWrap" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer;">
+            <input type="checkbox" id="sAllowSplitChecks" checked>
+            Permitir cuentas separadas en la misma mesa
+          </label>
+          <small style="color:var(--muted);display:block;margin-top:4px;">Si está activado, comensales en la misma mesa pueden tener cuentas separadas. Si desactivado, todos comparten una sola cuenta.</small>
+        </div>
+
         <div class="settings-field" id="promoSettingsBlock" style="display:none;">
           <label style="font-weight:700;font-size:0.95em;">Promocion del dia</label>
           <div id="promoPreviewCard" style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;">
@@ -4645,10 +4675,39 @@ function hideSettings() {
   document.getElementById('settingsSection').style.display = 'none';
 }
 
+// Sprint-3 Etapa 1: dinámica del service model — show/hide de charge
+// y allow_split_checks según el radio seleccionado.
+// - self_service: charge forzado a 0 y oculto, split_checks oculto.
+// - waiter_service: charge visible (default 10 si estaba 0), split visible.
+function onServiceModelChange() {
+  var isWaiter = document.getElementById('sServiceModelWaiter').checked;
+  var chargeWrap = document.getElementById('sServiceChargeWrap');
+  var splitWrap = document.getElementById('sAllowSplitChecksWrap');
+  var chargeInput = document.getElementById('sServiceCharge');
+
+  if (isWaiter) {
+    chargeWrap.style.display = 'block';
+    splitWrap.style.display = 'block';
+    chargeInput.disabled = false;
+    // Si el charge estaba en 0 y el user activa waiter, preset a 10
+    // (default DR). Respeta valores intermedios si ya tenía algo.
+    if (!chargeInput.value || parseInt(chargeInput.value) === 0) {
+      chargeInput.value = 10;
+    }
+  } else {
+    chargeWrap.style.display = 'none';
+    splitWrap.style.display = 'none';
+    // Resetear charge a 0 cuando pasa a self_service — alinea con el
+    // comportamiento que espera el backend (defaults self=0).
+    chargeInput.value = 0;
+    chargeInput.disabled = true;
+  }
+}
+
 async function loadSettings() {
   try {
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,email,business_type,address,phone,contact_name,hours,website,notes,chatbot_personality,order_types,delivery_fee,logo_url,prices_include_tax&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,email,business_type,address,phone,contact_name,hours,website,notes,chatbot_personality,order_types,delivery_fee,logo_url,prices_include_tax,service_model,service_charge_percent,allow_split_checks&limit=1',
       { headers: { ...sbGetHeaders(), 'Cache-Control': 'no-cache' } }, 10000
     );
     if (!res.ok) { console.error('[loadSettings] fetch error:', res.status); return; }
@@ -4676,6 +4735,15 @@ async function loadSettings() {
     // Sprint-2 C2: default true si el campo no vino (restaurante pre-migration).
     document.getElementById('sPricesIncludeTax').checked = r.prices_include_tax !== false;
     document.getElementById('sDeliveryFeeWrap').style.display = types.includes('delivery') ? 'block' : 'none';
+
+    // Sprint-3 Etapa 1: service model + charge + split checks.
+    // Defaults backward-compat si el campo no vino (pre-migration).
+    var sm = (r.service_model === 'waiter_service') ? 'waiter_service' : 'self_service';
+    document.getElementById('sServiceModelSelf').checked = (sm === 'self_service');
+    document.getElementById('sServiceModelWaiter').checked = (sm === 'waiter_service');
+    document.getElementById('sServiceCharge').value = Number.isInteger(r.service_charge_percent) ? r.service_charge_percent : 0;
+    document.getElementById('sAllowSplitChecks').checked = r.allow_split_checks !== false;
+    onServiceModelChange();  // aplica visibility según sm cargado
 
     if (r.logo_url) {
       document.getElementById('sLogoPreview').src = r.logo_url;
@@ -4816,6 +4884,14 @@ async function saveSettings() {
       order_types: orderTypes,
       delivery_fee: parseInt(document.getElementById('sDeliveryFee').value) || 0,
       prices_include_tax: document.getElementById('sPricesIncludeTax').checked,
+      // Sprint-3 Etapa 1: signals dine-in cuenta abierta.
+      service_model: document.getElementById('sServiceModelWaiter').checked ? 'waiter_service' : 'self_service',
+      service_charge_percent: document.getElementById('sServiceModelWaiter').checked
+        ? (parseInt(document.getElementById('sServiceCharge').value) || 0)
+        : 0,
+      allow_split_checks: document.getElementById('sServiceModelWaiter').checked
+        ? document.getElementById('sAllowSplitChecks').checked
+        : true,  // valor irrelevante en self_service; enviamos default
     };
 
     if (logoBase64) body.logo_base64 = logoBase64;
