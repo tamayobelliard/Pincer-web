@@ -2793,15 +2793,23 @@ function renderReplies(labels, showAll) {
   try { el.dataset.allReplies = JSON.stringify(labels); } catch (e) { el.dataset.allReplies = '[]'; }
 }
 
-// Parsing light de respuesta del bot — extrae [BUTTONS: a | b | c] y [ADD_TO_CART: id | qty | notes]
+// Parsing light de respuesta del bot — extrae [BUTTONS: a | b | c] y [ADD_TO_CART: id | qty | notes].
+// Sprint-2 Bug4 (2026-04-23): soporta múltiples bloques [BUTTONS:]
+// concatenados — legacy responses del prompt previo ("múltiples líneas de
+// botones") emitían dos o más bloques, de los cuales solo el primero se
+// renderizaba. Ahora se concatenan en un solo array y el paginador de
+// Sprint-2 A3 los maneja como un grupo único.
 function parseBotResponse(text) {
   const result = { clean: text, buttons: [], cartAdds: [] };
 
-  const btnMatch = text.match(/\[BUTTONS:\s*([^\]]+)\]/);
-  if (btnMatch) {
-    result.buttons = btnMatch[1].split('|').map(s => s.trim()).filter(Boolean);
-    result.clean = result.clean.replace(btnMatch[0], '').trim();
+  const btnRegex = /\[BUTTONS:\s*([^\]]+)\]/g;
+  let btnMatch;
+  while ((btnMatch = btnRegex.exec(text)) !== null) {
+    const parts = btnMatch[1].split('|').map(s => s.trim()).filter(Boolean);
+    result.buttons.push(...parts);
   }
+  result.clean = result.clean.replace(/\[BUTTONS:[^\]]+\]/g, '').trim();
+
   const addRegex = /\[ADD_TO_CART:\s*([^\]]+)\]/g;
   let m;
   while ((m = addRegex.exec(text)) !== null) {
