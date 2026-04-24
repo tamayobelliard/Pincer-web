@@ -4155,6 +4155,14 @@ async function assignOrdersToShift() {
 // mesa 7 después de mesa 1, tendrá mismo color (1 % 6 == 7 % 6). OK —
 // las 6 mesas visibles a la vez es raro en un restaurante real.
 
+// Sprint-3 Etapa 3 Commit 4 hotfix: persistencia in-memory de cuentas
+// expandidas entre polls de 3s. Antes cada render colapsaba todas, lo
+// que hacía imposible leer cards con >3s de contenido. Ahora el Set
+// sobrevive entre renders; solo se resetea al detectar orden nueva
+// (ot_collapseAllOnNewOrder) o si la cuenta sale del data (cleanup
+// en renderOpenTables).
+var ot_expandedKeys = new Set();
+
 function ot_colorClass(tableNumber) {
   var n = Number(tableNumber) || 0;
   return 'ot-color-' + Math.abs(n) % 6;
@@ -4248,6 +4256,18 @@ function renderOpenTables(allOrders) {
     return a.firstCreatedAt < b.firstCreatedAt ? -1 : 1;
   });
 
+  // Sprint-3 Etapa 3 Commit 4 hotfix: limpieza de keys stale. Si una
+  // cuenta cerró (paid/cancelled) o salió del data fetch por otro
+  // motivo, su key del Set queda huérfana. Memory leak mínimo pero se
+  // limpia por prolijidad — O(n) barato.
+  if (ot_expandedKeys.size > 0) {
+    var liveKeys = new Set();
+    accountList.forEach(function(a) { liveKeys.add(a.table_id + '|' + a.phone); });
+    var cleaned = new Set();
+    ot_expandedKeys.forEach(function(k) { if (liveKeys.has(k)) cleaned.add(k); });
+    ot_expandedKeys = cleaned;
+  }
+
   var html = '<div class="open-tables-grid">';
   accountList.forEach(function(acct) {
     html += renderOpenTableCard(acct);
@@ -4274,10 +4294,13 @@ function renderOpenTableCard(acct) {
   // rojo visible para que la cajera atienda la solicitud.
   var billRequested = acct.orders.some(function(o) { return !!o.bill_requested_at; });
 
-  // Default colapsada excepto si bill_requested (UX: solicitudes de
-  // cuenta deben ser obvias). Cada poll re-render resetea al default
-  // según el spec del founder "cada refresh inicia colapsado".
-  var expanded = billRequested;
+  // Sprint-3 Etapa 3 Commit 4 hotfix: persistencia entre polls.
+  // Expanded si:
+  //   a) la cuenta está en el Set ot_expandedKeys (click manual previo), O
+  //   b) billRequested=true (override de visibilidad crítica).
+  // El Set sobrevive entre polls, así la cajera puede leer tranquila.
+  var acctKey = acct.table_id + '|' + acct.phone;
+  var expanded = billRequested || ot_expandedKeys.has(acctKey);
   var stateClass = expanded ? 'ot-expanded' : 'ot-collapsed';
   var billClass = billRequested ? ' ot-pending-bill' : '';
 
@@ -4368,20 +4391,51 @@ function renderOpenTableCard(acct) {
 }
 
 // Sprint-3 Etapa 3 Commit 4: toggle expand/collapse al click en el
-// summary. La card entera tiene data-acct-key pero el bind vive en
-// el .ot-card-summary (el header sin summary no es clickable — las
-// cards bill-requested se mantienen expanded y permiten colapso
-// manual si la cajera lo prefiere). Cada poll de 3s re-renderiza
-// las cards al default — simplicidad sobre persistence (spec).
+// summary. La card tiene data-acct-key que se usa como identidad en
+// ot_expandedKeys — así el estado sobrevive el re-render del poll
+// (hotfix 2026-04-25: antes cada poll de 3s colapsaba todo).
+//
+// bill-requested cards: el Set puede NO tener el key pero igual se
+// renderizan expanded (billRequested override). Si la cajera colapsa
+// manualmente, visualmente colapsa pero el siguiente poll la re-
+// expande porque billRequested sigue true. Comportamiento correcto
+// per spec — visibility crítica.
 function ot_toggleCard(cardEl) {
   if (!cardEl) return;
+  var key = cardEl.dataset && cardEl.dataset.acctKey;
   if (cardEl.classList.contains('ot-expanded')) {
     cardEl.classList.remove('ot-expanded');
     cardEl.classList.add('ot-collapsed');
+    if (key) ot_expandedKeys.delete(key);
   } else {
     cardEl.classList.remove('ot-collapsed');
     cardEl.classList.add('ot-expanded');
+    if (key) ot_expandedKeys.add(key);
   }
+}
+
+// Sprint-3 Etapa 3 Commit 4 hotfix: colapsar todas las cards de Mesas
+// Abiertas cuando llega orden nueva — libera espacio visual + dirige
+// la atención de la cajera a Órdenes en Vivo (donde vive la nueva
+// orden). Las cards con bill_requested se preservan EXPANDIDAS porque
+// su visibility es crítica y no se subordina a orders nuevas.
+//
+// Operación sobre el Set ot_expandedKeys — no toca DOM directamente;
+// el siguiente render de renderOpenTables aplicará el nuevo state.
+// Como loadOrders llama renderOpenTables inmediatamente, el efecto
+// es visible al instante.
+function ot_collapseAllOnNewOrder() {
+  if (!ot_expandedKeys.size) return;
+  // Leemos los accounts actuales del último render (vía DOM query para
+  // no depender de estado global adicional). Identificamos los que
+  // tienen .ot-pending-bill y los preservamos en el Set.
+  var preserved = new Set();
+  var pendingCards = document.querySelectorAll('.ot-card.ot-pending-bill[data-acct-key]');
+  pendingCards.forEach(function(el) {
+    var k = el.dataset && el.dataset.acctKey;
+    if (k && ot_expandedKeys.has(k)) preserved.add(k);
+  });
+  ot_expandedKeys = preserved;
 }
 
 // Sprint-3 Etapa 3 Commit 4: auto-scroll suave a Órdenes en Vivo
@@ -4546,6 +4600,13 @@ async function loadOrders() {
       // modifica sonido/vibración/FCM (todos arriba siguen como estaban).
       // hasInteracted gatea la primera carga del día (no scroll molesto
       // al abrir el dashboard si ya había orders pending).
+      // Hotfix 2026-04-25: colapsar todas las cards de Mesas Abiertas
+      // (excepto bill_requested). preserva keys de cards con pedido
+      // de cuenta. Re-render inmediato para que el efecto visual sea
+      // instantáneo — renderOpenTables ya corrió arriba con el Set
+      // viejo, así que necesitamos llamarlo de nuevo con el Set limpio.
+      ot_collapseAllOnNewOrder();
+      renderOpenTables(data);
       scrollToLiveOrders();
     }
 
