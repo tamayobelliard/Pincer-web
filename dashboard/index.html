@@ -594,6 +594,58 @@
       background: var(--bg2); color: var(--text); font-weight: 600; font-size: 12px;
       cursor: not-allowed; font-family: inherit; opacity: 0.5;
     }
+
+    /* Sprint-3 Etapa 3 Commit 4: collapsible cards.
+       Default: colapsadas. Click en el header toggle expansion.
+       Excepción: cards con bill_requested_at → force expanded + red border. */
+    .ot-card.ot-collapsed .ot-card-body-full,
+    .ot-card.ot-collapsed .ot-actions {
+      display: none;
+    }
+    .ot-card-summary {
+      padding: 10px 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      transition: background 0.15s;
+    }
+    .ot-card-summary:hover {
+      background: var(--bg3);
+    }
+    .ot-card-summary-info {
+      flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+    }
+    .ot-card-summary-customer {
+      font-weight: 700; color: var(--text); font-size: 13px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ot-card-summary-meta {
+      font-size: 11px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .ot-card-summary-total {
+      font-weight: 800; font-size: 15px; color: var(--text); white-space: nowrap;
+    }
+    .ot-chevron {
+      display: inline-block; color: var(--muted); font-size: 12px;
+      transition: transform 0.2s; margin-left: 4px;
+    }
+    .ot-card.ot-expanded .ot-chevron { transform: rotate(180deg); }
+
+    /* Bill-requested state: border rojo prominente + badge rojo */
+    .ot-card.ot-pending-bill {
+      border-color: #DC2626;
+      box-shadow: 0 0 0 1px #DC2626, 0 4px 12px rgba(220,38,38,0.15);
+    }
+    .ot-card.ot-pending-bill .ot-card-summary {
+      background: #FEF2F2;
+    }
+    .ot-bill-badge {
+      display: inline-block; padding: 3px 8px; background: #DC2626; color: white;
+      border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+      text-transform: uppercase; animation: ot-pulse 2s ease-in-out infinite;
+    }
+    @keyframes ot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.75; }
+    }
     .order-type-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px; border-radius: 4px;
@@ -4217,6 +4269,27 @@ function renderOpenTableCard(acct) {
     return a.created_at < b.created_at ? -1 : 1;
   });
 
+  // Sprint-3 Etapa 3 Commit 4: bill_requested_at detection. Cualquier
+  // orden de la cuenta con el campo seteado fuerza expansion + estado
+  // rojo visible para que la cajera atienda la solicitud.
+  var billRequested = acct.orders.some(function(o) { return !!o.bill_requested_at; });
+
+  // Default colapsada excepto si bill_requested (UX: solicitudes de
+  // cuenta deben ser obvias). Cada poll re-render resetea al default
+  // según el spec del founder "cada refresh inicia colapsado".
+  var expanded = billRequested;
+  var stateClass = expanded ? 'ot-expanded' : 'ot-collapsed';
+  var billClass = billRequested ? ' ot-pending-bill' : '';
+
+  // Conteo total de items (sumando quantities en todas las orders).
+  var itemCount = 0;
+  acct.orders.forEach(function(o) {
+    var items;
+    try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { items = []; }
+    if (!Array.isArray(items)) items = [];
+    items.forEach(function(it) { itemCount += (Number(it.qty) || 1); });
+  });
+
   // Badge "inactiva 2h+": si última actividad > 2 horas.
   var inactiveMin = Math.floor((Date.now() - new Date(acct.lastActivityAt).getTime()) / 60000);
   var inactiveBadge = inactiveMin >= 120
@@ -4226,6 +4299,7 @@ function renderOpenTableCard(acct) {
   var elapsed = ot_formatElapsed(acct.firstCreatedAt);
   var colorClass = ot_colorClass(acct.table_number);
 
+  // ── BODY EXPANDIDO: órdenes individuales + totales desglosados ──
   var ordersHtml = '';
   ordersAsc.forEach(function(o) {
     var time = '';
@@ -4260,17 +4334,29 @@ function renderOpenTableCard(acct) {
   }
   totalsHtml += '<div class="ot-total-grand"><span>Total</span><span>RD$' + totals.grand.toLocaleString() + '</span></div>';
 
-  return '<div class="ot-card ' + colorClass + '">'
+  // ── SUMMARY: info mínima en modo colapsado, también visible en expanded ──
+  var billBadgeHtml = billRequested ? '<span class="ot-bill-badge">Pide cuenta</span> ' : '';
+  var summaryMetaParts = [];
+  summaryMetaParts.push(itemCount + (itemCount === 1 ? ' item' : ' items'));
+  summaryMetaParts.push(elapsed);
+  if (inactiveMin >= 120) summaryMetaParts.push('<span class="ot-inactive-badge">inactiva 2h+</span>');
+
+  return '<div class="ot-card ' + colorClass + ' ' + stateClass + billClass + '" data-acct-key="' + ot_escape(acct.table_id + '|' + acct.phone) + '">'
        + '<div class="ot-card-header">'
        +   '<span class="ot-mesa">Mesa ' + acct.table_number + '</span>'
-       +   '<span class="ot-meta">' + ot_escape(elapsed) + '</span>'
+       +   '<span class="ot-meta">' + billBadgeHtml + ot_escape(elapsed) + '</span>'
        + '</div>'
-       + '<div class="ot-card-body">'
-       +   '<div class="ot-customer-row">'
-       +     '<span class="ot-customer-name">' + ot_escape(acct.customer_name || 'Sin nombre') + '</span>'
-       +     (acct.phone ? '<span class="ot-customer-phone">📞 ' + ot_escape(acct.phone) + '</span>' : '')
-       +     inactiveBadge
+       + '<div class="ot-card-summary" onclick="ot_toggleCard(this.parentElement)">'
+       +   '<div class="ot-card-summary-info">'
+       +     '<span class="ot-card-summary-customer">' + ot_escape(acct.customer_name || 'Sin nombre')
+       +        (acct.phone ? ' · ' + ot_escape(acct.phone) : '') + '</span>'
+       +     '<span class="ot-card-summary-meta">' + summaryMetaParts.join(' · ') + '</span>'
        +   '</div>'
+       +   '<div class="ot-card-summary-total">RD$' + totals.grand.toLocaleString()
+       +     '<span class="ot-chevron">&#9662;</span>'
+       +   '</div>'
+       + '</div>'
+       + '<div class="ot-card-body ot-card-body-full">'
        +   ordersHtml
        +   '<div class="ot-totals-box">' + totalsHtml + '</div>'
        + '</div>'
@@ -4279,6 +4365,36 @@ function renderOpenTableCard(acct) {
        +   '<button disabled title="Pr\u00f3ximamente (Commit 6)">Cerrar Mesa</button>'
        + '</div>'
        + '</div>';
+}
+
+// Sprint-3 Etapa 3 Commit 4: toggle expand/collapse al click en el
+// summary. La card entera tiene data-acct-key pero el bind vive en
+// el .ot-card-summary (el header sin summary no es clickable — las
+// cards bill-requested se mantienen expanded y permiten colapso
+// manual si la cajera lo prefiere). Cada poll de 3s re-renderiza
+// las cards al default — simplicidad sobre persistence (spec).
+function ot_toggleCard(cardEl) {
+  if (!cardEl) return;
+  if (cardEl.classList.contains('ot-expanded')) {
+    cardEl.classList.remove('ot-expanded');
+    cardEl.classList.add('ot-collapsed');
+  } else {
+    cardEl.classList.remove('ot-collapsed');
+    cardEl.classList.add('ot-expanded');
+  }
+}
+
+// Sprint-3 Etapa 3 Commit 4: auto-scroll suave a Órdenes en Vivo
+// cuando se detecta orden nueva. Se llama DESPUÉS de que el sonido,
+// vibración y sendNotification existentes se dispararon — es capa
+// nueva encima de la infra de notificación, no reemplazo. El guard
+// hasInteracted en loadOrders ya evita trigger en primera carga.
+function scrollToLiveOrders() {
+  try {
+    var el = document.getElementById('liveOrdersHeader');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { /* silente — scrollIntoView puede fallar en browsers viejos */ }
 }
 
 function ot_statusChip(o) {
@@ -4425,6 +4541,12 @@ async function loadOrders() {
       startAlarm();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
       sendNotification("¡Nueva orden en Pincer!", `Tienes ${currentPending} orden(es) pendiente(s)`);
+      // Sprint-3 Etapa 3 Commit 4: auto-scroll suave a Órdenes en Vivo.
+      // Capa NUEVA encima de la detección existente — NO reemplaza ni
+      // modifica sonido/vibración/FCM (todos arriba siguen como estaban).
+      // hasInteracted gatea la primera carga del día (no scroll molesto
+      // al abrir el dashboard si ya había orders pending).
+      scrollToLiveOrders();
     }
 
     // Stop alarm if no pending orders remain
