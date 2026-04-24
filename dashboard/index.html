@@ -517,6 +517,83 @@
     .accepted .order-customer, .notified .order-customer, .ready .order-customer {
       background: var(--bg3); color: var(--text); border-left-color: var(--border);
     }
+
+    /* Sprint-3 Etapa 3 Commit 3: Mesas Abiertas section.
+       Cards agrupadas por mesa con color estable (hash del table_number),
+       header con cliente + teléfono + tiempo, items por orden, totales,
+       y botones [Pagada]/[Cerrar] disabled (Commits 5 y 6 los activan). */
+    .open-tables-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px; margin-bottom: 20px;
+    }
+    .ot-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .ot-card-header {
+      padding: 10px 14px; color: white; display: flex; align-items: center; justify-content: space-between;
+    }
+    .ot-card-header .ot-mesa { font-size: 1.2em; font-weight: 800; letter-spacing: 0.5px; }
+    .ot-card-header .ot-meta { font-size: 0.72em; opacity: 0.9; font-weight: 600; }
+    /* 6 colores estables por table_number (hash mod 6). Contrastan bien
+       entre sí para identificación visual rápida. */
+    .ot-card.ot-color-0 .ot-card-header { background: #1e40af; }
+    .ot-card.ot-color-1 .ot-card-header { background: #b45309; }
+    .ot-card.ot-color-2 .ot-card-header { background: #15803d; }
+    .ot-card.ot-color-3 .ot-card-header { background: #6d28d9; }
+    .ot-card.ot-color-4 .ot-card-header { background: #be185d; }
+    .ot-card.ot-color-5 .ot-card-header { background: #0f766e; }
+    .ot-card-body { padding: 12px 14px; font-size: 13px; }
+    .ot-customer-row {
+      display: flex; flex-direction: column; gap: 4px;
+      padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed var(--border);
+    }
+    .ot-customer-row .ot-customer-name { font-weight: 700; color: var(--text); }
+    .ot-customer-row .ot-customer-phone { color: var(--muted); font-size: 12px; }
+    .ot-customer-row .ot-inactive-badge {
+      display: inline-block; padding: 2px 6px; background: #FEF3C7; color: #92400E;
+      border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+    }
+    .ot-order-group { margin-bottom: 10px; }
+    .ot-order-header {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.5px;
+      text-transform: uppercase; margin-bottom: 4px;
+    }
+    .ot-status-chip {
+      padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+    }
+    .ot-status-chip.st-pending { background: #F1F5F9; color: #475569; }
+    .ot-status-chip.st-accepted { background: #DBEAFE; color: #1E40AF; }
+    .ot-status-chip.st-ready { background: #DCFCE7; color: #166534; }
+    .ot-item-row {
+      display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px;
+    }
+    .ot-item-name { color: var(--text); flex: 1; }
+    .ot-item-qty { color: var(--muted); margin: 0 6px; font-size: 11px; }
+    .ot-item-price { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .ot-totals-box {
+      margin-top: 10px; padding: 10px; background: var(--bg3); border-radius: 8px;
+    }
+    .ot-totals-row {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--muted); padding: 2px 0;
+    }
+    .ot-total-grand {
+      display: flex; justify-content: space-between;
+      padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--border);
+      font-size: 14px; font-weight: 800; color: var(--text);
+    }
+    .ot-actions {
+      display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .ot-actions button {
+      flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg2); color: var(--text); font-weight: 600; font-size: 12px;
+      cursor: not-allowed; font-family: inherit; opacity: 0.5;
+    }
     .order-type-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px; border-radius: 4px;
@@ -1211,6 +1288,14 @@
 
     <div id="error-message"></div>
 
+    <!-- Sprint-3 Etapa 3 Commit 3: sección "Mesas Abiertas".
+         Visible SOLO cuando hay al menos 1 orden activa con table_id
+         (status NOT IN paid,cancelled). Para self_service con orders
+         sin table_id, queda oculta (los orders se ven en Órdenes en Vivo).
+         Populada por renderOpenTables() dentro de loadOrders. -->
+    <div class="section-header" id="openTablesHeader" style="display:none;">🍽️ Mesas Abiertas</div>
+    <div id="openTablesContainer" style="display:none;"></div>
+
     <div class="section-header" id="liveOrdersHeader">📋 Órdenes en Vivo</div>
     <div id="orders">
       <div class="loading">⏳ Cargando órdenes...</div>
@@ -1778,6 +1863,10 @@ let DISPLAY_NAME = SLUG;
 // Default 'self_service' para que el flujo actual (take-out + WhatsApp)
 // aplique mientras se resuelve el fetch o si el campo no vino.
 var SERVICE_MODEL = 'self_service';
+// Sprint-3 Etapa 3 Commit 3: porcentaje de service charge para calcular
+// totales en Mesas Abiertas. 0 default — solo thedeck (waiter_service+10)
+// lo tiene seteado. Se carga en initializeDashboard.
+var SERVICE_CHARGE_PERCENT = 0;
 
 // Helper: true si esta orden es dine-in con mesa Y el restaurante es
 // waiter_service. Gate para el flow nuevo (sin WhatsApp, botón
@@ -3991,6 +4080,224 @@ async function assignOrdersToShift() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// OPEN TABLES (Sprint-3 Etapa 3 Commit 3)
+// ══════════════════════════════════════════════════════════════
+//
+// Renderiza la sección "Mesas Abiertas" agrupando orders con table_id
+// por mesa + cliente (table_id + phone). Reusa la data que ya fetcha
+// loadOrders() — no hay query separada. Filtra:
+//   - table_id IS NOT NULL
+//   - status NOT IN ('paid', 'cancelled')
+//
+// Para self_service (orders sin table_id), esto no renderiza nada —
+// los orders aparecen en "Órdenes en Vivo" normal. Para waiter_service
+// con cuentas abiertas, aparece aquí en cards agrupadas.
+//
+// Multi-account ready: agrupa por (table_id, phone) — teoréticamente
+// 1 mesa = varias cuentas si múltiples clientes escanean con distintos
+// teléfonos. Hoy founder opera 1 cuenta = 1 mesa + 1 teléfono, pero el
+// render soporta la extensión sin refactor.
+//
+// Colores estables: hash del table_number mod 6 → 1 de 6 clases
+// .ot-color-N con distinto background en el header. Si el founder crea
+// mesa 7 después de mesa 1, tendrá mismo color (1 % 6 == 7 % 6). OK —
+// las 6 mesas visibles a la vez es raro en un restaurante real.
+
+function ot_colorClass(tableNumber) {
+  var n = Number(tableNumber) || 0;
+  return 'ot-color-' + Math.abs(n) % 6;
+}
+
+function ot_escape(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function ot_formatElapsed(iso) {
+  try {
+    var then = new Date(iso).getTime();
+    var diffMin = Math.floor((Date.now() - then) / 60000);
+    if (diffMin < 1) return 'ahora';
+    if (diffMin < 60) return 'hace ' + diffMin + ' min';
+    var hours = Math.floor(diffMin / 60);
+    if (hours < 24) return 'hace ' + hours + ' h';
+    return 'hace ' + Math.floor(hours / 24) + ' d';
+  } catch (e) { return ''; }
+}
+
+// Totales agregados por cuenta — reusa reverse math ITBIS igual que
+// el menú. Service charge solo si SERVICE_MODEL='waiter_service' y
+// service_charge_percent > 0. SERVICE_CHARGE_PERCENT módulo-level se
+// carga en initializeDashboard (extensión del fetch de plan/hours).
+function ot_computeTotals(accountOrders) {
+  var itemsSumAll = 0;
+  accountOrders.forEach(function(o) {
+    var total = Number(o.total) || 0;
+    var deliveryFee = Number(o.delivery_fee) || 0;
+    itemsSumAll += (total - deliveryFee);
+  });
+  var subtotal = Math.round(itemsSumAll / 1.18);
+  var tax = itemsSumAll - subtotal;
+  var svcPct = 0;
+  if (SERVICE_MODEL === 'waiter_service' && Number.isInteger(SERVICE_CHARGE_PERCENT) && SERVICE_CHARGE_PERCENT > 0) {
+    svcPct = SERVICE_CHARGE_PERCENT;
+  }
+  var serviceCharge = svcPct > 0 ? Math.round(subtotal * svcPct / 100) : 0;
+  var grand = itemsSumAll + serviceCharge;
+  return { itemsSumAll: itemsSumAll, subtotal: subtotal, tax: tax, servicePct: svcPct, serviceCharge: serviceCharge, grand: grand };
+}
+
+function renderOpenTables(allOrders) {
+  var header = document.getElementById('openTablesHeader');
+  var container = document.getElementById('openTablesContainer');
+  if (!header || !container) return;
+
+  // Filtrar: table_id presente + status operativo (no paid/cancelled/voided).
+  var openOrders = (allOrders || []).filter(function(o) {
+    if (!o || !o.table_id) return false;
+    var s = o.status || '';
+    return s !== 'paid' && s !== 'cancelled' && s !== 'voided';
+  });
+
+  if (openOrders.length === 0) {
+    header.style.display = 'none';
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  // Agrupar por (table_id, phone). Key compuesta "tableId|phone".
+  var accounts = {};
+  openOrders.forEach(function(o) {
+    var key = o.table_id + '|' + (o.phone || '');
+    if (!accounts[key]) {
+      accounts[key] = {
+        table_id: o.table_id,
+        table_number: o.table_number || 0,
+        phone: o.phone || '',
+        customer_name: o.customer_name || '',
+        firstCreatedAt: o.created_at,
+        lastActivityAt: o.created_at,
+        orders: [],
+      };
+    }
+    accounts[key].orders.push(o);
+    // Min created_at (primera orden de la cuenta).
+    if (o.created_at < accounts[key].firstCreatedAt) accounts[key].firstCreatedAt = o.created_at;
+    // Max created_at (última actividad).
+    if (o.created_at > accounts[key].lastActivityAt) accounts[key].lastActivityAt = o.created_at;
+  });
+
+  // Ordenar cuentas: número de mesa asc, dentro de mesa por firstCreatedAt asc.
+  var accountList = Object.values(accounts).sort(function(a, b) {
+    if (a.table_number !== b.table_number) return a.table_number - b.table_number;
+    return a.firstCreatedAt < b.firstCreatedAt ? -1 : 1;
+  });
+
+  var html = '<div class="open-tables-grid">';
+  accountList.forEach(function(acct) {
+    html += renderOpenTableCard(acct);
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  header.style.display = '';
+  container.style.display = '';
+  // Lucide icons refresh if available.
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    setTimeout(function() { try { lucide.createIcons(); } catch (e) {} }, 20);
+  }
+}
+
+function renderOpenTableCard(acct) {
+  var totals = ot_computeTotals(acct.orders);
+  // Sort orders dentro de la cuenta por created_at asc (primero el más viejo).
+  var ordersAsc = acct.orders.slice().sort(function(a, b) {
+    return a.created_at < b.created_at ? -1 : 1;
+  });
+
+  // Badge "inactiva 2h+": si última actividad > 2 horas.
+  var inactiveMin = Math.floor((Date.now() - new Date(acct.lastActivityAt).getTime()) / 60000);
+  var inactiveBadge = inactiveMin >= 120
+    ? '<span class="ot-inactive-badge">inactiva 2h+</span>'
+    : '';
+
+  var elapsed = ot_formatElapsed(acct.firstCreatedAt);
+  var colorClass = ot_colorClass(acct.table_number);
+
+  var ordersHtml = '';
+  ordersAsc.forEach(function(o) {
+    var time = '';
+    try {
+      time = new Date(o.created_at).toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch (e) {}
+    var chip = ot_statusChip(o);
+    ordersHtml += '<div class="ot-order-group">';
+    ordersHtml += '<div class="ot-order-header">#' + (o.order_number || o.id)
+                + (time ? ' · ' + time : '') + ' ' + chip + '</div>';
+    var items;
+    try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { items = []; }
+    if (!Array.isArray(items)) items = [];
+    items.forEach(function(it) {
+      var qty = (Number(it.qty) || 1);
+      var qtyLabel = qty > 1 ? '<span class="ot-item-qty">x' + qty + '</span>' : '';
+      var lineTotal = (Number(it.price) || 0) * qty;
+      ordersHtml += '<div class="ot-item-row">'
+                 + '<span class="ot-item-name">' + ot_escape(it.name || 'Item') + '</span>'
+                 + qtyLabel
+                 + '<span class="ot-item-price">RD$' + lineTotal.toLocaleString() + '</span>'
+                 + '</div>';
+    });
+    ordersHtml += '</div>';
+  });
+
+  var totalsHtml = '';
+  totalsHtml += '<div class="ot-totals-row"><span>Subtotal</span><span>RD$' + totals.subtotal.toLocaleString() + '</span></div>';
+  totalsHtml += '<div class="ot-totals-row"><span>ITBIS (18%)</span><span>RD$' + totals.tax.toLocaleString() + '</span></div>';
+  if (totals.servicePct > 0) {
+    totalsHtml += '<div class="ot-totals-row"><span>Servicio (' + totals.servicePct + '%)</span><span>RD$' + totals.serviceCharge.toLocaleString() + '</span></div>';
+  }
+  totalsHtml += '<div class="ot-total-grand"><span>Total</span><span>RD$' + totals.grand.toLocaleString() + '</span></div>';
+
+  return '<div class="ot-card ' + colorClass + '">'
+       + '<div class="ot-card-header">'
+       +   '<span class="ot-mesa">Mesa ' + acct.table_number + '</span>'
+       +   '<span class="ot-meta">' + ot_escape(elapsed) + '</span>'
+       + '</div>'
+       + '<div class="ot-card-body">'
+       +   '<div class="ot-customer-row">'
+       +     '<span class="ot-customer-name">' + ot_escape(acct.customer_name || 'Sin nombre') + '</span>'
+       +     (acct.phone ? '<span class="ot-customer-phone">📞 ' + ot_escape(acct.phone) + '</span>' : '')
+       +     inactiveBadge
+       +   '</div>'
+       +   ordersHtml
+       +   '<div class="ot-totals-box">' + totalsHtml + '</div>'
+       + '</div>'
+       + '<div class="ot-actions">'
+       +   '<button disabled title="Pr\u00f3ximamente (Commit 5)">Marcar como Pagada</button>'
+       +   '<button disabled title="Pr\u00f3ximamente (Commit 6)">Cerrar Mesa</button>'
+       + '</div>'
+       + '</div>';
+}
+
+function ot_statusChip(o) {
+  var s = (o.status || '').toLowerCase();
+  if (s === 'pending' || s === 'paid') {
+    return '<span class="ot-status-chip st-pending">pendiente</span>';
+  }
+  if (s === 'accepted') {
+    return '<span class="ot-status-chip st-accepted">preparando</span>';
+  }
+  if (s === 'ready' || s === 'notified') {
+    // Dine-in waiter → "entregada". Otros → "lista".
+    var label = (o.table_id && SERVICE_MODEL === 'waiter_service') ? 'entregada' : 'lista';
+    return '<span class="ot-status-chip st-ready">' + label + '</span>';
+  }
+  return '<span class="ot-status-chip st-pending">' + ot_escape(s) + '</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
 // ★ RENDER ITEMS — FIXED: handles items with or without "id" field
 // ══════════════════════════════════════════════════════════════
 
@@ -4093,6 +4400,11 @@ async function loadOrders() {
 
     // Assign unlinked orders to active shift
     if (currentShift) assignOrdersToShift();
+
+    // Sprint-3 Etapa 3 Commit 3: renderizar Mesas Abiertas desde el
+    // mismo `data`. La función filtra internamente por table_id +
+    // status operativo. Si no hay nada que mostrar se oculta sola.
+    renderOpenTables(data);
 
     const container = document.getElementById("orders");
 
@@ -4779,12 +5091,13 @@ async function initializeDashboard() {
     dbg('❌ Test de conexión falló: ' + e.message);
   }
 
-  // Fetch restaurant plan and hours + service_model (Sprint-3 Etapa 2 para
-  // revelar nav Mesas sin tener que cargar Settings completos primero).
+  // Fetch restaurant plan and hours + service_model + service_charge_percent
+  // (Sprint-3 Etapa 2 para sidebar; Etapa 3 Commit 3 para totales de
+  // Mesas Abiertas).
   var restaurantPlan = 'free';
   try {
     var planRes = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan,hours,service_model&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan,hours,service_model,service_charge_percent&limit=1',
       { headers: sbGetHeaders() }, 10000
     );
     if (planRes.ok) {
@@ -4796,6 +5109,11 @@ async function initializeDashboard() {
         // que markReady + renderOrder puedan leerlo sin re-fetch. Default
         // 'self_service' preserva el flow actual si el campo está ausente.
         SERVICE_MODEL = planRows[0].service_model || 'self_service';
+        // Sprint-3 Etapa 3 Commit 3: service_charge_percent para totales
+        // de la sección Mesas Abiertas.
+        if (Number.isInteger(planRows[0].service_charge_percent)) {
+          SERVICE_CHARGE_PERCENT = planRows[0].service_charge_percent;
+        }
         applyServiceModelToSidebar(SERVICE_MODEL);
       }
     }
