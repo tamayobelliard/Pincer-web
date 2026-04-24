@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { rateLimit } from './rate-limit.js';
 import { handleCors } from './cors.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export const config = { maxDuration: 60 };
 
@@ -89,7 +90,7 @@ export default async function handler(req, res) {
     const headers = sbHeaders(supabaseKey);
 
     const restaurantRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?phone=eq.${encodeURIComponent(phone)}&status=eq.active&select=restaurant_slug,display_name&limit=1`,
+      `${supabaseUrl}/rest/v1/restaurant_users?phone=eq.${encodeURIComponent(phone)}&status=${OPERATIONAL_STATUSES_FILTER}&select=restaurant_slug,display_name&limit=1`,
       { headers, signal: AbortSignal.timeout(5000) }
     );
     if (!restaurantRes.ok) {

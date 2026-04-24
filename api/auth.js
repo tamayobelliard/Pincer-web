@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { verifyRecaptcha } from './recaptcha.js';
 import { handleCors, requireJson } from './cors.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 import { checkEnvSafety } from './env-check.js';
 import { hashToken } from './verify-session.js';
 
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
 
     // Fetch user by username
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&status=eq.active&select=*`,
+      `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&status=${OPERATIONAL_STATUSES_FILTER}&select=*`,
       {
         headers: {
           'apikey': supabaseKey,

@@ -2,6 +2,7 @@ import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
 import { stripExif } from './strip-exif.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export const config = { maxDuration: 30 };
 
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
   try {
     // Verify restaurant exists and is active
     const checkRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&status=eq.active&select=id&limit=1`,
+      `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurant_slug)}&status=${OPERATIONAL_STATUSES_FILTER}&select=id&limit=1`,
       { headers: sbHeaders }
     );
 

@@ -5,6 +5,7 @@ import { handleCors, requireJson } from './cors.js';
 import { checkEnvSafety } from './env-check.js';
 import { hashToken } from './verify-session.js';
 import { sendEmail } from './send-email.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export default async function handler(req, res) {
   checkEnvSafety();
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
   try {
     // Look up active user by email
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&status=eq.active&select=id,email,display_name`,
+      `${supabaseUrl}/rest/v1/restaurant_users?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&status=${OPERATIONAL_STATUSES_FILTER}&select=id,email,display_name`,
       { headers: sbHeaders }
     );
 

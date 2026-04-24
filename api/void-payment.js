@@ -4,6 +4,7 @@ import path from 'path';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { getRestaurantToken, verifyRestaurantSession } from './verify-session.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 // Reuse the same mTLS agent as payment.js / 3ds.js
 let cachedAgent = null;
@@ -98,7 +99,7 @@ export default async function handler(req, res) {
     let merchantId = process.env.AZUL_MERCHANT_ID || null;
     try {
       const mRes = await fetch(
-        `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&status=eq.active&select=azul_merchant_id&limit=1`,
+        `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&status=${OPERATIONAL_STATUSES_FILTER}&select=azul_merchant_id&limit=1`,
         { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(3000) }
       );
       if (mRes.ok) {

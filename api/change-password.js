@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { verifyRestaurantSession, getRestaurantToken } from './verify-session.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res, { headers: 'Content-Type, x-restaurant-token' })) return;
@@ -58,10 +59,10 @@ export default async function handler(req, res) {
     let userQuery;
     if (isVoluntary) {
       // Voluntary: fetch by username + active + must belong to same restaurant
-      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&status=eq.active&select=id,password_hash&limit=1`;
+      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&status=${OPERATIONAL_STATUSES_FILTER}&select=id,password_hash&limit=1`;
     } else {
       // Forced: MUST have must_change_password = true (security gate) + same restaurant
-      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&must_change_password=eq.true&status=eq.active&select=id&limit=1`;
+      userQuery = `${supabaseUrl}/rest/v1/restaurant_users?username=eq.${encodeURIComponent(username)}&restaurant_slug=eq.${encodeURIComponent(session.restaurant_slug)}&must_change_password=eq.true&status=${OPERATIONAL_STATUSES_FILTER}&select=id&limit=1`;
     }
 
     const userRes = await fetch(userQuery, { headers: sbHeaders });

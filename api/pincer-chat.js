@@ -1,6 +1,7 @@
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { logFailClosed } from './ai-failclosed-log.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export const config = { maxDuration: 30 };
 
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
     let restaurantsFetchFailed = false;
     try {
       const rRes = await fetch(
-        `${supabaseUrl}/rest/v1/restaurant_users?status=eq.active&role=eq.restaurant&select=display_name,restaurant_slug,order_types,hours,address,business_type`,
+        `${supabaseUrl}/rest/v1/restaurant_users?status=${OPERATIONAL_STATUSES_FILTER}&role=eq.restaurant&select=display_name,restaurant_slug,order_types,hours,address,business_type`,
         {
           headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
           signal: AbortSignal.timeout(5000),

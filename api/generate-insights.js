@@ -1,4 +1,5 @@
 import { handleCors, requireJson } from './cors.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export const config = { maxDuration: 60 };
 
@@ -358,7 +359,7 @@ export default async function handler(req, res) {
     } else {
       // Fetch all active restaurants
       const rRes = await fetch(
-        `${supabaseUrl}/rest/v1/restaurant_users?status=eq.active&role=eq.restaurant&select=restaurant_slug`,
+        `${supabaseUrl}/rest/v1/restaurant_users?status=${OPERATIONAL_STATUSES_FILTER}&role=eq.restaurant&select=restaurant_slug`,
         { headers: sbHeaders(), signal: AbortSignal.timeout(5000) }
       );
       if (!rRes.ok) return res.status(500).json({ error: 'Failed to fetch restaurants' });

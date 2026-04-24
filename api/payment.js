@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 // Cache SSL agent at module level (reused across warm invocations)
 let cachedAgent = null;
@@ -153,7 +154,7 @@ export default async function handler(req, res) {
         const supabaseUrl = sbUrl();
         const supabaseKey = sbKey();
         const mRes = await fetch(
-          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&status=eq.active&select=azul_merchant_id&limit=1`,
+          `${supabaseUrl}/rest/v1/restaurant_users?restaurant_slug=eq.${encodeURIComponent(restaurantSlug)}&status=${OPERATIONAL_STATUSES_FILTER}&select=azul_merchant_id&limit=1`,
           { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }, signal: AbortSignal.timeout(3000) }
         );
         if (mRes.ok) {

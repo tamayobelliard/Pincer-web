@@ -3,6 +3,7 @@ import { rateLimit } from './rate-limit.js';
 import { handleCors, requireJson } from './cors.js';
 import { checkEnvSafety } from './env-check.js';
 import { hashToken } from './verify-session.js';
+import { OPERATIONAL_STATUSES_FILTER } from './statuses.js';
 
 export default async function handler(req, res) {
   checkEnvSafety();
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
     const now = new Date().toISOString();
 
     const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/restaurant_users?reset_token_hash=eq.${encodeURIComponent(tokenHash)}&reset_token_expires=gt.${encodeURIComponent(now)}&status=eq.active&select=id,username`,
+      `${supabaseUrl}/rest/v1/restaurant_users?reset_token_hash=eq.${encodeURIComponent(tokenHash)}&reset_token_expires=gt.${encodeURIComponent(now)}&status=${OPERATIONAL_STATUSES_FILTER}&select=id,username`,
       { headers: sbHeaders }
     );
 
