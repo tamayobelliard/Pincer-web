@@ -2458,6 +2458,109 @@
       cursor: not-allowed !important;
       border-color: #CBD5E1 !important;
     }
+
+    /* Sprint-3 Etapa 3 Commit 5: bill-requested UI state.
+       body.menu-locked bloquea visualmente los botones de qty
+       (+/-) de los items del menú. Cliente sigue viendo items,
+       solo no puede agregarlos. */
+    body.menu-locked .menu-qty-btn,
+    body.menu-locked .qty-btn,
+    body.menu-locked .open-item-btn {
+      opacity: 0.4 !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+    }
+    body.menu-locked .menu-item {
+      pointer-events: none;
+    }
+    body.menu-locked .menu-item .menu-qty-controls {
+      pointer-events: none;
+    }
+
+    /* Banner en estado "cuenta solicitada" — rojo persistente. */
+    .table-banner.bill-requested {
+      background: #DC2626 !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 2px 8px rgba(220,38,38,0.25);
+    }
+
+    /* Mensaje "Tu mesero ya viene..." dentro de Mi Cuenta. */
+    .my-account-bill-msg {
+      display: none;
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      color: #78350F;
+      font-size: 0.88em;
+      line-height: 1.4;
+    }
+    .my-account-bill-msg.show { display: block; }
+
+    /* Botón Cancelar solicitud: secundario, no rojo. */
+    .my-account-btn.cancel-mode {
+      background: #FFFFFF !important;
+      color: #475569 !important;
+      border: 1.5px solid #CBD5E1 !important;
+    }
+    .my-account-btn.cancel-mode:hover {
+      background: #F8FAFC !important;
+    }
+
+    /* Modal de confirmación "Solicitar cuenta" — centrado, overlay. */
+    .bill-confirm-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.5);
+      display: none; z-index: 20000;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .bill-confirm-overlay.show { display: flex; }
+    .bill-confirm-modal {
+      background: white; border-radius: 14px;
+      max-width: 400px; width: 100%;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .bill-confirm-modal h3 {
+      margin: 0 0 16px 0; font-size: 1.2em; color: #1e293b;
+    }
+    .bill-confirm-totals {
+      background: #F8FAFC; border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 16px;
+    }
+    .bill-confirm-row {
+      display: flex; justify-content: space-between;
+      padding: 3px 0; font-size: 0.92em; color: #475569;
+    }
+    .bill-confirm-total-grand {
+      display: flex; justify-content: space-between;
+      padding-top: 8px; margin-top: 6px;
+      border-top: 2px solid var(--primary);
+      font-size: 1.1em; font-weight: 800; color: var(--primary);
+    }
+    .bill-confirm-subtext {
+      font-size: 0.82em; color: #64748b;
+      line-height: 1.4; margin-bottom: 16px;
+    }
+    .bill-confirm-actions {
+      display: flex; gap: 10px;
+    }
+    .bill-confirm-actions button {
+      flex: 1; padding: 12px; border-radius: 8px;
+      font-family: inherit; font-weight: 600; font-size: 0.95em;
+      cursor: pointer; border: none;
+    }
+    .bill-confirm-cancel {
+      background: #FFFFFF; color: #475569;
+      border: 1.5px solid #CBD5E1 !important;
+    }
+    .bill-confirm-cancel:hover { background: #F8FAFC; }
+    .bill-confirm-submit {
+      background: var(--primary); color: white;
+    }
+    .bill-confirm-submit:hover { opacity: 0.92; }
+    .bill-confirm-submit:disabled { opacity: 0.6; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -2586,15 +2689,37 @@
   <!-- Sprint-3 Etapa 3 Commit 2: sección "Mi cuenta" — agregación
        de órdenes abiertas del cliente en la mesa actual. Visible solo
        cuando hay tableContext + phone guardado + al menos 1 orden
-       abierta. Populada por renderMyAccount(). -->
+       abierta. Populada por renderMyAccount().
+       Commit 5: botón enabled + mensaje "Tu mesero ya viene..." en
+       estado bill-requested. -->
   <div class="order-summary my-account-section" id="myAccountSection" style="display: none;">
     <h2 class="section-title">🧾 Mi cuenta</h2>
+    <div class="my-account-bill-msg" id="myAccountBillMsg">
+      Tu mesero ya viene. Si quieres seguir ordenando, cancela la solicitud.
+    </div>
     <div id="myAccountList"></div>
     <div id="myAccountTotals" style="margin-top: 10px;"></div>
-    <button class="place-order-btn my-account-btn" id="myAccountRequestBtn" disabled
-            title="Próximamente (Commit 3)">
+    <button class="place-order-btn my-account-btn" id="myAccountRequestBtn"
+            onclick="onMyAccountButtonClick()">
       Solicitar cuenta
     </button>
+  </div>
+</div>
+
+<!-- Sprint-3 Etapa 3 Commit 5: modal de confirmación para solicitar
+     cuenta. Desglose del total (subtotal/ITBIS/servicio/total).
+     Populado dinámicamente por openBillConfirmModal(). -->
+<div class="bill-confirm-overlay" id="billConfirmOverlay" onclick="if(event.target===this)closeBillConfirmModal()">
+  <div class="bill-confirm-modal" id="billConfirmModal">
+    <h3>¿Solicitar tu cuenta?</h3>
+    <div class="bill-confirm-totals" id="billConfirmTotals"></div>
+    <div class="bill-confirm-subtext">
+      Tu mesero recibirá la notificación y vendrá a cobrar.
+    </div>
+    <div class="bill-confirm-actions">
+      <button class="bill-confirm-cancel" onclick="closeBillConfirmModal()">Cancelar</button>
+      <button class="bill-confirm-submit" id="billConfirmSubmitBtn" onclick="submitBillRequest()">Sí, solicitar</button>
+    </div>
   </div>
 </div>
 
@@ -4033,6 +4158,10 @@ function updateMenuQtyBadges() {
 
 function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
   if (storeClosed) return;
+  // Sprint-3 Etapa 3 Commit 5: si la cuenta está solicitada, bloquear
+  // agregar al cart. Defensa JS + visual .menu-locked ya grises los
+  // botones. Bail out silente.
+  if (typeof isBillRequested === 'function' && isBillRequested()) return;
   if (soldOutSet.has(id)) { showSoldOutPopup(name); return; }
 
   const idx = order.findIndex(o => o.id === id && o.notes === notes);
@@ -6893,6 +7022,11 @@ function renderMyAccount() {
   var svcModel = restaurantData && restaurantData.service_model;
   if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
     section.style.display = 'none';
+    // Sprint-3 Etapa 3 Commit 5: si la sección se oculta (ej. cajera
+    // marcó paid → Mi Cuenta vacía), garantizar que el menú queda
+    // desbloqueado (isBillRequested será false, applyBillRequestedUI
+    // remueve body.menu-locked).
+    if (typeof applyBillRequestedUI === 'function') applyBillRequestedUI();
     return;
   }
 
@@ -6950,6 +7084,12 @@ function renderMyAccount() {
   // orden acaba de commit), los campos pasan a disabled aquí sin esperar
   // al próximo renderOrder.
   applyCheckoutLockdown();
+
+  // Sprint-3 Etapa 3 Commit 5: refrescar estado bill-requested cada poll.
+  // Si la cajera marcó paid desde dashboard (Commit 6 futuro), las
+  // orders salen del filter de Mi Cuenta → isBillRequested pasa a false
+  // → menú se desbloquea sin que el cliente haga nada.
+  applyBillRequestedUI();
 }
 
 function startMyAccountPoller() {
@@ -6961,6 +7101,158 @@ function startMyAccountPoller() {
   if (svcModel !== 'waiter_service') return;
   fetchMyAccount(); // primer fetch inmediato
   myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+// Sprint-3 Etapa 3 Commit 5: detección de estado "cuenta solicitada".
+// True si hay al menos una orden abierta con bill_requested_at NOT NULL.
+function isBillRequested() {
+  return Array.isArray(myAccountOrders)
+    && myAccountOrders.length > 0
+    && myAccountOrders.some(function(o) { return !!o.bill_requested_at; });
+}
+
+// Abre el modal de confirmación con desglose del total. Lee de
+// computeAccountTotals para consistencia con Mi Cuenta section.
+function openBillConfirmModal() {
+  if (!tableContext || !myAccountOrders || myAccountOrders.length === 0) return;
+  var t = computeAccountTotals(myAccountOrders);
+  var html = '';
+  if (!PRICES_INCLUDE_TAX) {
+    html += '<div class="bill-confirm-row"><span>Subtotal</span><span>RD$' + t.subtotal.toLocaleString() + '</span></div>';
+    html += '<div class="bill-confirm-row"><span>ITBIS (18%)</span><span>RD$' + t.tax.toLocaleString() + '</span></div>';
+  } else {
+    html += '<div class="bill-confirm-row"><span>Subtotal (con ITBIS)</span><span>RD$' + t.itemsSumAll.toLocaleString() + '</span></div>';
+  }
+  if (t.servicePct > 0) {
+    html += '<div class="bill-confirm-row"><span>Servicio (' + t.servicePct + '%)</span><span>RD$' + t.serviceCharge.toLocaleString() + '</span></div>';
+  }
+  html += '<div class="bill-confirm-total-grand"><span>Total</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
+  document.getElementById('billConfirmTotals').innerHTML = html;
+  document.getElementById('billConfirmSubmitBtn').disabled = false;
+  document.getElementById('billConfirmSubmitBtn').textContent = 'Sí, solicitar';
+  document.getElementById('billConfirmOverlay').classList.add('show');
+}
+
+function closeBillConfirmModal() {
+  document.getElementById('billConfirmOverlay').classList.remove('show');
+}
+
+// PATCH a orders: setea bill_requested_at=NOW() a todas las órdenes
+// abiertas (status != paid/cancelled) de esta mesa+phone. Usa RLS
+// anon_update_orders (USING true) — no requiere nueva policy. Post
+// éxito: re-fetch inmediato + applyBillRequestedUI.
+async function submitBillRequest() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return;
+  var btn = document.getElementById('billConfirmSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    var url = SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=in.(pending,accepted,ready,notified)';
+    var res = await fetchWithTimeout(url, {
+      method: 'PATCH',
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ bill_requested_at: new Date().toISOString() }),
+    }, 10000);
+    if (!res.ok) {
+      dbg('[billRequest] PATCH failed: ' + res.status);
+      btn.disabled = false;
+      btn.textContent = 'Sí, solicitar';
+      alert('No pudimos solicitar la cuenta. Intenta de nuevo.');
+      return;
+    }
+    closeBillConfirmModal();
+    await fetchMyAccount();
+    applyBillRequestedUI();
+  } catch (e) {
+    dbg('[billRequest] error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Sí, solicitar';
+    alert('Error de conexión. Intenta de nuevo.');
+  }
+}
+
+// Cancela la solicitud. Sin confirm — acción reversible, baja fricción.
+async function cancelBillRequest() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return;
+  try {
+    var url = SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=in.(pending,accepted,ready,notified)';
+    var res = await fetchWithTimeout(url, {
+      method: 'PATCH',
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ bill_requested_at: null }),
+    }, 10000);
+    if (!res.ok) {
+      dbg('[billCancel] PATCH failed: ' + res.status);
+      alert('No pudimos cancelar. Intenta de nuevo.');
+      return;
+    }
+    await fetchMyAccount();
+    applyBillRequestedUI();
+  } catch (e) {
+    dbg('[billCancel] error: ' + e.message);
+    alert('Error de conexión.');
+  }
+}
+
+// Wire-up del botón único "Solicitar cuenta" / "Cancelar solicitud".
+function onMyAccountButtonClick() {
+  if (isBillRequested()) {
+    cancelBillRequest();
+  } else {
+    openBillConfirmModal();
+  }
+}
+
+// Centraliza el estado UI bill-requested. Se llama al final de
+// renderMyAccount (poll cada 15s + post-éxito) y desde submit/cancel.
+function applyBillRequestedUI() {
+  var billed = isBillRequested();
+  document.body.classList.toggle('menu-locked', billed);
+
+  var banner = document.getElementById('tableBanner');
+  if (banner && tableContext) {
+    if (billed) {
+      banner.classList.add('bill-requested');
+      banner.innerHTML =
+        '<span class="mesa-emoji">🍽️</span>' +
+        'Mesa ' + tableContext.table_number +
+        (restaurantData && restaurantData.display_name ? ' · ' + escHtml(restaurantData.display_name) : '') +
+        ' · Cuenta solicitada';
+    } else {
+      banner.classList.remove('bill-requested');
+      if (typeof renderTableBanner === 'function') {
+        renderTableBanner(tableContext.table_number, restaurantData && restaurantData.display_name);
+      }
+    }
+  }
+
+  var btn = document.getElementById('myAccountRequestBtn');
+  if (btn) {
+    if (billed) {
+      btn.textContent = 'Cancelar solicitud';
+      btn.classList.add('cancel-mode');
+      btn.disabled = false;
+    } else {
+      btn.textContent = 'Solicitar cuenta';
+      btn.classList.remove('cancel-mode');
+      btn.disabled = (!tableContext || !myAccountOrders.length);
+    }
+  }
+
+  var msg = document.getElementById('myAccountBillMsg');
+  if (msg) msg.classList.toggle('show', billed);
 }
 
 // Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono cuando el

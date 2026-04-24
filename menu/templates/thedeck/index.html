@@ -1003,6 +1003,136 @@
     border-color: var(--color-border) !important;
   }
 
+  /* ═══════════ Bill requested UI (Sprint-3 Etapa 3 Commit 5) ═══════════
+     Banner cambia a rojo, botones de items bloqueados, botón "Solicitar"
+     se convierte en "Cancelar solicitud". */
+  body.menu-locked .item-add-btn,
+  body.menu-locked .item-qty-btn,
+  body.menu-locked .item-more-btn,
+  body.menu-locked .menu-item-add {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+  }
+  body.menu-locked .menu-item {
+    pointer-events: none;
+  }
+
+  .deck-table-banner.bill-requested {
+    background: #7F1D1D !important;
+    border-color: var(--color-accent) !important;
+    color: var(--color-accent-2) !important;
+  }
+  .deck-table-banner.bill-requested .deck-table-mesa {
+    color: var(--color-accent-2) !important;
+  }
+  .deck-table-banner.bill-requested .deck-table-dot {
+    color: var(--color-accent) !important;
+  }
+
+  /* Mensaje "Tu mesero ya viene..." dentro de Mi Cuenta */
+  .deck-account-bill-msg {
+    display: none;
+    background: rgba(201,169,97,0.12);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    margin-bottom: var(--sp-md);
+    color: var(--color-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .deck-account-bill-msg.show { display: block; }
+
+  /* Botón Cancelar solicitud — cream background, navy border */
+  .deck-account-btn.cancel-mode {
+    background: var(--color-bg-2) !important;
+    color: var(--color-primary) !important;
+    border: 1px solid var(--color-primary) !important;
+  }
+
+  /* Modal de confirmación solicitar cuenta */
+  .deck-bill-overlay {
+    position: fixed; inset: 0; background: rgba(11,30,58,0.55);
+    display: none; z-index: 200;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .deck-bill-overlay.show { display: flex; }
+  .deck-bill-modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    max-width: 420px; width: 100%;
+    padding: var(--sp-lg);
+    box-shadow: var(--shadow-lg);
+  }
+  .deck-bill-modal h3 {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-style: italic;
+    color: var(--color-primary);
+    margin: 0 0 var(--sp-md) 0;
+    text-align: center;
+  }
+  .deck-bill-totals {
+    background: var(--color-bg-2);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-bottom: var(--sp-md);
+    border: 1px dotted var(--color-border);
+  }
+  .deck-bill-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--color-text-soft);
+  }
+  .deck-bill-total-grand {
+    display: flex; justify-content: space-between;
+    padding-top: 10px; margin-top: 6px;
+    border-top: 2px solid var(--color-accent);
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-accent-3);
+  }
+  .deck-bill-subtext {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--color-text-soft);
+    line-height: 1.45;
+    margin-bottom: var(--sp-md);
+    text-align: center;
+  }
+  .deck-bill-actions {
+    display: flex; gap: 10px;
+  }
+  .deck-bill-actions button {
+    flex: 1; padding: 12px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+  }
+  .deck-bill-cancel {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-soft);
+  }
+  .deck-bill-cancel:hover { background: var(--color-bg); }
+  .deck-bill-submit {
+    background: var(--color-primary);
+    color: var(--color-accent-2);
+    border: 1px solid var(--color-accent);
+  }
+  .deck-bill-submit:hover { background: var(--color-primary-2); }
+  .deck-bill-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
   /* ═══════════ Store closed overlay ═══════════
      Sprint-2 post-validation 2026-04-23: estructura parity con
      menu/index.html:2337-2346 (logo → name → status → next → schedule
@@ -1207,14 +1337,34 @@
 <section class="deck-account" id="myAccountSection" style="display:none;">
   <div class="deck-account-inner">
     <div class="deck-account-title">Mi <em>cuenta</em></div>
+    <div class="deck-account-bill-msg" id="myAccountBillMsg">
+      Tu mesero ya viene. Si quieres seguir ordenando, cancela la solicitud.
+    </div>
     <div class="deck-account-list" id="myAccountList"></div>
     <div class="deck-account-totals" id="myAccountTotals"></div>
-    <button class="btn btn-primary deck-account-btn" id="myAccountRequestBtn" disabled
-            title="Próximamente (Commit 3)">
-      <span>Solicitar cuenta</span>
+    <button class="btn btn-primary deck-account-btn" id="myAccountRequestBtn"
+            onclick="onMyAccountButtonClick()">
+      <span id="myAccountRequestBtnLabel">Solicitar cuenta</span>
     </button>
   </div>
 </section>
+
+<!-- Sprint-3 Etapa 3 Commit 5: modal de confirmación solicitar cuenta.
+     Estilo navy/cream/gold del design system. Parity funcional con
+     menu/index.html #billConfirmOverlay. -->
+<div class="deck-bill-overlay" id="billConfirmOverlay" onclick="if(event.target===this)closeBillConfirmModal()">
+  <div class="deck-bill-modal">
+    <h3>¿Solicitar tu cuenta?</h3>
+    <div class="deck-bill-totals" id="billConfirmTotals"></div>
+    <div class="deck-bill-subtext">
+      Tu mesero recibirá la notificación y vendrá a cobrar.
+    </div>
+    <div class="deck-bill-actions">
+      <button class="deck-bill-cancel" onclick="closeBillConfirmModal()">Cancelar</button>
+      <button class="deck-bill-submit" id="billConfirmSubmitBtn" onclick="submitBillRequest()">Sí, solicitar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═════════════ FOOTER ═════════════ -->
 <div class="footer">
@@ -2603,6 +2753,9 @@ function renderMyAccount() {
   var svcModel = restaurantData && restaurantData.service_model;
   if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
     section.style.display = 'none';
+    // Sprint-3 Etapa 3 Commit 5: asegurar desbloqueo si la sección se
+    // oculta (ej. cajera marcó paid → Mi Cuenta vacía).
+    if (typeof applyBillRequestedUI === 'function') applyBillRequestedUI();
     return;
   }
 
@@ -2665,6 +2818,9 @@ function renderMyAccount() {
   // se actualiza. Si myAccountOrders pasó de 0 → >0, el modal abierto (o
   // la próxima apertura) reflejará el estado disabled.
   applyCheckoutLockdown();
+
+  // Sprint-3 Etapa 3 Commit 5: aplicar estado bill-requested cada poll.
+  applyBillRequestedUI();
 }
 
 function startMyAccountPoller() {
@@ -2673,6 +2829,157 @@ function startMyAccountPoller() {
   if (svcModel !== 'waiter_service') return;
   fetchMyAccount();
   myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+// Sprint-3 Etapa 3 Commit 5: parity byte-idéntico con menu/index.html.
+// Detección + modal + submit + cancel + applyBillRequestedUI.
+// Diferencias visuales: class name banner (deck-table-banner), IDs del
+// modal (mismos), label inside span (myAccountRequestBtnLabel).
+
+function isBillRequested() {
+  return Array.isArray(myAccountOrders)
+    && myAccountOrders.length > 0
+    && myAccountOrders.some(function(o) { return !!o.bill_requested_at; });
+}
+
+function openBillConfirmModal() {
+  if (!tableContext || !myAccountOrders || myAccountOrders.length === 0) return;
+  var t = computeAccountTotals(myAccountOrders);
+  var html = '';
+  if (!PRICES_INCLUDE_TAX) {
+    html += '<div class="deck-bill-row"><span>Subtotal</span><span>RD$' + t.subtotal.toLocaleString() + '</span></div>';
+    html += '<div class="deck-bill-row"><span>ITBIS (18%)</span><span>RD$' + t.tax.toLocaleString() + '</span></div>';
+  } else {
+    html += '<div class="deck-bill-row"><span>Subtotal (con ITBIS)</span><span>RD$' + t.itemsSumAll.toLocaleString() + '</span></div>';
+  }
+  if (t.servicePct > 0) {
+    html += '<div class="deck-bill-row"><span>Servicio (' + t.servicePct + '%)</span><span>RD$' + t.serviceCharge.toLocaleString() + '</span></div>';
+  }
+  html += '<div class="deck-bill-total-grand"><span>Total</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
+  document.getElementById('billConfirmTotals').innerHTML = html;
+  var btn = document.getElementById('billConfirmSubmitBtn');
+  btn.disabled = false;
+  btn.textContent = 'Sí, solicitar';
+  document.getElementById('billConfirmOverlay').classList.add('show');
+}
+
+function closeBillConfirmModal() {
+  document.getElementById('billConfirmOverlay').classList.remove('show');
+}
+
+async function submitBillRequest() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return;
+  var btn = document.getElementById('billConfirmSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  try {
+    var url = SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=in.(pending,accepted,ready,notified)';
+    var res = await fetchWithTimeout(url, {
+      method: 'PATCH',
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ bill_requested_at: new Date().toISOString() }),
+    }, 10000);
+    if (!res.ok) {
+      dbg('[billRequest] PATCH failed: ' + res.status);
+      btn.disabled = false;
+      btn.textContent = 'Sí, solicitar';
+      alert('No pudimos solicitar la cuenta. Intenta de nuevo.');
+      return;
+    }
+    closeBillConfirmModal();
+    await fetchMyAccount();
+    applyBillRequestedUI();
+  } catch (e) {
+    dbg('[billRequest] error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Sí, solicitar';
+    alert('Error de conexión. Intenta de nuevo.');
+  }
+}
+
+async function cancelBillRequest() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return;
+  try {
+    var url = SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=in.(pending,accepted,ready,notified)';
+    var res = await fetchWithTimeout(url, {
+      method: 'PATCH',
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ bill_requested_at: null }),
+    }, 10000);
+    if (!res.ok) {
+      dbg('[billCancel] PATCH failed: ' + res.status);
+      alert('No pudimos cancelar. Intenta de nuevo.');
+      return;
+    }
+    await fetchMyAccount();
+    applyBillRequestedUI();
+  } catch (e) {
+    dbg('[billCancel] error: ' + e.message);
+    alert('Error de conexión.');
+  }
+}
+
+function onMyAccountButtonClick() {
+  if (isBillRequested()) {
+    cancelBillRequest();
+  } else {
+    openBillConfirmModal();
+  }
+}
+
+function applyBillRequestedUI() {
+  var billed = isBillRequested();
+  document.body.classList.toggle('menu-locked', billed);
+
+  var banner = document.getElementById('tableBanner');
+  if (banner && tableContext) {
+    if (billed) {
+      banner.classList.add('bill-requested');
+      var safeName = function(s) {
+        return String(s || '').replace(/[&<>"']/g, function(c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      };
+      banner.innerHTML =
+        '<span class="deck-table-mesa">Mesa ' + tableContext.table_number + '</span>' +
+        (restaurantData && restaurantData.display_name ? '<span class="deck-table-dot">·</span>' + safeName(restaurantData.display_name) : '') +
+        '<span class="deck-table-dot">·</span>Cuenta solicitada';
+    } else {
+      banner.classList.remove('bill-requested');
+      if (typeof renderTableBanner === 'function') {
+        renderTableBanner(tableContext.table_number, restaurantData && restaurantData.display_name);
+      }
+    }
+  }
+
+  var btn = document.getElementById('myAccountRequestBtn');
+  var btnLabel = document.getElementById('myAccountRequestBtnLabel');
+  if (btn && btnLabel) {
+    if (billed) {
+      btnLabel.textContent = 'Cancelar solicitud';
+      btn.classList.add('cancel-mode');
+      btn.disabled = false;
+    } else {
+      btnLabel.textContent = 'Solicitar cuenta';
+      btn.classList.remove('cancel-mode');
+      btn.disabled = (!tableContext || !myAccountOrders.length);
+    }
+  }
+
+  var msg = document.getElementById('myAccountBillMsg');
+  if (msg) msg.classList.toggle('show', billed);
 }
 
 // Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono cuando el
@@ -3144,6 +3451,9 @@ document.getElementById('modalAdd').addEventListener('click', () => {
 // cuando se implemente sold_out polling). track() llamada defer para Commit #4.
 function addItem(id, name, price, notes = null, qty = 1, source = 'menu') {
   if (storeClosed) return;
+  // Sprint-3 Etapa 3 Commit 5: bloquear agregar al cart si cuenta
+  // solicitada. Parity con menu/index.html.
+  if (typeof isBillRequested === 'function' && isBillRequested()) return;
   if (soldOutSet.has(id)) return;
 
   const idx = cart.findIndex(c => c.id === id && c.notes === notes);
