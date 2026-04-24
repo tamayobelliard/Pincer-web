@@ -1135,8 +1135,8 @@
     </div>
   </div>
   <div class="confirm-body">
-    <div class="confirm-title">¡Tu pedido fue recibido!</div>
-    <div class="confirm-subtitle">Nuestro equipo ya está preparando tu orden. Te notificaremos por WhatsApp cuando esté lista.</div>
+    <div class="confirm-title" id="confirmTitle">¡Tu pedido fue recibido!</div>
+    <div class="confirm-subtitle" id="confirmSubtitle">Nuestro equipo ya está preparando tu orden. Te notificaremos por WhatsApp cuando esté lista.</div>
     <div class="confirm-order-card">
       <div class="confirm-order-label">Número de Orden</div>
       <div class="confirm-order-number" id="confirmOrderNumber">#</div>
@@ -3727,12 +3727,36 @@ function showConfirmation(record, total) {
   document.getElementById('confirmOrderNumber').textContent = display;
   document.getElementById('confirmOrderTotal').textContent = fmtPrice(total);
 
-  // Nombre del restaurante + mensaje condicional
   const restaurantName = (restaurantData && restaurantData.display_name) || 'The Deck';
+
+  // Sprint-3 Etapa 2 follow-up hotfix: copy dine-in vs take-out/delivery.
+  // La orden vino de un scan de QR de mesa si record.table_id está populado
+  // (lo setea el payload en placeOrder cuando tableContext está activo).
+  // Dine-in flow: el cliente está sentado en mesa, no le llega notificación
+  // por WhatsApp ni va a "recogerla" — el mesero se la trae.
+  const isDineIn = !!(record && record.table_id);
+  const tableNumber = record && record.table_number;
+
+  const titleEl = document.getElementById('confirmTitle');
+  const subtitleEl = document.getElementById('confirmSubtitle');
+  if (isDineIn) {
+    if (titleEl) titleEl.textContent = '\u00a1Tu pedido fue enviado a cocina!';
+    if (subtitleEl) subtitleEl.textContent = 'Nuestro equipo est\u00e1 preparando tu orden. La traer\u00e1n a tu mesa cuando est\u00e9 lista.';
+  } else {
+    if (titleEl) titleEl.textContent = '\u00a1Tu pedido fue recibido!';
+    if (subtitleEl) subtitleEl.textContent = 'Nuestro equipo ya est\u00e1 preparando tu orden. Te notificaremos por WhatsApp cuando est\u00e9 lista.';
+  }
+
   const noticeR = document.getElementById('confirmNoticeRestaurant');
   if (noticeR) noticeR.textContent = restaurantName;
   const noticeT = document.getElementById('confirmNoticeText');
-  if (noticeT) noticeT.textContent = ' · ' + confirmationNoticeCopy(record && record.order_type);
+  if (noticeT) {
+    if (isDineIn && tableNumber) {
+      noticeT.textContent = ' \u00b7 Mesa ' + tableNumber + ' \u00b7 Conserva este n\u00famero de orden. Cuando termines de comer, podr\u00e1s solicitar la cuenta desde aqu\u00ed.';
+    } else {
+      noticeT.textContent = ' \u00b7 ' + confirmationNoticeCopy(record && record.order_type);
+    }
+  }
 
   document.getElementById('confirmPanel').classList.add('open');
   document.body.style.overflow = 'hidden';
