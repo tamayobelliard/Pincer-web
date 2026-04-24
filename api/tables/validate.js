@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     // ajeno". active=eq.true ya lo garantiza la RLS sobre anon, pero lo
     // dejamos explícito en la query para ser claros.
     const res2 = await fetch(
-      `${supabaseUrl}/rest/v1/tables?qr_token=eq.${encodeURIComponent(token)}&restaurant_slug=eq.${encodeURIComponent(slug)}&active=eq.true&select=table_number&limit=1`,
+      `${supabaseUrl}/rest/v1/tables?qr_token=eq.${encodeURIComponent(token)}&restaurant_slug=eq.${encodeURIComponent(slug)}&active=eq.true&select=id,table_number&limit=1`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -56,7 +56,15 @@ export default async function handler(req, res) {
       return res.status(200).json({ valid: false });
     }
 
-    return res.status(200).json({ valid: true, table_number: rows[0].table_number });
+    // Sprint-3 Etapa 2 follow-up: también devolvemos id para que el menú
+    // cliente lo incluya en el payload de la orden (table_id). Sin table_id
+    // la RLS de orders deja la validación de mesa en null, anulando el
+    // scoping. El id es público-safe (cualquier scan válido ya tiene acceso).
+    return res.status(200).json({
+      valid: true,
+      table_id: rows[0].id,
+      table_number: rows[0].table_number,
+    });
   } catch (e) {
     console.error('tables/validate error:', e.message);
     return res.status(200).json({ valid: false });

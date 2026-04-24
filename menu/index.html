@@ -3139,7 +3139,7 @@ async function loadRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
@@ -4184,6 +4184,15 @@ async function placeOrder() {
       orderPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
       orderPayload.delivery_fee = deliveryFeeCharged;
     }
+    // Sprint-3 Etapa 2 follow-up: identificación de mesa en dine_in.
+    // La RLS anon_insert_orders valida (ver migración 2026-04-24):
+    //   table_id NOT NULL → order_type DEBE ser 'dine_in'
+    //                       + table_id referenciar mesa activa del slug
+    // Si cualquiera de esas condiciones falla, Supabase rechaza 403.
+    if (tableContext && selectedOrderType === 'dine_in') {
+      orderPayload.table_id = tableContext.table_id || null;
+      orderPayload.table_number = tableContext.table_number;
+    }
 
     dbg('📤 Enviando orden #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
     dbg('📤 URL: ' + SUPABASE_URL + '/rest/v1/orders');
@@ -4222,6 +4231,11 @@ async function placeOrder() {
           retryPayload.customer_name = (document.getElementById('deliveryName').value || '').trim();
           retryPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
           retryPayload.delivery_fee = deliveryFeeCharged;
+        }
+        // Sprint-3 Etapa 2 follow-up: mismo check que en el payload original.
+        if (tableContext && selectedOrderType === 'dine_in') {
+          retryPayload.table_id = tableContext.table_id || null;
+          retryPayload.table_number = tableContext.table_number;
         }
         
         const retryRes = await fetchWithTimeout(
@@ -4658,7 +4672,14 @@ function renderOrderTypeButtons(containerId) {
     var span = document.createElement('span');
     span.className = 'order-type-single';
     span.style.cssText = 'display:inline-block;padding:8px 14px;color:var(--primary);font-weight:600;font-size:0.95em;';
-    span.textContent = cfg1.label;
+    // Sprint-3 Etapa 2 follow-up: si hay tableContext y es dine_in,
+    // anexar "· Mesa N" al label para que el cliente vea la mesa
+    // asignada antes de confirmar la orden.
+    if (only === 'dine_in' && tableContext && tableContext.table_number) {
+      span.textContent = cfg1.label + ' · Mesa ' + tableContext.table_number;
+    } else {
+      span.textContent = cfg1.label;
+    }
     container.appendChild(span);
     return;
   }
@@ -6707,6 +6728,7 @@ async function init() {
     }
     tableContext = {
       slug: SLUG,
+      table_id: validation.table_id || null,
       table_number: validation.table_number,
       token: urlTable.token,
       validated_at: Date.now(),
@@ -6740,6 +6762,22 @@ async function init() {
       enabledOrderTypes = enabledOrderTypes.filter(function(t) { return t !== 'dine_in'; });
       if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
     }
+  }
+
+  // Sprint-3 Etapa 2 follow-up: reconciliar enabledOrderTypes con el
+  // contexto de mesa. Dos reglas:
+  //   1. tableContext presente → forzar ['dine_in']. El cliente escaneó
+  //      un QR válido, la única opción coherente es comer en mesa.
+  //   2. Sin tableContext + waiter_service → filtrar dine_in. En un
+  //      restaurante con meseros, dine_in SIN mesa identificada genera
+  //      el bug que motivó este follow-up (órdenes sin saber a dónde
+  //      llevarlas). Self_service se mantiene con dine_in como antes.
+  var _svcModel = restaurantData && restaurantData.service_model;
+  if (tableContext) {
+    enabledOrderTypes = ['dine_in'];
+  } else if (_svcModel === 'waiter_service') {
+    enabledOrderTypes = enabledOrderTypes.filter(function(t) { return t !== 'dine_in'; });
+    if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
   }
 
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';

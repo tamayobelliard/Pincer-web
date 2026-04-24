@@ -2186,7 +2186,7 @@ async function fetchRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     let res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
@@ -2472,6 +2472,7 @@ async function _initImpl() {
     }
     tableContext = {
       slug: SLUG,
+      table_id: validation.table_id || null,
       table_number: validation.table_number,
       token: urlTable.token,
       validated_at: Date.now(),
@@ -2499,6 +2500,18 @@ async function _initImpl() {
       enabledOrderTypes = enabledOrderTypes.filter(t => t !== 'dine_in');
       if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
     }
+  }
+
+  // Sprint-3 Etapa 2 follow-up: reconciliar enabledOrderTypes con el
+  // contexto de mesa. Parity byte-idéntico con menu/index.html:
+  //   1. tableContext presente → forzar ['dine_in']
+  //   2. Sin tableContext + waiter_service → filtrar dine_in
+  const _svcModel = restaurantData && restaurantData.service_model;
+  if (tableContext) {
+    enabledOrderTypes = ['dine_in'];
+  } else if (_svcModel === 'waiter_service') {
+    enabledOrderTypes = enabledOrderTypes.filter(t => t !== 'dine_in');
+    if (enabledOrderTypes.length === 0) enabledOrderTypes = ['take_out'];
   }
 
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';
@@ -2593,7 +2606,13 @@ function renderOrderTypeButtons(containerId) {
     const span = document.createElement('span');
     span.className = 'checkout-order-type-single';
     span.style.cssText = 'display:inline-block;padding:8px 14px;color:var(--color-primary);font-weight:600;font-size:13px;font-family:var(--font-body);';
-    span.textContent = cfg1.label;
+    // Sprint-3 Etapa 2 follow-up: parity con menu/index.html — si hay
+    // tableContext y es dine_in, anexar "· Mesa N".
+    if (only === 'dine_in' && tableContext && tableContext.table_number) {
+      span.textContent = cfg1.label + ' · Mesa ' + tableContext.table_number;
+    } else {
+      span.textContent = cfg1.label;
+    }
     container.appendChild(span);
     return;
   }
@@ -3569,6 +3588,14 @@ async function submitCheckout() {
     orderPayload.customer_name = name;
     orderPayload.customer_address = deliveryAddressValue;
     orderPayload.delivery_fee = deliveryFeeCharged;
+  }
+  // Sprint-3 Etapa 2 follow-up: identificación de mesa en dine_in.
+  // Parity byte-idéntico con menu/index.html. retryPayload al final del
+  // bloque usa spread (...orderPayload) así que hereda estos campos sin
+  // duplicar código.
+  if (tableContext && selectedOrderType === 'dine_in') {
+    orderPayload.table_id = tableContext.table_id || null;
+    orderPayload.table_number = tableContext.table_number;
   }
 
   dbg('📤 Enviando orden #' + (nextNum || '?') + ': ' + JSON.stringify(orderPayload).substring(0, 200) + '...');
