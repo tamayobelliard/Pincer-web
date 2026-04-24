@@ -1262,20 +1262,21 @@
       <div class="checkout-order-type-options" id="checkoutOrderTypeButtons"></div>
     </div>
 
-    <!-- Take-out fields -->
-    <div class="checkout-order-type-extra-fields" id="takeoutFields">
-      <div class="checkout-field">
-        <label for="takeoutName">Nombre de quien recoge</label>
-        <input class="input" type="text" id="takeoutName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
-      </div>
+    <!-- Sprint-3 Etapa 3 Commit 1-B: campo universal "Nombre" — obligatorio
+         en todos los flows (take-out, delivery, dine-in). Parity con
+         menu/index.html #nameInput. Autocompleta desde localStorage
+         (pincer_customer_<slug>). -->
+    <div class="checkout-field">
+      <label for="chkName">Nombre</label>
+      <input class="input" type="text" id="chkName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+      <div class="checkout-error" id="chkNameError" style="display:none;">Por favor ingresa tu nombre.</div>
     </div>
 
-    <!-- Delivery fields -->
+    <!-- Take-out fields — vacío ahora (el nombre se movió a #chkName universal). -->
+    <div class="checkout-order-type-extra-fields" id="takeoutFields"></div>
+
+    <!-- Delivery fields — sólo dirección (el nombre se movió a #chkName). -->
     <div class="checkout-order-type-extra-fields" id="deliveryFields">
-      <div class="checkout-field">
-        <label for="deliveryName">Nombre</label>
-        <input class="input" type="text" id="deliveryName" placeholder="Tu nombre" maxlength="60" autocomplete="name">
-      </div>
       <div class="checkout-field">
         <label for="deliveryAddress">Dirección de entrega</label>
         <input class="input" type="text" id="deliveryAddress" placeholder="Calle, número, sector, referencia" maxlength="200">
@@ -2363,6 +2364,37 @@ function applyRestaurantBranding(data) {
 // abortaba la inicialización sin feedback visible. Enmascaró múltiples
 // bugs durante 4+ sprints. Ver known-issues #11. Ver CLAUDE.md Regla #6.
 // ══════════════════════════════════════════════════════════════
+// CUSTOMER PERSISTENCE (Sprint-3 Etapa 3 Commit 1-B)
+// Parity byte-idéntico con menu/index.html.
+// ══════════════════════════════════════════════════════════════
+
+var CUSTOMER_LOCAL_KEY = 'pincer_customer_' + SLUG;
+
+function loadCustomerLocal() {
+  try {
+    var raw = localStorage.getItem(CUSTOMER_LOCAL_KEY);
+    if (!raw) return {};
+    var data = JSON.parse(raw);
+    return {
+      name: (data && typeof data.name === 'string') ? data.name : '',
+      phone: (data && typeof data.phone === 'string') ? data.phone : '',
+    };
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveCustomerLocal(name, phone) {
+  try {
+    localStorage.setItem(CUSTOMER_LOCAL_KEY, JSON.stringify({
+      name: (name || '').trim(),
+      phone: (phone || '').trim(),
+      savedAt: Date.now(),
+    }));
+  } catch (e) {}
+}
+
+// ══════════════════════════════════════════════════════════════
 // TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
 // Parity byte-idéntico con menu/index.html — solo difieren los IDs
 // de los elementos DOM y la clase CSS del banner (deck-table-banner
@@ -3394,17 +3426,18 @@ function openCheckout() {
   _loyaltyRewardAdded = false;
   document.getElementById('loyaltyVipBox').style.display = 'none';
 
-  // Parity strict: no persistencia de PII cross-visit. El genérico tampoco
-  // guarda name/phone entre sesiones — cada visita el cliente vuelve a
-  // ingresar. Privacidad > conveniencia. Commit #6 removió thedeck_cust_*.
-  const takeoutName = document.getElementById('takeoutName');
-  const deliveryName = document.getElementById('deliveryName');
+  // Sprint-3 Etapa 3 Commit 1-B: persistencia vía localStorage scoped
+  // por slug (pincer_customer_<SLUG>). Comentario antiguo ("Parity
+  // strict: no persistencia...") queda obsoleto — el founder aprobó
+  // persistir name+phone en 2026-04-24 para mejorar UX del cliente
+  // recurrente. Se autocompleta al abrir el checkout.
+  const chkName = document.getElementById('chkName');
   const deliveryAddress = document.getElementById('deliveryAddress');
   const chkPhone = document.getElementById('chkPhone');
-  if (takeoutName) takeoutName.value = '';
-  if (deliveryName) deliveryName.value = '';
   if (deliveryAddress) deliveryAddress.value = '';
-  if (chkPhone) chkPhone.value = '';
+  var _savedCust = loadCustomerLocal();
+  if (chkName) chkName.value = _savedCust.name || '';
+  if (chkPhone) chkPhone.value = _savedCust.phone || '';
 
   document.getElementById('chkPhoneError').style.display = 'none';
   document.getElementById('checkoutGlobalError').style.display = 'none';
@@ -3517,19 +3550,28 @@ async function submitCheckout() {
   const submitBtn = document.getElementById('checkoutSubmit');
   const submitLabel = document.getElementById('checkoutSubmitLabel');
 
-  // Resolver el input de nombre según el tipo de orden seleccionado.
-  const nameInputId = selectedOrderType === 'delivery' ? 'deliveryName' : 'takeoutName';
-  const nameInput = document.getElementById(nameInputId);
+  // Sprint-3 Etapa 3 Commit 1-B: input universal #chkName reemplaza a
+  // los takeoutName/deliveryName condicionales. Obligatorio en todos
+  // los flows (take_out, delivery, dine_in).
+  const nameInput = document.getElementById('chkName');
+  const nameErr = document.getElementById('chkNameError');
   const name = (nameInput?.value || '').trim();
 
   phoneErr.style.display = 'none';
   globalErr.style.display = 'none';
   phoneInput.classList.remove('invalid');
   if (nameInput) nameInput.classList.remove('invalid');
+  if (nameErr) nameErr.style.display = 'none';
 
-  // Nombre requerido en take_out y delivery (parity :4022-4041).
-  if ((selectedOrderType === 'take_out' || selectedOrderType === 'delivery') && !name) {
+  // Nombre universal — required en todos los flows. Min 2, max 60.
+  if (!name || name.length < 2) {
     if (nameInput) { nameInput.classList.add('invalid'); nameInput.focus(); }
+    if (nameErr) nameErr.style.display = 'block';
+    return;
+  }
+  if (name.length > 60) {
+    if (nameInput) nameInput.classList.add('invalid');
+    if (nameErr) { nameErr.textContent = 'Nombre demasiado largo (m\u00e1x 60)'; nameErr.style.display = 'block'; }
     return;
   }
   if (!isValidDRPhone(phoneRaw)) {
@@ -3579,13 +3621,12 @@ async function submitCheckout() {
     phone: customerPhone,
     restaurant_slug: SLUG,
     order_type: selectedOrderType,
-    session_id: chatSessionId
+    session_id: chatSessionId,
+    // Sprint-3 Etapa 3 Commit 1-B: customer_name universal.
+    customer_name: name
   };
   if (nextNum) orderPayload.order_number = nextNum;
-  if (selectedOrderType === 'take_out') {
-    orderPayload.customer_name = name;
-  } else if (selectedOrderType === 'delivery') {
-    orderPayload.customer_name = name;
+  if (selectedOrderType === 'delivery') {
     orderPayload.customer_address = deliveryAddressValue;
     orderPayload.delivery_fee = deliveryFeeCharged;
   }
@@ -3665,6 +3706,11 @@ async function submitCheckout() {
       order_type: selectedOrderType,
       item_count: itemsArray.length,
     });
+
+    // Sprint-3 Etapa 3 Commit 1-B: persistir name + phone en
+    // localStorage para autocompletar futuras órdenes del cliente
+    // en este restaurante.
+    saveCustomerLocal(name, customerPhone);
 
     // Loyalty increment fire-and-forget (parity :4197).
     if (record && record.id) triggerLoyaltyIncrement(record.id, SLUG);

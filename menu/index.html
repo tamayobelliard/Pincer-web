@@ -2458,6 +2458,16 @@
       </div>
     </div>
     <div id="orderTotal" style="display: none;"></div>
+    <!-- Sprint-3 Etapa 3 Commit 1-B: campo universal "Nombre" — obligatorio
+         en todos los flows (take-out, delivery, dine-in). Autocompleta
+         desde localStorage (pincer_customer_<slug>). Sustituye los inputs
+         takeoutName/deliveryName que vivían dentro de los bloques
+         condicionales por order_type. -->
+    <div class="phone-field" id="nameField" style="display: none;">
+      <label for="nameInput">👤 Tu nombre</label>
+      <input type="text" id="nameInput" placeholder="Tu nombre" maxlength="60" autocomplete="name">
+      <div class="phone-error" id="nameError">Por favor ingresa tu nombre</div>
+    </div>
     <div class="phone-field" id="phoneField" style="display: none;">
       <label for="phoneInput">📱 Tu número de WhatsApp</label>
       <input type="tel" id="phoneInput" placeholder="809-123-4567" maxlength="15"
@@ -2470,17 +2480,10 @@
     <div class="order-type-section" id="orderTypeSection" style="display:none;">
       <div class="order-type-title">Tipo de orden</div>
       <div class="order-type-options" id="orderTypeButtons"></div>
-      <div class="order-type-extra-fields" id="takeoutFields">
-        <div class="order-type-field">
-          <label>Nombre</label>
-          <input type="text" id="takeoutName" placeholder="Tu nombre">
-        </div>
-      </div>
+      <!-- Sprint-3 Etapa 3 Commit 1-B: takeoutFields ya no contiene
+           input de nombre (se movió a #nameField arriba, universal). -->
+      <div class="order-type-extra-fields" id="takeoutFields"></div>
       <div class="order-type-extra-fields" id="deliveryFields">
-        <div class="order-type-field">
-          <label>Nombre</label>
-          <input type="text" id="deliveryName" placeholder="Tu nombre">
-        </div>
         <div class="order-type-field">
           <label>Dirección de entrega</label>
           <input type="text" id="deliveryAddress" placeholder="Calle, sector, referencia">
@@ -3974,6 +3977,8 @@ function renderOrder() {
   const totalQty = order.reduce((s, i) => s + i.qty, 0);
 
   const phoneField = document.getElementById('phoneField');
+  // Sprint-3 Etapa 3 Commit 1-B: nameField universal, visible con phoneField.
+  const nameField = document.getElementById('nameField');
 
   if (order.length === 0) {
     list.innerHTML = '<div class="empty-order">Tu orden está vacía<br>Agrega items del menú</div>';
@@ -3981,6 +3986,7 @@ function renderOrder() {
     placeOrderBtn.disabled = true;
     totalDiv.style.display = 'none';
     phoneField.style.display = 'none';
+    if (nameField) nameField.style.display = 'none';
     var orderTypeSec = document.getElementById('orderTypeSection');
     if (orderTypeSec) orderTypeSec.style.display = 'none';
     orderReviewed = false;
@@ -3992,6 +3998,7 @@ function renderOrder() {
   countBadge.style.display = 'inline-block';
   placeOrderBtn.disabled = false;
   phoneField.style.display = 'block';
+  if (nameField) nameField.style.display = 'block';
   // Sprint-2 B1: mostrar el order-type selector SIEMPRE que haya ≥1 tipo.
   // Con 1 solo tipo: renderOrderTypeButtons dibuja un label display-only
   // (no botón). Con >1: botones clickeables como antes.
@@ -4094,9 +4101,37 @@ async function placeOrder() {
     return;
   }
 
-  // SEGUNDO PASO: Validar teléfono y enviar la orden
+  // SEGUNDO PASO: Validar nombre, teléfono y enviar la orden
   var checkoutTotal = order.reduce((s, i) => s + i.price * i.qty, 0);
   track('checkout_start', { order_total: checkoutTotal, item_count: order.length });
+
+  // Sprint-3 Etapa 3 Commit 1-B: validación universal del nombre.
+  // El campo #nameInput reemplazó a takeoutName/deliveryName (que estaban
+  // dentro de bloques condicionales por order_type). Ahora se pide en
+  // todos los flows — take_out, delivery, dine_in — y en todos los
+  // restaurantes. El backend lo persiste como orders.customer_name.
+  var customerNameEl = document.getElementById('nameInput');
+  var customerNameErr = document.getElementById('nameError');
+  var customerName = (customerNameEl && customerNameEl.value || '').trim();
+  if (customerNameEl) customerNameEl.classList.remove('invalid');
+  if (customerNameErr) customerNameErr.style.display = 'none';
+  if (!customerName || customerName.length < 2) {
+    if (customerNameEl) {
+      customerNameEl.classList.add('invalid');
+      customerNameEl.focus();
+    }
+    if (customerNameErr) customerNameErr.style.display = 'block';
+    return;
+  }
+  if (customerName.length > 60) {
+    if (customerNameEl) customerNameEl.classList.add('invalid');
+    if (customerNameErr) {
+      customerNameErr.textContent = 'Nombre demasiado largo (máx 60)';
+      customerNameErr.style.display = 'block';
+    }
+    return;
+  }
+
   customerPhone = (document.getElementById('phoneInput').value || '').trim();
   if (!customerPhone) {
     document.getElementById('phoneInput').classList.add('invalid');
@@ -4113,22 +4148,9 @@ async function placeOrder() {
     return;
   }
 
-  // Validate order type extra fields
-  if (selectedOrderType === 'take_out') {
-    var toName = (document.getElementById('takeoutName').value || '').trim();
-    if (!toName) {
-      document.getElementById('takeoutName').classList.add('invalid');
-      document.getElementById('takeoutName').focus();
-      return;
-    }
-  }
+  // Validate order type extra fields. Nombre ya no vive aquí — se valida
+  // arriba de forma universal.
   if (selectedOrderType === 'delivery') {
-    var dlName = (document.getElementById('deliveryName').value || '').trim();
-    if (!dlName) {
-      document.getElementById('deliveryName').classList.add('invalid');
-      document.getElementById('deliveryName').focus();
-      return;
-    }
     var dlAddr = (document.getElementById('deliveryAddress').value || '').trim();
     if (!dlAddr) {
       document.getElementById('deliveryAddress').classList.add('invalid');
@@ -4174,13 +4196,13 @@ async function placeOrder() {
       phone: customerPhone,
       restaurant_slug: SLUG,
       order_type: selectedOrderType,
-      session_id: chatSessionId
+      session_id: chatSessionId,
+      // Sprint-3 Etapa 3 Commit 1-B: customer_name universal. Ya fue
+      // validado arriba (min 2, max 60, required).
+      customer_name: customerName
     };
     if (nextNum) orderPayload.order_number = nextNum;
-    if (selectedOrderType === 'take_out') {
-      orderPayload.customer_name = (document.getElementById('takeoutName').value || '').trim();
-    } else if (selectedOrderType === 'delivery') {
-      orderPayload.customer_name = (document.getElementById('deliveryName').value || '').trim();
+    if (selectedOrderType === 'delivery') {
       orderPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
       orderPayload.delivery_fee = deliveryFeeCharged;
     }
@@ -4222,13 +4244,12 @@ async function placeOrder() {
           status: 'pending',
           phone: customerPhone,
           restaurant_slug: SLUG,
-          order_type: selectedOrderType
+          order_type: selectedOrderType,
+          // Sprint-3 Etapa 3 Commit 1-B: mismo universal customer_name.
+          customer_name: customerName
         };
         if (nextNum) retryPayload.order_number = nextNum;
-        if (selectedOrderType === 'take_out') {
-          retryPayload.customer_name = (document.getElementById('takeoutName').value || '').trim();
-        } else if (selectedOrderType === 'delivery') {
-          retryPayload.customer_name = (document.getElementById('deliveryName').value || '').trim();
+        if (selectedOrderType === 'delivery') {
           retryPayload.customer_address = customerAddress + (customerGpsLink ? ' | ' + customerGpsLink : '');
           retryPayload.delivery_fee = deliveryFeeCharged;
         }
@@ -4307,6 +4328,11 @@ function handleOrderSuccess(data) {
 
   dbg('🎉 Orden #' + orderNumber + ' (id=' + orderId + ') creada exitosamente');
 
+  // Sprint-3 Etapa 3 Commit 1-B: persistir nombre + teléfono en
+  // localStorage para autocomplete en próximas sesiones del mismo
+  // cliente en este restaurante (scoped por SLUG).
+  saveCustomerLocal(record.customer_name || '', customerPhone);
+
   // Loyalty increment — count this order + redeem reward if applicable
   triggerLoyaltyIncrement(orderId, SLUG);
 
@@ -4354,8 +4380,10 @@ function handleOrderSuccess(data) {
   selectedOrderType = enabledOrderTypes[0] || 'dine_in';
   customerAddress = '';
   customerGpsLink = '';
-  var _toName = document.getElementById('takeoutName'); if (_toName) _toName.value = '';
-  var _dlName = document.getElementById('deliveryName'); if (_dlName) _dlName.value = '';
+  // Sprint-3 Etapa 3 Commit 1-B: nameInput NO se resetea aquí — se queda
+  // con el valor actual para que el cliente vea su nombre si quiere
+  // volver a ordenar. Al recargar la página, loadCustomerLocal lo
+  // rehidrata desde localStorage.
   var _dlAddr = document.getElementById('deliveryAddress'); if (_dlAddr) _dlAddr.value = '';
   var _gpsStatus = document.getElementById('gpsStatus'); if (_gpsStatus) _gpsStatus.textContent = '';
   renderOrder();
@@ -4542,17 +4570,18 @@ function openCheckoutModal() {
   payBtn.textContent = 'Pagar RD$' + tChk.grand.toLocaleString();
   payBtn.disabled = false;
 
-  // Pre-fill phone from existing field
-  const existingPhone = (document.getElementById('phoneInput').value || '').trim();
+  // Pre-fill phone from existing field, fallback a localStorage.
+  var _savedCustCk = loadCustomerLocal();
+  var existingPhone = (document.getElementById('phoneInput').value || '').trim();
+  if (!existingPhone && _savedCustCk.phone) existingPhone = _savedCustCk.phone;
   document.getElementById('checkoutPhone').value = existingPhone;
 
-  // Pre-fill name from main flow (takeout or delivery)
-  var prefillName = '';
-  if (selectedOrderType === 'delivery') {
-    prefillName = (document.getElementById('deliveryName').value || '').trim();
-  } else {
-    prefillName = (document.getElementById('takeoutName').value || '').trim();
-  }
+  // Sprint-3 Etapa 3 Commit 1-B: pre-fill nombre desde #nameInput
+  // universal (antes venía de takeoutName/deliveryName según order_type).
+  // Fallback a localStorage si el inline todavía no se había llenado.
+  var prefillName = (document.getElementById('nameInput') || {}).value || '';
+  prefillName = prefillName.trim();
+  if (!prefillName && _savedCustCk.name) prefillName = _savedCustCk.name;
   document.getElementById('checkoutName').value = prefillName;
 
   // Sprint-2 B1: mostrar siempre el selector (display-only cuando hay 1
@@ -6610,6 +6639,48 @@ async function checkStoreOpen() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// CUSTOMER PERSISTENCE (Sprint-3 Etapa 3 Commit 1-B)
+// ══════════════════════════════════════════════════════════════
+//
+// Nombre + teléfono del cliente se persisten en localStorage scoped
+// por restaurant_slug. Autocompleta en futuras sesiones del mismo
+// device y mismo restaurante. Si el cliente cambia de restaurante,
+// no hay bleed (key incluye el slug).
+//
+// Key: pincer_customer_<SLUG>
+// Value: {name, phone, savedAt} JSON
+//
+// No guardamos nada sensible — nombre + teléfono el cliente los
+// proporciona cada vez y son los mismos que aparecen en el dashboard
+// del restaurante. localStorage está bien.
+
+var CUSTOMER_LOCAL_KEY = 'pincer_customer_' + SLUG;
+
+function loadCustomerLocal() {
+  try {
+    var raw = localStorage.getItem(CUSTOMER_LOCAL_KEY);
+    if (!raw) return {};
+    var data = JSON.parse(raw);
+    return {
+      name: (data && typeof data.name === 'string') ? data.name : '',
+      phone: (data && typeof data.phone === 'string') ? data.phone : '',
+    };
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveCustomerLocal(name, phone) {
+  try {
+    localStorage.setItem(CUSTOMER_LOCAL_KEY, JSON.stringify({
+      name: (name || '').trim(),
+      phone: (phone || '').trim(),
+      savedAt: Date.now(),
+    }));
+  } catch (e) { /* silent — localStorage puede estar lleno o deshabilitado */ }
+}
+
+// ══════════════════════════════════════════════════════════════
 // TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
 // ══════════════════════════════════════════════════════════════
 //
@@ -6826,6 +6897,20 @@ async function init() {
   // 5. Load session orders + receipt history icon
   loadSessionOrders();
   updateReceiptIcon();
+
+  // Sprint-3 Etapa 3 Commit 1-B: autocompletar nombre + teléfono desde
+  // localStorage si el cliente ya ordenó en este restaurante antes
+  // (key scoped por SLUG, no cross-tenant). El cliente puede editar
+  // ambos campos antes de enviar.
+  var _savedCust = loadCustomerLocal();
+  if (_savedCust.name) {
+    var _nameEl = document.getElementById('nameInput');
+    if (_nameEl) _nameEl.value = _savedCust.name;
+  }
+  if (_savedCust.phone) {
+    var _phoneEl = document.getElementById('phoneInput');
+    if (_phoneEl) _phoneEl.value = _savedCust.phone;
+  }
 
   // 6. Test connection
   const connected = await testConnection();
