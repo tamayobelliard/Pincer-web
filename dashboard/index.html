@@ -751,6 +751,139 @@
     }
     .toast-notification.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+    /* TABLES SECTION (Sprint-3 Etapa 2) — mesas físicas + QR por mesa */
+    .tables-toolbar {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .tables-toolbar button {
+      padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em;
+      cursor: pointer; font-family: var(--font); border: none; transition: all 0.2s;
+    }
+    .btn-add-table { background: var(--red); color: white; }
+    .btn-add-table:hover { background: var(--red-dark); }
+    .btn-print-tables { background: #1e293b; color: white; }
+    .btn-print-tables:hover { background: #0f172a; }
+    .btn-print-tables:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tables-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .table-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .table-card .table-num {
+      font-size: 2em; font-weight: 800; color: var(--text); line-height: 1;
+    }
+    .table-card .table-created {
+      font-size: 0.75em; color: var(--muted);
+    }
+    .table-card .table-actions {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+    }
+    .table-card .table-actions button {
+      flex: 1; padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 0.75em;
+      cursor: pointer; font-family: var(--font); border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text); transition: all 0.2s;
+    }
+    .table-card .table-actions button:hover { background: var(--bg); }
+    .table-card .btn-table-deactivate { color: #991B1B; border-color: #FECACA; }
+    .tables-empty {
+      padding: 24px; text-align: center; color: var(--muted); font-size: 0.9em;
+      background: var(--bg2); border: 1px dashed var(--border); border-radius: 12px;
+    }
+
+    /* TABLE QR MODAL + ADD TABLE MODAL — reusa la estética de change-pw-modal */
+    .table-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 9990;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .table-modal-overlay.show { opacity: 1; visibility: visible; }
+    .table-modal {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+      background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 420px;
+      z-index: 9991; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .table-modal.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+    .table-modal h2 { margin: 0 0 14px 0; font-size: 1.1em; color: var(--text); }
+    .table-modal .field { margin-bottom: 14px; }
+    .table-modal .field label {
+      display: block; font-size: 0.85em; font-weight: 600; color: var(--text); margin-bottom: 4px;
+    }
+    .table-modal .field input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.95em; font-family: var(--font); outline: none; transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .table-modal .field input:focus { border-color: var(--red); }
+    .table-modal .btns { display: flex; gap: 10px; margin-top: 18px; }
+    .table-modal .btns button {
+      flex: 1; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em;
+      cursor: pointer; font-family: var(--font); transition: all 0.2s;
+    }
+    .table-modal .btn-cancel {
+      background: var(--bg2); border: 1px solid var(--border); color: var(--muted);
+    }
+    .table-modal .btn-cancel:hover { background: var(--bg3); }
+    .table-modal .btn-primary {
+      background: var(--red); border: none; color: white;
+    }
+    .table-modal .btn-primary:hover { background: var(--red-dark); }
+    .table-modal .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .table-modal .qr-display {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 12px; background: white; border-radius: 8px;
+    }
+    .table-modal .qr-display .mesa-label {
+      font-size: 1.4em; font-weight: 800; color: #1e293b;
+    }
+    .table-modal .qr-display .qr-url-text {
+      font-size: 0.75em; color: var(--muted); word-break: break-all; text-align: center;
+      max-width: 100%;
+    }
+    .table-modal .form-error {
+      display: none; background: #FEF2F2; color: #991B1B; padding: 10px; border-radius: 8px;
+      margin-bottom: 12px; font-weight: 600; font-size: 0.85em; border: 1px solid #FECACA;
+    }
+    .table-modal .form-error.show { display: block; }
+
+    /* TABLES PRINT AREA — hidden in screen, visible in print */
+    #tablesPrintArea { display: none; }
+    @media print {
+      body > *:not(#tablesPrintArea) { display: none !important; }
+      #tablesPrintArea {
+        display: block !important; width: 100%; margin: 0; padding: 0;
+        background: white; color: black;
+      }
+      #tablesPrintArea .print-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+        page-break-inside: auto;
+      }
+      #tablesPrintArea .print-qr-card {
+        page-break-inside: avoid; break-inside: avoid;
+        border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        min-height: 340px;
+      }
+      #tablesPrintArea .print-qr-card .mesa-num {
+        font-size: 2.2em; font-weight: 800; color: #1a2332;
+      }
+      #tablesPrintArea .print-qr-card .qr-canvas-wrap canvas,
+      #tablesPrintArea .print-qr-card .qr-canvas-wrap img {
+        width: 220px !important; height: 220px !important;
+      }
+      #tablesPrintArea .print-qr-card .restaurant-name {
+        font-size: 0.9em; font-weight: 700; color: #475569;
+      }
+      #tablesPrintArea .print-qr-card .scan-hint {
+        font-size: 0.75em; color: #64748b; text-align: center;
+      }
+      /* 4 por página: grid 2x2 ocupa toda la hoja carta. */
+      @page { margin: 16mm; size: letter; }
+    }
+
     /* SETTINGS */
     .settings-section { padding: 0 0 40px; max-width: 600px; }
     .settings-section h3 { font-size: 1.1em; color: var(--text); margin-bottom: 20px; }
@@ -982,6 +1115,12 @@
   <a class="nav-item" id="navQR" href="#" onclick="window.open('/' + SLUG, '_blank'); return false;">
     <span class="icon">🔗</span> Ver QR
   </a>
+  <!-- Sprint-3 Etapa 2: sección Mesas solo visible cuando service_model=waiter_service.
+       Se revela vía JS desde loadServiceModelForSidebar() al init del dashboard, y
+       también al cambiar el modelo desde Settings (loadSettings lo re-chequea). -->
+  <button class="nav-item" id="navTables" style="display:none;" onclick="showTablesSection()">
+    <span class="icon">🍽️</span> Mesas
+  </button>
   <div class="nav-section" style="margin-top:24px;">Configuración</div>
   <button class="nav-item" id="navSettings" onclick="showSettings()">
     <span class="icon">⚙️</span> Ajustes
@@ -1254,6 +1393,21 @@
       </div>
     </div>
 
+    <!-- Sprint-3 Etapa 2: Tables Section (solo visible si service_model=waiter_service) -->
+    <div id="tablesSection" style="display:none;">
+      <div class="section-header">🍽️ Mesas y QR Codes
+        <button class="btn-historial-close" onclick="hideTablesSection()" style="float:right;">✕ Cerrar</button>
+      </div>
+      <div class="tables-toolbar">
+        <button class="btn-add-table" onclick="openAddTableModal()">+ Agregar Mesa</button>
+        <button class="btn-print-tables" id="btnPrintTables" onclick="printAllTableQRs()" disabled>Imprimir QRs</button>
+      </div>
+      <div id="tablesContent">
+        <div class="tables-empty" id="tablesEmpty">Cargando...</div>
+        <div class="tables-grid" id="tablesGrid" style="display:none;"></div>
+      </div>
+    </div>
+
     <!-- Recomendacion del Chef panel -->
     <div class="products-panel" id="promosPanel" style="display:none;">
       <div class="products-panel-header">
@@ -1490,6 +1644,41 @@
 <!-- Toast Notification -->
 <div class="toast-notification" id="toastNotification"></div>
 
+<!-- Sprint-3 Etapa 2: Add Table Modal -->
+<div class="table-modal-overlay" id="addTableOverlay" onclick="closeAddTableModal()"></div>
+<div class="table-modal" id="addTableModal">
+  <h2>Agregar Mesa</h2>
+  <div class="form-error" id="addTableError"></div>
+  <div class="field">
+    <label>Número de mesa</label>
+    <input type="number" id="addTableNumber" min="1" max="9999" step="1" placeholder="5" autocomplete="off">
+  </div>
+  <div class="btns">
+    <button class="btn-cancel" onclick="closeAddTableModal()">Cancelar</button>
+    <button class="btn-primary" id="addTableSubmitBtn" onclick="submitAddTable()">Crear mesa</button>
+  </div>
+</div>
+
+<!-- Sprint-3 Etapa 2: Table QR Modal -->
+<div class="table-modal-overlay" id="tableQrOverlay" onclick="closeTableQrModal()"></div>
+<div class="table-modal" id="tableQrModal">
+  <h2 id="tableQrModalTitle">Mesa</h2>
+  <div class="qr-display">
+    <div class="mesa-label" id="tableQrMesaLabel"></div>
+    <div id="tableQrCodeContainer"></div>
+    <div class="qr-url-text" id="tableQrUrlText"></div>
+  </div>
+  <div class="btns">
+    <button class="btn-cancel" onclick="closeTableQrModal()">Cerrar</button>
+    <button class="btn-primary" onclick="downloadTableQR()">Descargar PNG</button>
+  </div>
+</div>
+
+<!-- Sprint-3 Etapa 2: Print Area — renderizado dinámico, solo visible en @media print -->
+<div id="tablesPrintArea">
+  <div class="print-grid" id="tablesPrintGrid"></div>
+</div>
+
 <!-- AI Assistant Chatbot -->
 <div id="aiAssistantContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
   <button id="aiAssistantBtn" onclick="toggleAIChat()" aria-label="Asistente Pincer" style="
@@ -1545,6 +1734,9 @@
 <!-- Firebase SDKs (compat for non-module usage) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" integrity="sha384-sEVIly94UBRLKWdkYoPpSG7GD/e79YHMrxVyZaOk712Ga7+EAw6w1EFi+xBzBdd+" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js" integrity="sha384-XtSlZdmg0Ad5zf0AX4W9TGdm+dGjaNK4KG3lNFjfgbnxkCEuT9ugWXkLExgQTJ+6" crossorigin="anonymous"></script>
+
+<!-- QRCode.js — client-side QR generation. Misma CDN + SRI hash que admin/index.html. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -4523,11 +4715,12 @@ async function initializeDashboard() {
     dbg('❌ Test de conexión falló: ' + e.message);
   }
 
-  // Fetch restaurant plan and hours
+  // Fetch restaurant plan and hours + service_model (Sprint-3 Etapa 2 para
+  // revelar nav Mesas sin tener que cargar Settings completos primero).
   var restaurantPlan = 'free';
   try {
     var planRes = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan,hours&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=plan,hours,service_model&limit=1',
       { headers: sbGetHeaders() }, 10000
     );
     if (planRes.ok) {
@@ -4535,6 +4728,7 @@ async function initializeDashboard() {
       if (planRows.length > 0) {
         if (planRows[0].plan) restaurantPlan = planRows[0].plan;
         if (planRows[0].hours) restaurantHours = planRows[0].hours;
+        applyServiceModelToSidebar(planRows[0].service_model || 'self_service');
       }
     }
   } catch (e) { dbg('Plan fetch error: ' + e.message); }
@@ -4675,6 +4869,304 @@ function hideSettings() {
   document.getElementById('settingsSection').style.display = 'none';
 }
 
+// ══════════════════════════════════════════════════════════════
+// TABLES SECTION (Sprint-3 Etapa 2) — gestión de mesas físicas + QR
+// ══════════════════════════════════════════════════════════════
+//
+// La sección solo se revela cuando service_model=waiter_service. Dos hooks:
+//   1. initializeDashboard() → fetch inicial de restaurant_users trae
+//      service_model, ahí togglemos la visibilidad del #navTables.
+//   2. loadSettings() → al cargar settings también se re-chequea, por si
+//      el founder cambia el modelo desde Ajustes (aunque eso requiere
+//      reload para que cambie 100% del UI; mínimo así queda coherente).
+//
+// Endpoints: /api/tables/{create,list,regenerate-token,deactivate}.
+// Auth: session cookie del restaurante. Scoping server-side vía
+// session.restaurant_slug — el cliente solo manda table_number/table_id.
+
+var tablesState = { loaded: false, items: [] };
+var currentTableQR = null;  // referencia del row que se está viendo en el modal QR
+
+function applyServiceModelToSidebar(serviceModel) {
+  var nav = document.getElementById('navTables');
+  if (!nav) return;
+  nav.style.display = (serviceModel === 'waiter_service') ? '' : 'none';
+}
+
+function showTablesSection() {
+  document.getElementById('historialSection').style.display = 'none';
+  document.getElementById('settingsSection').style.display = 'none';
+  var section = document.getElementById('tablesSection');
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth' });
+  if (!tablesState.loaded) loadTables();
+  if (window.innerWidth <= 768) toggleMobileMenu();
+}
+
+function hideTablesSection() {
+  document.getElementById('tablesSection').style.display = 'none';
+}
+
+async function loadTables() {
+  var empty = document.getElementById('tablesEmpty');
+  var grid = document.getElementById('tablesGrid');
+  empty.textContent = 'Cargando...';
+  empty.style.display = 'block';
+  grid.style.display = 'none';
+  try {
+    var res = await fetch('/api/tables/list', {
+      method: 'GET',
+      headers: { 'x-restaurant-token': getSessionToken() || '' },
+    });
+    if (res.status === 403) { handleSessionExpired(); return; }
+    var data = await res.json();
+    if (!data.success) {
+      empty.textContent = data.error || 'Error al cargar mesas';
+      return;
+    }
+    tablesState.items = data.tables || [];
+    tablesState.loaded = true;
+    renderTables();
+  } catch (e) {
+    empty.textContent = 'Error de conexión';
+    console.error('[tables] loadTables error:', e);
+  }
+}
+
+function renderTables() {
+  var empty = document.getElementById('tablesEmpty');
+  var grid = document.getElementById('tablesGrid');
+  var printBtn = document.getElementById('btnPrintTables');
+  if (!tablesState.items.length) {
+    empty.textContent = 'Aún no hay mesas. Click en "+ Agregar Mesa" para crear la primera.';
+    empty.style.display = 'block';
+    grid.style.display = 'none';
+    printBtn.disabled = true;
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display = 'grid';
+  printBtn.disabled = false;
+  grid.innerHTML = tablesState.items.map(function(t) {
+    var created = t.created_at ? new Date(t.created_at).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' }) : '';
+    return '<div class="table-card">' +
+      '<div class="table-num">Mesa ' + t.table_number + '</div>' +
+      '<div class="table-created">Creada ' + created + '</div>' +
+      '<div class="table-actions">' +
+        '<button onclick="viewTableQR(' + t.id + ')">Ver QR</button>' +
+        '<button onclick="regenerateTableToken(' + t.id + ')">Regenerar</button>' +
+        '<button class="btn-table-deactivate" onclick="deactivateTable(' + t.id + ')">Desactivar</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Add Table modal ─────────────────────────────────────────────
+function openAddTableModal() {
+  document.getElementById('addTableNumber').value = '';
+  var err = document.getElementById('addTableError');
+  err.textContent = '';
+  err.classList.remove('show');
+  document.getElementById('addTableOverlay').classList.add('show');
+  document.getElementById('addTableModal').classList.add('show');
+  setTimeout(function() { document.getElementById('addTableNumber').focus(); }, 150);
+}
+
+function closeAddTableModal() {
+  document.getElementById('addTableOverlay').classList.remove('show');
+  document.getElementById('addTableModal').classList.remove('show');
+}
+
+async function submitAddTable() {
+  var input = document.getElementById('addTableNumber');
+  var err = document.getElementById('addTableError');
+  var btn = document.getElementById('addTableSubmitBtn');
+  var raw = input.value.trim();
+  var n = parseInt(raw, 10);
+  err.textContent = '';
+  err.classList.remove('show');
+  if (!raw || isNaN(n) || n <= 0) {
+    err.textContent = 'Ingresa un número de mesa válido (mayor que 0)';
+    err.classList.add('show');
+    return;
+  }
+  if (n > 9999) {
+    err.textContent = 'Número demasiado grande (max 9999)';
+    err.classList.add('show');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+  try {
+    var res = await fetch('/api/tables/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
+      body: JSON.stringify({ table_number: n }),
+    });
+    if (res.status === 403) { handleSessionExpired(); return; }
+    var data = await res.json();
+    if (!data.success) {
+      err.textContent = data.error || 'Error al crear mesa';
+      err.classList.add('show');
+      return;
+    }
+    // Insert localmente + re-renderizar. Alt: re-fetch list, más robusto,
+    // peor UX (extra latencia). Optamos por insert optimista.
+    tablesState.items.push({
+      id: data.id,
+      table_number: data.table_number,
+      qr_token: data.qr_token,
+      qr_url: data.qr_url,
+      created_at: new Date().toISOString(),
+    });
+    tablesState.items.sort(function(a, b) { return a.table_number - b.table_number; });
+    renderTables();
+    closeAddTableModal();
+    showToast('Mesa ' + data.table_number + ' creada \u2713');
+  } catch (e) {
+    console.error('[tables] submitAddTable error:', e);
+    err.textContent = 'Error de conexión';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crear mesa';
+  }
+}
+
+// ── QR Modal ──────────────────────────────────────────────────
+function viewTableQR(tableId) {
+  var t = tablesState.items.find(function(x) { return x.id === tableId; });
+  if (!t) return;
+  currentTableQR = t;
+  document.getElementById('tableQrModalTitle').textContent = 'QR Mesa ' + t.table_number;
+  document.getElementById('tableQrMesaLabel').textContent = 'Mesa ' + t.table_number;
+  document.getElementById('tableQrUrlText').textContent = t.qr_url;
+  var container = document.getElementById('tableQrCodeContainer');
+  container.innerHTML = '';
+  new QRCode(container, {
+    text: t.qr_url,
+    width: 256,
+    height: 256,
+    colorDark: '#1e293b',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+  document.getElementById('tableQrOverlay').classList.add('show');
+  document.getElementById('tableQrModal').classList.add('show');
+}
+
+function closeTableQrModal() {
+  document.getElementById('tableQrOverlay').classList.remove('show');
+  document.getElementById('tableQrModal').classList.remove('show');
+  currentTableQR = null;
+}
+
+function downloadTableQR() {
+  if (!currentTableQR) return;
+  setTimeout(function() {
+    var canvas = document.querySelector('#tableQrCodeContainer canvas');
+    if (!canvas) { showToast('Error generando QR'); return; }
+    var link = document.createElement('a');
+    link.download = 'mesa-' + currentTableQR.table_number + '-QR.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, 100);
+}
+
+// ── Regenerate token ──────────────────────────────────────────
+async function regenerateTableToken(tableId) {
+  var t = tablesState.items.find(function(x) { return x.id === tableId; });
+  if (!t) return;
+  if (!confirm('¿Regenerar QR de la Mesa ' + t.table_number + '? El QR impreso que se haya distribuido antes dejará de funcionar al instante.')) return;
+  try {
+    var res = await fetch('/api/tables/regenerate-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
+      body: JSON.stringify({ table_id: tableId }),
+    });
+    if (res.status === 403) { handleSessionExpired(); return; }
+    var data = await res.json();
+    if (!data.success) {
+      showToast(data.error || 'Error regenerando QR');
+      return;
+    }
+    t.qr_token = data.new_qr_token;
+    t.qr_url = data.new_qr_url;
+    showToast('QR Mesa ' + t.table_number + ' regenerado \u2713');
+  } catch (e) {
+    console.error('[tables] regenerate error:', e);
+    showToast('Error de conexión');
+  }
+}
+
+// ── Deactivate (soft delete) ──────────────────────────────────
+async function deactivateTable(tableId) {
+  var t = tablesState.items.find(function(x) { return x.id === tableId; });
+  if (!t) return;
+  if (!confirm('¿Desactivar la Mesa ' + t.table_number + '? Su QR dejará de funcionar. Podrás crear una nueva mesa con el mismo número después.')) return;
+  try {
+    var res = await fetch('/api/tables/deactivate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
+      body: JSON.stringify({ table_id: tableId }),
+    });
+    if (res.status === 403) { handleSessionExpired(); return; }
+    var data = await res.json();
+    if (!data.success) {
+      showToast(data.error || 'Error desactivando mesa');
+      return;
+    }
+    tablesState.items = tablesState.items.filter(function(x) { return x.id !== tableId; });
+    renderTables();
+    showToast('Mesa ' + t.table_number + ' desactivada');
+  } catch (e) {
+    console.error('[tables] deactivate error:', e);
+    showToast('Error de conexión');
+  }
+}
+
+// ── Print all QRs ─────────────────────────────────────────────
+//
+// Estrategia: renderizamos todos los QR en #tablesPrintArea (display:none
+// por default). CSS @media print oculta el resto del dashboard y muestra
+// solo el print area en grid 2x2 por página. window.print() abre el
+// diálogo del navegador; el user elige "Guardar como PDF" si quiere
+// archivo, o imprime directo.
+function printAllTableQRs() {
+  if (!tablesState.items.length) return;
+  var printArea = document.getElementById('tablesPrintGrid');
+  printArea.innerHTML = '';
+  // Nombre del restaurante — leído del setting cargado o SLUG como fallback.
+  var restaurantName = (document.getElementById('sName') && document.getElementById('sName').value) || SLUG;
+  tablesState.items.forEach(function(t) {
+    var card = document.createElement('div');
+    card.className = 'print-qr-card';
+    card.innerHTML =
+      '<div class="mesa-num">Mesa ' + t.table_number + '</div>' +
+      '<div class="restaurant-name">' + escapeTextBasic(restaurantName) + '</div>' +
+      '<div class="qr-canvas-wrap" id="printQR_' + t.id + '"></div>' +
+      '<div class="scan-hint">Escanea para ordenar</div>';
+    printArea.appendChild(card);
+    new QRCode(card.querySelector('#printQR_' + t.id), {
+      text: t.qr_url,
+      width: 220,
+      height: 220,
+      colorDark: '#1e293b',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+  });
+  // Pequeño delay para que QRCode.js termine de dibujar antes del print dialog.
+  setTimeout(function() { window.print(); }, 400);
+}
+
+function escapeTextBasic(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 // Sprint-3 Etapa 1: dinámica del service model — show/hide de charge
 // y allow_split_checks según el radio seleccionado.
 // - self_service: charge forzado a 0 y oculto, split_checks oculto.
@@ -4744,6 +5236,9 @@ async function loadSettings() {
     document.getElementById('sServiceCharge').value = Number.isInteger(r.service_charge_percent) ? r.service_charge_percent : 0;
     document.getElementById('sAllowSplitChecks').checked = r.allow_split_checks !== false;
     onServiceModelChange();  // aplica visibility según sm cargado
+    // Sprint-3 Etapa 2: re-evaluar nav Mesas post-save — si el founder
+    // cambió a waiter_service desde Settings, revelar la sección al instante.
+    applyServiceModelToSidebar(sm);
 
     if (r.logo_url) {
       document.getElementById('sLogoPreview').src = r.logo_url;
