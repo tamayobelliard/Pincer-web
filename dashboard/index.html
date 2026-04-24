@@ -4919,6 +4919,15 @@ async function saveSettings() {
       // de loadSettings, así charge/split aparecen/ocultan solos).
       settingsLoaded = false;
       loadSettings();
+      // Hotfix UX 2026-04-24: tras el toast, cerrar Settings y
+      // scroll a Órdenes en Vivo (vista principal por default).
+      // Delay = duración del toast (1500ms) para que el feedback
+      // se alcance a leer antes del cierre.
+      setTimeout(function() {
+        hideSettings();
+        var header = document.getElementById('liveOrdersHeader');
+        if (header) header.scrollIntoView({ behavior: 'smooth' });
+      }, 1500);
     } else {
       errorEl.textContent = data.error || 'Error al guardar';
       errorEl.style.display = 'block';
