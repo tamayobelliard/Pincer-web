@@ -2387,6 +2387,44 @@
       font-family: inherit;
     }
     .table-invalid-page .tp-retry:hover { opacity: 0.9; }
+
+    /* Sprint-3 Etapa 3 Commit 2: Mi cuenta — estilos genérico.
+       Usa var(--primary) del tema y estructura consistente con el
+       resto del menú. */
+    .my-account-section .account-order-group {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .my-account-section .account-order-group:last-child {
+      border-bottom: none;
+    }
+    .my-account-section .account-order-header {
+      font-size: 0.85em; color: #64748b; margin-bottom: 6px; font-weight: 600;
+    }
+    .my-account-section .account-item-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 3px 0; font-size: 0.95em;
+    }
+    .my-account-section .account-item-name { color: #1e293b; flex: 1; }
+    .my-account-section .account-item-qty { color: #64748b; margin: 0 8px; font-size: 0.85em; }
+    .my-account-section .account-item-price { color: #475569; font-weight: 600; }
+    .my-account-section .account-totals-row {
+      display: flex; justify-content: space-between;
+      padding: 4px 0; font-size: 0.9em; color: #475569;
+    }
+    .my-account-section .account-total-grand {
+      display: flex; justify-content: space-between;
+      padding: 10px 0 4px; margin-top: 6px;
+      border-top: 2px solid var(--primary);
+      font-size: 1.1em; font-weight: 800; color: var(--primary);
+    }
+    .my-account-section .my-account-btn {
+      margin-top: 14px;
+    }
+    .my-account-section .my-account-btn:disabled {
+      opacity: 0.55; cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -2501,6 +2539,20 @@
   <div class="order-summary" id="misOrdenesSection" style="display: none;">
     <h2 class="section-title">Mis Órdenes</h2>
     <div id="misOrdenesList"></div>
+  </div>
+
+  <!-- Sprint-3 Etapa 3 Commit 2: sección "Mi cuenta" — agregación
+       de órdenes abiertas del cliente en la mesa actual. Visible solo
+       cuando hay tableContext + phone guardado + al menos 1 orden
+       abierta. Populada por renderMyAccount(). -->
+  <div class="order-summary my-account-section" id="myAccountSection" style="display: none;">
+    <h2 class="section-title">🧾 Mi cuenta</h2>
+    <div id="myAccountList"></div>
+    <div id="myAccountTotals" style="margin-top: 10px;"></div>
+    <button class="place-order-btn my-account-btn" id="myAccountRequestBtn" disabled
+            title="Próximamente (Commit 3)">
+      Solicitar cuenta
+    </button>
   </div>
 </div>
 
@@ -3142,7 +3194,7 @@ async function loadRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     var res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model,service_charge_percent&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
@@ -4332,6 +4384,14 @@ function handleOrderSuccess(data) {
   // localStorage para autocomplete en próximas sesiones del mismo
   // cliente en este restaurante (scoped por SLUG).
   saveCustomerLocal(record.customer_name || '', customerPhone);
+
+  // Sprint-3 Etapa 3 Commit 2: si hay tableContext, arrancar/refrescar
+  // Mi cuenta. Post-INSERT Supabase todavía puede tardar ~500ms en
+  // reflejar el nuevo row; fetch inmediato + poll de 15s lo toma.
+  if (tableContext) {
+    startMyAccountPoller();
+    setTimeout(fetchMyAccount, 800);
+  }
 
   // Loyalty increment — count this order + redeem reward if applicable
   triggerLoyaltyIncrement(orderId, SLUG);
@@ -6681,6 +6741,180 @@ function saveCustomerLocal(name, phone) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// MY ACCOUNT (Sprint-3 Etapa 3 Commit 2)
+// ══════════════════════════════════════════════════════════════
+//
+// Cuenta abierta = agregación lógica de orders con mismo (slug, table_id,
+// phone) cuyo status NOT IN ('paid','cancelled'). Sin tabla nueva.
+// Fetch cada 15s cuando hay tableContext activo y phone guardado.
+// Si alguna de las dos condiciones falla, sección oculta.
+//
+// Render: orders agrupadas por order_number, items dentro de cada orden,
+// totales aggregados al fondo, botón "Solicitar cuenta" (disabled por
+// ahora — Commit 3 lo conecta al backend).
+
+var MY_ACCOUNT_POLL_MS = 15000;
+var myAccountOrders = [];
+var myAccountPoller = null;
+
+// Agrega items + calcula totales de varias órdenes. Reusa las mismas
+// fórmulas de computeTotals para consistencia con el receipt del
+// cliente y con los reportes del dashboard.
+//
+// Service charge (waiter_service + service_charge_percent > 0):
+// se calcula sobre la base imponible (subtotal SIN ITBIS). Regla
+// confirmada por founder Sprint-3.
+function computeAccountTotals(orders) {
+  var itemsSumAll = 0;
+  (orders || []).forEach(function(o) {
+    var totalAccum = Number(o.total) || 0;
+    var deliveryFee = Number(o.delivery_fee) || 0;
+    // Cada orden ya trae total final cobrable. Si fue take-out con
+    // delivery_fee, lo descontamos al sumar para que el subtotal de
+    // la cuenta no lo duplique. En dine-in delivery_fee = 0.
+    itemsSumAll += (totalAccum - deliveryFee);
+  });
+  var subtotal, tax;
+  if (PRICES_INCLUDE_TAX) {
+    // Fórmula simétrica reverse math — itemsSumAll ya contiene ITBIS.
+    subtotal = Math.round(itemsSumAll / (1 + TAX_RATE));
+    tax = itemsSumAll - subtotal;
+  } else {
+    // Cada total individual ya incluye ITBIS sumado — aplicamos la
+    // misma reverse math para extraer el ITBIS agregado.
+    subtotal = Math.round(itemsSumAll / (1 + TAX_RATE));
+    tax = itemsSumAll - subtotal;
+  }
+  // Service charge: sobre subtotal (base imponible sin ITBIS).
+  var svcPct = 0;
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (svcModel === 'waiter_service') {
+    var raw = restaurantData && restaurantData.service_charge_percent;
+    if (Number.isInteger(raw) && raw > 0) svcPct = raw;
+  }
+  var serviceCharge = svcPct > 0 ? Math.round(subtotal * svcPct / 100) : 0;
+  var grand = itemsSumAll + serviceCharge;
+
+  return {
+    itemsSumAll: itemsSumAll,
+    subtotal: subtotal,
+    tax: tax,
+    servicePct: svcPct,
+    serviceCharge: serviceCharge,
+    grand: grand,
+  };
+}
+
+async function fetchMyAccount() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return; // Sin phone guardado, no hay cuenta que consultar
+
+  try {
+    var url = SUPABASE_URL
+      + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=not.in.(paid,cancelled)'
+      + '&select=id,order_number,items,total,delivery_fee,status,created_at,bill_requested_at'
+      + '&order=created_at.asc';
+    var res = await fetchWithTimeout(url, { headers: sbHeaders(), cache: 'no-store' }, 10000);
+    if (!res.ok) {
+      dbg('[myAccount] fetch failed: ' + res.status);
+      return;
+    }
+    var rows = await res.json();
+    myAccountOrders = Array.isArray(rows) ? rows : [];
+    renderMyAccount();
+  } catch (e) {
+    dbg('[myAccount] fetch error: ' + e.message);
+  }
+}
+
+function renderMyAccount() {
+  var section = document.getElementById('myAccountSection');
+  if (!section) return;
+  // Ocultar si:
+  //  - no hay tableContext (cliente no escaneó QR), o
+  //  - no hay items (cliente escaneó pero aún no ordenó o pagó todo), o
+  //  - service_model != 'waiter_service' (self-service con QR es food-
+  //    court style, no aplica concepto de cuenta abierta — founder rule
+  //    Commit 2 Etapa 3).
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
+    section.style.display = 'none';
+    return;
+  }
+
+  var listEl = document.getElementById('myAccountList');
+  var totalsEl = document.getElementById('myAccountTotals');
+  if (!listEl || !totalsEl) return;
+
+  var html = '';
+  myAccountOrders.forEach(function(o) {
+    var time = '';
+    try {
+      var d = new Date(o.created_at);
+      time = d.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch (e) {}
+    var orderLabel = '#' + (o.order_number || o.id);
+    html += '<div class="account-order-group">';
+    html += '<div class="account-order-header">Orden ' + orderLabel
+          + (time ? ' · ' + time : '') + '</div>';
+    var items;
+    try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { items = []; }
+    if (!Array.isArray(items)) items = [];
+    items.forEach(function(it) {
+      var qty = it.qty > 1 ? '<span class="account-item-qty">x' + it.qty + '</span>' : '';
+      var lineSubtotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      html += '<div class="account-item-row">'
+            + '<span class="account-item-name">' + escHtml(it.name || 'Item') + '</span>'
+            + qty
+            + '<span class="account-item-price">RD$' + lineSubtotal.toLocaleString() + '</span>'
+            + '</div>';
+    });
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+
+  var t = computeAccountTotals(myAccountOrders);
+  var totalsHtml = '';
+  if (!PRICES_INCLUDE_TAX) {
+    totalsHtml += '<div class="account-totals-row"><span>Subtotal</span><span>RD$' + t.subtotal.toLocaleString() + '</span></div>';
+    totalsHtml += '<div class="account-totals-row"><span>ITBIS (18%)</span><span>RD$' + t.tax.toLocaleString() + '</span></div>';
+  } else {
+    // En restaurantes con precios-incluyen-ITBIS, el cliente ve el subtotal
+    // ya con todo. Desglose sutil para transparencia.
+    totalsHtml += '<div class="account-totals-row"><span>Subtotal (con ITBIS)</span><span>RD$' + t.itemsSumAll.toLocaleString() + '</span></div>';
+  }
+  if (t.servicePct > 0) {
+    totalsHtml += '<div class="account-totals-row"><span>Servicio (' + t.servicePct + '%)</span><span>RD$' + t.serviceCharge.toLocaleString() + '</span></div>';
+  }
+  totalsHtml += '<div class="account-total-grand"><span>Total</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
+  totalsEl.innerHTML = totalsHtml;
+
+  section.style.display = 'block';
+}
+
+function startMyAccountPoller() {
+  if (myAccountPoller) return;
+  // Gate waiter_service — si el restaurante es self_service no arrancamos
+  // el poll (evita tráfico innecesario). El render tiene el mismo guard
+  // para cubrir race conditions al inicio.
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (svcModel !== 'waiter_service') return;
+  fetchMyAccount(); // primer fetch inmediato
+  myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+function stopMyAccountPoller() {
+  if (myAccountPoller) {
+    clearInterval(myAccountPoller);
+    myAccountPoller = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
 // ══════════════════════════════════════════════════════════════
 //
@@ -6936,6 +7170,12 @@ async function init() {
 
   // 7. Start sold-out poller
   startSoldOutPoller();
+
+  // Sprint-3 Etapa 3 Commit 2: Mi cuenta. Arranca el poll si el
+  // cliente escaneó QR (tableContext) Y el restaurante es waiter_service.
+  // El poller se autoregula — si no hay phone en localStorage aún,
+  // cada fetch bails out sin tocar DB.
+  if (tableContext) startMyAccountPoller();
 
   // 7.5 Check for active promo popup
   checkAndShowPromo();

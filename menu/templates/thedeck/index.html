@@ -885,6 +885,89 @@
   }
   .deck-table-invalid-retry:hover { background: var(--color-primary-2); }
 
+  /* ═══════════ Mi cuenta (Sprint-3 Etapa 3 Commit 2) ═══════════
+     Sección de cuenta abierta. Palette navy/cream/gold + Playfair
+     para el título. Parity lógica con menu/index.html. */
+  .deck-account {
+    margin: var(--sp-lg) auto;
+    max-width: 560px;
+    padding: 0 var(--sp-md);
+  }
+  .deck-account-inner {
+    background: var(--color-surface);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    padding: var(--sp-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .deck-account-title {
+    font-family: var(--font-heading);
+    font-size: 26px;
+    color: var(--color-primary);
+    text-align: center;
+    margin-bottom: var(--sp-md);
+    letter-spacing: 0.3px;
+  }
+  .deck-account-title em {
+    font-style: italic;
+    color: var(--color-accent-3);
+  }
+  .deck-account-order-group {
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--color-border);
+  }
+  .deck-account-order-group:last-child {
+    border-bottom: none;
+  }
+  .deck-account-order-header {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    color: var(--color-accent-3);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .deck-account-item-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 4px 0;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--color-text);
+  }
+  .deck-account-item-name { flex: 1; }
+  .deck-account-item-qty {
+    color: var(--color-text-soft); margin: 0 8px; font-size: 12px;
+  }
+  .deck-account-item-price {
+    color: var(--color-primary); font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .deck-account-totals {
+    margin-top: var(--sp-md);
+    padding-top: var(--sp-sm);
+    border-top: 1px solid var(--color-border);
+  }
+  .deck-account-totals-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0; font-size: 13px; color: var(--color-text-soft);
+    font-family: var(--font-body);
+  }
+  .deck-account-total-grand {
+    display: flex; justify-content: space-between;
+    padding: 10px 0 6px; margin-top: 6px;
+    border-top: 2px solid var(--color-accent);
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-accent-3);
+  }
+  .deck-account-btn {
+    margin-top: var(--sp-md);
+    width: 100%;
+  }
+  .deck-account-btn:disabled {
+    opacity: 0.55; cursor: not-allowed;
+  }
+
   /* ═══════════ Store closed overlay ═══════════
      Sprint-2 post-validation 2026-04-23: estructura parity con
      menu/index.html:2337-2346 (logo → name → status → next → schedule
@@ -1080,6 +1163,23 @@
 <main id="menuSections">
   <div class="loading" id="menuLoading">Cargando carta…</div>
 </main>
+
+<!-- ═════════════ MI CUENTA (Sprint-3 Etapa 3 Commit 2) ═════════════
+     Agregación de órdenes abiertas del cliente en la mesa. Visible
+     SOLO con tableContext + phone guardado + service_model=waiter_service
+     + al menos 1 orden con status NOT IN ('paid','cancelled'). Parity
+     lógica con menu/index.html; visual custom (navy/cream/gold). -->
+<section class="deck-account" id="myAccountSection" style="display:none;">
+  <div class="deck-account-inner">
+    <div class="deck-account-title">Mi <em>cuenta</em></div>
+    <div class="deck-account-list" id="myAccountList"></div>
+    <div class="deck-account-totals" id="myAccountTotals"></div>
+    <button class="btn btn-primary deck-account-btn" id="myAccountRequestBtn" disabled
+            title="Próximamente (Commit 3)">
+      <span>Solicitar cuenta</span>
+    </button>
+  </div>
+</section>
 
 <!-- ═════════════ FOOTER ═════════════ -->
 <div class="footer">
@@ -2187,7 +2287,7 @@ async function fetchRestaurantData() {
   try {
     // Try public view first (has payment_enabled boolean, no sensitive fields)
     let res = await fetchWithTimeout(
-      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model&limit=1',
+      SUPABASE_URL + '/rest/v1/restaurant_users_public?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&select=display_name,menu_style,hours,phone,address,status,logo_url,menu_groups,plan,order_types,delivery_fee,payment_enabled,business_type,service_model,service_charge_percent&limit=1',
       { headers: sbHeaders() }, 10000
     );
     // Fallback to original table if view doesn't exist yet
@@ -2395,6 +2495,146 @@ function saveCustomerLocal(name, phone) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// MY ACCOUNT (Sprint-3 Etapa 3 Commit 2)
+// Parity byte-idéntico con menu/index.html. Solo difieren las clases
+// CSS del render (deck-account-* vs account-* del genérico).
+// ══════════════════════════════════════════════════════════════
+
+var MY_ACCOUNT_POLL_MS = 15000;
+var myAccountOrders = [];
+var myAccountPoller = null;
+
+function computeAccountTotals(orders) {
+  var itemsSumAll = 0;
+  (orders || []).forEach(function(o) {
+    var totalAccum = Number(o.total) || 0;
+    var deliveryFee = Number(o.delivery_fee) || 0;
+    itemsSumAll += (totalAccum - deliveryFee);
+  });
+  var subtotal = Math.round(itemsSumAll / (1 + TAX_RATE));
+  var tax = itemsSumAll - subtotal;
+  var svcPct = 0;
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (svcModel === 'waiter_service') {
+    var raw = restaurantData && restaurantData.service_charge_percent;
+    if (Number.isInteger(raw) && raw > 0) svcPct = raw;
+  }
+  var serviceCharge = svcPct > 0 ? Math.round(subtotal * svcPct / 100) : 0;
+  var grand = itemsSumAll + serviceCharge;
+  return {
+    itemsSumAll: itemsSumAll,
+    subtotal: subtotal,
+    tax: tax,
+    servicePct: svcPct,
+    serviceCharge: serviceCharge,
+    grand: grand,
+  };
+}
+
+async function fetchMyAccount() {
+  if (!tableContext || !tableContext.table_id) return;
+  var saved = loadCustomerLocal();
+  if (!saved.phone) return;
+
+  try {
+    var url = SUPABASE_URL
+      + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
+      + '&phone=eq.' + encodeURIComponent(saved.phone)
+      + '&status=not.in.(paid,cancelled)'
+      + '&select=id,order_number,items,total,delivery_fee,status,created_at,bill_requested_at'
+      + '&order=created_at.asc';
+    var res = await fetchWithTimeout(url, { headers: sbHeaders(), cache: 'no-store' }, 10000);
+    if (!res.ok) { dbg('[thedeck myAccount] fetch failed: ' + res.status); return; }
+    var rows = await res.json();
+    myAccountOrders = Array.isArray(rows) ? rows : [];
+    renderMyAccount();
+  } catch (e) {
+    dbg('[thedeck myAccount] fetch error: ' + e.message);
+  }
+}
+
+function renderMyAccount() {
+  var section = document.getElementById('myAccountSection');
+  if (!section) return;
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
+    section.style.display = 'none';
+    return;
+  }
+
+  var listEl = document.getElementById('myAccountList');
+  var totalsEl = document.getElementById('myAccountTotals');
+  if (!listEl || !totalsEl) return;
+
+  var safeName = function(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+
+  var html = '';
+  myAccountOrders.forEach(function(o) {
+    var time = '';
+    try {
+      var d = new Date(o.created_at);
+      time = d.toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch (e) {}
+    var orderLabel = '#' + (o.order_number || o.id);
+    html += '<div class="deck-account-order-group">';
+    html += '<div class="deck-account-order-header">Orden ' + orderLabel
+          + (time ? ' · ' + time : '') + '</div>';
+    var items;
+    try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { items = []; }
+    if (!Array.isArray(items)) items = [];
+    items.forEach(function(it) {
+      var qty = it.qty > 1 ? '<span class="deck-account-item-qty">x' + it.qty + '</span>' : '';
+      var lineSubtotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      html += '<div class="deck-account-item-row">'
+            + '<span class="deck-account-item-name">' + safeName(it.name || 'Item') + '</span>'
+            + qty
+            + '<span class="deck-account-item-price">RD$' + lineSubtotal.toLocaleString() + '</span>'
+            + '</div>';
+    });
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+
+  var t = computeAccountTotals(myAccountOrders);
+  var totalsHtml = '';
+  // thedeck es prices_include_tax=false → desglose explícito.
+  if (!PRICES_INCLUDE_TAX) {
+    totalsHtml += '<div class="deck-account-totals-row"><span>Subtotal</span><span>RD$' + t.subtotal.toLocaleString() + '</span></div>';
+    totalsHtml += '<div class="deck-account-totals-row"><span>ITBIS (18%)</span><span>RD$' + t.tax.toLocaleString() + '</span></div>';
+  } else {
+    totalsHtml += '<div class="deck-account-totals-row"><span>Subtotal (con ITBIS)</span><span>RD$' + t.itemsSumAll.toLocaleString() + '</span></div>';
+  }
+  if (t.servicePct > 0) {
+    totalsHtml += '<div class="deck-account-totals-row"><span>Servicio (' + t.servicePct + '%)</span><span>RD$' + t.serviceCharge.toLocaleString() + '</span></div>';
+  }
+  totalsHtml += '<div class="deck-account-total-grand"><span>Total</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
+  totalsEl.innerHTML = totalsHtml;
+
+  section.style.display = 'block';
+}
+
+function startMyAccountPoller() {
+  if (myAccountPoller) return;
+  var svcModel = restaurantData && restaurantData.service_model;
+  if (svcModel !== 'waiter_service') return;
+  fetchMyAccount();
+  myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+function stopMyAccountPoller() {
+  if (myAccountPoller) {
+    clearInterval(myAccountPoller);
+    myAccountPoller = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 // TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
 // Parity byte-idéntico con menu/index.html — solo difieren los IDs
 // de los elementos DOM y la clase CSS del banner (deck-table-banner
@@ -2578,6 +2818,11 @@ async function _initImpl() {
   await checkStoreOpen();
   if (!storeClosed) startSoldOutPoller();
   setInterval(checkStoreOpen, 5 * 60 * 1000);
+
+  // Sprint-3 Etapa 3 Commit 2: Mi cuenta poller. Solo arranca si hay
+  // tableContext (cliente escaneó QR) y el restaurante es waiter_service
+  // (guard interno de startMyAccountPoller). Parity con menu/index.html.
+  if (tableContext) startMyAccountPoller();
 
   // AI insights para el chatbot (contexto mejorado en recomendaciones)
   loadRestaurantInsights();
@@ -3711,6 +3956,14 @@ async function submitCheckout() {
     // localStorage para autocompletar futuras órdenes del cliente
     // en este restaurante.
     saveCustomerLocal(name, customerPhone);
+
+    // Sprint-3 Etapa 3 Commit 2: refresh inmediato de Mi cuenta si
+    // hay tableContext. setTimeout 800ms cubre el replication lag
+    // de Supabase post-INSERT.
+    if (tableContext) {
+      startMyAccountPoller();
+      setTimeout(fetchMyAccount, 800);
+    }
 
     // Loyalty increment fire-and-forget (parity :4197).
     if (record && record.id) triggerLoyaltyIncrement(record.id, SLUG);
