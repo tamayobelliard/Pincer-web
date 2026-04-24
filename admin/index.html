@@ -325,6 +325,18 @@
       #qrPrintArea .print-footer-badges img { height: 32px; object-fit: contain; }
       #qrPrintArea .print-footer-copyright { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; }
     }
+
+    /* Hotfix UX 2026-04-24: toast para feedback de guardado. Mismo estilo
+       visual que dashboard/index.html — color verde bosque, posición fixed
+       bottom-center, fade in/out. */
+    .toast-notification {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: #166534; color: white; padding: 14px 28px; border-radius: 10px;
+      font-weight: 600; font-size: 0.9em;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 10000;
+      opacity: 0; transition: all 0.3s ease;
+    }
+    .toast-notification.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -638,6 +650,10 @@
   </div>
 </div>
 
+<!-- Hotfix UX 2026-04-24: toast container global (un solo elemento
+     reutilizable, posición fixed, showToast() lo rellena on-demand). -->
+<div class="toast-notification" id="adminToast"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -870,6 +886,18 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
   return div.innerHTML;
+}
+
+// Hotfix UX 2026-04-24: toast helper mirror del dashboard. Duración
+// default 1500ms (spec); caller puede sobrescribir. El elemento
+// #adminToast está definido al final del body.
+function showToast(msg, duration) {
+  var t = document.getElementById('adminToast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  var ms = (typeof duration === 'number' && duration > 0) ? duration : 1500;
+  setTimeout(function() { t.classList.remove('show'); }, ms);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1531,8 +1559,12 @@ async function updateRestaurant() {
     const data = await res.json();
 
     if (data.success) {
-      closeModal();
+      // Hotfix UX 2026-04-24: toast antes del cierre, delay 1.5s para que
+      // el founder vea la confirmación. loadRestaurants sucede en paralelo
+      // (no esperamos su return para el cierre visual).
+      showToast('Cambios guardados \u2713');
       loadRestaurants();
+      setTimeout(closeModal, 1500);
     } else {
       alert(data.error || 'Error al actualizar cliente');
     }

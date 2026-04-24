@@ -4913,8 +4913,10 @@ async function saveSettings() {
     console.log('[saveSettings] response body:', JSON.stringify(data));
 
     if (data.success) {
-      showToast('Cambios guardados');
-      // Reload settings from DB to verify persistence
+      showToast('Cambios guardados \u2713');
+      // Reload settings from DB to verify persistence + aplicar
+      // visibility reactiva (onServiceModelChange se llama dentro
+      // de loadSettings, así charge/split aparecen/ocultan solos).
       settingsLoaded = false;
       loadSettings();
     } else {
@@ -5154,11 +5156,14 @@ async function submitPasswordChange() {
   }
 }
 
-function showToast(msg) {
+// Hotfix UX 2026-04-24: default 1500ms (spec). Callers pueden pedir
+// duración distinta para contextos largos (ej menu processing ~5s).
+function showToast(msg, duration) {
   var t = document.getElementById('toastNotification');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 3000);
+  var ms = (typeof duration === 'number' && duration > 0) ? duration : 1500;
+  setTimeout(function() { t.classList.remove('show'); }, ms);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
