@@ -968,6 +968,41 @@
     opacity: 0.55; cursor: not-allowed;
   }
 
+  /* ═══════════ Checkout lockdown (Sprint-3 Etapa 3 Commit 4 hotfix) ═══════════
+     Info card + inputs disabled cuando el cliente tiene cuenta abierta.
+     Paleta navy/cream/gold consistente con el template. */
+  .deck-lockdown-info {
+    display: none;
+    background: #FEF3C7;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: var(--sp-md);
+    color: var(--color-primary);
+  }
+  .deck-lockdown-info.show { display: block; }
+  .deck-lockdown-info .cli-title {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--color-primary);
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .deck-lockdown-info .cli-text {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--color-accent-3);
+    line-height: 1.45;
+  }
+  input.input.checkout-locked,
+  input.input[disabled].checkout-locked {
+    background: rgba(11,30,58,0.04) !important;
+    color: var(--color-text-soft) !important;
+    cursor: not-allowed !important;
+    border-color: var(--color-border) !important;
+  }
+
   /* ═══════════ Store closed overlay ═══════════
      Sprint-2 post-validation 2026-04-23: estructura parity con
      menu/index.html:2337-2346 (logo → name → status → next → schedule
@@ -1360,6 +1395,14 @@
     <div class="checkout-order-type-section" id="checkoutOrderTypeSection" style="display:none;">
       <div class="checkout-order-type-title">Tipo de orden</div>
       <div class="checkout-order-type-options" id="checkoutOrderTypeButtons"></div>
+    </div>
+
+    <!-- Sprint-3 Etapa 3 Commit 4 hotfix: info card cuenta abierta.
+         Visible cuando el cliente ya tiene cuenta abierta en esta mesa.
+         Los inputs #chkName + #chkPhone quedan disabled debajo. -->
+    <div class="deck-lockdown-info" id="checkoutLockdownInfo">
+      <div class="cli-title">🍽️ <span id="checkoutLockdownTitle">Tu cuenta en Mesa —</span></div>
+      <div class="cli-text">Continuando tu cuenta. Para abrir una cuenta nueva, pídele al mesero cerrar esta primero.</div>
     </div>
 
     <!-- Sprint-3 Etapa 3 Commit 1-B: campo universal "Nombre" — obligatorio
@@ -2617,6 +2660,11 @@ function renderMyAccount() {
   totalsEl.innerHTML = totalsHtml;
 
   section.style.display = 'block';
+
+  // Sprint-3 Etapa 3 Commit 4 hotfix: re-aplicar lockdown cuando Mi Cuenta
+  // se actualiza. Si myAccountOrders pasó de 0 → >0, el modal abierto (o
+  // la próxima apertura) reflejará el estado disabled.
+  applyCheckoutLockdown();
 }
 
 function startMyAccountPoller() {
@@ -2625,6 +2673,43 @@ function startMyAccountPoller() {
   if (svcModel !== 'waiter_service') return;
   fetchMyAccount();
   myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+// Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono cuando el
+// cliente tiene cuenta abierta. Parity byte-idéntico con menu/index.html
+// applyCheckoutLockdown — solo difieren los IDs (chkName/chkPhone vs
+// nameInput/phoneInput). El checkout modal de thedeck ES el flow de
+// submisión, no hay dual inline+modal como en el genérico.
+function applyCheckoutLockdown() {
+  var info = document.getElementById('checkoutLockdownInfo');
+  var title = document.getElementById('checkoutLockdownTitle');
+  var chkName = document.getElementById('chkName');
+  var chkPhone = document.getElementById('chkPhone');
+
+  var lockdown = !!(tableContext && Array.isArray(myAccountOrders) && myAccountOrders.length > 0);
+
+  if (lockdown) {
+    if (info) info.classList.add('show');
+    if (title && tableContext) title.textContent = 'Tu cuenta en Mesa ' + tableContext.table_number;
+    if (chkName) {
+      chkName.disabled = true;
+      chkName.classList.add('checkout-locked');
+    }
+    if (chkPhone) {
+      chkPhone.disabled = true;
+      chkPhone.classList.add('checkout-locked');
+    }
+  } else {
+    if (info) info.classList.remove('show');
+    if (chkName) {
+      chkName.disabled = false;
+      chkName.classList.remove('checkout-locked');
+    }
+    if (chkPhone) {
+      chkPhone.disabled = false;
+      chkPhone.classList.remove('checkout-locked');
+    }
+  }
 }
 
 function stopMyAccountPoller() {
@@ -3683,6 +3768,11 @@ function openCheckout() {
   var _savedCust = loadCustomerLocal();
   if (chkName) chkName.value = _savedCust.name || '';
   if (chkPhone) chkPhone.value = _savedCust.phone || '';
+
+  // Sprint-3 Etapa 3 Commit 4 hotfix: aplicar lockdown si hay cuenta
+  // abierta. Debe ir DESPUÉS del prefill para que los valores queden
+  // visibles antes de ser disabled.
+  applyCheckoutLockdown();
 
   document.getElementById('chkPhoneError').style.display = 'none';
   document.getElementById('checkoutGlobalError').style.display = 'none';

@@ -2425,6 +2425,39 @@
     .my-account-section .my-account-btn:disabled {
       opacity: 0.55; cursor: not-allowed;
     }
+
+    /* Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono
+       cuando el cliente tiene cuenta abierta. Info card prominente
+       + inputs disabled con estilo "read-only". */
+    .checkout-lockdown-info {
+      display: none;
+      background: #FEF3C7;
+      border: 1px solid #FCD34D;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      color: #78350F;
+      font-size: 0.9em;
+      line-height: 1.4;
+    }
+    .checkout-lockdown-info.show { display: block; }
+    .checkout-lockdown-info .cli-title {
+      font-weight: 800;
+      font-size: 1em;
+      margin-bottom: 4px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .checkout-lockdown-info .cli-text {
+      font-size: 0.85em;
+      color: #92400E;
+    }
+    input.checkout-locked,
+    input[disabled].checkout-locked {
+      background: #F1F5F9 !important;
+      color: #64748b !important;
+      cursor: not-allowed !important;
+      border-color: #CBD5E1 !important;
+    }
   </style>
 </head>
 <body>
@@ -2496,6 +2529,15 @@
       </div>
     </div>
     <div id="orderTotal" style="display: none;"></div>
+    <!-- Sprint-3 Etapa 3 Commit 4 hotfix: info card "Continuando tu
+         cuenta". Se muestra cuando hay tableContext + cuenta abierta
+         (mesa + phone con órdenes activas). Los inputs Nombre+Teléfono
+         quedan read-only debajo para prevenir duplicar cuentas en la
+         misma mesa. Hidden por default, revelado por applyCheckoutLockdown(). -->
+    <div class="checkout-lockdown-info" id="checkoutLockdownInfo">
+      <div class="cli-title">🍽️ <span id="checkoutLockdownTitle">Tu cuenta en Mesa —</span></div>
+      <div class="cli-text">Continuando tu cuenta. Para abrir una cuenta nueva, pídele al mesero cerrar esta primero.</div>
+    </div>
     <!-- Sprint-3 Etapa 3 Commit 1-B: campo universal "Nombre" — obligatorio
          en todos los flows (take-out, delivery, dine-in). Autocompleta
          desde localStorage (pincer_customer_<slug>). Sustituye los inputs
@@ -4051,6 +4093,10 @@ function renderOrder() {
   placeOrderBtn.disabled = false;
   phoneField.style.display = 'block';
   if (nameField) nameField.style.display = 'block';
+  // Sprint-3 Etapa 3 Commit 4 hotfix: re-aplicar lockdown cada vez que
+  // los campos se vuelven visibles. Idempotente — si no hay cuenta
+  // abierta, quita disabled y la info card queda oculta.
+  applyCheckoutLockdown();
   // Sprint-2 B1: mostrar el order-type selector SIEMPRE que haya ≥1 tipo.
   // Con 1 solo tipo: renderOrderTypeButtons dibuja un label display-only
   // (no botón). Con >1: botones clickeables como antes.
@@ -4675,6 +4721,10 @@ function openCheckoutModal() {
   // Show modal
   document.getElementById('checkoutOverlay').classList.add('show');
   setTimeout(() => document.getElementById('checkoutModal').classList.add('show'), 10);
+  // Sprint-3 Etapa 3 Commit 4 hotfix: aplicar lockdown al modal de pago
+  // también. Si el cliente tiene cuenta abierta y llega al payment flow,
+  // los campos quedan disabled para preservar el phone/name de la cuenta.
+  applyCheckoutLockdown();
   pushPopupState();
 }
 
@@ -6894,6 +6944,12 @@ function renderMyAccount() {
   totalsEl.innerHTML = totalsHtml;
 
   section.style.display = 'block';
+
+  // Sprint-3 Etapa 3 Commit 4 hotfix: re-aplicar lockdown cada vez que
+  // Mi Cuenta se actualiza — si myAccountOrders pasó de 0 a >0 (primera
+  // orden acaba de commit), los campos pasan a disabled aquí sin esperar
+  // al próximo renderOrder.
+  applyCheckoutLockdown();
 }
 
 function startMyAccountPoller() {
@@ -6905,6 +6961,73 @@ function startMyAccountPoller() {
   if (svcModel !== 'waiter_service') return;
   fetchMyAccount(); // primer fetch inmediato
   myAccountPoller = setInterval(fetchMyAccount, MY_ACCOUNT_POLL_MS);
+}
+
+// Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono cuando el
+// cliente tiene cuenta abierta en la mesa. Previene duplicación accidental
+// de cuentas si cambia un dígito del teléfono o escribe nombre distinto.
+//
+// Aplica SI Y SOLO SI:
+//   - tableContext presente (cliente escaneó QR)
+//   - myAccountOrders.length > 0 (ya hay orders abiertas en la mesa con
+//     este phone del localStorage)
+//
+// Cualquier otro caso (take-out, delivery, dine-in primera orden) deja
+// los campos editables como antes. Mi Cuenta vacía = modo normal.
+//
+// Se llama cada vez que renderOrder corre (cart state change) y cada vez
+// que fetchMyAccount actualiza myAccountOrders (poll de 15s). Idempotente.
+function applyCheckoutLockdown() {
+  var info = document.getElementById('checkoutLockdownInfo');
+  var title = document.getElementById('checkoutLockdownTitle');
+  var nameInput = document.getElementById('nameInput');
+  var phoneInput = document.getElementById('phoneInput');
+  var checkoutName = document.getElementById('checkoutName');
+  var checkoutPhone = document.getElementById('checkoutPhone');
+
+  var lockdown = !!(tableContext && Array.isArray(myAccountOrders) && myAccountOrders.length > 0);
+
+  if (lockdown) {
+    if (info) info.classList.add('show');
+    if (title && tableContext) title.textContent = 'Tu cuenta en Mesa ' + tableContext.table_number;
+    // Inline flow inputs
+    if (nameInput) {
+      nameInput.disabled = true;
+      nameInput.classList.add('checkout-locked');
+    }
+    if (phoneInput) {
+      phoneInput.disabled = true;
+      phoneInput.classList.add('checkout-locked');
+    }
+    // Payment modal inputs (si el flow PAYMENT_ENABLED llega acá en un
+    // futuro con waiter_service + dine-in — belt and suspenders).
+    if (checkoutName) {
+      checkoutName.disabled = true;
+      checkoutName.classList.add('checkout-locked');
+    }
+    if (checkoutPhone) {
+      checkoutPhone.disabled = true;
+      checkoutPhone.classList.add('checkout-locked');
+    }
+  } else {
+    if (info) info.classList.remove('show');
+    if (nameInput) {
+      nameInput.disabled = false;
+      nameInput.classList.remove('checkout-locked');
+    }
+    if (phoneInput) {
+      phoneInput.disabled = false;
+      phoneInput.classList.remove('checkout-locked');
+    }
+    if (checkoutName) {
+      checkoutName.disabled = false;
+      checkoutName.classList.remove('checkout-locked');
+    }
+    if (checkoutPhone) {
+      checkoutPhone.disabled = false;
+      checkoutPhone.classList.remove('checkout-locked');
+    }
+  }
 }
 
 function stopMyAccountPoller() {
