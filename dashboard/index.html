@@ -1762,6 +1762,20 @@ if (!SLUG) {
   throw new Error('No slug in URL');
 }
 let DISPLAY_NAME = SLUG;
+// Sprint-3 Etapa 2 follow-up: service_model del restaurante cacheado a
+// módulo. Se setea en initializeDashboard desde el fetch de plan/hours.
+// Default 'self_service' para que el flujo actual (take-out + WhatsApp)
+// aplique mientras se resuelve el fetch o si el campo no vino.
+var SERVICE_MODEL = 'self_service';
+
+// Helper: true si esta orden es dine-in con mesa Y el restaurante es
+// waiter_service. Gate para el flow nuevo (sin WhatsApp, botón
+// "Marcar como entregada", badge "ENTREGADA"). Cualquier condición
+// que falle → flow actual intacto (take-out, delivery, self-service).
+function isWaiterServiceDineIn(order) {
+  if (!order || !order.table_id) return false;
+  return SERVICE_MODEL === 'waiter_service';
+}
 
 // Dynamic manifest so PWA start_url matches this restaurant's slug
 document.getElementById('pwa-manifest').href = '/api/dashboard-manifest?slug=' + encodeURIComponent(SLUG);
@@ -4120,10 +4134,24 @@ async function loadOrders() {
       else if (minutes >= 1) statusClass = 'order-warning';
       console.log('[timer] order:', order.id, 'status:', status, 'minutes:', minutes, 'class:', statusClass);
 
+      // Sprint-3 Etapa 2 follow-up: para dine-in en waiter_service, el
+      // "ready" semántico es "entregada" (el mesero ya llevó la comida
+      // a la mesa). Reusamos el status='ready' pero cambiamos display.
+      const _isWaiterDineIn = isWaiterServiceDineIn(order);
       let statusBadgeClass, statusText;
       if (status === 'voided') { statusBadgeClass = 'status-voided'; statusText = '<i data-lucide="x-circle"></i> ANULADA'; }
-      else if (status === 'notified') { statusBadgeClass = 'status-notified'; statusText = '<i data-lucide="message-circle"></i> NOTIFICADO'; }
-      else if (status === 'ready') { statusBadgeClass = 'status-ready'; statusText = '<i data-lucide="check"></i> LISTA PARA RETIRAR'; }
+      else if (status === 'notified') {
+        statusBadgeClass = 'status-notified';
+        statusText = _isWaiterDineIn
+          ? '<i data-lucide="utensils"></i> ENTREGADA'
+          : '<i data-lucide="message-circle"></i> NOTIFICADO';
+      }
+      else if (status === 'ready') {
+        statusBadgeClass = 'status-ready';
+        statusText = _isWaiterDineIn
+          ? '<i data-lucide="utensils"></i> ENTREGADA'
+          : '<i data-lucide="check"></i> LISTA PARA RETIRAR';
+      }
       else if (status === 'accepted') { statusBadgeClass = 'status-accepted'; statusText = '<i data-lucide="chef-hat"></i> EN PREPARACIÓN'; }
       else if (status === 'paid') { statusBadgeClass = 'status-paid'; statusText = '<i data-lucide="credit-card"></i> PAGADO'; }
       else { statusBadgeClass = 'status-pending'; statusText = '<i data-lucide="clock"></i> PENDIENTE'; }
@@ -4221,7 +4249,7 @@ async function loadOrders() {
         })()}
         <div class="order-actions">
         ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})"><i data-lucide="check"></i> Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})"><i data-lucide="x"></i> Rechazar</button>` : ''}
-        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})"><i data-lucide="check-circle-2"></i> Marcar como lista y notificar</button>` : ''}
+        ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})"><i data-lucide="check-circle-2"></i> ${_isWaiterDineIn ? 'Marcar como entregada' : 'Marcar como lista y notificar'}</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && status !== 'voided' ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Recibimos tu pedido #' + orderNum + ' de ' + DISPLAY_NAME + '. Para coordinar la entrega con nuestro mensajero, por favor compártenos tu ubicación en este chat. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${(function() {
           var isDeliveryActive = order.order_type === 'delivery' && status !== 'voided';
@@ -4301,9 +4329,14 @@ async function markReady(id) {
     track('order_ready', { order_id: id });
     playConfirmSound();
 
-    // Auto-open WhatsApp if order has phone
+    // Auto-open WhatsApp if order has phone — SKIP para dine-in en
+    // waiter_service. El mesero lleva la comida físicamente a la mesa,
+    // no necesita notificar por WhatsApp. Condición estricta: table_id
+    // presente + SERVICE_MODEL==='waiter_service'. Cualquier otro caso
+    // (take-out, delivery, self-service dine-in estilo food court)
+    // mantiene el flow actual.
     var order = _ordersMap[id];
-    if (order && order.phone) {
+    if (order && order.phone && !isWaiterServiceDineIn(order)) {
       var orderNum = order.order_number || id;
       // Copy matrix — founder decision 2026-04-22. isPaid deriva de
       // azul_order_id o status='paid'. Sincronizado con el bloque gemelo
@@ -4747,7 +4780,11 @@ async function initializeDashboard() {
       if (planRows.length > 0) {
         if (planRows[0].plan) restaurantPlan = planRows[0].plan;
         if (planRows[0].hours) restaurantHours = planRows[0].hours;
-        applyServiceModelToSidebar(planRows[0].service_model || 'self_service');
+        // Sprint-3 Etapa 2 follow-up: cachear service_model a módulo para
+        // que markReady + renderOrder puedan leerlo sin re-fetch. Default
+        // 'self_service' preserva el flow actual si el campo está ausente.
+        SERVICE_MODEL = planRows[0].service_model || 'self_service';
+        applyServiceModelToSidebar(SERVICE_MODEL);
       }
     }
   } catch (e) { dbg('Plan fetch error: ' + e.message); }
