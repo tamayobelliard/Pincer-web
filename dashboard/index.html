@@ -515,6 +515,19 @@
     .order-type-badge.type-dine_in { background: #dbeafe; color: #1e40af; }
     .order-type-badge.type-take_out { background: #fef3c7; color: #92400e; }
     .order-type-badge.type-delivery { background: #ede9fe; color: #5b21b6; }
+    /* Sprint-3 Etapa 2 follow-up: badge de mesa. Mismo tamaño que
+       order-type-badge pero color contrastante (rojo Pincer) para
+       que el mesero lo cace al glanced. */
+    .order-table-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 700; margin-left: 6px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;
+    }
+    .accepted .order-table-badge, .notified .order-table-badge, .ready .order-table-badge {
+      background: var(--bg3); color: var(--muted); border-color: var(--border);
+    }
     .order-delivery-info {
       background: var(--bg3); border: 1px solid var(--border); border-radius: 0;
       padding: 8px 16px; margin: 0; font-size: 13px;
@@ -4139,6 +4152,12 @@ async function loadOrders() {
         delivery: '<i data-lucide="bike"></i> Delivery',
       };
       const orderTypeBadge = order.order_type ? '<span class="order-type-badge type-' + order.order_type + '">' + (orderTypeLabels[order.order_type] || order.order_type) + '</span>' : '';
+      // Sprint-3 Etapa 2 follow-up: badge de mesa para órdenes dine-in.
+      // Solo renderiza si table_number está populado (nullable por diseño —
+      // órdenes legacy sin mesa o take_out/delivery no lo tienen).
+      const tableBadge = order.table_number
+        ? '<span class="order-table-badge"><i data-lucide="utensils"></i> Mesa ' + order.table_number + '</span>'
+        : '';
 
       let deliveryInfoHTML = '';
       let mapUrl = '';
@@ -4162,7 +4181,7 @@ async function loadOrders() {
       div.className = `order ${statusClass}`;
       div.innerHTML = `
         <div class="order-number">#${orderNum}</div>
-        <span class="order-status ${statusBadgeClass}">${statusText}</span>${orderTypeBadge}
+        <span class="order-status ${statusBadgeClass}">${statusText}</span>${orderTypeBadge}${tableBadge}
         ${status === 'voided' && order.voided_items ? `<div class="voided-reason"><i data-lucide="ban"></i> No disponible: ${String(order.voided_items).replace(/</g, '&lt;')}</div>` : ''}
         <div class="order-items">
           <strong class="order-items-label" style="font-size: 0.95em;"><i data-lucide="clipboard-list"></i> ITEMS:</strong>
