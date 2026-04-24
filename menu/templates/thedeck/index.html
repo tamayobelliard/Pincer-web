@@ -805,6 +805,86 @@
     cursor: pointer; letter-spacing: 0.5px;
   }
 
+  /* ═══════════ Mesa banner (Sprint-3 Etapa 2) ═══════════
+     Banner discreto para identificación de mesa post-scan QR.
+     Parity lógico con menu/index.html — visual adaptado a thedeck:
+     navy tile background, gold accent, Playfair italic para el número. */
+  .deck-table-banner {
+    display: none;
+    margin: var(--sp-md) auto 0;
+    max-width: 420px;
+    padding: 10px var(--sp-md);
+    background: var(--color-primary);
+    color: var(--color-accent-2);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    box-shadow: var(--shadow-sm);
+  }
+  .deck-table-banner.show { display: block; }
+  .deck-table-banner .deck-table-mesa {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-weight: 600;
+    color: var(--color-accent);
+    margin-right: 6px;
+    font-size: 15px;
+  }
+  .deck-table-banner .deck-table-dot {
+    color: var(--color-accent-3);
+    margin: 0 8px;
+  }
+
+  /* ═══════════ Table invalid overlay (Sprint-3 Etapa 2) ═══════════
+     Bloqueo full-screen cuando ?table=N&t=TOKEN es inválido o
+     mismatch. Reusa la estructura del closed-overlay, cambia mensaje
+     y agrega botón Reintentar. */
+  .deck-table-invalid {
+    position: fixed; inset: 0; z-index: 96;
+    background: var(--color-bg);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .deck-table-invalid.open { display: flex; }
+  .deck-table-invalid-logo {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: var(--color-primary);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px; box-shadow: 0 8px 24px rgba(11,30,58,0.35);
+    border: 3px solid var(--color-accent); overflow: hidden;
+  }
+  .deck-table-invalid-logo .logo-fallback {
+    font-family: var(--font-heading); font-size: 44px; color: var(--color-accent);
+    line-height: 1;
+  }
+  .deck-table-invalid-title {
+    font-family: var(--font-heading); font-size: 26px; color: var(--color-primary);
+    letter-spacing: 0.3px; margin-bottom: 14px; line-height: 1.15;
+    max-width: 360px;
+  }
+  .deck-table-invalid-msg {
+    font-family: var(--font-body); font-size: 14px; color: var(--color-text-soft);
+    max-width: 360px; line-height: 1.55;
+    margin-bottom: 24px;
+  }
+  .deck-table-invalid-retry {
+    background: var(--color-primary);
+    color: var(--color-accent-2);
+    border: 1px solid var(--color-accent);
+    padding: 12px 28px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .deck-table-invalid-retry:hover { background: var(--color-primary-2); }
+
   /* ═══════════ Store closed overlay ═══════════
      Sprint-2 post-validation 2026-04-23: estructura parity con
      menu/index.html:2337-2346 (logo → name → status → next → schedule
@@ -983,6 +1063,11 @@
     </div>
   </div>
 </div>
+
+<!-- ═════════════ MESA BANNER (Sprint-3 Etapa 2) ═════════════
+     Visible solo post-validación exitosa de ?table=N&t=TOKEN.
+     Populado por renderTableBanner(). -->
+<div class="deck-table-banner" id="tableBanner"></div>
 
 <!-- ═════════════ TABS ═════════════ -->
 <div class="tabs">
@@ -1281,6 +1366,18 @@
   <div class="closed-overlay-next" id="closedOverlayNext"></div>
   <div class="closed-overlay-schedule" id="closedOverlaySchedule"></div>
   <div class="closed-overlay-footer">¡Te esperamos!</div>
+</div>
+
+<!-- Sprint-3 Etapa 2: overlay cuando ?table=N&t=TOKEN es inválido.
+     Parity funcional con menu/index.html #tableInvalidPage — visual
+     propio del design system de The Deck (navy/cream/gold/Playfair). -->
+<div class="deck-table-invalid" id="tableInvalidPage" role="alert" aria-live="polite">
+  <div class="deck-table-invalid-logo">
+    <div class="logo-fallback">✦</div>
+  </div>
+  <div class="deck-table-invalid-title" id="tableInvalidTitle">QR inválido</div>
+  <div class="deck-table-invalid-msg" id="tableInvalidMessage">Este QR no es válido o ya venció. Por favor pide al personal un QR actualizado.</div>
+  <button class="deck-table-invalid-retry" onclick="window.location.reload()">Reintentar</button>
 </div>
 
 <!-- ═════════════ FAB (Mesero Virtual) — imagen se puebla con logo_url en init ═════════════ -->
@@ -2265,6 +2362,71 @@ function applyRestaurantBranding(data) {
 // access post-wipe) se convertía en unhandled promise rejection y
 // abortaba la inicialización sin feedback visible. Enmascaró múltiples
 // bugs durante 4+ sprints. Ver known-issues #11. Ver CLAUDE.md Regla #6.
+// ══════════════════════════════════════════════════════════════
+// TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
+// Parity byte-idéntico con menu/index.html — solo difieren los IDs
+// de los elementos DOM y la clase CSS del banner (deck-table-banner
+// vs .table-banner del genérico). Misma lógica de validación,
+// tampering check, sessionStorage.
+// ══════════════════════════════════════════════════════════════
+
+var TABLE_CONTEXT_KEY = 'pincer_table_context_' + SLUG;
+var tableContext = null;
+
+function getTableContextFromURL() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var table = params.get('table');
+    var token = params.get('t');
+    if (!table || !token) return null;
+    var n = parseInt(table, 10);
+    if (isNaN(n) || n <= 0) return null;
+    return { table_number: n, token: String(token) };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function validateTableContext(slug, token) {
+  try {
+    var url = '/api/tables/validate?slug=' + encodeURIComponent(slug) +
+              '&token=' + encodeURIComponent(token);
+    var res = await fetch(url, { method: 'GET' });
+    if (!res.ok) return { valid: false };
+    return await res.json();
+  } catch (e) {
+    console.warn('[thedeck tableValidate] error:', e.message);
+    return { valid: false };
+  }
+}
+
+function renderTableBanner(tableNumber, restaurantName) {
+  var banner = document.getElementById('tableBanner');
+  if (!banner) return;
+  var safeName = (restaurantName || '').replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+  banner.innerHTML =
+    '<span class="deck-table-mesa">Mesa ' + tableNumber + '</span>' +
+    (safeName ? '<span class="deck-table-dot">·</span>' + safeName : '');
+  banner.classList.add('show');
+}
+
+function renderTableInvalidOverlay(reason) {
+  var page = document.getElementById('tableInvalidPage');
+  var title = document.getElementById('tableInvalidTitle');
+  var msg = document.getElementById('tableInvalidMessage');
+  if (!page) return;
+  if (reason === 'mismatch') {
+    title.textContent = 'QR inválido';
+    msg.textContent = 'Este QR no corresponde a la mesa indicada. Por favor pide al personal un QR actualizado.';
+  } else {
+    title.textContent = 'QR inválido';
+    msg.textContent = 'Este QR no es válido o ya venció. Por favor pide al personal un QR actualizado.';
+  }
+  page.classList.add('open');
+}
+
 async function init() {
   try {
     await _initImpl();
@@ -2290,6 +2452,33 @@ async function _initImpl() {
   products = prodData;
   soldOutSet = soldOut;
   productsByCategory = groupProducts(products);
+
+  // Sprint-3 Etapa 2: detect + validate ?table=N&t=TOKEN.
+  //   - Sin params: flow take-out normal (cero cambio).
+  //   - Con params válidos: banner + sessionStorage, continúa init.
+  //   - Con params inválidos/mismatch: overlay + return (bloquea ordering).
+  // Parity byte-idéntico con menu/index.html — solo la clase CSS del
+  // banner (deck-table-banner) difiere por design system.
+  var urlTable = getTableContextFromURL();
+  if (urlTable) {
+    var validation = await validateTableContext(SLUG, urlTable.token);
+    if (!validation || validation.valid !== true) {
+      renderTableInvalidOverlay('invalid');
+      return;
+    }
+    if (validation.table_number !== urlTable.table_number) {
+      renderTableInvalidOverlay('mismatch');
+      return;
+    }
+    tableContext = {
+      slug: SLUG,
+      table_number: validation.table_number,
+      token: urlTable.token,
+      validated_at: Date.now(),
+    };
+    try { sessionStorage.setItem(TABLE_CONTEXT_KEY, JSON.stringify(tableContext)); } catch (e) {}
+    renderTableBanner(tableContext.table_number, restaurantData.display_name);
+  }
 
   // Parse order_types — parity con menu/index.html:6387-6406.
   let rawOT = restaurantData.order_types;

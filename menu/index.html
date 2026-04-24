@@ -2330,6 +2330,63 @@
       color: rgba(255,255,255,0.35);
     }
     .pincer-footer-powered strong { color: rgba(255,255,255,0.6); }
+
+    /* Sprint-3 Etapa 2: Mesa banner — sutil, usa var(--primary) del tema.
+       Arriba del menú, bajo el header. */
+    .table-banner {
+      display: none;
+      background: var(--primary);
+      color: #ffffff;
+      padding: 8px 14px;
+      border-radius: 10px;
+      margin: 0 auto 12px;
+      max-width: 500px;
+      text-align: center;
+      font-size: 0.9em;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+    .table-banner.show { display: block; }
+    .table-banner .mesa-emoji { margin-right: 4px; }
+
+    /* Sprint-3 Etapa 2: error overlay para ?table=... inválido.
+       Full-screen con misma estructura que .closed-page pero mensaje propio. */
+    .table-invalid-page {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: white;
+      padding: 40px 30px;
+      background: #0F172A;
+      z-index: 20000;
+    }
+    .table-invalid-page.show { display: flex; }
+    .table-invalid-page .tp-icon {
+      font-size: 4.5em; margin-bottom: 20px;
+    }
+    .table-invalid-page .tp-title {
+      font-size: 1.5em; font-weight: 800; margin-bottom: 16px;
+    }
+    .table-invalid-page .tp-message {
+      font-size: 1em; max-width: 380px; line-height: 1.5;
+      color: rgba(255,255,255,0.85); margin-bottom: 24px;
+    }
+    .table-invalid-page .tp-retry {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .table-invalid-page .tp-retry:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
@@ -2345,6 +2402,16 @@
   <div class="closed-page-footer">¡Te esperamos!</div>
 </div>
 
+<!-- Sprint-3 Etapa 2: overlay cuando ?table=N&t=TOKEN es inválido.
+     Bloquea el menú completo; user no puede ordenar. Botón "Reintentar"
+     hace reload por si el staff regeneró el QR y el cliente escanea otra vez. -->
+<div class="table-invalid-page" id="tableInvalidPage">
+  <div class="tp-icon">🍽️</div>
+  <div class="tp-title" id="tableInvalidTitle">QR inválido</div>
+  <div class="tp-message" id="tableInvalidMessage">Este QR no es válido o ya venció. Por favor pide al personal un QR actualizado.</div>
+  <button class="tp-retry" onclick="window.location.reload()">Reintentar</button>
+</div>
+
 <div class="container">
   <div class="header">
     <button class="receipt-history-btn" id="receiptHistoryBtn" onclick="openOrderHistory()">🧾</button>
@@ -2357,6 +2424,10 @@
 
   <!-- Connection status banner -->
   <div class="conn-banner" id="connBanner"></div>
+
+  <!-- Sprint-3 Etapa 2: banner de mesa identificada. Populado por
+       renderTableBanner() tras validación exitosa del ?table=N&t=TOKEN. -->
+  <div class="table-banner" id="tableBanner"></div>
 
   <!-- Debug panel (tap logo 5 times to show) -->
   <div class="debug-panel" id="debugPanel"></div>
@@ -6517,6 +6588,76 @@ async function checkStoreOpen() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// TABLE CONTEXT (Sprint-3 Etapa 2) — identificación de mesa vía QR
+// ══════════════════════════════════════════════════════════════
+//
+// Si el URL tiene ?table=N&t=TOKEN, validamos contra /api/tables/validate.
+// Si match → banner + sessionStorage. Si fail → error overlay que bloquea
+// el menú hasta que el cliente reintente (o pida QR nuevo al staff).
+//
+// Etapa 2 solo DETECTA y VALIDA; el flow de cuenta abierta que usa esta
+// data viene en Etapa 3. Hoy pincer_table_context queda listo en session
+// storage para que el checkout la lea después.
+
+var TABLE_CONTEXT_KEY = 'pincer_table_context_' + SLUG;
+var tableContext = null; // { slug, table_number, token, validated_at }
+
+function getTableContextFromURL() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var table = params.get('table');
+    var token = params.get('t');
+    if (!table || !token) return null;
+    var n = parseInt(table, 10);
+    if (isNaN(n) || n <= 0) return null;
+    return { table_number: n, token: String(token) };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function validateTableContext(slug, token) {
+  try {
+    var url = '/api/tables/validate?slug=' + encodeURIComponent(slug) +
+              '&token=' + encodeURIComponent(token);
+    var res = await fetch(url, { method: 'GET' });
+    if (!res.ok) return { valid: false };
+    return await res.json();
+  } catch (e) {
+    console.warn('[tableValidate] error:', e.message);
+    return { valid: false };
+  }
+}
+
+function renderTableBanner(tableNumber, restaurantName) {
+  var banner = document.getElementById('tableBanner');
+  if (!banner) return;
+  banner.innerHTML =
+    '<span class="mesa-emoji">🍽️</span>' +
+    'Mesa ' + tableNumber +
+    (restaurantName ? ' · ' + escHtml(restaurantName) : '');
+  banner.classList.add('show');
+}
+
+function renderTableInvalidOverlay(reason) {
+  // reason: 'invalid' | 'mismatch' | 'network'. Mensaje se ajusta ligeramente
+  // para darle hint al staff sobre qué pasó, aunque al cliente final todo
+  // se le presenta igual: "QR inválido, pide otro".
+  var page = document.getElementById('tableInvalidPage');
+  var title = document.getElementById('tableInvalidTitle');
+  var msg = document.getElementById('tableInvalidMessage');
+  if (!page) return;
+  if (reason === 'mismatch') {
+    title.textContent = 'QR inválido';
+    msg.textContent = 'Este QR no corresponde a la mesa indicada. Por favor pide al personal un QR actualizado.';
+  } else {
+    title.textContent = 'QR inválido';
+    msg.textContent = 'Este QR no es válido o ya venció. Por favor pide al personal un QR actualizado.';
+  }
+  page.classList.add('show');
+}
+
 async function init() {
   dbg('🚀 Iniciando menú dinámico para: ' + SLUG);
 
@@ -6545,6 +6686,33 @@ async function init() {
       document.querySelector('.container').innerHTML = '<div style="text-align:center;padding:80px 20px;"><div style="background:white;border-radius:16px;padding:40px 24px;box-shadow:0 8px 16px rgba(0,0,0,0.15);max-width:400px;margin:0 auto;"><div style="font-size:3em;margin-bottom:16px;">🔍</div><h2 style="color:#1e293b;margin-bottom:8px;">Restaurante no encontrado</h2><p style="color:#64748b;">El restaurante "' + escHtml(SLUG) + '" no existe o no está disponible.</p><p style="margin-top:20px;"><a href="https://www.pincerweb.com" style="color:#4338ca;font-weight:600;text-decoration:none;">Ir a Pincer →</a></p></div></div>';
     }
     return;
+  }
+
+  // 1.5. Sprint-3 Etapa 2: detect + validate ?table=N&t=TOKEN.
+  //   - Sin params: continúa como take-out (flow actual intacto).
+  //   - Con params válidos: banner + sessionStorage, continúa init.
+  //   - Con params inválidos/mismatch: overlay + return (bloquea ordering).
+  var urlTable = getTableContextFromURL();
+  if (urlTable) {
+    var validation = await validateTableContext(SLUG, urlTable.token);
+    if (!validation || validation.valid !== true) {
+      renderTableInvalidOverlay('invalid');
+      return;
+    }
+    // Defensive: server dice mesa X, URL decía Y. Defend contra tampering
+    // de la URL (user escribió manualmente o alguien armó un link malo).
+    if (validation.table_number !== urlTable.table_number) {
+      renderTableInvalidOverlay('mismatch');
+      return;
+    }
+    tableContext = {
+      slug: SLUG,
+      table_number: validation.table_number,
+      token: urlTable.token,
+      validated_at: Date.now(),
+    };
+    try { sessionStorage.setItem(TABLE_CONTEXT_KEY, JSON.stringify(tableContext)); } catch (e) {}
+    renderTableBanner(tableContext.table_number, restaurantData.display_name);
   }
 
   // 2. Apply theme and branding
