@@ -506,6 +506,17 @@
       background: var(--bg3); border-radius: 0; border-left: 3px solid #0ea5e9;
       font-size: 13px; color: var(--text); font-weight: 600;
     }
+    /* Sprint-3 Etapa 3 Commit 1-C: nombre del cliente en card de orden.
+       Mismo patrón visual que .order-phone, color violeta para
+       diferenciación a simple vista. */
+    .order-customer {
+      margin: 0; padding: 8px 16px;
+      background: var(--bg3); border-radius: 0; border-left: 3px solid #8b5cf6;
+      font-size: 13px; color: var(--text); font-weight: 600;
+    }
+    .accepted .order-customer, .notified .order-customer, .ready .order-customer {
+      background: var(--bg3); color: var(--text); border-left-color: var(--border);
+    }
     .order-type-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px; border-radius: 4px;
@@ -4221,6 +4232,7 @@ async function loadOrders() {
           <span class="order-total-label">${totalLabel}</span>
           <span>RD$${(order.total || 0).toLocaleString()}</span>
         </div>
+        ${order.customer_name ? `<div class="order-customer"><i data-lucide="user"></i> ${String(order.customer_name).replace(/</g, '&lt;')}</div>` : ''}
         ${order.phone ? `<div class="order-phone"><i data-lucide="phone"></i> ${order.phone}</div>` : ''}
         ${order.customer_name ? `<div class="order-phone order-customer" style="border-left-color:#8b5cf6;"><i data-lucide="user"></i> ${order.customer_name}</div>` : ''}
         ${deliveryInfoHTML}
