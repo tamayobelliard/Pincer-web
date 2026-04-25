@@ -2525,6 +2525,30 @@
     .bill-confirm-modal h3 {
       margin: 0 0 16px 0; font-size: 1.2em; color: #1e293b;
     }
+    /* Sprint-3 Etapa 3 Commit 6: lista de items en modal solicitar cuenta.
+       Scroll interno si es larga. */
+    .bill-confirm-items {
+      max-height: 260px; overflow-y: auto;
+      background: #F8FAFC; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 12px;
+      border: 1px solid #E2E8F0;
+    }
+    .bill-confirm-items .items-label {
+      font-size: 0.72em; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: #64748b; margin-bottom: 6px;
+    }
+    .bill-confirm-item-row {
+      display: flex; justify-content: space-between;
+      padding: 3px 0; font-size: 0.92em; color: #334155;
+    }
+    .bill-confirm-item-qty {
+      color: #64748b; font-weight: 600; margin-right: 6px;
+    }
+    .bill-confirm-item-name { flex: 1; }
+    .bill-confirm-item-price {
+      color: #1e293b; font-weight: 600; font-variant-numeric: tabular-nums;
+    }
     .bill-confirm-totals {
       background: #F8FAFC; border-radius: 8px;
       padding: 12px 14px; margin-bottom: 16px;
@@ -2712,6 +2736,7 @@
 <div class="bill-confirm-overlay" id="billConfirmOverlay" onclick="if(event.target===this)closeBillConfirmModal()">
   <div class="bill-confirm-modal" id="billConfirmModal">
     <h3>¿Solicitar tu cuenta?</h3>
+    <div class="bill-confirm-items" id="billConfirmItems"></div>
     <div class="bill-confirm-totals" id="billConfirmTotals"></div>
     <div class="bill-confirm-subtext">
       Tu mesero recibirá la notificación y vendrá a cobrar.
@@ -6935,6 +6960,12 @@ function saveCustomerLocal(name, phone) {
 var MY_ACCOUNT_POLL_MS = 15000;
 var myAccountOrders = [];
 var myAccountPoller = null;
+// Sprint-3 Etapa 3 Commit 6: estado de "cuenta cerrada". Se setea cuando
+// un fetch transitions de orders>0 a empty → la cajera acaba de cerrar
+// la cuenta (Marcar Pagada o Cerrar Mesa). Persiste hasta que el cliente
+// lo cierre con "Volver al menú" o recargue la página. Guarda el último
+// total conocido para mostrarlo en el mensaje de cierre.
+var myAccountClosure = null;
 
 // Agrega items + calcula totales de varias órdenes. Reusa las mismas
 // fórmulas de computeTotals para consistencia con el receipt del
@@ -7003,7 +7034,19 @@ async function fetchMyAccount() {
       return;
     }
     var rows = await res.json();
-    myAccountOrders = Array.isArray(rows) ? rows : [];
+    var newOrders = Array.isArray(rows) ? rows : [];
+
+    // Sprint-3 Etapa 3 Commit 6: detectar transición "cuenta cerrada"
+    // (orders abiertas → vacío). Calcular total FINAL del estado
+    // previo antes de reemplazar myAccountOrders. Solo setea si
+    // previamente había orders — evita falsos positivos al primer
+    // fetch (cuando myAccountOrders estaba vacío por no haber pedido).
+    if (myAccountOrders.length > 0 && newOrders.length === 0) {
+      var closedTotal = computeAccountTotals(myAccountOrders).grand;
+      myAccountClosure = { total: closedTotal, closedAt: Date.now() };
+    }
+
+    myAccountOrders = newOrders;
     renderMyAccount();
   } catch (e) {
     dbg('[myAccount] fetch error: ' + e.message);
@@ -7013,19 +7056,46 @@ async function fetchMyAccount() {
 function renderMyAccount() {
   var section = document.getElementById('myAccountSection');
   if (!section) return;
+  var svcModel = restaurantData && restaurantData.service_model;
+
+  // Sprint-3 Etapa 3 Commit 6: si la cuenta fue cerrada recientemente,
+  // mostrar mensaje "Cuenta cerrada · Total RD$X · Gracias" en lugar
+  // de ocultar la sección. Dismiss vía botón "Volver al menú"
+  // (handled by onMyAccountButtonClick → detecta myAccountClosure).
+  if (myAccountClosure && !myAccountOrders.length && tableContext && svcModel === 'waiter_service') {
+    var listEl = document.getElementById('myAccountList');
+    var totalsEl = document.getElementById('myAccountTotals');
+    var btn = document.getElementById('myAccountRequestBtn');
+    var msg = document.getElementById('myAccountBillMsg');
+    if (msg) msg.classList.remove('show');
+    if (listEl) {
+      listEl.innerHTML =
+        '<div style="text-align:center; padding: 24px 12px;">'
+      + '<div style="font-size: 2.4em; margin-bottom: 8px;">🎉</div>'
+      + '<div style="font-size: 1.1em; font-weight: 800; color: var(--primary); margin-bottom: 6px;">Tu cuenta fue cerrada</div>'
+      + '<div style="font-size: 0.95em; color: #475569; margin-bottom: 4px;">Total pagado: <strong>RD$' + myAccountClosure.total.toLocaleString() + '</strong></div>'
+      + '<div style="font-size: 0.9em; color: #64748b;">¡Gracias por visitarnos!</div>'
+      + '</div>';
+    }
+    if (totalsEl) totalsEl.innerHTML = '';
+    if (btn) {
+      btn.textContent = 'Volver al menú';
+      btn.classList.remove('cancel-mode');
+      btn.disabled = false;
+    }
+    section.style.display = 'block';
+    document.body.classList.remove('menu-locked'); // desbloquear menú
+    return;
+  }
+
   // Ocultar si:
   //  - no hay tableContext (cliente no escaneó QR), o
   //  - no hay items (cliente escaneó pero aún no ordenó o pagó todo), o
   //  - service_model != 'waiter_service' (self-service con QR es food-
   //    court style, no aplica concepto de cuenta abierta — founder rule
   //    Commit 2 Etapa 3).
-  var svcModel = restaurantData && restaurantData.service_model;
   if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
     section.style.display = 'none';
-    // Sprint-3 Etapa 3 Commit 5: si la sección se oculta (ej. cajera
-    // marcó paid → Mi Cuenta vacía), garantizar que el menú queda
-    // desbloqueado (isBillRequested será false, applyBillRequestedUI
-    // remueve body.menu-locked).
     if (typeof applyBillRequestedUI === 'function') applyBillRequestedUI();
     return;
   }
@@ -7111,10 +7181,45 @@ function isBillRequested() {
     && myAccountOrders.some(function(o) { return !!o.bill_requested_at; });
 }
 
-// Abre el modal de confirmación con desglose del total. Lee de
-// computeAccountTotals para consistencia con Mi Cuenta section.
+// Sprint-3 Etapa 3 Commit 6: agrega items de múltiples orders y
+// deduplica por (name|notes). Usado para el recibo expandido del modal
+// "Solicitar cuenta".
+function aggregateItemsFromOrders(orders) {
+  var map = new Map();
+  (orders || []).forEach(function(o) {
+    var items;
+    try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { items = []; }
+    if (!Array.isArray(items)) items = [];
+    items.forEach(function(it) {
+      var key = (it.name || '') + '|' + (it.notes || '');
+      if (!map.has(key)) {
+        map.set(key, { name: it.name || 'Item', notes: it.notes || '', qty: 0, price: Number(it.price) || 0 });
+      }
+      map.get(key).qty += (Number(it.qty) || 1);
+    });
+  });
+  return Array.from(map.values());
+}
+
+// Abre el modal de confirmación con recibo expandido (items + totales).
+// Commit 6 extendió para mostrar lista itemizada antes de los totales.
 function openBillConfirmModal() {
   if (!tableContext || !myAccountOrders || myAccountOrders.length === 0) return;
+
+  // Items agregados.
+  var items = aggregateItemsFromOrders(myAccountOrders);
+  var itemsHtml = '<div class="items-label">Detalle</div>';
+  items.forEach(function(it) {
+    var lineTotal = it.price * it.qty;
+    itemsHtml += '<div class="bill-confirm-item-row">'
+              + '<span><span class="bill-confirm-item-qty">' + it.qty + '×</span>'
+              + '<span class="bill-confirm-item-name">' + escHtml(it.name) + '</span></span>'
+              + '<span class="bill-confirm-item-price">RD$' + lineTotal.toLocaleString() + '</span>'
+              + '</div>';
+  });
+  document.getElementById('billConfirmItems').innerHTML = itemsHtml;
+
+  // Totales.
   var t = computeAccountTotals(myAccountOrders);
   var html = '';
   if (!PRICES_INCLUDE_TAX) {
@@ -7128,6 +7233,7 @@ function openBillConfirmModal() {
   }
   html += '<div class="bill-confirm-total-grand"><span>Total</span><span>RD$' + t.grand.toLocaleString() + '</span></div>';
   document.getElementById('billConfirmTotals').innerHTML = html;
+
   document.getElementById('billConfirmSubmitBtn').disabled = false;
   document.getElementById('billConfirmSubmitBtn').textContent = 'Sí, solicitar';
   document.getElementById('billConfirmOverlay').classList.add('show');
@@ -7206,8 +7312,17 @@ async function cancelBillRequest() {
   }
 }
 
-// Wire-up del botón único "Solicitar cuenta" / "Cancelar solicitud".
+// Wire-up del botón único Mi Cuenta según estado:
+//   - closure activa → "Volver al menú" dismisses closureState
+//   - bill requested → "Cancelar solicitud"
+//   - default → "Solicitar cuenta" (abre modal)
 function onMyAccountButtonClick() {
+  if (myAccountClosure) {
+    myAccountClosure = null;
+    document.body.classList.remove('menu-locked');
+    renderMyAccount();
+    return;
+  }
   if (isBillRequested()) {
     cancelBillRequest();
   } else {

@@ -594,6 +594,71 @@
       background: var(--bg2); color: var(--text); font-weight: 600; font-size: 12px;
       cursor: not-allowed; font-family: inherit; opacity: 0.5;
     }
+    /* Sprint-3 Etapa 3 Commit 6: botones enabled (Marcar Pagada cuando
+       bill requested, Cerrar Mesa siempre). */
+    .ot-actions button.ot-btn-paid,
+    .ot-actions button.ot-btn-close {
+      cursor: pointer; opacity: 1;
+    }
+    .ot-actions button.ot-btn-paid {
+      background: #166534; color: white; border-color: #166534;
+    }
+    .ot-actions button.ot-btn-paid:hover { background: #14532d; }
+    .ot-actions button.ot-btn-close {
+      background: var(--bg2); color: var(--text); border-color: var(--border);
+    }
+    .ot-actions button.ot-btn-close:hover { background: var(--bg3); }
+
+    /* Close Mesa modal */
+    .ot-close-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 10050; padding: 20px;
+    }
+    .ot-close-overlay.show { display: flex; }
+    .ot-close-modal {
+      background: white; border-radius: 14px;
+      max-width: 440px; width: 100%;
+      padding: 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .ot-close-modal h3 {
+      margin: 0 0 6px 0; font-size: 1.1em; color: var(--text);
+    }
+    .ot-close-modal .ot-close-subtitle {
+      font-size: 0.85em; color: var(--muted); margin-bottom: 16px;
+    }
+    .ot-close-modal .field { margin-bottom: 12px; }
+    .ot-close-modal .field label {
+      display: block; font-size: 0.82em; font-weight: 600;
+      color: var(--text); margin-bottom: 4px;
+    }
+    .ot-close-modal select,
+    .ot-close-modal input {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.92em; font-family: inherit;
+      background: white; color: var(--text);
+      box-sizing: border-box;
+    }
+    .ot-close-modal .actions {
+      display: flex; gap: 10px; margin-top: 16px;
+    }
+    .ot-close-modal .actions button {
+      flex: 1; padding: 11px; border-radius: 8px;
+      font-family: inherit; font-weight: 600; font-size: 0.9em;
+      cursor: pointer; border: none;
+    }
+    .ot-close-modal .btn-cancel {
+      background: white; color: var(--muted);
+      border: 1.5px solid var(--border);
+    }
+    .ot-close-modal .btn-cancel:hover { background: var(--bg3); }
+    .ot-close-modal .btn-submit {
+      background: var(--red); color: white;
+    }
+    .ot-close-modal .btn-submit:hover { background: var(--red-dark); }
+    .ot-close-modal .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
     /* Sprint-3 Etapa 3 Commit 4: collapsible cards.
        Default: colapsadas. Click en el header toggle expansion.
@@ -1804,6 +1869,34 @@
 
 <!-- Toast Notification -->
 <div class="toast-notification" id="toastNotification"></div>
+
+<!-- Sprint-3 Etapa 3 Commit 6: modal de Cerrar Mesa con dropdown razón +
+     nota opcional. Se abre desde ot_openCloseModal() en la card de mesa. -->
+<div class="ot-close-overlay" id="otCloseOverlay" onclick="if(event.target===this)ot_closeModalClose()">
+  <div class="ot-close-modal">
+    <h3 id="otCloseTitle">Cerrar Mesa</h3>
+    <div class="ot-close-subtitle" id="otCloseSubtitle"></div>
+    <div class="field">
+      <label for="otCloseReason">Razón</label>
+      <select id="otCloseReason">
+        <option value="paid_cash">Pagó en efectivo</option>
+        <option value="paid_card_pos">Pagó con tarjeta (POS del restaurante)</option>
+        <option value="paid_pincer">Pagó con Pincer</option>
+        <option value="abandoned">Cliente abandonó sin pagar</option>
+        <option value="cancelled_wrong">Cancelada (pedido equivocado)</option>
+        <option value="other">Otro</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="otCloseNote">Nota (opcional)</label>
+      <input type="text" id="otCloseNote" maxlength="120" placeholder="Ej: cliente reclamó descuento">
+    </div>
+    <div class="actions">
+      <button class="btn-cancel" onclick="ot_closeModalClose()">Cancelar</button>
+      <button class="btn-submit" id="otCloseSubmitBtn" onclick="ot_submitClose()">Confirmar cierre</button>
+    </div>
+  </div>
+</div>
 
 <!-- Sprint-3 Etapa 2: Add Table Modal -->
 <div class="table-modal-overlay" id="addTableOverlay" onclick="closeAddTableModal()"></div>
@@ -4163,6 +4256,20 @@ async function assignOrdersToShift() {
 // en renderOpenTables).
 var ot_expandedKeys = new Set();
 
+// Sprint-3 Etapa 3 Commit 6: tracking de bill_requested_at previos para
+// detectar transiciones null → timestamp (cliente acaba de solicitar
+// cuenta). Dispara el mismo trigger de notificación que orden nueva.
+// Map<orderId, iso|null>. Se inicializa vacío; la primera carga no
+// dispara notificaciones (evita falsos positivos al abrir dashboard con
+// solicitudes preexistentes — regla del spec).
+var ot_prevBillReqMap = new Map();
+var ot_billReqMapReady = false;
+
+// Sprint-3 Etapa 3 Commit 6: accounts del último render, indexados por
+// acctKey. Los handlers ot_markPaid / ot_closeTable los consultan para
+// obtener el total, nombre, orders sin volver a filtrar data.
+var ot_currentAccounts = new Map();
+
 function ot_colorClass(tableNumber) {
   var n = Number(tableNumber) || 0;
   return 'ot-color-' + Math.abs(n) % 6;
@@ -4267,6 +4374,13 @@ function renderOpenTables(allOrders) {
     ot_expandedKeys.forEach(function(k) { if (liveKeys.has(k)) cleaned.add(k); });
     ot_expandedKeys = cleaned;
   }
+
+  // Sprint-3 Etapa 3 Commit 6: stashear accounts por key para los
+  // handlers de Marcar Pagada / Cerrar Mesa.
+  ot_currentAccounts.clear();
+  accountList.forEach(function(a) {
+    ot_currentAccounts.set(a.table_id + '|' + a.phone, a);
+  });
 
   var html = '<div class="open-tables-grid">';
   accountList.forEach(function(acct) {
@@ -4384,8 +4498,10 @@ function renderOpenTableCard(acct) {
        +   '<div class="ot-totals-box">' + totalsHtml + '</div>'
        + '</div>'
        + '<div class="ot-actions">'
-       +   '<button disabled title="Pr\u00f3ximamente (Commit 5)">Marcar como Pagada</button>'
-       +   '<button disabled title="Pr\u00f3ximamente (Commit 6)">Cerrar Mesa</button>'
+       +   (billRequested
+              ? '<button class="ot-btn-paid" onclick="ot_markPaid(\'' + ot_escape(acctKey) + '\')">Marcar como Pagada</button>'
+              : '<button disabled title="Cliente debe solicitar cuenta primero">Marcar como Pagada</button>')
+       +   '<button class="ot-btn-close" onclick="ot_openCloseModal(\'' + ot_escape(acctKey) + '\')">Cerrar Mesa</button>'
        + '</div>'
        + '</div>';
 }
@@ -4449,6 +4565,125 @@ function scrollToLiveOrders() {
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) { /* silente — scrollIntoView puede fallar en browsers viejos */ }
+}
+
+// Sprint-3 Etapa 3 Commit 6: Marcar Pagada + Cerrar Mesa handlers.
+
+var _otPendingCloseKey = null;
+
+async function ot_markPaid(acctKey) {
+  var acct = ot_currentAccounts.get(acctKey);
+  if (!acct) return;
+  var totals = ot_computeTotals(acct.orders);
+  var displayName = acct.customer_name || 'Sin nombre';
+  if (!confirm('¿Confirmar pago de RD$' + totals.grand.toLocaleString() + '?\n\nMesa ' + acct.table_number + ' · ' + displayName + '\n' + acct.orders.length + ' orden' + (acct.orders.length === 1 ? '' : 'es'))) return;
+
+  try {
+    var patchRes = await fetch(SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(acct.table_id)
+      + '&phone=eq.' + encodeURIComponent(acct.phone)
+      + '&status=not.in.(paid,cancelled)', {
+      method: 'PATCH',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() }),
+    });
+    if (!patchRes.ok) {
+      showError('Error cerrando cuenta (HTTP ' + patchRes.status + ')');
+      return;
+    }
+    showToast('Cuenta Mesa ' + acct.table_number + ' cerrada \u00b7 RD$' + totals.grand.toLocaleString());
+    setTimeout(loadOrders, 200);
+    ot_openClosureWhatsApp(acct, totals.grand);
+  } catch (e) {
+    dbg('[ot_markPaid] error: ' + e.message);
+    showError('Error de conexión');
+  }
+}
+
+function ot_openCloseModal(acctKey) {
+  var acct = ot_currentAccounts.get(acctKey);
+  if (!acct) return;
+  _otPendingCloseKey = acctKey;
+  var totals = ot_computeTotals(acct.orders);
+  document.getElementById('otCloseTitle').textContent = 'Cerrar Mesa ' + acct.table_number;
+  document.getElementById('otCloseSubtitle').textContent =
+    (acct.customer_name || 'Sin nombre') + ' \u00b7 RD$' + totals.grand.toLocaleString();
+  document.getElementById('otCloseReason').value = 'paid_cash';
+  document.getElementById('otCloseNote').value = '';
+  var btn = document.getElementById('otCloseSubmitBtn');
+  btn.disabled = false;
+  btn.textContent = 'Confirmar cierre';
+  document.getElementById('otCloseOverlay').classList.add('show');
+}
+
+function ot_closeModalClose() {
+  document.getElementById('otCloseOverlay').classList.remove('show');
+  _otPendingCloseKey = null;
+}
+
+async function ot_submitClose() {
+  if (!_otPendingCloseKey) return;
+  var acct = ot_currentAccounts.get(_otPendingCloseKey);
+  if (!acct) { ot_closeModalClose(); return; }
+
+  var reason = document.getElementById('otCloseReason').value || 'other';
+  var note = (document.getElementById('otCloseNote').value || '').trim();
+  var totals = ot_computeTotals(acct.orders);
+  var btn = document.getElementById('otCloseSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Cerrando...';
+
+  try {
+    var patchRes = await fetch(SUPABASE_URL + '/rest/v1/orders'
+      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&table_id=eq.' + encodeURIComponent(acct.table_id)
+      + '&phone=eq.' + encodeURIComponent(acct.phone)
+      + '&status=not.in.(paid,cancelled)', {
+      method: 'PATCH',
+      headers: sbWriteHeaders(),
+      body: JSON.stringify({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        close_reason: reason,
+        close_note: note || null,
+      }),
+    });
+    if (!patchRes.ok) {
+      showError('Error cerrando mesa (HTTP ' + patchRes.status + ')');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar cierre';
+      return;
+    }
+    ot_closeModalClose();
+    showToast('Mesa ' + acct.table_number + ' cerrada');
+    setTimeout(loadOrders, 200);
+    // WhatsApp solo si la razón indica cobro exitoso — para abandoned/
+    // cancelled/other no tiene sentido mandar "tu cuenta fue cerrada".
+    var paidReasons = ['paid_cash', 'paid_card_pos', 'paid_pincer'];
+    if (paidReasons.indexOf(reason) !== -1) {
+      ot_openClosureWhatsApp(acct, totals.grand);
+    }
+  } catch (e) {
+    dbg('[ot_submitClose] error: ' + e.message);
+    showError('Error de conexión');
+    btn.disabled = false;
+    btn.textContent = 'Confirmar cierre';
+  }
+}
+
+// WhatsApp pre-rellenado. Mismo patrón que markReady del Commit 4
+// Etapa 2 — window.open con wa.me, no server-side send. La cajera/
+// mesero manda manualmente desde WhatsApp web del dashboard.
+function ot_openClosureWhatsApp(acct, grandTotal) {
+  if (!acct || !acct.phone) return;
+  var clean = acct.phone.replace(/[^0-9]/g, '');
+  if (!clean) return;
+  var name = acct.customer_name || '';
+  var msg = 'Hola' + (name ? ' ' + name : '') + ', tu cuenta de ' + DISPLAY_NAME
+          + ' (Mesa ' + acct.table_number + ') por RD$' + grandTotal.toLocaleString()
+          + ' fue cerrada. ¡Gracias por visitarnos!';
+  window.open('https://wa.me/1' + clean + '?text=' + encodeURIComponent(msg), 'pincer_whatsapp');
 }
 
 function ot_statusChip(o) {
@@ -4608,6 +4843,50 @@ async function loadOrders() {
       ot_collapseAllOnNewOrder();
       renderOpenTables(data);
       scrollToLiveOrders();
+    }
+
+    // Sprint-3 Etapa 3 Commit 6: detectar transición null→timestamp
+    // de bill_requested_at en alguna orden (cliente acaba de solicitar
+    // cuenta). Mismo flujo que orden nueva (sonido + vibración +
+    // sendNotification + auto-scroll a Mesas Abiertas donde vive la
+    // card roja "PIDE CUENTA" del Commit 4).
+    //
+    // Gate: ot_billReqMapReady solo es true después del primer poll,
+    // evitando falsos positivos al cargar con solicitudes preexistentes.
+    // hasInteracted también gatea (consistente con el sonido de orden
+    // nueva — misma regla del spec).
+    var billReqJustAppeared = false;
+    if (hasInteracted && ot_billReqMapReady) {
+      for (var bi = 0; bi < data.length; bi++) {
+        var o_br = data[bi];
+        var hadPrev = ot_prevBillReqMap.has(o_br.id);
+        var prevVal = hadPrev ? ot_prevBillReqMap.get(o_br.id) : null;
+        if (hadPrev && o_br.bill_requested_at && !prevVal) {
+          billReqJustAppeared = true;
+          break;
+        }
+      }
+    }
+    // Actualizar map con estado actual (sea o no primera iteración).
+    ot_prevBillReqMap.clear();
+    data.forEach(function(o_br2) {
+      ot_prevBillReqMap.set(o_br2.id, o_br2.bill_requested_at || null);
+    });
+    ot_billReqMapReady = true;
+
+    if (billReqJustAppeared) {
+      dbg('🧾 Cliente solicitó cuenta!');
+      startAlarm();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      sendNotification('Cliente pidió la cuenta', 'Hay una mesa esperando cobro');
+      try {
+        var otHeader = document.getElementById('openTablesHeader');
+        if (otHeader && otHeader.style.display !== 'none') {
+          otHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          scrollToLiveOrders();
+        }
+      } catch (e) {}
     }
 
     // Stop alarm if no pending orders remain
