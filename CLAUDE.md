@@ -82,6 +82,32 @@ Key columns on `restaurant_users`: `restaurant_slug`, `plan` (free/premium), `tr
 
 ---
 
+## Status semantics en `orders`
+
+`status` + `paid_at` distinguen 3 modos operativos del campo `paid`:
+
+| status | paid_at | Significado | Origen |
+|---|---|---|---|
+| `pending` | NULL | Orden recién insertada, pendiente de aceptación | menu cliente sin pago upfront |
+| `paid` | NULL | Cliente pagó upfront vía Azul, espera aceptación de cocina | menu cliente con Azul (Phase A) |
+| `paid` | NOT NULL | Cuenta cerrada/finalizada, no requiere acción | dashboard "Marcar Pagada" / "Cerrar Mesa" (Commit 6 Etapa 3) o Phase B Pincer-Azul dine-in |
+
+**Reglas para el dev:**
+- INSERT a `orders` desde menú cliente con pago Azul: NUNCA setear `paid_at`. La cocina debe aceptar primero.
+- UPDATE a `orders` desde dashboard al cerrar cuenta: SIEMPRE setear `paid_at = NOW()`.
+- INSERT/UPDATE futuros (Phase B Pincer-Azul dine-in donde el pago automáticamente cierra): setear AMBOS `status='paid'` Y `paid_at=NOW()` atomicalmente.
+
+**Frontend filters:**
+- `dashboard:loadOrders` cuenta como pending solo `(status='pending' || (status='paid' && !paid_at))`.
+- `dashboard:renderOrder` skip render si `status='paid' && paid_at`.
+- `dashboard:Mesas Abiertas` filtra `status NOT IN (paid, cancelled, voided)` → ya cubre ambos casos.
+
+**Nunca:**
+- Setear `paid_at` con `status != 'paid'`.
+- Borrar `paid_at` post-cierre (audit trail).
+
+---
+
 ## API Endpoints
 
 ### Auth & Sessions
