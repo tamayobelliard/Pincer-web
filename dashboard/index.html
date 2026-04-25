@@ -2560,7 +2560,11 @@ function clearError() {
 }
 function updateStats(orders) {
   document.getElementById('total-orders').textContent = orders.length;
-  var pendingCount = orders.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
+  // Sprint-3 Etapa 3 Commit 6 hotfix 2026-04-25: distinguir Azul prepaid
+  // (status=paid sin paid_at — espera aceptación) de cuenta cerrada
+  // (status=paid + paid_at — sin acción pendiente). Solo el primer caso
+  // cuenta como pendiente.
+  var pendingCount = orders.filter(o => o.status === 'pending' || (o.status === 'paid' && !o.paid_at) || !o.status).length;
   document.getElementById('pending-orders').textContent = pendingCount;
   document.getElementById('preparing-orders').textContent = orders.filter(o => o.status === 'accepted').length;
   document.getElementById('ready-orders').textContent = orders.filter(o => o.status === 'ready' || o.status === 'notified').length;
@@ -4823,7 +4827,9 @@ async function loadOrders() {
 
     updateStats(data);
 
-    const currentPending = data.filter(o => o.status === 'pending' || o.status === 'paid' || !o.status).length;
+    // Sprint-3 Etapa 3 Commit 6 hotfix 2026-04-25: misma lógica que
+    // updateStats — Azul prepaid sí cuenta, cuenta cerrada no.
+    const currentPending = data.filter(o => o.status === 'pending' || (o.status === 'paid' && !o.paid_at) || !o.status).length;
 
     if (hasInteracted && currentPending > lastOrderCount) {
       dbg('🔔 Nueva orden detectada! Pendientes: ' + currentPending);
@@ -4904,6 +4910,13 @@ async function loadOrders() {
     _ordersMap = {};
     data.forEach((order, idx) => {
       _ordersMap[order.id] = order;
+      // Sprint-3 Etapa 3 Commit 6 hotfix 2026-04-25: skip cards de
+      // cuentas cerradas (status='paid' + paid_at NOT NULL). Estas viven
+      // ahora en el flow de Mesas Abiertas y al cerrar deben desaparecer
+      // de Órdenes en Vivo. _ordersMap se preserva para handlers que
+      // referencien por id (audit/historical). Azul prepaid (paid sin
+      // paid_at) sí renderiza como hoy — espera aceptación de cocina.
+      if (order.status === 'paid' && order.paid_at) return;
       const orderNum = order.order_number || (totalOrders - idx);
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
@@ -5011,7 +5024,7 @@ async function loadOrders() {
         ${order.customer_name ? `<div class="order-phone order-customer" style="border-left-color:#8b5cf6;"><i data-lucide="user"></i> ${order.customer_name}</div>` : ''}
         ${deliveryInfoHTML}
         ${(function() {
-          if (status === 'pending' || status === 'paid' || !status) {
+          if (status === 'pending' || (status === 'paid' && !order.paid_at) || !status) {
             // 5-min decision countdown from when the order arrived.
             // After expiry, keep counting up so the employee sees total wait time.
             var elapsedSec = Math.floor((Date.now() - createdAt.getTime()) / 1000);
@@ -5034,7 +5047,7 @@ async function loadOrders() {
           }
         })()}
         <div class="order-actions">
-        ${(status === 'pending' || status === 'paid') ? `<button class="btn-accept" onclick="acceptOrder(${order.id})"><i data-lucide="check"></i> Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})"><i data-lucide="x"></i> Rechazar</button>` : ''}
+        ${(status === 'pending' || (status === 'paid' && !order.paid_at)) ? `<button class="btn-accept" onclick="acceptOrder(${order.id})"><i data-lucide="check"></i> Aceptar</button><button class="btn-reject" onclick="openRejectModal(${order.id})"><i data-lucide="x"></i> Rechazar</button>` : ''}
         ${status === 'accepted' ? `<button class="btn-ready" onclick="markReady(${order.id})"><i data-lucide="check-circle-2"></i> ${_isWaiterDineIn ? 'Marcar como entregada' : 'Marcar como lista y notificar'}</button>` : ''}
         ${order.order_type === 'delivery' && order.phone && status !== 'voided' ? `<a class="wa-btn" style="background:#25D366;margin-top:8px;" href="https://wa.me/1${(order.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent('¡Hola! 👋 Recibimos tu pedido #' + orderNum + ' de ' + DISPLAY_NAME + '. Para coordinar la entrega con nuestro mensajero, por favor compártenos tu ubicación en este chat. ¡Gracias!')}" target="pincer_whatsapp">📲 Pedir ubicación</a>` : ''}
         ${(function() {
