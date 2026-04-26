@@ -732,6 +732,65 @@
       border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
       text-transform: uppercase;
     }
+
+    /* Hotfix 2026-04-26: Card especial "Solicitud de Cuenta" dentro
+       de Órdenes en Vivo. Visualmente prominente — border dorado +
+       header con badge rojo "PIDE CUENTA". Doble punto de acción con
+       Mesas Abiertas (cajera elige cuál usar). Desaparece al marcar. */
+    .live-bill-request-card {
+      background: white; border: 2px solid #DC2626;
+      border-radius: 12px; margin-bottom: 14px;
+      box-shadow: 0 4px 12px rgba(220,38,38,0.18);
+      overflow: hidden;
+    }
+    .live-bill-request-card .lbr-header {
+      background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+      color: white; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .live-bill-request-card .lbr-header-title {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: 14px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .live-bill-request-card .lbr-header-emoji {
+      font-size: 18px;
+    }
+    .live-bill-request-card .lbr-header-meta {
+      font-size: 12px; opacity: 0.95; font-weight: 600;
+    }
+    .live-bill-request-card .lbr-body {
+      padding: 14px 16px;
+    }
+    .live-bill-request-card .lbr-customer {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin-bottom: 4px;
+    }
+    .live-bill-request-card .lbr-customer-phone {
+      font-size: 13px; color: var(--muted); margin-bottom: 10px;
+    }
+    .live-bill-request-card .lbr-summary {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 12px; background: var(--bg3); border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .live-bill-request-card .lbr-summary-items {
+      font-size: 13px; color: var(--muted); font-weight: 600;
+    }
+    .live-bill-request-card .lbr-summary-total {
+      font-size: 18px; font-weight: 800; color: var(--text);
+    }
+    .live-bill-request-card .lbr-action {
+      width: 100%; padding: 12px 16px; border: none; border-radius: 8px;
+      background: #16A34A; color: white;
+      font-family: inherit; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .live-bill-request-card .lbr-action:hover { background: #15803D; }
+    .live-bill-request-card .lbr-action:disabled {
+      opacity: 0.6; cursor: not-allowed;
+    }
     .order-type-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px; border-radius: 4px;
@@ -1435,6 +1494,11 @@
     <div id="openTablesContainer" style="display:none;"></div>
 
     <div class="section-header" id="liveOrdersHeader">📋 Órdenes en Vivo</div>
+    <!-- Hotfix 2026-04-26: container para cards de "Solicitud de Cuenta"
+         dentro de Órdenes en Vivo. Render ANTES del listado de orders
+         para máxima visibilidad. Populado por renderBillRequestCards()
+         dentro de loadOrders. Vacío si no hay solicitudes activas. -->
+    <div id="billRequestCards"></div>
     <div id="orders">
       <div class="loading">⏳ Cargando órdenes...</div>
     </div>
@@ -4642,6 +4706,91 @@ function scrollToLiveOrders() {
   } catch (e) { /* silente — scrollIntoView puede fallar en browsers viejos */ }
 }
 
+// ══════════════════════════════════════════════════════════════
+// Hotfix 2026-04-26: Bill request cards en Órdenes en Vivo
+// ══════════════════════════════════════════════════════════════
+// Doble punto de acción: cajera puede marcar la cuenta como impresa
+// desde Mesas Abiertas O desde una card especial dentro de Órdenes
+// en Vivo. La card aquí es agregación visual — agrupa orders activas
+// con bill_requested_at NOT NULL Y sin paid_at por (table_id, phone).
+// Reusa ot_markPaid + ot_currentAccounts del Commit 6.
+
+function getActiveBillRequests(allOrders) {
+  // Filtrar orders con bill_requested_at activo Y no pagadas/canceladas.
+  var withBill = (allOrders || []).filter(function(o) {
+    if (!o || !o.table_id) return false;
+    if (!o.bill_requested_at) return false;
+    if (o.paid_at) return false; // ya marcada como impresa
+    var s = o.status || '';
+    return s !== 'cancelled' && s !== 'voided' && s !== 'paid';
+  });
+  // Agrupar por (table_id, phone) — una solicitud = una cuenta.
+  var groups = {};
+  withBill.forEach(function(o) {
+    var key = o.table_id + '|' + (o.phone || '');
+    if (!groups[key]) {
+      groups[key] = {
+        acctKey: key,
+        table_id: o.table_id,
+        table_number: o.table_number || 0,
+        phone: o.phone || '',
+        customer_name: o.customer_name || '',
+        billRequestedAt: o.bill_requested_at,
+        orders: [],
+      };
+    }
+    groups[key].orders.push(o);
+    if (o.bill_requested_at < groups[key].billRequestedAt) {
+      groups[key].billRequestedAt = o.bill_requested_at;
+    }
+  });
+  return Object.values(groups).sort(function(a, b) {
+    return a.table_number - b.table_number;
+  });
+}
+
+function renderBillRequestCards(allOrders) {
+  var container = document.getElementById('billRequestCards');
+  if (!container) return;
+  var requests = getActiveBillRequests(allOrders);
+  if (requests.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  var html = '';
+  requests.forEach(function(req) {
+    var totals = ot_computeTotals(req.orders);
+    var itemCount = 0;
+    req.orders.forEach(function(o) {
+      var its;
+      try { its = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { its = []; }
+      if (Array.isArray(its)) its.forEach(function(it) { itemCount += (Number(it.qty) || 1); });
+    });
+    var elapsed = ot_formatElapsed(req.billRequestedAt);
+    html += '<div class="live-bill-request-card">'
+         +   '<div class="lbr-header">'
+         +     '<span class="lbr-header-title">'
+         +       '<span class="lbr-header-emoji">🧾</span>'
+         +       'Solicitud de Cuenta · Mesa ' + req.table_number
+         +     '</span>'
+         +     '<span class="lbr-header-meta">' + ot_escape(elapsed) + '</span>'
+         +   '</div>'
+         +   '<div class="lbr-body">'
+         +     '<div class="lbr-customer">' + ot_escape(req.customer_name || 'Sin nombre') + '</div>'
+         +     (req.phone ? '<div class="lbr-customer-phone">📞 ' + ot_escape(req.phone) + '</div>' : '')
+         +     '<div class="lbr-summary">'
+         +       '<span class="lbr-summary-items">' + itemCount + (itemCount === 1 ? ' item' : ' items') + '</span>'
+         +       '<span class="lbr-summary-total">RD$' + totals.grand.toLocaleString() + '</span>'
+         +     '</div>'
+         +     '<button class="lbr-action" onclick="ot_markPaid(\'' + ot_escape(req.acctKey) + '\')">'
+         +       'Marcar como Imprimida y Enviada'
+         +     '</button>'
+         +   '</div>'
+         + '</div>';
+  });
+  container.innerHTML = html;
+}
+
 // Sprint-3 Etapa 3 Commit 6: Marcar Pagada + Cerrar Mesa handlers.
 
 var _otPendingCloseKey = null;
@@ -4890,6 +5039,11 @@ async function loadOrders() {
     // mismo `data`. La función filtra internamente por table_id +
     // status operativo. Si no hay nada que mostrar se oculta sola.
     renderOpenTables(data);
+    // Hotfix 2026-04-26: cards especiales de Solicitud de Cuenta dentro
+    // de Órdenes en Vivo. Doble punto de acción con Mesas Abiertas.
+    // Se ocultan automáticamente cuando no hay solicitudes activas
+    // (paid_at las saca del filter, mismo PATCH desde cualquier punto).
+    renderBillRequestCards(data);
 
     const container = document.getElementById("orders");
 
@@ -4924,6 +5078,7 @@ async function loadOrders() {
       // viejo, así que necesitamos llamarlo de nuevo con el Set limpio.
       ot_collapseAllOnNewOrder();
       renderOpenTables(data);
+      renderBillRequestCards(data);
       scrollToLiveOrders();
     }
 
@@ -4971,7 +5126,7 @@ async function loadOrders() {
         // y table_id es probablemente la solicitante (1:1 founder typical).
         if (o_brj.bill_requested_at && o_brj.table_id) { brAcct = o_brj; break; }
       }
-      var brTitle = '🧾 ¡SOLICITUD DE CUENTA!';
+      var brTitle = '🧾 ¡NUEVA SOLICITUD DE CUENTA!';
       var brSubtitle = brAcct
         ? ('Mesa ' + (brAcct.table_number || '?') + ' · ' + (brAcct.customer_name || 'Sin nombre'))
         : 'Toca aquí para atender';
