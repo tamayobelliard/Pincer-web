@@ -809,16 +809,10 @@
      Banner discreto para identificación de mesa post-scan QR.
      Parity lógico con menu/index.html — visual adaptado a thedeck:
      navy tile background, gold accent, Playfair italic para el número. */
-  /* Hotfix 2026-04-26: wrap relativo para anclar el botón carrito
-     a la derecha del banner sin romper el centrado del texto. */
-  .deck-table-banner-wrap {
-    position: relative;
-    max-width: 420px;
-    margin: var(--sp-md) auto 0;
-  }
   .deck-table-banner {
     display: none;
-    margin: 0;
+    margin: var(--sp-md) auto 0;
+    max-width: 420px;
     padding: 10px var(--sp-md);
     background: var(--color-primary);
     color: var(--color-accent-2);
@@ -844,42 +838,34 @@
     margin: 0 8px;
   }
 
-  /* Hotfix 2026-04-26: shortcut a Mi Cuenta en el banner. Visible
-     solo cuando hay tableContext + items > 0. Click → smooth scroll
-     a #myAccountSection. Estilo navy/gold del design system. */
-  .deck-table-cart-btn {
+  /* Hotfix 2026-04-26: shortcut a Mi Cuenta en el header (top-right,
+     reemplaza al icono lupa que no tenía handler). Visible solo
+     cuando hay tableContext + items > 0. Click → smooth scroll a
+     #myAccountSection. Hereda layout de .icon-btn (cream border on
+     navy). El badge de count flota top-right. */
+  .deck-header-cart-btn {
     display: none;
-    position: absolute;
-    top: 50%; right: 6px;
-    transform: translateY(-50%);
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    background: var(--color-accent);
-    border: 1.5px solid var(--color-accent);
-    color: var(--color-primary);
-    font-size: 18px;
+    position: relative;
     cursor: pointer;
-    align-items: center; justify-content: center;
-    padding: 0;
-    box-shadow: 0 2px 6px rgba(11,30,58,0.25);
   }
-  .deck-table-cart-btn.show { display: inline-flex; }
-  .deck-table-cart-btn:active { transform: translateY(-50%) scale(0.96); }
-  .deck-table-cart-count {
+  .deck-header-cart-btn.show { display: inline-flex; }
+  .deck-header-cart-btn:active { transform: scale(0.96); }
+  .deck-header-cart-count {
     position: absolute;
-    top: -3px; right: -3px;
+    top: -4px; right: -4px;
     min-width: 18px; height: 18px;
     padding: 0 5px;
-    background: var(--color-bg-2);
+    background: var(--color-accent);
     color: var(--color-primary);
     border: 1.5px solid var(--color-primary);
     border-radius: 9px;
     font-family: var(--font-serif);
     font-size: 11px;
     font-weight: 700;
-    line-height: 16px;
+    line-height: 15px;
     text-align: center;
     letter-spacing: 0;
+    pointer-events: none;
   }
 
   /* ═══════════ Table invalid overlay (Sprint-3 Etapa 2) ═══════════
@@ -1389,8 +1375,14 @@
     </pattern></defs><rect width="100%" height="100%" fill="url(#tile-hdr)"/></svg>
   </div>
   <div class="top-bar">
-    <button class="icon-btn" id="searchBtn" aria-label="Buscar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21 l-4.5 -4.5"/></svg>
+    <!-- Hotfix 2026-04-26: search icon (sin handler) reemplazado por
+         shortcut a Mi Cuenta. Visible solo cuando hay tableContext +
+         items > 0. Click → smooth scroll a #myAccountSection. -->
+    <button class="icon-btn deck-header-cart-btn" id="tableCartBtn" type="button"
+            aria-label="Ir a Mi Cuenta"
+            onclick="scrollToMyAccount()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4 h2.2 l2.4 11.2 a1.4 1.4 0 0 0 1.37 1.1 h7.86 a1.4 1.4 0 0 0 1.37 -1.05 L20 8 H6.5"/></svg>
+      <span class="deck-header-cart-count" id="tableCartCount">0</span>
     </button>
   </div>
   <div class="emblem-wrap">
@@ -1413,17 +1405,9 @@
 
 <!-- ═════════════ MESA BANNER (Sprint-3 Etapa 2) ═════════════
      Visible solo post-validación exitosa de ?table=N&t=TOKEN.
-     Populado por renderTableBanner().
-     Hotfix 2026-04-26: wrap relativo + botón carrito shortcut a Mi
-     Cuenta (visible solo si tableContext + items > 0). -->
-<div class="deck-table-banner-wrap">
-  <div class="deck-table-banner" id="tableBanner"></div>
-  <button class="deck-table-cart-btn" id="tableCartBtn" type="button"
-          aria-label="Ir a Mi Cuenta"
-          onclick="scrollToMyAccount()">
-    🛒<span class="deck-table-cart-count" id="tableCartCount">0</span>
-  </button>
-</div>
+     Populado por renderTableBanner(). El shortcut a Mi Cuenta vive
+     en el header (.deck-header-cart-btn), no aquí. -->
+<div class="deck-table-banner" id="tableBanner"></div>
 
 <!-- ═════════════ TABS ═════════════ -->
 <div class="tabs">
