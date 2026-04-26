@@ -36,6 +36,12 @@
       position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
       background: var(--bg2); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; padding: 24px 16px; z-index: 100;
+      /* Hotfix UX 2026-04-26: scroll cuando el contenido excede la altura
+         del viewport. Antes el último item ("Abrir/Cerrar Negocio" via
+         margin-top:auto en .sidebar-bottom) se cortaba en pantallas
+         cortas sin manera de llegar. overflow-y:auto solo aparece cuando
+         hace falta — pantallas grandes sin scroll, intacto. */
+      overflow-y: auto;
     }
     .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 32px; }
     .sidebar-logo .logo-icon img { width: 32px; height: 32px; display: block; border-radius: 6px; }
