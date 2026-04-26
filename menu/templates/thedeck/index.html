@@ -809,10 +809,16 @@
      Banner discreto para identificación de mesa post-scan QR.
      Parity lógico con menu/index.html — visual adaptado a thedeck:
      navy tile background, gold accent, Playfair italic para el número. */
+  /* Hotfix 2026-04-26: wrap relativo para anclar el botón carrito
+     a la derecha del banner sin romper el centrado del texto. */
+  .deck-table-banner-wrap {
+    position: relative;
+    max-width: 420px;
+    margin: var(--sp-md) auto 0;
+  }
   .deck-table-banner {
     display: none;
-    margin: var(--sp-md) auto 0;
-    max-width: 420px;
+    margin: 0;
     padding: 10px var(--sp-md);
     background: var(--color-primary);
     color: var(--color-accent-2);
@@ -836,6 +842,44 @@
   .deck-table-banner .deck-table-dot {
     color: var(--color-accent-3);
     margin: 0 8px;
+  }
+
+  /* Hotfix 2026-04-26: shortcut a Mi Cuenta en el banner. Visible
+     solo cuando hay tableContext + items > 0. Click → smooth scroll
+     a #myAccountSection. Estilo navy/gold del design system. */
+  .deck-table-cart-btn {
+    display: none;
+    position: absolute;
+    top: 50%; right: 6px;
+    transform: translateY(-50%);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    border: 1.5px solid var(--color-accent);
+    color: var(--color-primary);
+    font-size: 18px;
+    cursor: pointer;
+    align-items: center; justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 6px rgba(11,30,58,0.25);
+  }
+  .deck-table-cart-btn.show { display: inline-flex; }
+  .deck-table-cart-btn:active { transform: translateY(-50%) scale(0.96); }
+  .deck-table-cart-count {
+    position: absolute;
+    top: -3px; right: -3px;
+    min-width: 18px; height: 18px;
+    padding: 0 5px;
+    background: var(--color-bg-2);
+    color: var(--color-primary);
+    border: 1.5px solid var(--color-primary);
+    border-radius: 9px;
+    font-family: var(--font-serif);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    letter-spacing: 0;
   }
 
   /* ═══════════ Table invalid overlay (Sprint-3 Etapa 2) ═══════════
@@ -1369,8 +1413,17 @@
 
 <!-- ═════════════ MESA BANNER (Sprint-3 Etapa 2) ═════════════
      Visible solo post-validación exitosa de ?table=N&t=TOKEN.
-     Populado por renderTableBanner(). -->
-<div class="deck-table-banner" id="tableBanner"></div>
+     Populado por renderTableBanner().
+     Hotfix 2026-04-26: wrap relativo + botón carrito shortcut a Mi
+     Cuenta (visible solo si tableContext + items > 0). -->
+<div class="deck-table-banner-wrap">
+  <div class="deck-table-banner" id="tableBanner"></div>
+  <button class="deck-table-cart-btn" id="tableCartBtn" type="button"
+          aria-label="Ir a Mi Cuenta"
+          onclick="scrollToMyAccount()">
+    🛒<span class="deck-table-cart-count" id="tableCartCount">0</span>
+  </button>
+</div>
 
 <!-- ═════════════ TABS ═════════════ -->
 <div class="tabs">
@@ -2861,12 +2914,14 @@ function renderMyAccount() {
     }
     section.style.display = 'block';
     document.body.classList.remove('menu-locked');
+    if (typeof applyTableCartButton === 'function') applyTableCartButton();
     return;
   }
 
   if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
     section.style.display = 'none';
     if (typeof applyBillRequestedUI === 'function') applyBillRequestedUI();
+    if (typeof applyTableCartButton === 'function') applyTableCartButton();
     return;
   }
 
@@ -2932,6 +2987,9 @@ function renderMyAccount() {
 
   // Sprint-3 Etapa 3 Commit 5: aplicar estado bill-requested cada poll.
   applyBillRequestedUI();
+
+  // Hotfix 2026-04-26: refrescar visibilidad + count del shortcut 🛒.
+  applyTableCartButton();
 }
 
 function startMyAccountPoller() {
@@ -3077,6 +3135,37 @@ function closeMobileSession() {
 // Botón único del overlay "Cuenta solicitada" → menú take-out limpio.
 function goToTakeoutMenu() {
   window.location.href = '/' + SLUG;
+}
+
+// Hotfix 2026-04-26: shortcut a Mi Cuenta desde el banner. Parity
+// funcional con menu/index.html. Mismas reglas de visibilidad +
+// count, estilo navy/gold del design system.
+function scrollToMyAccount() {
+  var sec = document.getElementById('myAccountSection');
+  if (!sec) return;
+  try {
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { sec.scrollIntoView(); }
+}
+
+function applyTableCartButton() {
+  var btn = document.getElementById('tableCartBtn');
+  if (!btn) return;
+  var hasContext = !!(tableContext && tableContext.table_id);
+  var hasItems = Array.isArray(myAccountOrders) && myAccountOrders.length > 0;
+  if (hasContext && hasItems) {
+    var count = 0;
+    myAccountOrders.forEach(function(o) {
+      var its;
+      try { its = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { its = []; }
+      if (Array.isArray(its)) its.forEach(function(it) { count += (Number(it.qty) || 1); });
+    });
+    var countEl = document.getElementById('tableCartCount');
+    if (countEl) countEl.textContent = String(count);
+    btn.classList.add('show');
+  } else {
+    btn.classList.remove('show');
+  }
 }
 
 function onMyAccountButtonClick() {
@@ -4655,6 +4744,14 @@ document.getElementById('confirmNewOrder').addEventListener('click', () => {
   hideConfirmation();
   // Scroll del menú hacia arriba — UX "empiezas de cero"
   window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Hotfix 2026-04-26: tap anywhere en el confirm panel también cierra
+// (no solo el botón "Seguir ordenando"). Excluye taps sobre botones/
+// links/inputs para no matar acciones interactivas.
+document.getElementById('confirmPanel').addEventListener('click', (e) => {
+  if (e.target.closest('button, a, input, textarea, select, [data-no-close]')) return;
+  hideConfirmation();
 });
 
 // Kick off

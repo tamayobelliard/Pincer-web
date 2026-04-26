@@ -2333,14 +2333,20 @@
 
     /* Sprint-3 Etapa 2: Mesa banner — sutil, usa var(--primary) del tema.
        Arriba del menú, bajo el header. */
+    /* Hotfix 2026-04-26: wrap relativo para anclar el botón carrito
+       a la derecha del banner sin afectar el centrado del texto. */
+    .table-banner-wrap {
+      position: relative;
+      max-width: 500px;
+      margin: 0 auto 12px;
+    }
     .table-banner {
       display: none;
       background: var(--primary);
       color: #ffffff;
       padding: 8px 14px;
       border-radius: 10px;
-      margin: 0 auto 12px;
-      max-width: 500px;
+      margin: 0;
       text-align: center;
       font-size: 0.9em;
       font-weight: 600;
@@ -2348,6 +2354,42 @@
     }
     .table-banner.show { display: block; }
     .table-banner .mesa-emoji { margin-right: 4px; }
+
+    /* Hotfix 2026-04-26: shortcut a Mi Cuenta. Visible solo cuando
+       hay tableContext + items en Mi Cuenta. Click → smooth scroll a
+       sección. Posicionado absolute para no romper centrado del banner. */
+    .table-cart-btn {
+      display: none;
+      position: absolute;
+      top: 50%; right: 6px;
+      transform: translateY(-50%);
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      border: 1.5px solid rgba(255,255,255,0.4);
+      color: #ffffff;
+      font-size: 18px;
+      cursor: pointer;
+      align-items: center; justify-content: center;
+      padding: 0;
+    }
+    .table-cart-btn.show { display: inline-flex; }
+    .table-cart-btn:active { background: rgba(255,255,255,0.3); }
+    .table-cart-count {
+      position: absolute;
+      top: -3px; right: -3px;
+      min-width: 18px; height: 18px;
+      padding: 0 5px;
+      background: #FFFFFF;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 16px;
+      text-align: center;
+      letter-spacing: 0;
+    }
 
     /* Sprint-3 Etapa 2: error overlay para ?table=... inválido.
        Full-screen con misma estructura que .closed-page pero mensaje propio. */
@@ -2646,8 +2688,17 @@
   <div class="conn-banner" id="connBanner"></div>
 
   <!-- Sprint-3 Etapa 2: banner de mesa identificada. Populado por
-       renderTableBanner() tras validación exitosa del ?table=N&t=TOKEN. -->
-  <div class="table-banner" id="tableBanner"></div>
+       renderTableBanner() tras validación exitosa del ?table=N&t=TOKEN.
+       Hotfix 2026-04-26: wrap relativo + botón carrito shortcut a Mi
+       Cuenta (visible solo si tableContext + items > 0). -->
+  <div class="table-banner-wrap">
+    <div class="table-banner" id="tableBanner"></div>
+    <button class="table-cart-btn" id="tableCartBtn" type="button"
+            aria-label="Ir a Mi Cuenta"
+            onclick="scrollToMyAccount()">
+      🛒<span class="table-cart-count" id="tableCartCount">0</span>
+    </button>
+  </div>
 
   <!-- Debug panel (tap logo 5 times to show) -->
   <div class="debug-panel" id="debugPanel"></div>
@@ -6079,6 +6130,14 @@ document.getElementById("receiptOverlay").addEventListener("click", () => {
   closeReceipt();
 });
 
+// Hotfix 2026-04-26: tap anywhere on the receipt card también cierra
+// (no solo el botón "Cerrar"). Excluye taps sobre botones/links/inputs
+// para no matar la acción de descargar / compartir / cerrar.
+document.getElementById("receiptModal").addEventListener("click", (e) => {
+  if (e.target.closest('button, a, input, textarea, select, [data-no-close]')) return;
+  closeReceipt();
+});
+
 // ══════════════════════════════════════════════════════════════
 // CHECK ORDER STATUS
 // ══════════════════════════════════════════════════════════════
@@ -7131,6 +7190,7 @@ function renderMyAccount() {
     }
     section.style.display = 'block';
     document.body.classList.remove('menu-locked'); // desbloquear menú
+    if (typeof applyTableCartButton === 'function') applyTableCartButton();
     return;
   }
 
@@ -7143,6 +7203,7 @@ function renderMyAccount() {
   if (!tableContext || !myAccountOrders.length || svcModel !== 'waiter_service') {
     section.style.display = 'none';
     if (typeof applyBillRequestedUI === 'function') applyBillRequestedUI();
+    if (typeof applyTableCartButton === 'function') applyTableCartButton();
     return;
   }
 
@@ -7206,6 +7267,9 @@ function renderMyAccount() {
   // orders salen del filter de Mi Cuenta → isBillRequested pasa a false
   // → menú se desbloquea sin que el cliente haga nada.
   applyBillRequestedUI();
+
+  // Hotfix 2026-04-26: refrescar visibilidad + count del shortcut 🛒.
+  applyTableCartButton();
 }
 
 function startMyAccountPoller() {
@@ -7356,6 +7420,40 @@ function closeMobileSession() {
 // URL sin ?table ni ?t para que el cliente arranque flujo nuevo.
 function goToTakeoutMenu() {
   window.location.href = '/' + SLUG;
+}
+
+// Hotfix 2026-04-26: shortcut a Mi Cuenta desde el banner superior.
+// Sin scrollear hasta el final del menú, el cliente toca el icono 🛒
+// del banner y aterriza directo en la sección.
+function scrollToMyAccount() {
+  var sec = document.getElementById('myAccountSection');
+  if (!sec) return;
+  try {
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { sec.scrollIntoView(); }
+}
+
+// Toggle visibilidad + count del botón carrito según estado de Mi
+// Cuenta. Llamado desde renderMyAccount cada poll + inmediato post-
+// success en handleOrderSuccess (vía fetchMyAccount → renderMyAccount).
+function applyTableCartButton() {
+  var btn = document.getElementById('tableCartBtn');
+  if (!btn) return;
+  var hasContext = !!(tableContext && tableContext.table_id);
+  var hasItems = Array.isArray(myAccountOrders) && myAccountOrders.length > 0;
+  if (hasContext && hasItems) {
+    var count = 0;
+    myAccountOrders.forEach(function(o) {
+      var its;
+      try { its = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch (e) { its = []; }
+      if (Array.isArray(its)) its.forEach(function(it) { count += (Number(it.qty) || 1); });
+    });
+    var countEl = document.getElementById('tableCartCount');
+    if (countEl) countEl.textContent = String(count);
+    btn.classList.add('show');
+  } else {
+    btn.classList.remove('show');
+  }
 }
 
 // Wire-up del botón Mi Cuenta. Hotfix 2026-04-26: removido el branch
