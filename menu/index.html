@@ -7190,11 +7190,14 @@ function startMyAccountPoller() {
 }
 
 // Sprint-3 Etapa 3 Commit 5: detección de estado "cuenta solicitada".
-// True si hay al menos una orden abierta con bill_requested_at NOT NULL.
+// True si hay al menos una orden con bill_requested_at NOT NULL Y sin
+// paid_at (defensa 2026-04-26 contra drift: si por alguna razón una
+// orden paid llegara a myAccountOrders, no debería mostrar "Cancelar
+// solicitud" porque ya está cerrada).
 function isBillRequested() {
   return Array.isArray(myAccountOrders)
     && myAccountOrders.length > 0
-    && myAccountOrders.some(function(o) { return !!o.bill_requested_at; });
+    && myAccountOrders.some(function(o) { return !!o.bill_requested_at && !o.paid_at; });
 }
 
 // Sprint-3 Etapa 3 Commit 6: agrega items de múltiples orders y

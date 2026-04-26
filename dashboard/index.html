@@ -717,6 +717,21 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.75; }
     }
+
+    /* Hotfix 2026-04-26: Pagada state — border verde + badge verde,
+       sin pulse (estado terminal, no requiere atención). */
+    .ot-card.ot-paid {
+      border-color: #16A34A;
+      box-shadow: 0 0 0 1px #16A34A, 0 2px 6px rgba(22,163,74,0.12);
+    }
+    .ot-card.ot-paid .ot-card-summary {
+      background: #F0FDF4;
+    }
+    .ot-paid-badge {
+      display: inline-block; padding: 3px 8px; background: #16A34A; color: white;
+      border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
     .order-type-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 3px 8px; border-radius: 4px;
@@ -1676,8 +1691,8 @@
 
 <!-- Full-screen overlays (position:fixed, outside main wrapper) -->
 <div id="newOrderOverlay" onclick="dismissOverlay()">
-  <h1>¡NUEVA ORDEN! 🔔</h1>
-  <p>Toca aquí para ver la orden</p>
+  <h1 id="newOrderOverlayTitle">¡NUEVA ORDEN! 🔔</h1>
+  <p id="newOrderOverlaySubtitle">Toca aquí para ver la orden</p>
 </div>
 
 <div class="product-modal-overlay" id="productModalOverlay" onclick="closeProductModal()"></div>
@@ -2349,10 +2364,18 @@ function playAlarmBeep() {
 let alarmInterval = null;
 let alarmActive = false;
 
-function startAlarm() {
+// Hotfix 2026-04-26: parametrizable. opts.title + opts.subtitle reemplazan
+// los textos del overlay full-screen. Default mantiene "¡NUEVA ORDEN! 🔔"
+// para preservar comportamiento de orden nueva (cero regresión).
+function startAlarm(opts) {
   if (alarmActive) return;
   alarmActive = true;
   dbg('🚨 Alarma activada');
+
+  var titleEl = document.getElementById('newOrderOverlayTitle');
+  var subEl = document.getElementById('newOrderOverlaySubtitle');
+  if (titleEl) titleEl.textContent = (opts && opts.title) || '¡NUEVA ORDEN! 🔔';
+  if (subEl) subEl.textContent = (opts && opts.subtitle) || 'Toca aquí para ver la orden';
 
   var overlay = document.getElementById('newOrderOverlay');
   if (overlay) overlay.classList.add('active');
@@ -3445,11 +3468,19 @@ async function confirmCloseDay() {
   try {
     var todayStart = getTodayMidnightISO();
     var todayStr = getDRDateString();
-    // Archive completed orders (ready/notified) for today
+    // Hotfix 2026-04-26: incluir paid orders en el archivado. Antes solo
+    // archivaba ready/notified/accepted; ahora las cards Commit-6-paid
+    // (status=paid + paid_at) deben archivarse también — quedaban para
+    // auditoría visible y necesitamos limpiarlas al cerrar día.
+    // PostgREST OR via or= con and() para respetar el filtro paid_at:
+    //   (status IN (ready,notified,accepted)) OR (status=paid AND paid_at NOT NULL)
+    // Esto evita archivar Azul prepaid (status=paid, paid_at NULL) — esos
+    // siguen activos esperando aceptación de cocina.
+    var orFilter = 'or=(status.in.(ready,notified,accepted),and(status.eq.paid,paid_at.not.is.null))';
     var res = await fetch(
       SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) +
       '&created_at=gte.' + encodeURIComponent(todayStart) +
-      '&status=in.(ready,notified,accepted)',
+      '&' + orFilter,
       { method: 'PATCH', headers: sbWriteHeaders(), body: JSON.stringify({ archived_date: todayStr }) }
     );
     if (res.ok) {
@@ -4331,11 +4362,16 @@ function renderOpenTables(allOrders) {
   var container = document.getElementById('openTablesContainer');
   if (!header || !container) return;
 
-  // Filtrar: table_id presente + status operativo (no paid/cancelled/voided).
+  // Filtrar: table_id presente + status no terminal-malo (cancelled/voided).
+  // Hotfix 2026-04-26: incluir status='paid' para preservar visibilidad
+  // post-marcado (audit trail). El estado se distingue por paid_at —
+  // las pagadas se renderizan con badge verde, las activas con flow normal.
+  // Cards con archived_date NOT NULL no llegan aquí porque el fetch de
+  // loadOrders ya filtra archived_date=is.null.
   var openOrders = (allOrders || []).filter(function(o) {
     if (!o || !o.table_id) return false;
     var s = o.status || '';
-    return s !== 'paid' && s !== 'cancelled' && s !== 'voided';
+    return s !== 'cancelled' && s !== 'voided';
   });
 
   if (openOrders.length === 0) {
@@ -4418,15 +4454,26 @@ function renderOpenTableCard(acct) {
   // rojo visible para que la cajera atienda la solicitud.
   var billRequested = acct.orders.some(function(o) { return !!o.bill_requested_at; });
 
+  // Hotfix 2026-04-26: detectar estado "Pagada" — alguna orden con
+  // status='paid' + paid_at NOT NULL. Cuenta cerrada via Marcar Pagada
+  // o Cerrar Mesa. Card permanece visible para audit hasta que la
+  // archive el cierre de día (paid_at + archived_date filter).
+  var isPaid = acct.orders.some(function(o) {
+    return o.status === 'paid' && !!o.paid_at;
+  });
+
   // Sprint-3 Etapa 3 Commit 4 hotfix: persistencia entre polls.
   // Expanded si:
   //   a) la cuenta está en el Set ot_expandedKeys (click manual previo), O
   //   b) billRequested=true (override de visibilidad crítica).
-  // El Set sobrevive entre polls, así la cajera puede leer tranquila.
+  // Hotfix 2026-04-26: si está paid, default colapsada (no requiere
+  // acción) — billRequested no fuerza expand cuando ya pagada.
   var acctKey = acct.table_id + '|' + acct.phone;
-  var expanded = billRequested || ot_expandedKeys.has(acctKey);
+  var expanded = (billRequested && !isPaid) || ot_expandedKeys.has(acctKey);
   var stateClass = expanded ? 'ot-expanded' : 'ot-collapsed';
-  var billClass = billRequested ? ' ot-pending-bill' : '';
+  // Bill class solo si bill requested Y no pagada — pagada usa ot-paid.
+  var billClass = (billRequested && !isPaid) ? ' ot-pending-bill' : '';
+  var paidClass = isPaid ? ' ot-paid' : '';
 
   // Conteo total de items (sumando quantities en todas las orders).
   var itemCount = 0;
@@ -4482,16 +4529,37 @@ function renderOpenTableCard(acct) {
   totalsHtml += '<div class="ot-total-grand"><span>Total</span><span>RD$' + totals.grand.toLocaleString() + '</span></div>';
 
   // ── SUMMARY: info mínima en modo colapsado, también visible en expanded ──
-  var billBadgeHtml = billRequested ? '<span class="ot-bill-badge">Pide cuenta</span> ' : '';
+  // Hotfix 2026-04-26: badge según estado. Pagada > pide cuenta > nada.
+  var statusBadgeHtml = '';
+  if (isPaid) {
+    statusBadgeHtml = '<span class="ot-paid-badge">Pagada</span> ';
+  } else if (billRequested) {
+    statusBadgeHtml = '<span class="ot-bill-badge">Pide cuenta</span> ';
+  }
   var summaryMetaParts = [];
   summaryMetaParts.push(itemCount + (itemCount === 1 ? ' item' : ' items'));
   summaryMetaParts.push(elapsed);
-  if (inactiveMin >= 120) summaryMetaParts.push('<span class="ot-inactive-badge">inactiva 2h+</span>');
+  if (inactiveMin >= 120 && !isPaid) summaryMetaParts.push('<span class="ot-inactive-badge">inactiva 2h+</span>');
 
-  return '<div class="ot-card ' + colorClass + ' ' + stateClass + billClass + '" data-acct-key="' + ot_escape(acct.table_id + '|' + acct.phone) + '">'
+  // Botones según estado:
+  // - isPaid: ambos disabled (informativo, ya cerrada)
+  // - billRequested: "Marcar como Imprimida y Enviada" enabled + Cerrar Mesa
+  // - default: ambos disabled o solo Cerrar Mesa enabled
+  var actionsHtml;
+  if (isPaid) {
+    actionsHtml = '<button disabled title="Cuenta ya cerrada">Cuenta Cerrada</button>'
+                + '<button disabled title="Cuenta ya cerrada">—</button>';
+  } else {
+    actionsHtml = (billRequested
+        ? '<button class="ot-btn-paid" onclick="ot_markPaid(\'' + ot_escape(acctKey) + '\')">Marcar como Imprimida y Enviada</button>'
+        : '<button disabled title="Cliente debe solicitar cuenta primero">Marcar como Imprimida y Enviada</button>')
+      + '<button class="ot-btn-close" onclick="ot_openCloseModal(\'' + ot_escape(acctKey) + '\')">Cerrar Mesa</button>';
+  }
+
+  return '<div class="ot-card ' + colorClass + ' ' + stateClass + billClass + paidClass + '" data-acct-key="' + ot_escape(acct.table_id + '|' + acct.phone) + '">'
        + '<div class="ot-card-header">'
        +   '<span class="ot-mesa">Mesa ' + acct.table_number + '</span>'
-       +   '<span class="ot-meta">' + billBadgeHtml + ot_escape(elapsed) + '</span>'
+       +   '<span class="ot-meta">' + statusBadgeHtml + ot_escape(elapsed) + '</span>'
        + '</div>'
        + '<div class="ot-card-summary" onclick="ot_toggleCard(this.parentElement)">'
        +   '<div class="ot-card-summary-info">'
@@ -4508,10 +4576,7 @@ function renderOpenTableCard(acct) {
        +   '<div class="ot-totals-box">' + totalsHtml + '</div>'
        + '</div>'
        + '<div class="ot-actions">'
-       +   (billRequested
-              ? '<button class="ot-btn-paid" onclick="ot_markPaid(\'' + ot_escape(acctKey) + '\')">Marcar como Pagada</button>'
-              : '<button disabled title="Cliente debe solicitar cuenta primero">Marcar como Pagada</button>')
-       +   '<button class="ot-btn-close" onclick="ot_openCloseModal(\'' + ot_escape(acctKey) + '\')">Cerrar Mesa</button>'
+       +   actionsHtml
        + '</div>'
        + '</div>';
 }
@@ -4586,7 +4651,10 @@ async function ot_markPaid(acctKey) {
   if (!acct) return;
   var totals = ot_computeTotals(acct.orders);
   var displayName = acct.customer_name || 'Sin nombre';
-  if (!confirm('¿Confirmar pago de RD$' + totals.grand.toLocaleString() + '?\n\nMesa ' + acct.table_number + ' · ' + displayName + '\n' + acct.orders.length + ' orden' + (acct.orders.length === 1 ? '' : 'es'))) return;
+  // Hotfix 2026-04-26: copy reflejando flow operativo real — cajera
+  // imprimió la precuenta en su POS y la mandó al mesero. Pincer marca
+  // que esa operación se completó.
+  if (!confirm('¿Marcar Mesa ' + acct.table_number + ' como impresa y enviada?\n\n' + displayName + ' · RD$' + totals.grand.toLocaleString() + '\n' + acct.orders.length + ' orden' + (acct.orders.length === 1 ? '' : 'es'))) return;
 
   try {
     var patchRes = await fetch(SUPABASE_URL + '/rest/v1/orders'
@@ -4602,7 +4670,9 @@ async function ot_markPaid(acctKey) {
       showError('Error cerrando cuenta (HTTP ' + patchRes.status + ')');
       return;
     }
-    showToast('Cuenta Mesa ' + acct.table_number + ' cerrada \u00b7 RD$' + totals.grand.toLocaleString());
+    // Hotfix 2026-04-26: copy "marcada" en lugar de "cerrada" (la card
+    // ya no desaparece — queda visible con badge Pagada).
+    showToast('Mesa ' + acct.table_number + ' marcada \u00b7 RD$' + totals.grand.toLocaleString());
     setTimeout(loadOrders, 200);
     ot_openClosureWhatsApp(acct, totals.grand);
   } catch (e) {
@@ -4888,9 +4958,26 @@ async function loadOrders() {
 
     if (billReqJustAppeared) {
       dbg('🧾 Cliente solicitó cuenta!');
-      startAlarm();
+      // Hotfix 2026-04-26: overlay con texto custom para diferenciar
+      // visualmente solicitud de cuenta vs orden nueva. Buscar la cuenta
+      // recién solicitada para incluir mesa+nombre en el subtítulo.
+      var brAcct = null;
+      for (var bj = 0; bj < data.length; bj++) {
+        var o_brj = data[bj];
+        var prevBR = ot_prevBillReqMap.has(o_brj.id) ? ot_prevBillReqMap.get(o_brj.id) : null;
+        // Nota: ot_prevBillReqMap ya fue actualizado arriba al state actual,
+        // así que este check no encuentra la transición. Usamos bill_requested_at
+        // del row actual como fallback — la primera con bill_requested_at NOT NULL
+        // y table_id es probablemente la solicitante (1:1 founder typical).
+        if (o_brj.bill_requested_at && o_brj.table_id) { brAcct = o_brj; break; }
+      }
+      var brTitle = '🧾 ¡SOLICITUD DE CUENTA!';
+      var brSubtitle = brAcct
+        ? ('Mesa ' + (brAcct.table_number || '?') + ' · ' + (brAcct.customer_name || 'Sin nombre'))
+        : 'Toca aquí para atender';
+      startAlarm({ title: brTitle, subtitle: brSubtitle });
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      sendNotification('Cliente pidió la cuenta', 'Hay una mesa esperando cobro');
+      sendNotification('Solicitud de Cuenta', brSubtitle);
       try {
         var otHeader = document.getElementById('openTablesHeader');
         if (otHeader && otHeader.style.display !== 'none') {
@@ -4916,13 +5003,15 @@ async function loadOrders() {
     _ordersMap = {};
     data.forEach((order, idx) => {
       _ordersMap[order.id] = order;
-      // Sprint-3 Etapa 3 Commit 6 hotfix 2026-04-25: skip cards de
-      // cuentas cerradas (status='paid' + paid_at NOT NULL). Estas viven
-      // ahora en el flow de Mesas Abiertas y al cerrar deben desaparecer
-      // de Órdenes en Vivo. _ordersMap se preserva para handlers que
-      // referencien por id (audit/historical). Azul prepaid (paid sin
-      // paid_at) sí renderiza como hoy — espera aceptación de cocina.
-      if (order.status === 'paid' && order.paid_at) return;
+      // Hotfix 2026-04-26: revertido el early-return del Commit 6 fix.
+      // Founder pidió preservar visibilidad de cards Commit-6-paid en
+      // Órdenes en Vivo para auditoría (con badge PAGADA, sin botones).
+      // Los OTROS guards del Commit 6 fix se mantienen activos:
+      //   - currentPending NO cuenta paid+paid_at (anti-falsa-alarma)
+      //   - countdown timer NO se aplica a paid+paid_at
+      //   - botones Aceptar/Rechazar NO aparecen para paid+paid_at
+      // Solo el render-skip se revierte. Las cards desaparecen
+      // naturalmente al recibir archived_date (cierre de día).
       const orderNum = order.order_number || (totalOrders - idx);
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);

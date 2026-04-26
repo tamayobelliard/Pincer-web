@@ -2921,10 +2921,13 @@ function startMyAccountPoller() {
 // Diferencias visuales: class name banner (deck-table-banner), IDs del
 // modal (mismos), label inside span (myAccountRequestBtnLabel).
 
+// Defensa 2026-04-26: excluir orders con paid_at (parity con
+// menu/index.html — protege contra drift si un paid order llegara
+// al array, no mostrar "Cancelar solicitud" porque ya cerró).
 function isBillRequested() {
   return Array.isArray(myAccountOrders)
     && myAccountOrders.length > 0
-    && myAccountOrders.some(function(o) { return !!o.bill_requested_at; });
+    && myAccountOrders.some(function(o) { return !!o.bill_requested_at && !o.paid_at; });
 }
 
 // Sprint-3 Etapa 3 Commit 6: parity con menu/index.html. Aggregate items
