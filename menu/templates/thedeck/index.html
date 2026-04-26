@@ -2221,6 +2221,11 @@ function promoCtaClick() {
 // Adapta selectores DOM a la estructura custom de thedeck (closedOverlay +
 // menuSections/cta/fab visibility), manteniendo la lógica idéntica al genérico.
 let storeClosed = false;
+// Hotfix 2026-04-26: parity con menu/index.html — track schedule_override
+// para que el sync-guard de submitCheckout respete la apertura manual de
+// la cajera en días cerrados por schedule. Reset al inicio de cada poll
+// de checkStoreOpen para evitar stale entre invocaciones.
+let _scheduleOverrideActive = false;
 let soldOutPoller = null;
 
 // Sprint-2 Bug1 Capa 2: helper que aplica/desaplica el overlay de cerrado.
@@ -2307,6 +2312,8 @@ function clearClosedOverlay() {
 
 async function checkStoreOpen() {
   console.log('[thedeck checkStoreOpen] === START ===');
+  // Hotfix 2026-04-26: reset al inicio para no carry stale entre polls.
+  _scheduleOverrideActive = false;
   try {
     var storeSettings = null;
     try {
@@ -2343,6 +2350,9 @@ async function checkStoreOpen() {
           }).catch(function() {});
         }
       }
+      // Hotfix 2026-04-26: expose post-auto-reset para sync-guard de
+      // submitCheckout. Ver _scheduleOverrideActive declaration.
+      _scheduleOverrideActive = hasOverride;
 
       // FAIL-CLOSED SAFETY: si is_open=false en DB, overlay SIEMPRE.
       // No importa lo que diga el schedule — un dueño que explícitamente
@@ -4296,9 +4306,12 @@ async function submitCheckout() {
   // (que puede estar stale si checkStoreOpen aún no corrió o tuvo
   // error de red), re-chequear el schedule SÍNCRONO aquí mismo.
   // Cualquiera de los dos siendo true → bloquea + re-aplica overlay.
+  // Hotfix 2026-04-26: respeta _scheduleOverrideActive — si la cajera
+  // abrió manual sobre día cerrado por schedule, no bloquear. Parity
+  // con menu/index.html placeOrder + processPayment.
   const scheduleClosed = restaurantData && restaurantData.hours &&
     !isOpenBySchedule(restaurantData.hours);
-  if (storeClosed || scheduleClosed) {
+  if (storeClosed || (scheduleClosed && !_scheduleOverrideActive)) {
     storeClosed = true;
     if (restaurantData) applyClosedOverlay(restaurantData, restaurantData.hours);
     const globalErr = document.getElementById('checkoutGlobalError');
@@ -4306,7 +4319,7 @@ async function submitCheckout() {
       globalErr.textContent = 'Estamos cerrados en este momento. No podemos procesar órdenes ahora.';
       globalErr.style.display = 'block';
     }
-    dbg('🔒 submitCheckout bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ')');
+    dbg('🔒 submitCheckout bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ' override=' + _scheduleOverrideActive + ')');
     return;
   }
   const phoneRaw = document.getElementById('chkPhone').value.trim();

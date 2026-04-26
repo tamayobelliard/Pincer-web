@@ -4332,12 +4332,15 @@ async function placeOrder() {
   // Sprint-2 Bug1 Capa 3: doble-guard (parity con thedeck). El flag
   // storeClosed puede estar stale si checkStoreOpen no completó o
   // tuvo error de red. Re-chequear el schedule síncrono aquí.
+  // Hotfix 2026-04-26: respeta _scheduleOverrideActive — si la cajera
+  // abrió manual sobre un día cerrado, el schedule guard NO debe
+  // bloquear. checkStoreOpen() es la fuente de verdad y ya lo decidió.
   var scheduleClosed = restaurantData && restaurantData.hours &&
     !isOpenBySchedule(restaurantData.hours);
-  if (storeClosed || scheduleClosed) {
+  if (storeClosed || (scheduleClosed && !_scheduleOverrideActive)) {
     storeClosed = true;
     showError('Estamos cerrados en este momento. No podemos procesar órdenes ahora.');
-    dbg('🔒 placeOrder bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ')');
+    dbg('🔒 placeOrder bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + scheduleClosed + ' override=' + _scheduleOverrideActive + ')');
     return;
   }
   if (order.length === 0) return;
@@ -5167,13 +5170,15 @@ async function processPayment() {
 
   // Sprint-2 Bug1 Capa 3: doble-guard también en la ruta Azul. Mismo
   // pattern que placeOrder — re-chequear schedule sync + storeClosed.
+  // Hotfix 2026-04-26: respeta _scheduleOverrideActive (parity con
+  // placeOrder).
   var _scheduleClosedAzul = restaurantData && restaurantData.hours &&
     !isOpenBySchedule(restaurantData.hours);
-  if (storeClosed || _scheduleClosedAzul) {
+  if (storeClosed || (_scheduleClosedAzul && !_scheduleOverrideActive)) {
     storeClosed = true;
     errorDiv.textContent = 'Estamos cerrados en este momento. No podemos procesar órdenes ahora.';
     errorDiv.style.display = 'block';
-    dbg('🔒 processPayment bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + _scheduleClosedAzul + ')');
+    dbg('🔒 processPayment bloqueado (storeClosed=' + storeClosed + ' scheduleClosed=' + _scheduleClosedAzul + ' override=' + _scheduleOverrideActive + ')');
     return;
   }
 
@@ -6761,8 +6766,17 @@ function initChatbot() {
 // ══════════════════════════════════════════════════════════════
 
 let storeClosed = false;
+// Hotfix 2026-04-26: track schedule_override desde checkStoreOpen para
+// que los sync-guards de submit (placeOrder + processPayment) lo
+// respeten. Antes ignoraban override y bloqueaban en domingo aunque
+// la cajera hubiera click "Abrir Negocio". Default false (fail-closed
+// si checkStoreOpen no completó: schedule guard activo).
+let _scheduleOverrideActive = false;
 
 async function checkStoreOpen() {
+  // Hotfix 2026-04-26: reset al inicio para no carry stale entre polls
+  // (ej. cajera cerró override entre poll 1 y poll 2).
+  _scheduleOverrideActive = false;
   try {
     // Fetch store_settings for manual override state
     var storeSettings = null;
@@ -6803,6 +6817,8 @@ async function checkStoreOpen() {
           }).catch(function() {});
         }
       }
+      // Hotfix 2026-04-26: expose post-auto-reset para sync-guards.
+      _scheduleOverrideActive = hasOverride;
 
       if (storeSettings.is_open === false && hasOverride) {
         // Manual close override — always respect
