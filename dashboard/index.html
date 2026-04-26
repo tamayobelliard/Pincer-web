@@ -373,6 +373,14 @@
     }
     .order:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
 
+    /* Hotfix 2026-04-26: cuentas cerradas (paid + paid_at) — estado
+       terminal sin urgencia. Border verde sutil, fondo blanco, SIN
+       animación. Visualmente "completada", no "esperando". */
+    .paid-final {
+      border: 2px solid #16A34A;
+      background: white;
+    }
+
     /* Pending pulse levels — ALL pending orders pulse from arrival */
     /* Level 1: < 1 min — soft red pulse */
     .order-new { border: 2px solid #E8191A; background: #fff5f5; animation: pulseLevel1 2s ease-in-out infinite; }
@@ -4399,6 +4407,31 @@ function ot_formatElapsed(iso) {
   } catch (e) { return ''; }
 }
 
+// Hotfix 2026-04-26: split orders de un (table_id, phone) en ciclos
+// temporales. Un "ciclo cerrado" termina en un paid+paid_at; el siguiente
+// ciclo arranca con las orders posteriores. Resuelve el caso del cliente
+// recurrente que paga, vuelve a ordenar el mismo día — antes mezclaba
+// ambos en una sola card. Ahora 2 cards: una PAGADA + una activa.
+function ot_splitIntoCycles(orders) {
+  var sorted = orders.slice().sort(function(a, b) {
+    return a.created_at < b.created_at ? -1 : 1;
+  });
+  var cycles = [];
+  var current = [];
+  for (var i = 0; i < sorted.length; i++) {
+    var o = sorted[i];
+    current.push(o);
+    if (o.status === 'paid' && o.paid_at) {
+      cycles.push({ orders: current, isPaid: true, paidAt: o.paid_at });
+      current = [];
+    }
+  }
+  if (current.length > 0) {
+    cycles.push({ orders: current, isPaid: false });
+  }
+  return cycles;
+}
+
 // Totales agregados por cuenta — reusa reverse math ITBIS igual que
 // el menú. Service charge solo si SERVICE_MODEL='waiter_service' y
 // service_charge_percent > 0. SERVICE_CHARGE_PERCENT módulo-level se
@@ -4473,28 +4506,55 @@ function renderOpenTables(allOrders) {
     return a.firstCreatedAt < b.firstCreatedAt ? -1 : 1;
   });
 
-  // Sprint-3 Etapa 3 Commit 4 hotfix: limpieza de keys stale. Si una
-  // cuenta cerró (paid/cancelled) o salió del data fetch por otro
-  // motivo, su key del Set queda huérfana. Memory leak mínimo pero se
-  // limpia por prolijidad — O(n) barato.
+  // Hotfix 2026-04-26: explotar cada (table_id, phone) en N cards, una
+  // por ciclo temporal. "Ciclo" = orders entre boundaries de paid+paid_at.
+  // Cliente que pagó y volvió a ordenar el mismo día → 2 cards: una
+  // PAGADA (ciclo 0) + una activa (ciclo 1). Mientras no haya un
+  // paid+paid_at, todas las orders están en un solo ciclo activo
+  // (comportamiento idéntico al pre-hotfix).
+  var cycleCards = [];
+  accountList.forEach(function(acct) {
+    var cycles = ot_splitIntoCycles(acct.orders);
+    cycles.forEach(function(cycle, cycleIdx) {
+      var firstAt = cycle.orders[0] ? cycle.orders[0].created_at : acct.firstCreatedAt;
+      var lastAt = cycle.orders.length > 0
+        ? cycle.orders[cycle.orders.length - 1].created_at
+        : acct.lastActivityAt;
+      cycleCards.push({
+        table_id: acct.table_id,
+        table_number: acct.table_number,
+        phone: acct.phone,
+        customer_name: acct.customer_name,
+        cycleKey: acct.table_id + '|' + acct.phone + '|cycle' + cycleIdx,
+        orders: cycle.orders,
+        isPaid: cycle.isPaid,
+        firstCreatedAt: firstAt,
+        lastActivityAt: lastAt,
+      });
+    });
+  });
+
+  // Sprint-3 Etapa 3 Commit 4 hotfix: limpieza de keys stale. Si un
+  // ciclo cerró/salió del fetch, su key del Set queda huérfana.
   if (ot_expandedKeys.size > 0) {
     var liveKeys = new Set();
-    accountList.forEach(function(a) { liveKeys.add(a.table_id + '|' + a.phone); });
+    cycleCards.forEach(function(c) { liveKeys.add(c.cycleKey); });
     var cleaned = new Set();
     ot_expandedKeys.forEach(function(k) { if (liveKeys.has(k)) cleaned.add(k); });
     ot_expandedKeys = cleaned;
   }
 
-  // Sprint-3 Etapa 3 Commit 6: stashear accounts por key para los
-  // handlers de Marcar Pagada / Cerrar Mesa.
+  // Sprint-3 Etapa 3 Commit 6: stashear ACTIVE cycles por cycleKey
+  // para los handlers de Marcar Pagada / Cerrar Mesa. Los cycles
+  // cerrados (isPaid=true) no entran — sus botones están disabled.
   ot_currentAccounts.clear();
-  accountList.forEach(function(a) {
-    ot_currentAccounts.set(a.table_id + '|' + a.phone, a);
+  cycleCards.forEach(function(c) {
+    if (!c.isPaid) ot_currentAccounts.set(c.cycleKey, c);
   });
 
   var html = '<div class="open-tables-grid">';
-  accountList.forEach(function(acct) {
-    html += renderOpenTableCard(acct);
+  cycleCards.forEach(function(c) {
+    html += renderOpenTableCard(c);
   });
   html += '</div>';
   container.innerHTML = html;
@@ -4532,7 +4592,9 @@ function renderOpenTableCard(acct) {
   //   b) billRequested=true (override de visibilidad crítica).
   // Hotfix 2026-04-26: si está paid, default colapsada (no requiere
   // acción) — billRequested no fuerza expand cuando ya pagada.
-  var acctKey = acct.table_id + '|' + acct.phone;
+  // Hotfix 2026-04-26 (cycles): acctKey ahora es cycleKey unique por
+  // ciclo. Fallback al formato viejo solo por defensa.
+  var acctKey = acct.cycleKey || (acct.table_id + '|' + acct.phone);
   var expanded = (billRequested && !isPaid) || ot_expandedKeys.has(acctKey);
   var stateClass = expanded ? 'ot-expanded' : 'ot-collapsed';
   // Bill class solo si bill requested Y no pagada — pagada usa ot-paid.
@@ -4620,7 +4682,7 @@ function renderOpenTableCard(acct) {
       + '<button class="ot-btn-close" onclick="ot_openCloseModal(\'' + ot_escape(acctKey) + '\')">Cerrar Mesa</button>';
   }
 
-  return '<div class="ot-card ' + colorClass + ' ' + stateClass + billClass + paidClass + '" data-acct-key="' + ot_escape(acct.table_id + '|' + acct.phone) + '">'
+  return '<div class="ot-card ' + colorClass + ' ' + stateClass + billClass + paidClass + '" data-acct-key="' + ot_escape(acctKey) + '">'
        + '<div class="ot-card-header">'
        +   '<span class="ot-mesa">Mesa ' + acct.table_number + '</span>'
        +   '<span class="ot-meta">' + statusBadgeHtml + ot_escape(elapsed) + '</span>'
@@ -4730,7 +4792,7 @@ function getActiveBillRequests(allOrders) {
     var key = o.table_id + '|' + (o.phone || '');
     if (!groups[key]) {
       groups[key] = {
-        acctKey: key,
+        baseKey: key,
         table_id: o.table_id,
         table_number: o.table_number || 0,
         phone: o.phone || '',
@@ -4744,6 +4806,27 @@ function getActiveBillRequests(allOrders) {
       groups[key].billRequestedAt = o.bill_requested_at;
     }
   });
+
+  // Hotfix 2026-04-26 (cycles): el handler ot_markPaid lookea por
+  // cycleKey en ot_currentAccounts. Necesitamos calcular el index del
+  // ciclo activo de cada (table_id, phone) usando TODAS sus orders
+  // (no solo las del bill request). El ciclo activo es siempre el
+  // último — su index = total de cycles - 1.
+  var ordersByAcct = {};
+  (allOrders || []).forEach(function(o) {
+    if (!o || !o.table_id) return;
+    var k = o.table_id + '|' + (o.phone || '');
+    if (!ordersByAcct[k]) ordersByAcct[k] = [];
+    ordersByAcct[k].push(o);
+  });
+  Object.keys(groups).forEach(function(key) {
+    var cycles = ot_splitIntoCycles(ordersByAcct[key] || groups[key].orders);
+    // El ciclo activo es el último (siempre isPaid=false porque
+    // tenemos orders sin paid_at en el bill request).
+    var activeIdx = cycles.length - 1;
+    groups[key].acctKey = key + '|cycle' + activeIdx;
+  });
+
   return Object.values(groups).sort(function(a, b) {
     return a.table_number - b.table_number;
   });
@@ -5178,6 +5261,13 @@ async function loadOrders() {
       else if (status === 'notified') statusClass = 'notified';
       else if (status === 'ready') statusClass = 'ready';
       else if (status === 'accepted') statusClass = 'accepted';
+      // Hotfix 2026-04-26: cards paid+paid_at (cuenta cerrada vía
+      // Commit 6) usan clase paid-final — fondo blanco, border verde
+      // sutil, SIN animación pulse. Antes caían al fallthrough de
+      // order-urgent/warning/new (red pulse), dando impresión de
+      // urgencia falsa. Azul prepaid (paid sin paid_at) sigue cayendo
+      // en el flow normal — espera aceptación, urgente sí.
+      else if (status === 'paid' && order.paid_at) statusClass = 'paid-final';
       else if (minutes > 2) statusClass = 'order-urgent';
       else if (minutes >= 1) statusClass = 'order-warning';
       console.log('[timer] order:', order.id, 'status:', status, 'minutes:', minutes, 'class:', statusClass);

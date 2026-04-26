@@ -1030,26 +1030,45 @@
     color: var(--color-accent) !important;
   }
 
-  /* Mensaje "Tu mesero ya viene..." dentro de Mi Cuenta */
-  .deck-account-bill-msg {
+  /* Hotfix 2026-04-26: full-screen overlay post-solicitud-de-cuenta.
+     Bill request es definitivo. Estilo del design system de The Deck:
+     navy background sutil, accent gold para el CTA. */
+  .deck-cuenta-solicitada-overlay {
     display: none;
-    background: rgba(201,169,97,0.12);
-    border: 1px solid var(--color-accent);
-    border-radius: var(--radius-md);
-    padding: 10px 14px;
-    margin-bottom: var(--sp-md);
-    color: var(--color-primary);
-    font-family: var(--font-body);
-    font-size: 13px;
-    line-height: 1.45;
+    position: fixed; inset: 0;
+    background: var(--color-bg-2);
+    z-index: 300;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
   }
-  .deck-account-bill-msg.show { display: block; }
-
-  /* Botón Cancelar solicitud — cream background, navy border */
-  .deck-account-btn.cancel-mode {
-    background: var(--color-bg-2) !important;
-    color: var(--color-primary) !important;
-    border: 1px solid var(--color-primary) !important;
+  .deck-cuenta-solicitada-overlay.show { display: flex; }
+  .deck-cuenta-solicitada-overlay .deck-cs-emoji {
+    font-size: 56px;
+    margin-bottom: var(--sp-md);
+    line-height: 1;
+  }
+  .deck-cuenta-solicitada-overlay .deck-cs-title {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-size: 28px;
+    color: var(--color-primary);
+    margin: 0 0 var(--sp-sm);
+    line-height: 1.15;
+  }
+  .deck-cuenta-solicitada-overlay .deck-cs-text {
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--color-primary);
+    opacity: 0.85;
+    margin: 0 0 var(--sp-lg);
+    max-width: 360px;
+    line-height: 1.5;
+  }
+  .deck-cuenta-solicitada-overlay .btn {
+    min-width: 220px;
   }
 
   /* Modal de confirmación solicitar cuenta */
@@ -1373,9 +1392,6 @@
 <section class="deck-account" id="myAccountSection" style="display:none;">
   <div class="deck-account-inner">
     <div class="deck-account-title">Mi <em>cuenta</em></div>
-    <div class="deck-account-bill-msg" id="myAccountBillMsg">
-      Tu mesero ya viene. Si quieres seguir ordenando, cancela la solicitud.
-    </div>
     <div class="deck-account-list" id="myAccountList"></div>
     <div class="deck-account-totals" id="myAccountTotals"></div>
     <button class="btn btn-primary deck-account-btn" id="myAccountRequestBtn"
@@ -1384,6 +1400,16 @@
     </button>
   </div>
 </section>
+
+<!-- Hotfix 2026-04-26: full-screen overlay post-solicitud-de-cuenta.
+     Parity funcional con menu/index.html #cuentaSolicitadaOverlay;
+     visual custom (navy/cream/gold del design system). -->
+<div class="deck-cuenta-solicitada-overlay" id="cuentaSolicitadaOverlay">
+  <div class="deck-cs-emoji">🧾</div>
+  <div class="deck-cs-title">Cuenta solicitada</div>
+  <div class="deck-cs-text">Tu mesero ya viene a cobrar. ¡Gracias por tu visita!</div>
+  <button class="btn btn-primary" onclick="goToTakeoutMenu()">Ir al menú para llevar</button>
+</div>
 
 <!-- Sprint-3 Etapa 3 Commit 5: modal de confirmación solicitar cuenta.
      Estilo navy/cream/gold del design system. Parity funcional con
@@ -2994,6 +3020,11 @@ function closeBillConfirmModal() {
   document.getElementById('billConfirmOverlay').classList.remove('show');
 }
 
+// Hotfix 2026-04-26: bill request es definitivo. Post-éxito cerramos
+// la sesión móvil completa: clear localStorage/sessionStorage de mesa,
+// mostramos overlay "Cuenta solicitada" full-screen con único exit
+// hacia /<slug> (take-out). Removido cancelBillRequest — ya no hay
+// vuelta atrás del cliente. Parity funcional con menu/index.html.
 async function submitBillRequest() {
   if (!tableContext || !tableContext.table_id) return;
   var saved = loadCustomerLocal();
@@ -3020,8 +3051,7 @@ async function submitBillRequest() {
       return;
     }
     closeBillConfirmModal();
-    await fetchMyAccount();
-    applyBillRequestedUI();
+    closeMobileSession();
   } catch (e) {
     dbg('[billRequest] error: ' + e.message);
     btn.disabled = false;
@@ -3030,32 +3060,23 @@ async function submitBillRequest() {
   }
 }
 
-async function cancelBillRequest() {
-  if (!tableContext || !tableContext.table_id) return;
-  var saved = loadCustomerLocal();
-  if (!saved.phone) return;
-  try {
-    var url = SUPABASE_URL + '/rest/v1/orders'
-      + '?restaurant_slug=eq.' + encodeURIComponent(SLUG)
-      + '&table_id=eq.' + encodeURIComponent(tableContext.table_id)
-      + '&phone=eq.' + encodeURIComponent(saved.phone)
-      + '&status=in.(pending,accepted,ready,notified)';
-    var res = await fetchWithTimeout(url, {
-      method: 'PATCH',
-      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-      body: JSON.stringify({ bill_requested_at: null }),
-    }, 10000);
-    if (!res.ok) {
-      dbg('[billCancel] PATCH failed: ' + res.status);
-      alert('No pudimos cancelar. Intenta de nuevo.');
-      return;
-    }
-    await fetchMyAccount();
-    applyBillRequestedUI();
-  } catch (e) {
-    dbg('[billCancel] error: ' + e.message);
-    alert('Error de conexión.');
+// Cierra la sesión móvil de mesa: limpia identidad guardada + table
+// context + muestra overlay full-screen. Apaga poller para no seguir
+// golpeando Supabase desde una sesión visualmente cerrada.
+function closeMobileSession() {
+  try { localStorage.removeItem(CUSTOMER_LOCAL_KEY); } catch (e) {}
+  try { sessionStorage.removeItem(TABLE_CONTEXT_KEY); } catch (e) {}
+  var overlay = document.getElementById('cuentaSolicitadaOverlay');
+  if (overlay) overlay.classList.add('show');
+  if (typeof myAccountPoller !== 'undefined' && myAccountPoller) {
+    try { clearInterval(myAccountPoller); } catch (e) {}
+    myAccountPoller = null;
   }
+}
+
+// Botón único del overlay "Cuenta solicitada" → menú take-out limpio.
+function goToTakeoutMenu() {
+  window.location.href = '/' + SLUG;
 }
 
 function onMyAccountButtonClick() {
@@ -3066,13 +3087,16 @@ function onMyAccountButtonClick() {
     renderMyAccount();
     return;
   }
-  if (isBillRequested()) {
-    cancelBillRequest();
-  } else {
-    openBillConfirmModal();
-  }
+  // Hotfix 2026-04-26: removido el branch cancelBillRequest. El cliente
+  // ya no puede revertir su solicitud — closeMobileSession lo redirige
+  // tras el submit exitoso.
+  openBillConfirmModal();
 }
 
+// Hotfix 2026-04-26: en flujo normal closeMobileSession se ejecuta y
+// el cliente nunca vuelve a ver esta UI. Defensa para edge case:
+// cliente refresca después del bill request y antes del paid. Aplica
+// lock + banner rojo (sin botón "Cancelar solicitud", que ya no existe).
 function applyBillRequestedUI() {
   var billed = isBillRequested();
   document.body.classList.toggle('menu-locked', billed);
@@ -3102,18 +3126,13 @@ function applyBillRequestedUI() {
   var btnLabel = document.getElementById('myAccountRequestBtnLabel');
   if (btn && btnLabel) {
     if (billed) {
-      btnLabel.textContent = 'Cancelar solicitud';
-      btn.classList.add('cancel-mode');
-      btn.disabled = false;
+      btnLabel.textContent = 'Cuenta solicitada';
+      btn.disabled = true;
     } else {
       btnLabel.textContent = 'Solicitar cuenta';
-      btn.classList.remove('cancel-mode');
       btn.disabled = (!tableContext || !myAccountOrders.length);
     }
   }
-
-  var msg = document.getElementById('myAccountBillMsg');
-  if (msg) msg.classList.toggle('show', billed);
 }
 
 // Sprint-3 Etapa 3 Commit 4 hotfix: lockdown de nombre/teléfono cuando el
