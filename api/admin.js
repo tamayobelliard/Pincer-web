@@ -690,7 +690,10 @@ async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
   // token_hash = SHA-256 del token aleatorio que vamos a set en el cookie.
   const rawToken = randomBytes(32).toString('hex');
   const tokenH = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+  // 2026-04-26: bump 24h → 30d. Parity con auth.js — el founder usa
+  // impersonate diariamente y la sesión vive en la misma tabla
+  // restaurant_sessions, debe respetar el mismo lifetime.
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
     const insertRes = await fetch(
@@ -727,7 +730,7 @@ async function handleImpersonate(req, res, supabaseUrl, supabaseKey) {
   // eso devolvemos role='restaurant' — semánticamente "estás actuando como el
   // restaurante" durante esta impersonación. La verdad persistida en la DB es
   // user_id=admin + restaurant_slug=target, ahí vive la identidad real.
-  const maxAge = 24 * 60 * 60;
+  const maxAge = 30 * 24 * 60 * 60; // 30d sync con expires_at de la fila DB
   res.setHeader('Set-Cookie', `pincer_session=${rawToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
   return res.status(200).json({
     success: true,

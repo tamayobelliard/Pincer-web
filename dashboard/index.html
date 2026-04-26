@@ -4083,7 +4083,7 @@ async function confirmCloseShift() {
       body: JSON.stringify({ shift_id: currentShift.id }),
     });
 
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     if (!res.ok) {
       var err = await res.json().catch(function() { return { error: 'Error desconocido' }; });
       alert('Error al cerrar turno: ' + (err.error || 'Error HTTP ' + res.status));
@@ -4163,7 +4163,7 @@ async function generateAndDownloadReport() {
       headers: { 'x-restaurant-token': getSessionToken() }
     }, 30000);
 
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
 
     if (res.status === 404) {
       // No insights yet — generate them first
@@ -5785,7 +5785,7 @@ async function loadTables() {
       method: 'GET',
       headers: { 'x-restaurant-token': getSessionToken() || '' },
     });
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     var data = await res.json();
     if (!data.success) {
       empty.textContent = data.error || 'Error al cargar mesas';
@@ -5870,7 +5870,7 @@ async function submitAddTable() {
       headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
       body: JSON.stringify({ table_number: n }),
     });
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     var data = await res.json();
     if (!data.success) {
       err.textContent = data.error || 'Error al crear mesa';
@@ -5951,7 +5951,7 @@ async function regenerateTableToken(tableId) {
       headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
       body: JSON.stringify({ table_id: tableId }),
     });
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     var data = await res.json();
     if (!data.success) {
       showToast(data.error || 'Error regenerando QR');
@@ -5977,7 +5977,7 @@ async function deactivateTable(tableId) {
       headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() || '' },
       body: JSON.stringify({ table_id: tableId }),
     });
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     var data = await res.json();
     if (!data.success) {
       showToast(data.error || 'Error desactivando mesa');
@@ -6159,7 +6159,7 @@ async function togglePromo(isActive) {
       headers: { 'Content-Type': 'application/json', 'x-restaurant-token': getSessionToken() },
       body: JSON.stringify({ is_active: isActive }),
     });
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     label.textContent = isActive ? 'Visible en el menu' : 'Oculta (no visible)';
     showToast(isActive ? 'Promo activada' : 'Promo desactivada');
   } catch (e) {
@@ -6268,7 +6268,7 @@ async function saveSettings() {
       body: JSON.stringify(body),
     });
 
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
 
     console.log('[saveSettings] response status:', res.status);
     var data = await res.json();
@@ -6507,7 +6507,7 @@ async function submitPasswordChange() {
       body: JSON.stringify(body),
     });
 
-    if (res.status === 403) { handleSessionExpired(); return; }
+    if (res.status === 403 || res.status === 401) { handleSessionExpired(); return; }
     var data = await res.json();
 
     if (data.success) {

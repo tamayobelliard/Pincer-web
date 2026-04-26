@@ -155,7 +155,10 @@ export default async function handler(req, res) {
 
         const sessionToken = randomBytes(32).toString('hex');
         const tokenHash = hashToken(sessionToken);
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+        // 2026-04-26: bump 24h → 30d. Tabletas dedicadas en restaurantes
+        // se quedan 24/7 encendidas. Sliding refresh diferido a backlog
+        // (docs/backlog/auth-sliding-refresh.md).
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
         const sessRes = await fetch(
           `${supabaseUrl}/rest/v1/restaurant_sessions`,
@@ -174,7 +177,7 @@ export default async function handler(req, res) {
         if (sessRes.ok) {
           response.sessionToken = sessionToken;
           // Set httpOnly cookie (#1 — move token out of sessionStorage)
-          const maxAge = 24 * 60 * 60; // 24h in seconds
+          const maxAge = 30 * 24 * 60 * 60; // 30d en segundos — sync con expires_at
           res.setHeader('Set-Cookie', `pincer_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
         } else {
           console.error('Failed to create restaurant session:', sessRes.status, await sessRes.text());
@@ -194,7 +197,8 @@ export default async function handler(req, res) {
 
       const sessionToken = randomBytes(32).toString('hex');
       const tokenHash = hashToken(sessionToken);
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+      // 2026-04-26: bump 24h → 30d (parity con restaurant_sessions).
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
       const sessRes = await fetch(
         `${supabaseUrl}/rest/v1/admin_sessions`,
@@ -215,8 +219,8 @@ export default async function handler(req, res) {
       }
 
       response.adminToken = sessionToken;
-      // Set httpOnly cookie for admin
-      const maxAge = 24 * 60 * 60;
+      // Set httpOnly cookie for admin (30d — sync con expires_at).
+      const maxAge = 30 * 24 * 60 * 60;
       res.setHeader('Set-Cookie', `pincer_admin=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`);
     }
 
