@@ -4463,8 +4463,8 @@ function renderOpenTables(allOrders) {
   // Hotfix 2026-04-26: incluir status='paid' para preservar visibilidad
   // post-marcado (audit trail). El estado se distingue por paid_at —
   // las pagadas se renderizan con badge verde, las activas con flow normal.
-  // Cards con archived_date NOT NULL no llegan aquí porque el fetch de
-  // loadOrders ya filtra archived_date=is.null.
+  // Cards de días anteriores no llegan aquí porque loadOrders fija
+  // created_at >= getTodayMidnightISO + archived_date=is.null.
   var openOrders = (allOrders || []).filter(function(o) {
     if (!o || !o.table_id) return false;
     var s = o.status || '';
@@ -4580,8 +4580,8 @@ function renderOpenTableCard(acct) {
 
   // Hotfix 2026-04-26: detectar estado "Pagada" — alguna orden con
   // status='paid' + paid_at NOT NULL. Cuenta cerrada via Marcar Pagada
-  // o Cerrar Mesa. Card permanece visible para audit hasta que la
-  // archive el cierre de día (paid_at + archived_date filter).
+  // o Cerrar Mesa. Card permanece visible para audit hasta que el
+  // próximo día calendario la saque del filtro de loadOrders.
   var isPaid = acct.orders.some(function(o) {
     return o.status === 'paid' && !!o.paid_at;
   });
@@ -5097,12 +5097,20 @@ async function loadOrders() {
   if (!storeIsOpen) return;
 
   try {
-    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG) + '&archived_date=is.null&select=*&order=created_at.desc';
-    // Filter by session: only orders since store opened
-    if (storeOpenedAt) {
-      ordersUrl += '&created_at=gte.' + encodeURIComponent(storeOpenedAt);
-    }
-    console.log('[loadOrders] SLUG:', SLUG, '| storeOpenedAt:', storeOpenedAt, '| URL:', ordersUrl);
+    // Hotfix 2026-04-27: filtro por día calendario en lugar de
+    // storeOpenedAt. El filtro anterior dependía de transiciones
+    // schedule/override para avanzar opened_at — frágil cuando hay
+    // override pegado o restaurantHours mal configurado (caso real:
+    // The Deck arrastraba cards desde el sábado). Calendar-day
+    // (medianoche en hora DR) es independiente del estado del store.
+    // Edge case conocido: restaurantes que cruzan medianoche pierden
+    // visibilidad post-00:00 — ninguno de los 4 actuales lo hace.
+    var dayStart = getTodayMidnightISO();
+    let ordersUrl = SUPABASE_URL + '/rest/v1/orders?restaurant_slug=eq.' + encodeURIComponent(SLUG)
+      + '&archived_date=is.null'
+      + '&created_at=gte.' + encodeURIComponent(dayStart)
+      + '&select=*&order=created_at.desc';
+    console.log('[loadOrders] SLUG:', SLUG, '| dayStart:', dayStart, '| URL:', ordersUrl);
     const res = await fetchWithTimeout(ordersUrl, { headers: sbGetHeaders() }, 12000);
 
     if (!res.ok) {
@@ -5249,7 +5257,8 @@ async function loadOrders() {
       //   - countdown timer NO se aplica a paid+paid_at
       //   - botones Aceptar/Rechazar NO aparecen para paid+paid_at
       // Solo el render-skip se revierte. Las cards desaparecen
-      // naturalmente al recibir archived_date (cierre de día).
+      // naturalmente al pasar el filtro de día calendario actual
+      // (loadOrders fija created_at >= getTodayMidnightISO).
       const orderNum = order.order_number || (totalOrders - idx);
       const createdAt = new Date(order.created_at);
       const minutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
