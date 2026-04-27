@@ -4919,6 +4919,14 @@ function openCheckoutModal() {
   var existingPhone = (document.getElementById('phoneInput').value || '').trim();
   if (!existingPhone && _savedCustCk.phone) existingPhone = _savedCustCk.phone;
   document.getElementById('checkoutPhone').value = existingPhone;
+  // Hotfix 2026-04-27: setear .value por JS no dispara oninput, así que
+  // el handler de loyalty (onCheckoutPhoneChange → fetchLoyaltyProgress)
+  // nunca corría con auto-fill. Llamada explícita para que la caja del
+  // VIP Club se renderice cuando hay teléfono pre-llenado desde
+  // localStorage o desde el campo inline.
+  if (typeof fetchLoyaltyProgress === 'function' && existingPhone) {
+    fetchLoyaltyProgress();
+  }
 
   // Sprint-3 Etapa 3 Commit 1-B: pre-fill nombre desde #nameInput
   // universal (antes venía de takeoutName/deliveryName según order_type).
